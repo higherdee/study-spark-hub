@@ -110,7 +110,7 @@ function MaterialsPage() {
                 <span className="rounded-full bg-secondary px-2 py-0.5">{m.page_count} pages</span>
                 <span className="rounded-full bg-secondary px-2 py-0.5">{m.downloads} downloads</span>
               </div>
-              <Button className="mt-auto w-full rounded-full" style={{ marginTop: 16 }} variant="outline" disabled={downloading === m.id} onClick={() => download(m.id)}>
+              <Button className="mt-4 w-full rounded-full" variant="outline" disabled={downloading === m.id} onClick={() => download(m.id)}>
                 {downloading === m.id ? <Loader2 className="animate-spin" /> : <Download />} Download
               </Button>
             </article>
