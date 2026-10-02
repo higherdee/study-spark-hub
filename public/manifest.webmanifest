@@ -2,6 +2,7 @@
   "name": "Syllaboss",
   "short_name": "Syllaboss",
   "description": "Find study materials, upload yours and earn points you can cash out.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
