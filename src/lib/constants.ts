@@ -2,7 +2,9 @@ import courses from "@/data/courses.json";
 import institutions from "@/data/institutions.json";
 import type { SearchOption } from "@/components/search-select";
 
-export const POINTS_PER_UPLOAD = 50;
+export const POINTS_PER_PAGE = 5;
+export const MAX_POINTS_PER_MATERIAL = 500;
+export const pointsForPages = (pages: number) => Math.min(Math.max(pages || 1, 1) * POINTS_PER_PAGE, MAX_POINTS_PER_MATERIAL);
 export const NAIRA_PER_50_POINTS = 200;
 export const pointsToNaira = (points: number) => Math.floor(points / 50) * NAIRA_PER_50_POINTS;
 export const formatNaira = (n: number) =>

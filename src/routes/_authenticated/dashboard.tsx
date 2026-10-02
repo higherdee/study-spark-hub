@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { Bot, FileStack, LayoutDashboard, Loader2, Shield, Upload, Wallet } from "lucide-react";
 import { useEffect } from "react";
 
@@ -46,12 +46,13 @@ function DashboardLayout() {
       title="Student"
       footer={
         isAdmin ? (
-          <a href="/admin" className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary">
+          <Link to="/admin" className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary">
             <Shield className="size-4 text-primary" /> Admin dashboard
-          </a>
+          </Link>
         ) : null
       }
     >
+      {profile.suspended && <div className="mb-6 rounded-lg border border-destructive bg-destructive/5 p-4 text-sm text-destructive">Your account is suspended. You can't upload or cash out until an admin restores it.</div>}
       <Outlet />
     </AppShell>
   );

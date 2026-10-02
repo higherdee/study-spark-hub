@@ -16,6 +16,10 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard.index'
+import { Route as AuthenticatedDashboardAssistantRouteImport } from './routes/_authenticated/dashboard.assistant'
+import { Route as AuthenticatedDashboardMaterialsRouteImport } from './routes/_authenticated/dashboard.materials'
+import { Route as AuthenticatedDashboardUploadRouteImport } from './routes/_authenticated/dashboard.upload'
+import { Route as AuthenticatedDashboardWalletRouteImport } from './routes/_authenticated/dashboard.wallet'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +56,30 @@ const AuthenticatedDashboardIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedDashboardAssistantRoute =
+  AuthenticatedDashboardAssistantRouteImport.update({
+    id: '/assistant',
+    path: '/assistant',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardMaterialsRoute =
+  AuthenticatedDashboardMaterialsRouteImport.update({
+    id: '/materials',
+    path: '/materials',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardUploadRoute =
+  AuthenticatedDashboardUploadRouteImport.update({
+    id: '/upload',
+    path: '/upload',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardWalletRoute =
+  AuthenticatedDashboardWalletRouteImport.update({
+    id: '/wallet',
+    path: '/wallet',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +87,10 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
+  '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRoutesByTo {
@@ -66,6 +98,10 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
+  '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRoutesById {
@@ -76,14 +112,36 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/_authenticated/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/_authenticated/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/_authenticated/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
+  '/_authenticated/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/dashboard' | '/onboarding' | '/api/chat' | '/dashboard/'
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/onboarding'
+    | '/api/chat'
+    | '/dashboard/assistant'
+    | '/dashboard/materials'
+    | '/dashboard/upload'
+    | '/dashboard/wallet'
+    | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/onboarding' | '/api/chat' | '/dashboard'
+  to:
+    | '/'
+    | '/auth'
+    | '/onboarding'
+    | '/api/chat'
+    | '/dashboard/assistant'
+    | '/dashboard/materials'
+    | '/dashboard/upload'
+    | '/dashboard/wallet'
+    | '/dashboard'
   id:
     | '__root__'
     | '/'
@@ -92,6 +150,10 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/onboarding'
     | '/api/chat'
+    | '/_authenticated/dashboard/assistant'
+    | '/_authenticated/dashboard/materials'
+    | '/_authenticated/dashboard/upload'
+    | '/_authenticated/dashboard/wallet'
     | '/_authenticated/dashboard/'
   fileRoutesById: FileRoutesById
 }
@@ -153,15 +215,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/dashboard/assistant': {
+      id: '/_authenticated/dashboard/assistant'
+      path: '/assistant'
+      fullPath: '/dashboard/assistant'
+      preLoaderRoute: typeof AuthenticatedDashboardAssistantRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/materials': {
+      id: '/_authenticated/dashboard/materials'
+      path: '/materials'
+      fullPath: '/dashboard/materials'
+      preLoaderRoute: typeof AuthenticatedDashboardMaterialsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/upload': {
+      id: '/_authenticated/dashboard/upload'
+      path: '/upload'
+      fullPath: '/dashboard/upload'
+      preLoaderRoute: typeof AuthenticatedDashboardUploadRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/wallet': {
+      id: '/_authenticated/dashboard/wallet'
+      path: '/wallet'
+      fullPath: '/dashboard/wallet'
+      preLoaderRoute: typeof AuthenticatedDashboardWalletRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
   }
 }
 
 interface AuthenticatedDashboardRouteChildren {
+  AuthenticatedDashboardAssistantRoute: typeof AuthenticatedDashboardAssistantRoute
+  AuthenticatedDashboardMaterialsRoute: typeof AuthenticatedDashboardMaterialsRoute
+  AuthenticatedDashboardUploadRoute: typeof AuthenticatedDashboardUploadRoute
+  AuthenticatedDashboardWalletRoute: typeof AuthenticatedDashboardWalletRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
 }
 
 const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
   {
+    AuthenticatedDashboardAssistantRoute: AuthenticatedDashboardAssistantRoute,
+    AuthenticatedDashboardMaterialsRoute: AuthenticatedDashboardMaterialsRoute,
+    AuthenticatedDashboardUploadRoute: AuthenticatedDashboardUploadRoute,
+    AuthenticatedDashboardWalletRoute: AuthenticatedDashboardWalletRoute,
     AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   }
 
