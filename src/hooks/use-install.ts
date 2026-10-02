@@ -5,6 +5,12 @@ type PromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ 
 let deferred: PromptEvent | null = null;
 const listeners = new Set<() => void>();
 if (typeof window !== "undefined") {
+  const w = window as unknown as { __bip?: PromptEvent };
+  if (w.__bip) deferred = w.__bip;
+  window.addEventListener("bip-ready", () => {
+    deferred = w.__bip ?? null;
+    listeners.forEach((l) => l());
+  });
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferred = e as PromptEvent;
