@@ -1,29 +1,21 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
 export const verifyMaterial = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ materialId: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    const { data: m, error } = await context.supabase
-      .from("materials")
-      .select("*")
-      .eq("id", data.materialId)
-      .eq("user_id", context.userId)
-      .single();
-    if (error || !m) throw new Error("Material not found");
+  .inputValidator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    const { getMaterialById, setMaterialStatus, turso } = await import("@/integrations/turso/client");
+    const { getFromR2 } = await import("@/integrations/r2/client");
+    const { checkMaterial } = await import("./verify.server");
+
+    const m = await getMaterialById(data.materialId);
+    if (!m) throw new Error("Material not found");
     if (m.status !== "pending" || m.verification_score !== null) {
       return { status: m.status, score: m.verification_score, notes: m.verification_notes, pages: m.page_count };
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { checkMaterial } = await import("./verify.server");
-
-    const { data: blob, error: dErr } = await supabaseAdmin.storage.from("materials").download(m.file_path);
-    if (dErr || !blob) throw new Error("Could not read the uploaded file");
-    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const { bytes } = await getFromR2(m.file_path);
+    if (!bytes) throw new Error("Could not read the uploaded file from R2");
 
     let pages = 1;
     if (m.mime_type === "application/pdf") {
@@ -31,16 +23,19 @@ export const verifyMaterial = createServerFn({ method: "POST" })
         const { PDFDocument } = await import("pdf-lib");
         pages = (await PDFDocument.load(bytes, { ignoreEncryption: true })).getPageCount();
       } catch {
-        await supabaseAdmin.rpc("set_material_status", {
-          _material_id: m.id,
-          _status: "rejected",
-          _score: 0,
-          _notes: "The PDF could not be opened. Please upload a valid, unlocked PDF.",
-        });
+        await setMaterialStatus(
+          m.id,
+          "rejected",
+          0,
+          "The PDF could not be opened. Please upload a valid, unlocked PDF."
+        );
         return { status: "rejected" as const, score: 0, notes: "The PDF could not be opened.", pages: 0 };
       }
     }
-    await supabaseAdmin.from("materials").update({ page_count: pages }).eq("id", m.id);
+    await turso.execute({
+      sql: "UPDATE materials SET page_count = ? WHERE id = ?",
+      args: [pages, m.id],
+    });
 
     let status: "verified" | "rejected" | "pending" = "pending";
     let score = 0;
@@ -55,12 +50,6 @@ export const verifyMaterial = createServerFn({ method: "POST" })
       console.error("verification failed", e);
     }
 
-    const { error: sErr } = await supabaseAdmin.rpc("set_material_status", {
-      _material_id: m.id,
-      _status: status,
-      _score: score,
-      _notes: notes,
-    });
-    if (sErr) throw new Error(sErr.message);
+    await setMaterialStatus(m.id, status, score, notes);
     return { status, score, notes, pages };
   });

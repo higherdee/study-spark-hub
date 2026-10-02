@@ -1,13 +1,20 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-
-import { supabase } from "@/integrations/supabase/client";
+import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth", search: { mode: "signin" } });
-    return { user: data.user };
-  },
-  component: () => <Outlet />,
+  component: AuthenticatedLayout,
 });
+
+function AuthenticatedLayout() {
+  return (
+    <>
+      <SignedIn>
+        <Outlet />
+      </SignedIn>
+      <SignedOut>
+        <Navigate to="/auth" search={{ mode: "signin" }} />
+      </SignedOut>
+    </>
+  );
+}

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { Bot, FileStack, LayoutDashboard, Loader2, Shield, Upload, Wallet } from "lucide-react";
+import { BookOpen, Bot, FileStack, LayoutDashboard, Loader2, Settings, Shield, Upload, Wallet } from "lucide-react";
 import { useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -21,10 +21,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 const nav: NavItem[] = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
-  { to: "/dashboard/upload", label: "Upload material", icon: Upload },
-  { to: "/dashboard/materials", label: "My uploads", icon: FileStack },
-  { to: "/dashboard/wallet", label: "Points & cash out", icon: Wallet },
-  { to: "/dashboard/assistant", label: "AI study assistant", icon: Bot },
+  { to: "/dashboard/upload", label: "Upload", icon: Upload },
+  { to: "/dashboard/library", label: "Library", icon: BookOpen, isFeatured: true },
+  { to: "/dashboard/materials", label: "My Notes", icon: FileStack },
+  { to: "/dashboard/wallet", label: "Wallet", icon: Wallet },
+  { to: "/dashboard/assistant", label: "AI Boss", icon: Bot },
 ];
 
 function DashboardLayout() {
@@ -33,8 +34,10 @@ function DashboardLayout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (profile && profile.onboarding_step < 3) navigate({ to: "/onboarding" });
-  }, [profile, navigate]);
+    if (!isLoading && (!profile || profile.onboarding_step < 3)) {
+      navigate({ to: "/onboarding" });
+    }
+  }, [profile, isLoading, navigate]);
 
   if (isLoading || !profile || profile.onboarding_step < 3) {
     return <div className="grid min-h-screen place-items-center"><Loader2 className="animate-spin text-primary" /></div>;

@@ -1,97 +1,311 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
-import { LogOut, Menu, X } from "lucide-react";
+import {
+  Coins,
+  LogOut,
+  Sparkles,
+  Timer,
+  Play,
+  Shield,
+  Bell,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { SyllabossLogo } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationsDrawer } from "@/components/notifications-drawer";
 import { useAuth } from "@/hooks/use-auth";
+import { useProfile, useIsAdmin } from "@/lib/profile";
+import { useStudyTimer } from "@/hooks/use-study-timer";
+import { POINTS_NAME } from "@/lib/constants";
+import { getUserNotifications } from "@/integrations/turso/client";
 import { cn } from "@/lib/utils";
 
-export type NavItem = { to: string; label: string; icon: LucideIcon; exact?: boolean };
+export type NavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+  isFeatured?: boolean;
+};
 
-export function AppShell({ nav, title, footer, children }: { nav: NavItem[]; title: string; footer?: ReactNode; children: ReactNode }) {
+export function AppShell({
+  nav,
+  title,
+  footer,
+  children,
+}: {
+  nav: NavItem[];
+  title: string;
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
   const { user, signOut } = useAuth();
+  const { data: profile } = useProfile();
+  const { data: isAdmin } = useIsAdmin();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const [open, setOpen] = useState(false);
-  const name = (user?.user_metadata?.["full_name"] as string | undefined) ?? user?.email ?? "Student";
+  const { seconds, isPaused, isInactive, togglePause } = useStudyTimer();
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  const links = (
-    <nav className="flex flex-col gap-1">
-      {nav.map((item) => {
-        const active = item.exact ? path === item.to : path === item.to || path.startsWith(`${item.to}/`);
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={() => setOpen(false)}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-              active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            <item.icon className="size-4" />
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["user-notifications", user?.id],
+    enabled: Boolean(user),
+    queryFn: async () => {
+      if (!user) return [];
+      return await getUserNotifications(user.id);
+    },
+    refetchInterval: 30000,
+  });
 
-  const side = (
-    <div className="flex h-full flex-col gap-6 p-4">
-      <div className="px-2 pt-2"><SyllabossLogo /></div>
-      <p className="px-3 font-mono text-[10px] uppercase text-muted-foreground">{title}</p>
-      {links}
-      <div className="mt-auto space-y-3">
-        {footer}
-        <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary font-display text-sm font-semibold text-primary-foreground">
-            {name.charAt(0).toUpperCase()}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{name}</p>
-            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
-          </div>
-          <Button variant="ghost" size="icon-sm" aria-label="Sign out" onClick={signOut}><LogOut /></Button>
-        </div>
-      </div>
-    </div>
-  );
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const name =
+    (user?.user_metadata?.["full_name"] as string | undefined) ??
+    profile?.full_name ??
+    user?.email ??
+    "Student";
+
+  const points = profile?.points ?? 0;
+  const isPlus = Boolean(profile?.sylla_plus);
+
+  // Format timer into MM:SS towards next 30m milestone
+  const remainingSecs = Math.max(0, 1800 - (seconds % 1800));
+  const timerMins = Math.floor(remainingSecs / 60);
+  const timerSecs = remainingSecs % 60;
+  const timerDisplay = `${String(timerMins).padStart(2, "0")}:${String(timerSecs).padStart(2, "0")}`;
 
   return (
-    <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[260px_1fr]">
-      <aside className="sticky top-0 hidden h-screen border-r border-border bg-card lg:block">{side}</aside>
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur lg:hidden">
-        <SyllabossLogo />
-        <Button variant="ghost" size="icon" aria-label="Menu" onClick={() => setOpen((o) => !o)}>{open ? <X /> : <Menu />}</Button>
+    <div className="relative min-h-screen bg-background text-foreground antialiased selection:bg-primary/20">
+      {/* iOS Floating Island Top Header */}
+      <header className="sticky top-0 z-40 px-3 py-2.5 transition-all sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-3xl border border-white/60 dark:border-white/10 bg-background/80 dark:bg-card/75 px-3 py-2 shadow-sm backdrop-blur-2xl transition-all">
+          {/* Mobile: Avatar replaces logo on the left (Screenshot 5) */}
+          <div className="flex sm:hidden items-center">
+            <Link
+              to="/dashboard/settings"
+              className="grid size-8 place-items-center rounded-full bg-primary/10 border border-primary/25 text-xs font-bold text-primary shadow-xs transition-transform active:scale-90"
+              title={name}
+            >
+              {name.charAt(0).toUpperCase()}
+            </Link>
+          </div>
+
+          {/* Desktop: Brand Logo */}
+          <div className="hidden sm:flex items-center gap-3">
+            <SyllabossLogo href="/dashboard" />
+            {isPlus && (
+              <span className="items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/20 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 inline-flex border border-amber-500/30">
+                <Sparkles className="size-3" /> SyllaPlus
+              </span>
+            )}
+          </div>
+
+          {/* Top Dynamic Island Widget Cluster */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {/* Dynamic Island Study Timer Widget */}
+            <button
+              onClick={togglePause}
+              title={isPaused ? (isInactive ? "Paused (1h idle). Click to resume" : "Paused. Click to resume") : "Study timer running (+5 pts every 30m). Click to pause"}
+              className={cn(
+                "group flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-mono transition-all duration-200 active:scale-95 shadow-xs border",
+                isInactive
+                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                  : isPaused
+                  ? "bg-secondary text-muted-foreground border-border"
+                  : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 animate-pulse-subtle"
+              )}
+            >
+              {isPaused ? (
+                <Play className="size-3 text-current transition-transform group-hover:scale-110" />
+              ) : (
+                <Timer className="size-3 text-current transition-transform group-hover:scale-110" />
+              )}
+              <span className="hidden xs:inline font-medium text-[11px]">
+                {isInactive ? "Idle" : isPaused ? "Paused" : "Study"}
+              </span>
+              <span>{timerDisplay}</span>
+            </button>
+
+            {/* SyllaPoints Pill - pure points, NO NAIRA! */}
+            <Link
+              to="/dashboard/wallet"
+              className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card/90 px-2.5 sm:px-3 py-1 text-xs font-medium backdrop-blur-md transition-all hover:bg-card hover:shadow-xs active:scale-95"
+            >
+              <Coins className="size-3.5 text-primary" />
+              <span className="font-semibold text-foreground">{points.toLocaleString()}</span>
+              <span className="hidden sm:inline text-muted-foreground text-[11px]">
+                {POINTS_NAME}
+              </span>
+            </Link>
+
+            {/* Notifications Bell with Unread Badge */}
+            <button
+              type="button"
+              onClick={() => setShowNotifications(true)}
+              title="Notifications"
+              aria-label="View notifications"
+              className="relative grid size-8 place-items-center rounded-full border border-border/60 bg-card/80 text-foreground backdrop-blur-md transition-all active:scale-90 hover:bg-card hover:shadow-xs"
+            >
+              <Bell className="size-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 grid size-4 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground animate-scale-in">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Dark / Light Mode Switch */}
+            <ThemeToggle />
+
+            {/* Admin link badge if admin */}
+            {isAdmin && title !== "Admin" && (
+              <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex rounded-full text-xs h-7 px-2.5">
+                <Link to="/admin">
+                  <Shield className="size-3 mr-1 text-primary" /> Admin
+                </Link>
+              </Button>
+            )}
+
+            {/* Desktop User Avatar */}
+            <Link
+              to="/dashboard/settings"
+              className="hidden sm:grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary transition-transform active:scale-90"
+              title={name}
+            >
+              {name.charAt(0).toUpperCase()}
+            </Link>
+          </div>
+        </div>
       </header>
-      {open && <div className="fixed inset-0 top-[61px] z-30 overflow-y-auto bg-card lg:hidden">{side}</div>}
-      <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">{children}</main>
+
+      {/* Main Content Area */}
+      <main className="mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:pb-32 lg:px-8">
+        {children}
+      </main>
+
+      {/* Notifications Drawer */}
+      <NotificationsDrawer
+        open={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
+
+      {/* iPhone Liquid Glass Bottom Floating Dock with Distinctive Center Library */}
+      <aside
+        aria-label="Navigation dock"
+        className="fixed bottom-5 inset-x-0 z-50 mx-auto w-fit max-w-[96vw] pointer-events-none"
+      >
+        <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 rounded-full p-1.5 backdrop-blur-3xl bg-card/85 dark:bg-card/75 border border-white/60 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.18),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_-1px_1px_rgba(0,0,0,0.08)] ring-1 ring-black/5 dark:ring-white/10 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+          {nav.map((item) => {
+            const active = item.exact
+              ? path === item.to
+              : path === item.to || path.startsWith(`${item.to}/`);
+
+            if (item.isFeatured) {
+              // Bolder, distinctive center Library button
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    "relative flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all duration-300 active:scale-95 select-none shadow-md",
+                    active
+                      ? "bg-primary text-primary-foreground ring-2 ring-primary/40 shadow-primary/25 scale-[1.08]"
+                      : "bg-gradient-to-r from-primary/90 to-primary text-primary-foreground hover:scale-105 hover:shadow-primary/30"
+                  )}
+                >
+                  <item.icon className="size-4 shrink-0" />
+                  <span className="inline">{item.label}</span>
+                </Link>
+              );
+            }
+
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "relative flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-2 text-xs font-medium transition-all duration-200 active:scale-90 select-none",
+                  active
+                    ? "bg-secondary text-foreground shadow-xs font-semibold scale-[1.02]"
+                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+                )}
+              >
+                <item.icon className="size-4 shrink-0 transition-transform duration-200" />
+                <span
+                  className={cn(
+                    "transition-all duration-200",
+                    active ? "inline" : "hidden md:inline"
+                  )}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+
+          <div className="h-4 w-px bg-border/60 mx-0.5" />
+
+          {/* Quick Sign Out */}
+          <button
+            onClick={signOut}
+            title="Sign out"
+            aria-label="Sign out"
+            className="flex items-center justify-center size-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all active:scale-90"
+          >
+            <LogOut className="size-3.5" />
+          </button>
+        </div>
+      </aside>
     </div>
   );
 }
 
-export function PageHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+export function PageHeader({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  children?: ReactNode;
+}) {
   return (
-    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="font-mono text-xs uppercase text-primary">{eyebrow}</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold sm:text-4xl">{title}</h1>
+        <p className="font-mono text-xs uppercase tracking-wider text-primary font-semibold">{eyebrow}</p>
+        <h1 className="mt-1.5 font-display text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
+          {title}
+        </h1>
       </div>
       {children}
     </div>
   );
 }
 
-export function StatCard({ label, value, hint, icon: Icon }: { label: string; value: ReactNode; hint?: string; icon: LucideIcon }) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  icon: LucideIcon;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
+    <div className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-xs backdrop-blur-sm transition-all hover:shadow-soft">
       <div className="flex items-center justify-between text-muted-foreground">
-        <span className="text-xs font-semibold uppercase">{label}</span>
-        <Icon className="size-4 text-primary" />
+        <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
+        <div className="rounded-lg bg-primary/10 p-2 text-primary">
+          <Icon className="size-4" />
+        </div>
       </div>
-      <p className="mt-3 font-display text-3xl font-semibold">{value}</p>
+      <p className="mt-3 font-display text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
+        {value}
+      </p>
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -100,9 +314,18 @@ export function StatCard({ label, value, hint, icon: Icon }: { label: string; va
 export function StatusBadge({ status }: { status: string }) {
   const tone =
     status === "verified" || status === "paid"
-      ? "bg-primary/10 text-primary"
+      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
       : status === "rejected"
-        ? "bg-destructive/10 text-destructive"
-        : "bg-accent/30 text-accent-foreground";
-  return <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium capitalize", tone)}>{status}</span>;
+      ? "bg-destructive/10 text-destructive border-destructive/20"
+      : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
+  return (
+    <span
+      className={cn(
+        "rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
+        tone
+      )}
+    >
+      {status}
+    </span>
+  );
 }

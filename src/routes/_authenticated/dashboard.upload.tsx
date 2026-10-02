@@ -11,13 +11,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
-import { ACCEPTED_FILES, courseOptions, institutionOptions, LEVELS, MATERIAL_TYPES, MAX_FILE_BYTES, POINTS_PER_PAGE } from "@/lib/constants";
+import { ACCEPTED_FILES, courseOptions, institutionOptions, LEVELS, MATERIAL_TYPES, MAX_FILE_BYTES, POINTS_PER_VERIFIED_UPLOAD, POINTS_NAME, POINTS_PER_VIEW, POINTS_PER_DOWNLOAD } from "@/lib/constants";
 import { useProfile } from "@/lib/profile";
+import { createMaterialServerFn, getUploadUrlServerFn } from "@/lib/upload.functions";
 import { verifyMaterial } from "@/lib/verify.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard/upload")({
-  head: () => ({ meta: [{ title: "Upload material — Syllaboss" }, { name: "description", content: "Upload study materials and earn points per page." }] }),
+  head: () => ({
+    meta: [
+      { title: "Upload material — Syllaboss" },
+      { name: "description", content: "Upload study materials and earn SyllaPoints per verified upload." },
+    ],
+  }),
   component: UploadPage,
 });
 
@@ -41,83 +46,200 @@ function UploadPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!user) return;
-    if (profile?.suspended) { toast.error("Your account is suspended. Contact support."); return; }
-    if (title.trim().length < 3 || !course || !inst || !file) { toast.error("Fill in the title, course, school and pick a file"); return; }
-    if (file.size > MAX_FILE_BYTES) { toast.error("File is larger than 20MB"); return; }
-    if (!ACCEPTED_FILES.split(",").includes(file.type)) { toast.error("Upload a PDF or an image (PNG, JPG, WEBP)"); return; }
+    if (profile?.suspended) {
+      toast.error("Your account is suspended. Contact support.");
+      return;
+    }
+    if (title.trim().length < 3 || !course || !inst || !file) {
+      toast.error("Fill in the title, course, school and pick a file");
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      toast.error("File is larger than 20MB");
+      return;
+    }
+    if (!ACCEPTED_FILES.split(",").includes(file.type)) {
+      toast.error("Upload a PDF or an image (PNG, JPG, WEBP)");
+      return;
+    }
 
     setResult(null);
     setStage("uploading");
-    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
-    const path = `${user.id}/${crypto.randomUUID()}-${safe}`;
-    const up = await supabase.storage.from("materials").upload(path, file, { contentType: file.type });
-    if (up.error) { setStage("idle"); { toast.error(up.error.message); return; } }
 
-    const { data: row, error } = await supabase
-      .from("materials")
-      .insert({
-        user_id: user.id, title: title.trim(), course_code: code.trim() || null, course: course.label, institution: inst.label,
-        level, material_type: type, description: desc.trim() || null, file_path: path, file_name: file.name, mime_type: file.type, file_size: file.size,
-      })
-      .select("id")
-      .single();
-    if (error || !row) { await supabase.storage.from("materials").remove([path]); setStage("idle"); { toast.error(error?.message ?? "Upload failed"); return; } }
-
-    setStage("checking");
     try {
-      const r = await verifyMaterial({ data: { materialId: row.id } });
-      setResult(r);
-      if (r.status === "verified") toast.success("Verified! Points added to your wallet.");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("userId", user.id);
+      formData.append("title", title.trim());
+      formData.append("course", course.label);
+      if (code.trim()) formData.append("courseCode", code.trim());
+      formData.append("institution", inst.label);
+      formData.append("level", level);
+      formData.append("materialType", type);
+      if (desc.trim()) formData.append("description", desc.trim());
+
+      setStage("uploading");
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Upload failed (${res.statusText})`);
+      }
+
+      setStage("checking");
+      const data = await res.json();
+      const audit = data.auditResult || {
+        status: "pending",
+        score: null,
+        notes: "Uploaded. Queued for audit and review.",
+      };
+
+      setResult({
+        status: audit.status || "pending",
+        score: audit.score ?? null,
+        notes: audit.notes ?? "File queued for review.",
+        pages: data.material?.page_count || 1,
+      });
+
+      if (audit.status === "verified") {
+        toast.success("Verified! SyllaPoints added to your wallet.");
+      } else {
+        toast.info("Upload submitted! Status: Pending verification.");
+      }
+
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: ["my-materials"] });
+      setTitle("");
+      setCode("");
+      setDesc("");
+      setFile(null);
     } catch (err) {
-      setResult({ status: "pending", score: null, notes: "We couldn't finish the automatic check. An admin will review it.", pages: 0 });
       console.error(err);
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setStage("idle");
     }
-    setStage("idle");
-    qc.invalidateQueries({ queryKey: ["profile"] });
-    qc.invalidateQueries({ queryKey: ["my-materials"] });
-    setTitle(""); setCode(""); setDesc(""); setFile(null);
   }
 
   const busy = stage !== "idle";
 
   return (
     <div className="max-w-3xl">
-      <PageHeader eyebrow={`Earn ${POINTS_PER_PAGE} points per page`} title="Upload a material" />
+      <PageHeader eyebrow={`Earn ${POINTS_PER_VERIFIED_UPLOAD} ${POINTS_NAME} per verified upload`} title="Upload a material" />
 
       <div className="mb-6 flex gap-3 rounded-xl border border-border bg-secondary p-4 text-sm">
         <ShieldCheck className="size-5 shrink-0 text-primary" />
-        <p className="text-muted-foreground">Every file is checked automatically to confirm it matches the title, course and type you enter. Matching files are approved and you get <b className="text-foreground">{POINTS_PER_PAGE} points per page</b> (up to 500 per file). Unclear files go to an admin.</p>
+        <p className="text-muted-foreground">
+          Every file is checked automatically to confirm it matches the title, course and type you enter.
+          Matching files are approved and you get <b className="text-foreground">{POINTS_PER_VERIFIED_UPLOAD} {POINTS_NAME}</b> (+{POINTS_PER_VIEW} pts per view, +{POINTS_PER_DOWNLOAD} pts per download). Unclear files go to an admin.
+        </p>
       </div>
 
       {result && <ResultCard r={result} />}
 
       <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-border bg-card p-5 sm:p-7">
         <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
-          <div className="space-y-2"><Label htmlFor="t">Title</Label><Input id="t" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Introduction to Calculus — Lecture notes week 1-4" /></div>
-          <div className="space-y-2"><Label htmlFor="c">Course code</Label><Input id="c" maxLength={20} value={code} onChange={(e) => setCode(e.target.value)} placeholder="MTH 101" /></div>
+          <div className="space-y-2">
+            <Label htmlFor="t">Title</Label>
+            <Input
+              id="t"
+              maxLength={120}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Introduction to Calculus — Lecture notes week 1-4"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="c">Course code</Label>
+            <Input
+              id="c"
+              maxLength={20}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="MTH 101"
+            />
+          </div>
         </div>
-        <SearchSelect id="u-course" label="Course" placeholder="Search course" options={courseOptions} value={course} onChange={setCourse} />
-        <SearchSelect id="u-inst" label="Institution" placeholder="Search school" options={institutionOptions} value={inst} onChange={setInst} />
+        <SearchSelect
+          id="u-course"
+          label="Course"
+          placeholder="Search course"
+          options={courseOptions}
+          value={course}
+          onChange={setCourse}
+        />
+        <SearchSelect
+          id="u-inst"
+          label="Institution"
+          placeholder="Search school"
+          options={institutionOptions}
+          value={inst}
+          onChange={setInst}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="lv">Level</Label>
-            <select id="lv" value={level} onChange={(e) => setLevel(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">{LEVELS.map((l) => <option key={l}>{l}</option>)}</select>
+            <Label htmlFor="l">Level</Label>
+            <select
+              id="l"
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {LEVELS.map((l) => (
+                <option key={l}>{l}</option>
+              ))}
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="ty">Material type</Label>
-            <select id="ty" value={type} onChange={(e) => setType(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">{MATERIAL_TYPES.map((l) => <option key={l}>{l}</option>)}</select>
+            <select
+              id="ty"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {MATERIAL_TYPES.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
           </div>
         </div>
-        <div className="space-y-2"><Label htmlFor="d">Short description (optional)</Label><Textarea id="d" maxLength={500} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Topics covered, lecturer, session…" /></div>
-        <label htmlFor="f" className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border p-8 text-center transition hover:border-primary">
-          <FileUp className="size-8 text-primary" />
-          <span className="text-sm font-medium">{file ? file.name : "Choose a PDF or image"}</span>
-          <span className="text-xs text-muted-foreground">{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "Max 20MB"}</span>
-          <input id="f" type="file" accept={ACCEPTED_FILES} className="sr-only" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        </label>
-        <Button type="submit" disabled={busy} className="h-12 w-full rounded-full">
-          {busy && <Loader2 className="animate-spin" />}
-          {stage === "uploading" ? "Uploading…" : stage === "checking" ? "Checking your file…" : "Upload & verify"}
+        <div className="space-y-2">
+          <Label htmlFor="d">Description (optional)</Label>
+          <Textarea
+            id="d"
+            maxLength={300}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder="Topic overview, lecturer name or semester details"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="f">File (PDF or image, max 20MB)</Label>
+          <Input
+            id="f"
+            type="file"
+            accept={ACCEPTED_FILES}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </div>
+        <Button type="submit" disabled={busy} className="h-11 w-full rounded-full">
+          {stage === "uploading" ? (
+            <>
+              <Loader2 className="animate-spin" /> Uploading to Cloudflare R2…
+            </>
+          ) : stage === "checking" ? (
+            <>
+              <Loader2 className="animate-spin" /> Checking material with AI…
+            </>
+          ) : (
+            <>
+              <FileUp /> Submit and check
+            </>
+          )}
         </Button>
       </form>
     </div>
@@ -125,18 +247,58 @@ function UploadPage() {
 }
 
 function ResultCard({ r }: { r: Result }) {
-  const Icon = r.status === "verified" ? CheckCircle2 : r.status === "rejected" ? XCircle : Clock;
-  const tone = r.status === "verified" ? "border-primary bg-primary/5" : r.status === "rejected" ? "border-destructive bg-destructive/5" : "border-accent bg-accent/10";
-  return (
-    <div className={`mb-6 rounded-xl border p-5 ${tone}`}>
-      <div className="flex items-start gap-3">
-        <Icon className="mt-0.5 size-5 shrink-0" />
-        <div>
-          <p className="font-semibold capitalize">{r.status === "pending" ? "Sent for admin review" : r.status}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{r.notes}</p>
-          <p className="mt-2 text-xs text-muted-foreground">{r.pages} page(s){r.score !== null ? ` · match score ${r.score}/100` : ""}</p>
-          <Link to="/dashboard/materials" className="mt-2 inline-block text-sm text-primary">See all my uploads</Link>
+  if (r.status === "verified") {
+    return (
+      <div className="mb-6 rounded-xl border border-primary/30 bg-primary/10 p-5">
+        <div className="flex items-center gap-2 font-display text-lg font-semibold text-primary">
+          <CheckCircle2 className="size-5" /> Approved — {POINTS_PER_VERIFIED_UPLOAD} {POINTS_NAME} awarded!
         </div>
+        <p className="mt-1 text-sm text-foreground/80">
+          We confirmed this file matches your course. You also earn +{POINTS_PER_VIEW} {POINTS_NAME} on every view and +{POINTS_PER_DOWNLOAD} {POINTS_NAME} on every download.
+        </p>
+      </div>
+    );
+  }
+  if (r.status === "rejected") {
+    return (
+      <div className="mb-6 rounded-2xl border border-destructive/30 bg-destructive/10 p-5 backdrop-blur-md">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-display text-lg font-semibold text-destructive">
+            <XCircle className="size-5" /> File Not Verified
+          </div>
+          <span className="rounded-full bg-destructive/20 px-2.5 py-0.5 text-xs font-semibold text-destructive">
+            Rejected
+          </span>
+        </div>
+        <p className="mt-2 text-sm text-foreground/80">{r.notes ?? "The file did not match the stated course."}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Think this was a mistake? You can lodge an appeal from your Materials tab.
+        </p>
+        <div className="mt-3">
+          <Button asChild size="sm" variant="outline" className="rounded-full text-xs border-destructive/40 text-destructive hover:bg-destructive/10">
+            <Link to="/dashboard/materials">Lodge a Complaint in My Materials</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 backdrop-blur-md">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 font-display text-lg font-semibold text-amber-700 dark:text-amber-300">
+          <Clock className="size-5" /> Pending Audit & Verification
+        </div>
+        <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
+          In Review
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-foreground/80">
+        Your file has been safely uploaded and queued for automated audit and admin review. You can check the live status of your file and track verification progress in your <b>My Materials</b> tab!
+      </p>
+      <div className="mt-3">
+        <Button asChild size="sm" variant="outline" className="rounded-full text-xs">
+          <Link to="/dashboard/materials">Check Status in My Materials</Link>
+        </Button>
       </div>
     </div>
   );

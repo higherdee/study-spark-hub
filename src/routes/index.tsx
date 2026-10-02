@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Bot, CheckCircle2, Coins, FileSearch, GraduationCap, Menu, ShieldCheck, Smartphone, Upload, Wallet, X } from "lucide-react";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Bot, CheckCircle2, Coins, FileSearch, GraduationCap, Menu, ShieldCheck, Smartphone, Upload, Wallet, X, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
 
 import { InstallButton } from "@/components/install-button";
 import { MaterialSearchBar } from "@/components/material-search-bar";
@@ -9,16 +9,32 @@ import { SyllabossLogo } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
-import { courseOptions, formatNaira, institutionOptions, NAIRA_PER_50_POINTS, POINTS_PER_PAGE } from "@/lib/constants";
+import { turso } from "@/integrations/turso/client";
+import {
+  courseOptions,
+  formatNaira,
+  institutionOptions,
+  POINTS_NAME,
+  PLAN_NAME,
+  POINTS_PER_NAIRA,
+  MINIMUM_WITHDRAWAL_POINTS,
+  MINIMUM_WITHDRAWAL_NAIRA,
+  POINTS_PER_VERIFIED_UPLOAD,
+  POINTS_PER_DOWNLOAD,
+  POINTS_PER_VIEW,
+  POINTS_PER_30_MIN_STUDY,
+  POINTS_REGISTRATION_BONUS,
+  POINTS_INSTALL_APP_BONUS,
+  pointsToNaira,
+} from "@/lib/constants";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Syllaboss — Find study materials, upload yours, earn cash" },
-      { name: "description", content: "Search verified notes and past questions, upload your own to earn points per page, cash out to your bank, and study with an AI assistant." },
+      { name: "description", content: "Search verified notes and past questions, upload your own to earn SyllaPoints, cash out to your bank, and study with an AI assistant." },
       { property: "og:title", content: "Syllaboss — Find study materials, upload yours, earn cash" },
-      { property: "og:description", content: "Verified notes and past questions, points you can cash out, and an AI study assistant." },
+      { property: "og:description", content: "Verified notes and past questions, SyllaPoints you can cash out, and an AI study assistant." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -30,20 +46,42 @@ const POPULAR = ["MTH 101", "GST 111", "Past questions", "Anatomy", "Accounting"
 
 const FAQ = [
   ["Is Syllaboss free?", "Yes. Creating an account, searching and downloading verified materials is free."],
-  ["How are points calculated?", `You get ${POINTS_PER_PAGE} points for every page of a verified upload, up to 500 points per file.`],
-  ["How do I get paid?", `Every 50 points is worth ${formatNaira(NAIRA_PER_50_POINTS)}. Request a withdrawal from your wallet and we pay to your Nigerian bank account after a quick review.`],
-  ["How do you stop fake uploads?", "Each file is read automatically and compared with the title, course and type you enter. Files that don't match are rejected; unclear ones are reviewed by an admin."],
-  ["Can I use it on my phone?", "Yes. Tap “Install app” to add Syllaboss to your home screen — it opens like a normal app."],
+  ["How are SyllaPoints earned?", `You get ${POINTS_REGISTRATION_BONUS} points for registering, ${POINTS_INSTALL_APP_BONUS} points for installing the app, ${POINTS_PER_VERIFIED_UPLOAD} points per verified upload, ${POINTS_PER_DOWNLOAD} points when someone downloads your material, ${POINTS_PER_VIEW} points per view, and ${POINTS_PER_30_MIN_STUDY} points every 30 minutes of studying on the platform.`],
+  ["How do I get paid?", `1 Naira = ${POINTS_PER_NAIRA} ${POINTS_NAME} (5 points = ₦1). The minimum withdrawal is ${MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} ${POINTS_NAME} (${formatNaira(MINIMUM_WITHDRAWAL_NAIRA)}). You can request a withdrawal directly to your Nigerian bank account anytime!`],
+  ["What is SyllaPlus?", `SyllaPlus is our premium membership that unlocks bonus rewards (+300 ${POINTS_NAME} upgrade bonus), verified badges, faster review times, and ad-free experience.`],
+  ["How does the referral system work?", `When a friend signs up with your referral code, you earn 40 ${POINTS_NAME}. When they upgrade to SyllaPlus, you earn an additional 200 ${POINTS_NAME}!`],
+  ["How do you stop fake uploads?", "Each file is verified automatically and compared with the course and title you enter. Files that don't match are rejected; unclear ones are reviewed by an admin."],
+  ["Can I use it on my phone?", "Yes! Tap “Install app” or “Add to Home Screen”. When you launch the installed app, it takes you straight into your dashboard."],
 ];
 
 function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // When a user opens the installed app (standalone mode), take them straight to authentication or dashboard
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (navigator as unknown as { standalone?: boolean }).standalone === true ||
+        window.location.search.includes("mode=pwa");
+      if (isStandalone) {
+        if (user) {
+          navigate({ to: "/dashboard" });
+        } else {
+          navigate({ to: "/auth", search: { mode: "signin" } });
+        }
+      }
+    }
+  }, [user, navigate]);
+
   const stats = useQuery({
     queryKey: ["public-stats"],
     queryFn: async () => {
-      const { count } = await supabase.from("materials").select("id", { count: "exact", head: true }).eq("status", "verified");
-      return { materials: count ?? 0 };
+      const rs = await turso.execute("SELECT COUNT(*) AS count FROM materials WHERE status = 'verified'");
+      const first = rs.rows[0] as unknown as Record<string, unknown> | undefined;
+      return { materials: Number(first?.['count'] || 0) };
     },
   });
   const start = user ? { to: "/dashboard" as const } : { to: "/auth" as const, search: { mode: "signup" as const } };
@@ -107,10 +145,10 @@ function HomePage() {
             {[
               [FileSearch, "Search materials", "Notes, past questions, handouts and summaries — filtered by course, level and type."],
               [ShieldCheck, "Verified files only", "Every upload is checked automatically so what you download matches what it says."],
-              [Coins, "Earn per page", `Get ${POINTS_PER_PAGE} points for each page you share once it's verified.`],
-              [Wallet, "Cash out to your bank", `Every 50 points = ${formatNaira(NAIRA_PER_50_POINTS)}. Withdraw straight from your wallet.`],
+              [Coins, `Earn ${POINTS_NAME}`, `Get ${POINTS_PER_VERIFIED_UPLOAD} points per verified upload, +${POINTS_PER_DOWNLOAD} per download, and +${POINTS_PER_VIEW} per view.`],
+              [Wallet, "Cash out to your bank", `1 Naira = ${POINTS_PER_NAIRA} ${POINTS_NAME}. Withdraw directly to your Nigerian bank from 17,500 points (${formatNaira(MINIMUM_WITHDRAWAL_NAIRA)}).`],
               [Bot, "AI study assistant", "Ask Boss to explain topics, quiz you, summarise notes or plan your week."],
-              [Smartphone, "Works like an app", "Install Syllaboss on your phone and open it from your home screen."],
+              [Smartphone, "Works like an app", `Install Syllaboss on your phone and earn ${POINTS_INSTALL_APP_BONUS} bonus ${POINTS_NAME} instantly.`],
             ].map(([Icon, title, copy]) => {
               const I = Icon as typeof FileSearch;
               return (
@@ -130,10 +168,10 @@ function HomePage() {
             <h2 className="mt-3 font-display text-4xl font-semibold">Up and running in four steps.</h2>
             <ol className="mt-12 grid gap-6 md:grid-cols-4">
               {[
-                [GraduationCap, "Create your account", "Sign up with email or Google in seconds."],
-                [CheckCircle2, "Tell us about you", "Your school, course, level and how you found us."],
-                [ArrowRight, "Set your study plan", "Pick your study days, hours and target CGPA."],
-                [Upload, "Study & earn", "Download materials, upload yours, chat with your AI assistant."],
+                [GraduationCap, "Create your account", `Sign up in seconds and get ${POINTS_REGISTRATION_BONUS} welcome ${POINTS_NAME}.`],
+                [CheckCircle2, "Tell us about you", "Your school, course, level and study interests."],
+                [ArrowRight, "Set your study plan", `Study daily and earn ${POINTS_PER_30_MIN_STUDY} points every 30 minutes.`],
+                [Upload, "Upload & Earn", "Share notes, earn on every view and download, and cash out."],
               ].map(([Icon, t, c], i) => {
                 const I = Icon as typeof FileSearch;
                 return (
@@ -152,18 +190,33 @@ function HomePage() {
         <section id="earn" className="mx-auto grid max-w-7xl scroll-mt-20 gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
           <div>
             <p className="font-mono text-xs uppercase text-primary">Upload & earn</p>
-            <h2 className="mt-3 font-display text-4xl font-semibold leading-tight sm:text-5xl">Your notes are worth money.</h2>
-            <p className="mt-4 leading-7 text-muted-foreground">Upload clear, genuine notes or past questions. Our checker confirms the file matches the course and title you gave, counts the pages, and adds points to your wallet instantly.</p>
+            <h2 className="mt-3 font-display text-4xl font-semibold leading-tight sm:text-5xl">Your notes are worth cash.</h2>
+            <p className="mt-4 leading-7 text-muted-foreground">
+              Upload clear, genuine notes or past questions. Once verified, you get {POINTS_PER_VERIFIED_UPLOAD} {POINTS_NAME} instantly, plus {POINTS_PER_VIEW} points each time a peer views it, and {POINTS_PER_DOWNLOAD} points each time someone downloads it!
+            </p>
             <Button asChild size="lg" className="mt-8 rounded-full px-7"><Link {...start}>Start earning <ArrowRight /></Link></Button>
           </div>
           <div className="rounded-2xl border border-border bg-card p-7 shadow-soft">
-            <p className="text-sm font-semibold">Example earnings</p>
+            <p className="text-sm font-semibold">Example earnings breakdown</p>
             <table className="mt-4 w-full text-sm">
-              <thead className="text-left text-xs uppercase text-muted-foreground"><tr><th className="pb-2">Upload</th><th className="pb-2">Pages</th><th className="pb-2">Points</th><th className="pb-2 text-right">Cash</th></tr></thead>
+              <thead className="text-left text-xs uppercase text-muted-foreground"><tr><th className="pb-2">Activity</th><th className="pb-2">{POINTS_NAME}</th><th className="pb-2 text-right">Cash</th></tr></thead>
               <tbody className="divide-y divide-border">
-                {[["Past questions", 8], ["Lecture notes", 24], ["Full handout", 100]].map(([n, p]) => {
-                  const pts = Math.min(Number(p) * POINTS_PER_PAGE, 500);
-                  return <tr key={String(n)}><td className="py-3">{n}</td><td>{p}</td><td className="font-semibold">{pts}</td><td className="text-right font-semibold text-primary">{formatNaira(Math.floor(pts / 50) * NAIRA_PER_50_POINTS)}</td></tr>;
+                {[
+                  ["Account Registration Bonus", POINTS_REGISTRATION_BONUS],
+                  ["Install Home Screen App", POINTS_INSTALL_APP_BONUS],
+                  ["1 Verified Material Upload", POINTS_PER_VERIFIED_UPLOAD],
+                  ["50 Student Downloads", 50 * POINTS_PER_DOWNLOAD],
+                  ["100 Student Views", 100 * POINTS_PER_VIEW],
+                  ["Upgrade to SyllaPlus Bonus", 300],
+                ].map(([n, pts]) => {
+                  const p = Number(pts);
+                  return (
+                    <tr key={String(n)}>
+                      <td className="py-3">{n}</td>
+                      <td className="font-semibold">+{p}</td>
+                      <td className="text-right font-semibold text-primary">{formatNaira(pointsToNaira(p))}</td>
+                    </tr>
+                  );
                 })}
               </tbody>
             </table>

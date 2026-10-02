@@ -17,13 +17,18 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated/admin.broadcast'
+import { Route as AuthenticatedAdminComplaintsRouteImport } from './routes/_authenticated/admin.complaints'
 import { Route as AuthenticatedAdminMaterialsRouteImport } from './routes/_authenticated/admin.materials'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminWithdrawalsRouteImport } from './routes/_authenticated/admin.withdrawals'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard.index'
 import { Route as AuthenticatedDashboardAssistantRouteImport } from './routes/_authenticated/dashboard.assistant'
+import { Route as AuthenticatedDashboardLibraryRouteImport } from './routes/_authenticated/dashboard.library'
 import { Route as AuthenticatedDashboardMaterialsRouteImport } from './routes/_authenticated/dashboard.materials'
+import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard.settings'
 import { Route as AuthenticatedDashboardUploadRouteImport } from './routes/_authenticated/dashboard.upload'
 import { Route as AuthenticatedDashboardWalletRouteImport } from './routes/_authenticated/dashboard.wallet'
 
@@ -66,11 +71,28 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUploadRoute = ApiUploadRouteImport.update({
+  id: '/api/upload',
+  path: '/api/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminBroadcastRoute =
+  AuthenticatedAdminBroadcastRouteImport.update({
+    id: '/broadcast',
+    path: '/broadcast',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminComplaintsRoute =
+  AuthenticatedAdminComplaintsRouteImport.update({
+    id: '/complaints',
+    path: '/complaints',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminMaterialsRoute =
   AuthenticatedAdminMaterialsRouteImport.update({
     id: '/materials',
@@ -100,10 +122,22 @@ const AuthenticatedDashboardAssistantRoute =
     path: '/assistant',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedDashboardLibraryRoute =
+  AuthenticatedDashboardLibraryRouteImport.update({
+    id: '/library',
+    path: '/library',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const AuthenticatedDashboardMaterialsRoute =
   AuthenticatedDashboardMaterialsRouteImport.update({
     id: '/materials',
     path: '/materials',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardSettingsRoute =
+  AuthenticatedDashboardSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
 const AuthenticatedDashboardUploadRoute =
@@ -127,11 +161,16 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/upload': typeof ApiUploadRoute
+  '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
+  '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/materials': typeof AuthenticatedAdminMaterialsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -143,11 +182,16 @@ export interface FileRoutesByTo {
   '/materials': typeof MaterialsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/upload': typeof ApiUploadRoute
+  '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
+  '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/materials': typeof AuthenticatedAdminMaterialsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -163,11 +207,16 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/upload': typeof ApiUploadRoute
+  '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
+  '/_authenticated/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/_authenticated/admin/materials': typeof AuthenticatedAdminMaterialsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/_authenticated/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/_authenticated/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/_authenticated/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/_authenticated/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/_authenticated/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -183,11 +232,16 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/onboarding'
     | '/api/chat'
+    | '/api/upload'
+    | '/admin/broadcast'
+    | '/admin/complaints'
     | '/admin/materials'
     | '/admin/users'
     | '/admin/withdrawals'
     | '/dashboard/assistant'
+    | '/dashboard/library'
     | '/dashboard/materials'
+    | '/dashboard/settings'
     | '/dashboard/upload'
     | '/dashboard/wallet'
     | '/admin/'
@@ -199,11 +253,16 @@ export interface FileRouteTypes {
     | '/materials'
     | '/onboarding'
     | '/api/chat'
+    | '/api/upload'
+    | '/admin/broadcast'
+    | '/admin/complaints'
     | '/admin/materials'
     | '/admin/users'
     | '/admin/withdrawals'
     | '/dashboard/assistant'
+    | '/dashboard/library'
     | '/dashboard/materials'
+    | '/dashboard/settings'
     | '/dashboard/upload'
     | '/dashboard/wallet'
     | '/admin'
@@ -218,11 +277,16 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/onboarding'
     | '/api/chat'
+    | '/api/upload'
+    | '/_authenticated/admin/broadcast'
+    | '/_authenticated/admin/complaints'
     | '/_authenticated/admin/materials'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/withdrawals'
     | '/_authenticated/dashboard/assistant'
+    | '/_authenticated/dashboard/library'
     | '/_authenticated/dashboard/materials'
+    | '/_authenticated/dashboard/settings'
     | '/_authenticated/dashboard/upload'
     | '/_authenticated/dashboard/wallet'
     | '/_authenticated/admin/'
@@ -235,6 +299,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   MaterialsRoute: typeof MaterialsRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiUploadRoute: typeof ApiUploadRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -295,11 +360,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/upload': {
+      id: '/api/upload'
+      path: '/api/upload'
+      fullPath: '/api/upload'
+      preLoaderRoute: typeof ApiUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/broadcast': {
+      id: '/_authenticated/admin/broadcast'
+      path: '/broadcast'
+      fullPath: '/admin/broadcast'
+      preLoaderRoute: typeof AuthenticatedAdminBroadcastRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/complaints': {
+      id: '/_authenticated/admin/complaints'
+      path: '/complaints'
+      fullPath: '/admin/complaints'
+      preLoaderRoute: typeof AuthenticatedAdminComplaintsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/materials': {
@@ -337,11 +423,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardAssistantRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/dashboard/library': {
+      id: '/_authenticated/dashboard/library'
+      path: '/library'
+      fullPath: '/dashboard/library'
+      preLoaderRoute: typeof AuthenticatedDashboardLibraryRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
     '/_authenticated/dashboard/materials': {
       id: '/_authenticated/dashboard/materials'
       path: '/materials'
       fullPath: '/dashboard/materials'
       preLoaderRoute: typeof AuthenticatedDashboardMaterialsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/settings': {
+      id: '/_authenticated/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof AuthenticatedDashboardSettingsRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
     '/_authenticated/dashboard/upload': {
@@ -362,6 +462,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminBroadcastRoute: typeof AuthenticatedAdminBroadcastRoute
+  AuthenticatedAdminComplaintsRoute: typeof AuthenticatedAdminComplaintsRoute
   AuthenticatedAdminMaterialsRoute: typeof AuthenticatedAdminMaterialsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminWithdrawalsRoute: typeof AuthenticatedAdminWithdrawalsRoute
@@ -369,6 +471,8 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminBroadcastRoute: AuthenticatedAdminBroadcastRoute,
+  AuthenticatedAdminComplaintsRoute: AuthenticatedAdminComplaintsRoute,
   AuthenticatedAdminMaterialsRoute: AuthenticatedAdminMaterialsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminWithdrawalsRoute: AuthenticatedAdminWithdrawalsRoute,
@@ -380,7 +484,9 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedDashboardRouteChildren {
   AuthenticatedDashboardAssistantRoute: typeof AuthenticatedDashboardAssistantRoute
+  AuthenticatedDashboardLibraryRoute: typeof AuthenticatedDashboardLibraryRoute
   AuthenticatedDashboardMaterialsRoute: typeof AuthenticatedDashboardMaterialsRoute
+  AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
   AuthenticatedDashboardUploadRoute: typeof AuthenticatedDashboardUploadRoute
   AuthenticatedDashboardWalletRoute: typeof AuthenticatedDashboardWalletRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
@@ -389,7 +495,9 @@ interface AuthenticatedDashboardRouteChildren {
 const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
   {
     AuthenticatedDashboardAssistantRoute: AuthenticatedDashboardAssistantRoute,
+    AuthenticatedDashboardLibraryRoute: AuthenticatedDashboardLibraryRoute,
     AuthenticatedDashboardMaterialsRoute: AuthenticatedDashboardMaterialsRoute,
+    AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
     AuthenticatedDashboardUploadRoute: AuthenticatedDashboardUploadRoute,
     AuthenticatedDashboardWalletRoute: AuthenticatedDashboardWalletRoute,
     AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
@@ -421,6 +529,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   MaterialsRoute: MaterialsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiUploadRoute: ApiUploadRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

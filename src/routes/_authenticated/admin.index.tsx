@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { PageHeader, StatCard } from "@/components/app-shell";
-import { supabase } from "@/integrations/supabase/client";
+import { turso } from "@/integrations/turso/client";
 import { formatNaira } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -14,14 +14,8 @@ export const Route = createFileRoute("/_authenticated/admin/")({ component: Admi
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--primary)", "var(--muted-foreground)"];
 
 async function all<T>(table: "profiles" | "materials" | "withdrawals" | "points_ledger", cols: string): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase.from(table).select(cols).range(from, from + 999);
-    if (error) throw error;
-    out.push(...((data ?? []) as T[]));
-    if (!data || data.length < 1000) break;
-  }
-  return out;
+  const rs = await turso.execute(`SELECT ${cols} FROM ${table}`);
+  return rs.rows as unknown as T[];
 }
 
 type P = { id: string; created_at: string; referral_source: string | null; institution: string | null; points: number; onboarding_step: number };

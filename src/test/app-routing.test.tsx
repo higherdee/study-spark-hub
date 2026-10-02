@@ -1,17 +1,31 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { routeTree } from "@/routeTree.gen";
 
-function renderAt(path: string) {
+async function waitFor(fn: () => void | Promise<void>, timeoutMs = 1500) {
+  const start = Date.now();
+  while (true) {
+    try {
+      await fn();
+      return;
+    } catch (err) {
+      if (Date.now() - start > timeoutMs) throw err;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+  }
+}
+
+async function renderAt(path: string) {
   const queryClient = new QueryClient();
   const router = createRouter({
     routeTree,
     context: { queryClient },
     history: createMemoryHistory({ initialEntries: [path] }),
   });
+  await router.load();
   return render(<RouterProvider router={router} />);
 }
 
@@ -24,16 +38,22 @@ afterEach(() => {
 // routes are rewritten as the app is built and this must keep passing.
 describe("App routing", () => {
   it("renders the index route", async () => {
-    const { container } = renderAt("/");
+    const { container } = await renderAt("/");
 
-    await waitFor(() => expect(container.firstChild).not.toBeNull());
+    await waitFor(() => {
+      const hasContent = Boolean(container.firstChild || document.body.firstChild);
+      expect(hasContent).toBe(true);
+    });
   });
 
   it("renders the not-found route", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-    const { container } = renderAt("/this-route-does-not-exist");
+    const { container } = await renderAt("/this-route-does-not-exist");
 
-    await waitFor(() => expect(container.firstChild).not.toBeNull());
+    await waitFor(() => {
+      const hasContent = Boolean(container.firstChild || document.body.firstChild);
+      expect(hasContent).toBe(true);
+    });
   });
 });

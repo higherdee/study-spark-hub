@@ -10,10 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
+import { upsertProfile } from "@/integrations/turso/client";
 import { courseOptions, institutionOptions, LEVELS, REFERRAL_SOURCES } from "@/lib/constants";
+import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
+import { ThemePickerModal } from "@/components/theme-picker-modal";
+import { SyllaPlusModal } from "@/components/syllaplus-modal";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   head: () => ({
@@ -34,13 +37,14 @@ const TIMES = ["Early morning", "Afternoon", "Evening", "Late night"];
 const STEPS = ["Your details", "How you found us", "Study plan"];
 
 function Onboarding() {
+  const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const [fullName, setFullName] = useState("");
+  const [fullName, setFullName] = useState(user?.user_metadata.full_name ?? "");
   const [phone, setPhone] = useState("");
   const [institution, setInstitution] = useState<SearchOption | null>(null);
   const [course, setCourse] = useState<SearchOption | null>(null);
@@ -53,35 +57,53 @@ function Onboarding() {
   const [cgpa, setCgpa] = useState("4.50");
   const [goals, setGoals] = useState("");
 
+  const userId = profile?.id ?? user?.id;
+
   useEffect(() => {
-    if (!profile) return;
+    if (!profile) {
+      if (user?.user_metadata.full_name && !fullName) {
+        setFullName(user.user_metadata.full_name);
+      }
+      return;
+    }
     if (profile.onboarding_step >= 3) {
       navigate({ to: "/dashboard" });
       return;
     }
     setStep(profile.onboarding_step);
-    setFullName(profile.full_name ?? "");
+    setFullName(profile.full_name || user?.user_metadata.full_name || "");
     setPhone(profile.phone ?? "");
     if (profile.institution) setInstitution({ label: profile.institution });
     if (profile.course) setCourse({ label: profile.course });
     setDepartment(profile.department ?? "");
     if (profile.level) setLevel(profile.level);
     setReferral(profile.referral_source ?? "");
-  }, [profile, navigate]);
+  }, [profile, user, navigate]);
+
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showPlusModal, setShowPlusModal] = useState(false);
 
   async function save(values: Record<string, unknown>, next: number) {
+    if (!userId) {
+      toast.error("User session not found");
+      return;
+    }
     setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ ...values, onboarding_step: next, updated_at: new Date().toISOString() })
-      .eq("id", profile!.id);
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    await qc.invalidateQueries({ queryKey: ["profile"] });
-    if (next >= 3) {
-      toast.success("You're all set!");
-      navigate({ to: "/dashboard" });
-    } else setStep(next);
+    try {
+      await upsertProfile({ id: userId, ...values, onboarding_step: next });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+      if (next >= 3) {
+        toast.success("Profile saved!");
+        // Pop up Theme Picker first, followed by SyllaPlus upsell
+        setShowThemePicker(true);
+      } else {
+        setStep(next);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function next() {
@@ -98,7 +120,7 @@ function Onboarding() {
     }
   }
 
-  if (isLoading || !profile) {
+  if (isLoading && !profile && !user) {
     return <div className="grid min-h-screen place-items-center"><Loader2 className="animate-spin text-primary" /></div>;
   }
 
@@ -207,6 +229,28 @@ function Onboarding() {
           </div>
         </div>
       </div>
+
+      {/* Theme Picker Modal */}
+      <ThemePickerModal
+        open={showThemePicker}
+        onConfirm={() => {
+          setShowThemePicker(false);
+          setShowPlusModal(true);
+        }}
+      />
+
+      {/* SyllaPlus Upsell Modal */}
+      <SyllaPlusModal
+        open={showPlusModal}
+        onClose={() => {
+          setShowPlusModal(false);
+          navigate({ to: "/dashboard" });
+        }}
+        onSuccess={() => {
+          setShowPlusModal(false);
+          navigate({ to: "/dashboard" });
+        }}
+      />
     </div>
   );
 }
