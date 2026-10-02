@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790934203718,
+      "tag": "0000_syllaboss_schema",
+      "breakpoints": true
+    }
+  ]
+}
