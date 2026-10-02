@@ -29,7 +29,7 @@ function MyMaterials() {
   async function remove(id: string, path: string) {
     if (!confirm("Delete this upload?")) return;
     const { error } = await supabase.from("materials").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     await supabase.storage.from("materials").remove([path]);
     qc.invalidateQueries({ queryKey: ["my-materials"] });
     toast.success("Deleted");

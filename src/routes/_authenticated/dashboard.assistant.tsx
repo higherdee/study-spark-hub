@@ -32,7 +32,7 @@ function AssistantPage() {
 
   async function newThread() {
     const { data, error } = await supabase.from("chat_threads").insert({ user_id: user!.id }).select("id").single();
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     await qc.invalidateQueries({ queryKey: ["threads"] });
     setActive(data.id);
   }

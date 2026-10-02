@@ -38,7 +38,7 @@ function AdminMaterials() {
     const note = status === "rejected" ? prompt("Reason for rejection (shown to the student)") : "Approved by admin.";
     if (status === "rejected" && !note) return;
     const { error } = await supabase.rpc("admin_review_material", { _material_id: id, _status: status, _notes: note ?? "" });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(`Marked ${status}`);
     qc.invalidateQueries({ queryKey: ["admin-materials"] });
     qc.invalidateQueries({ queryKey: ["admin-metrics"] });
@@ -46,14 +46,14 @@ function AdminMaterials() {
 
   async function view(path: string) {
     const { data, error } = await supabase.storage.from("materials").createSignedUrl(path, 300);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     window.open(data.signedUrl, "_blank", "noopener");
   }
 
   async function remove(id: string, path: string) {
     if (!confirm("Delete this material permanently?")) return;
     const { error } = await supabase.from("materials").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     await supabase.storage.from("materials").remove([path]);
     qc.invalidateQueries({ queryKey: ["admin-materials"] });
   }

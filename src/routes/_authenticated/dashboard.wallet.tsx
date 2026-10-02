@@ -45,7 +45,7 @@ function WalletPage() {
     setBusy(true);
     const { error } = await supabase.rpc("request_withdrawal", { _points: amount, _bank: bank, _account_number: acct, _account_name: name });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Withdrawal requested. You'll be paid after review.");
     qc.invalidateQueries({ queryKey: ["profile"] });
     qc.invalidateQueries({ queryKey: ["ledger"] });

@@ -41,17 +41,17 @@ function UploadPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!user) return;
-    if (profile?.suspended) return toast.error("Your account is suspended. Contact support.");
-    if (title.trim().length < 3 || !course || !inst || !file) return toast.error("Fill in the title, course, school and pick a file");
-    if (file.size > MAX_FILE_BYTES) return toast.error("File is larger than 20MB");
-    if (!ACCEPTED_FILES.split(",").includes(file.type)) return toast.error("Upload a PDF or an image (PNG, JPG, WEBP)");
+    if (profile?.suspended) { toast.error("Your account is suspended. Contact support."); return; }
+    if (title.trim().length < 3 || !course || !inst || !file) { toast.error("Fill in the title, course, school and pick a file"); return; }
+    if (file.size > MAX_FILE_BYTES) { toast.error("File is larger than 20MB"); return; }
+    if (!ACCEPTED_FILES.split(",").includes(file.type)) { toast.error("Upload a PDF or an image (PNG, JPG, WEBP)"); return; }
 
     setResult(null);
     setStage("uploading");
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
     const path = `${user.id}/${crypto.randomUUID()}-${safe}`;
     const up = await supabase.storage.from("materials").upload(path, file, { contentType: file.type });
-    if (up.error) { setStage("idle"); return toast.error(up.error.message); }
+    if (up.error) { setStage("idle"); { toast.error(up.error.message); return; } }
 
     const { data: row, error } = await supabase
       .from("materials")
@@ -61,7 +61,7 @@ function UploadPage() {
       })
       .select("id")
       .single();
-    if (error || !row) { await supabase.storage.from("materials").remove([path]); setStage("idle"); return toast.error(error?.message ?? "Upload failed"); }
+    if (error || !row) { await supabase.storage.from("materials").remove([path]); setStage("idle"); { toast.error(error?.message ?? "Upload failed"); return; } }
 
     setStage("checking");
     try {

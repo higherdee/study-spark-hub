@@ -33,7 +33,7 @@ function AdminWithdrawals() {
     const note = status === "paid" ? prompt("Payment reference (optional)") ?? "" : prompt("Reason for rejecting (points are refunded)");
     if (status === "rejected" && !note) return;
     const { error } = await supabase.rpc("admin_process_withdrawal", { _id: id, _status: status, _note: note ?? "" });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(status === "paid" ? "Marked as paid" : "Rejected and refunded");
     qc.invalidateQueries({ queryKey: ["admin-withdrawals"] });
     qc.invalidateQueries({ queryKey: ["admin-metrics"] });

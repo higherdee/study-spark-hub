@@ -39,16 +39,16 @@ function AdminUsers() {
   const rows = data.filter((p) => !q || `${p.full_name ?? ""} ${p.email ?? ""} ${p.institution ?? ""} ${p.course ?? ""}`.toLowerCase().includes(q.toLowerCase()));
 
   async function toggleAdmin(id: string, isAdmin: boolean) {
-    if (id === user?.id && isAdmin) return toast.error("You can't remove your own admin role");
+    if (id === user?.id && isAdmin) { toast.error("You can't remove your own admin role"); return; }
     const { error } = isAdmin
       ? await supabase.from("user_roles").delete().eq("user_id", id).eq("role", "admin")
       : await supabase.from("user_roles").insert({ user_id: id, role: "admin" });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     refresh();
   }
   async function suspend(id: string, s: boolean) {
     const { error } = await supabase.rpc("admin_set_suspended", { _user_id: id, _suspended: s });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     refresh();
   }
   async function adjust(id: string) {
@@ -56,7 +56,7 @@ function AdminUsers() {
     if (!amt) return;
     const reason = prompt("Reason") ?? "";
     const { error } = await supabase.rpc("admin_adjust_points", { _user_id: id, _amount: amt, _reason: reason });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Points updated");
     refresh();
   }

@@ -67,10 +67,10 @@ function MaterialsPage() {
     }
     setDownloading(id);
     const { data: path, error } = await supabase.rpc("record_material_download", { _material_id: id });
-    if (error || !path) { setDownloading(null); return toast.error(error?.message ?? "Unavailable"); }
+    if (error || !path) { setDownloading(null); { toast.error(error?.message ?? "Unavailable"); return; } }
     const { data: signed, error: sErr } = await supabase.storage.from("materials").createSignedUrl(path, 120, { download: true });
     setDownloading(null);
-    if (sErr) return toast.error(sErr.message);
+    if (sErr) { toast.error(sErr.message); return; }
     window.location.href = signed.signedUrl;
   }
 
@@ -120,7 +120,7 @@ function MaterialsPage() {
           <div className="mt-6 rounded-xl border border-dashed border-border p-10 text-center">
             <p className="font-medium">No materials found yet.</p>
             <p className="mt-1 text-sm text-muted-foreground">Have notes for this course? Upload them and earn points.</p>
-            <Button asChild className="mt-4 rounded-full"><Link to={user ? "/dashboard/upload" : "/auth"} search={user ? undefined : { mode: "signup" }}>Upload & earn</Link></Button>
+            <Button asChild className="mt-4 rounded-full">{user ? <Link to="/dashboard/upload">Upload & earn</Link> : <Link to="/auth" search={{ mode: "signup" }}>Upload & earn</Link>}</Button>
           </div>
         )}
       </main>
