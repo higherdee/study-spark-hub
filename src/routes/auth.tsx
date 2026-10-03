@@ -41,26 +41,24 @@ function AuthPage() {
   }, [user, isSignup, navigate]);
 
   return (
-    <div className="grid min-h-screen bg-background lg:grid-cols-2">
-      <aside className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
-        <div className="rounded-full bg-background/95 px-3 py-2 self-start">
-          <SyllabossLogo />
-        </div>
-        <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-accent">Study with direction</p>
-          <h2 className="mt-5 font-display text-5xl leading-tight">
-            Your institution, course and level — <em className="text-accent">saved in one place.</em>
-          </h2>
-        </div>
-        <p className="text-sm opacity-80">© 2026 Syllaboss</p>
-        <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-accent/20 blur-3xl" />
-      </aside>
+    <div className="min-h-screen bg-background flex flex-col justify-between">
+      {/* Clean Top Navigation */}
+      <header className="w-full max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
+        <SyllabossLogo />
+        <span className="text-xs font-medium text-muted-foreground">
+          {isSignup ? "Already have an account?" : "New to Syllaboss?"}{" "}
+          <a
+            href={isSignup ? "/auth?mode=signin" : "/auth?mode=signup"}
+            className="text-primary hover:underline font-semibold ml-1"
+          >
+            {isSignup ? "Sign in" : "Create account"}
+          </a>
+        </span>
+      </header>
 
-      <main className="flex items-center justify-center px-5 py-12">
-        <div className="w-full max-w-md flex flex-col items-center">
-          <div className="mb-8 lg:hidden self-start">
-            <SyllabossLogo />
-          </div>
+      {/* Centered Auth Card */}
+      <main className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md">
           {isSignup ? (
             <SignUp
               appearance={clerkAppearance}
@@ -80,6 +78,11 @@ function AuthPage() {
           )}
         </div>
       </main>
+
+      {/* Subtle Footer */}
+      <footer className="w-full max-w-5xl mx-auto px-6 py-6 text-center text-xs text-muted-foreground border-t border-border/40">
+        <p>© 2026 Syllaboss · Verified student notes, past questions & AI study tools</p>
+      </footer>
     </div>
   );
 }

@@ -2,20 +2,22 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import {
   Coins,
-  LogOut,
   Sparkles,
   Timer,
   Play,
   Shield,
   Bell,
+  Menu,
+  HelpCircle,
+  Bot,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { SyllabossLogo } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationsDrawer } from "@/components/notifications-drawer";
+import { SideNavSheet } from "@/components/side-nav-sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useIsAdmin } from "@/lib/profile";
 import { useStudyTimer } from "@/hooks/use-study-timer";
@@ -48,6 +50,7 @@ export function AppShell({
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { seconds, isPaused, isInactive, togglePause } = useStudyTimer();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSideNav, setShowSideNav] = useState(false);
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["user-notifications", user?.id],
@@ -78,43 +81,46 @@ export function AppShell({
 
   return (
     <div className="relative min-h-screen bg-background text-foreground antialiased selection:bg-primary/20">
-      {/* iOS Floating Island Top Header */}
+      {/* Top Bar matching Screenshot 2: Hamburger on left, widgets on right */}
       <header className="sticky top-0 z-40 px-3 py-2.5 transition-all sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-3xl border border-white/60 dark:border-white/10 bg-background/80 dark:bg-card/75 px-3 py-2 shadow-sm backdrop-blur-2xl transition-all">
-          {/* Mobile: Avatar replaces logo on the left (Screenshot 5) */}
-          <div className="flex sm:hidden items-center">
-            <Link
-              to="/dashboard/settings"
-              className="grid size-8 place-items-center rounded-full bg-primary/10 border border-primary/25 text-xs font-bold text-primary shadow-xs transition-transform active:scale-90"
-              title={name}
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-3xl border border-border/70 bg-card/90 px-3.5 py-2 shadow-xs backdrop-blur-2xl transition-all">
+          {/* Left: Hamburger menu icon opening side drop menu */}
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setShowSideNav(true)}
+              aria-label="Open navigation menu"
+              className="grid size-9 place-items-center rounded-full hover:bg-secondary text-foreground transition-all active:scale-90"
             >
-              {name.charAt(0).toUpperCase()}
-            </Link>
-          </div>
+              <Menu className="size-5" />
+            </button>
 
-          {/* Desktop: Brand Logo */}
-          <div className="hidden sm:flex items-center gap-3">
-            <SyllabossLogo href="/dashboard" />
+            <Link to="/dashboard" className="hidden sm:inline-flex items-center">
+              <span className="font-display text-lg font-bold tracking-tight text-foreground">
+                Syllaboss
+              </span>
+            </Link>
+
             {isPlus && (
-              <span className="items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/20 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 inline-flex border border-amber-500/30">
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
                 <Sparkles className="size-3" /> SyllaPlus
               </span>
             )}
           </div>
 
-          {/* Top Dynamic Island Widget Cluster */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
-            {/* Dynamic Island Study Timer Widget */}
+          {/* Right: Dynamic Island widgets cluster matching Screenshot 2 */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Study Timer Widget */}
             <button
               onClick={togglePause}
               title={isPaused ? (isInactive ? "Paused (1h idle). Click to resume" : "Paused. Click to resume") : "Study timer running (+5 pts every 30m). Click to pause"}
               className={cn(
                 "group flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-mono transition-all duration-200 active:scale-95 shadow-xs border",
                 isInactive
-                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                  ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
                   : isPaused
                   ? "bg-secondary text-muted-foreground border-border"
-                  : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 animate-pulse-subtle"
+                  : "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 animate-pulse-subtle"
               )}
             >
               {isPaused ? (
@@ -128,25 +134,25 @@ export function AppShell({
               <span>{timerDisplay}</span>
             </button>
 
-            {/* SyllaPoints Pill - pure points, NO NAIRA! */}
+            {/* SyllaPoints Capsule - pure points, no Naira! */}
             <Link
               to="/dashboard/wallet"
-              className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card/90 px-2.5 sm:px-3 py-1 text-xs font-medium backdrop-blur-md transition-all hover:bg-card hover:shadow-xs active:scale-95"
+              className="flex items-center gap-1.5 rounded-full border border-border/70 bg-secondary/50 px-2.5 sm:px-3 py-1 text-xs font-semibold text-foreground transition-all hover:bg-secondary active:scale-95 shadow-2xs"
             >
               <Coins className="size-3.5 text-primary" />
-              <span className="font-semibold text-foreground">{points.toLocaleString()}</span>
-              <span className="hidden sm:inline text-muted-foreground text-[11px]">
-                {POINTS_NAME}
+              <span>{points.toLocaleString()}</span>
+              <span className="hidden sm:inline text-muted-foreground font-normal text-[11px]">
+                pts
               </span>
             </Link>
 
-            {/* Notifications Bell with Unread Badge */}
+            {/* Notifications Bell */}
             <button
               type="button"
               onClick={() => setShowNotifications(true)}
               title="Notifications"
               aria-label="View notifications"
-              className="relative grid size-8 place-items-center rounded-full border border-border/60 bg-card/80 text-foreground backdrop-blur-md transition-all active:scale-90 hover:bg-card hover:shadow-xs"
+              className="relative grid size-8 place-items-center rounded-full border border-border/70 bg-card text-foreground transition-all active:scale-90 hover:bg-secondary"
             >
               <Bell className="size-4" />
               {unreadCount > 0 && (
@@ -156,26 +162,26 @@ export function AppShell({
               )}
             </button>
 
-            {/* Dark / Light Mode Switch */}
-            <ThemeToggle />
+            {/* Help / FAQ Icon (?) */}
+            <button
+              type="button"
+              onClick={() => setShowSideNav(true)}
+              title="Help & Info"
+              aria-label="Help and information"
+              className="grid size-8 place-items-center rounded-full border border-border/70 bg-card text-foreground transition-all active:scale-90 hover:bg-secondary"
+            >
+              <HelpCircle className="size-4" />
+            </button>
 
-            {/* Admin link badge if admin */}
-            {isAdmin && title !== "Admin" && (
-              <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex rounded-full text-xs h-7 px-2.5">
-                <Link to="/admin">
-                  <Shield className="size-3 mr-1 text-primary" /> Admin
-                </Link>
-              </Button>
-            )}
-
-            {/* Desktop User Avatar */}
-            <Link
-              to="/dashboard/settings"
-              className="hidden sm:grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary transition-transform active:scale-90"
+            {/* User Avatar Circle */}
+            <button
+              type="button"
+              onClick={() => setShowSideNav(true)}
+              className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs transition-transform active:scale-90"
               title={name}
             >
               {name.charAt(0).toUpperCase()}
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -191,32 +197,38 @@ export function AppShell({
         onClose={() => setShowNotifications(false)}
       />
 
-      {/* iPhone Liquid Glass Bottom Floating Dock with Distinctive Center Library */}
+      {/* Slide-over Side Drawer Menu */}
+      <SideNavSheet
+        open={showSideNav}
+        onClose={() => setShowSideNav(false)}
+      />
+
+      {/* Bottom Floating Navigation Dock (Cleaned: No logout, Home at center) */}
       <aside
         aria-label="Navigation dock"
         className="fixed bottom-5 inset-x-0 z-50 mx-auto w-fit max-w-[96vw] pointer-events-none"
       >
-        <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 rounded-full p-1.5 backdrop-blur-3xl bg-card/85 dark:bg-card/75 border border-white/60 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.18),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_-1px_1px_rgba(0,0,0,0.08)] ring-1 ring-black/5 dark:ring-white/10 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]">
+        <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 rounded-full p-1.5 backdrop-blur-3xl bg-card/90 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.8),inset_0_-1px_1px_rgba(0,0,0,0.05)] transition-all duration-300">
           {nav.map((item) => {
             const active = item.exact
               ? path === item.to
               : path === item.to || path.startsWith(`${item.to}/`);
 
             if (item.isFeatured) {
-              // Bolder, distinctive center Library button
+              // Bolder prominent central button (Home)
               return (
                 <Link
                   key={item.to}
                   to={item.to}
                   className={cn(
-                    "relative flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all duration-300 active:scale-95 select-none shadow-md",
+                    "relative flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 active:scale-95 select-none shadow-md",
                     active
-                      ? "bg-primary text-primary-foreground ring-2 ring-primary/40 shadow-primary/25 scale-[1.08]"
-                      : "bg-gradient-to-r from-primary/90 to-primary text-primary-foreground hover:scale-105 hover:shadow-primary/30"
+                      ? "bg-primary text-primary-foreground ring-2 ring-primary/40 shadow-primary/25 scale-[1.06]"
+                      : "bg-gradient-to-r from-primary/95 to-primary text-primary-foreground hover:scale-105 hover:shadow-primary/30"
                   )}
                 >
                   <item.icon className="size-4 shrink-0" />
-                  <span className="inline">{item.label}</span>
+                  <span>{item.label}</span>
                 </Link>
               );
             }
@@ -226,17 +238,17 @@ export function AppShell({
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "relative flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-2 text-xs font-medium transition-all duration-200 active:scale-90 select-none",
+                  "relative flex items-center gap-1.5 rounded-full px-2.5 sm:px-3.5 py-2 text-xs font-medium transition-all duration-200 active:scale-90 select-none",
                   active
                     ? "bg-secondary text-foreground shadow-xs font-semibold scale-[1.02]"
-                    : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                 )}
               >
                 <item.icon className="size-4 shrink-0 transition-transform duration-200" />
                 <span
                   className={cn(
                     "transition-all duration-200",
-                    active ? "inline" : "hidden md:inline"
+                    active ? "inline" : "hidden sm:inline"
                   )}
                 >
                   {item.label}
@@ -244,20 +256,18 @@ export function AppShell({
               </Link>
             );
           })}
-
-          <div className="h-4 w-px bg-border/60 mx-0.5" />
-
-          {/* Quick Sign Out */}
-          <button
-            onClick={signOut}
-            title="Sign out"
-            aria-label="Sign out"
-            className="flex items-center justify-center size-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all active:scale-90"
-          >
-            <LogOut className="size-3.5" />
-          </button>
         </div>
       </aside>
+
+      {/* Floating Chatbot Bubble at Bottom Right (matching Screenshot 2) */}
+      <Link
+        to="/dashboard/assistant"
+        aria-label="Open Boss AI study assistant"
+        title="Chat with Boss AI"
+        className="fixed bottom-6 right-5 z-40 grid size-12 place-items-center rounded-full bg-foreground text-background shadow-xl ring-2 ring-primary/20 transition-all hover:scale-105 active:scale-95"
+      >
+        <Bot className="size-6 text-background" />
+      </Link>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { sendDeviceNotification } from "@/lib/notifications";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import { recordStudySessionServerFn } from "@/lib/upload.functions";
@@ -65,7 +66,10 @@ export function useStudyTimer() {
           await recordStudySessionServerFn({
             data: { userId: user.id, minutes: 30 },
           });
-          toast.success("🎉 +5 SyllaPoints earned! 30 minutes of study recorded.");
+          toast.success("+5 SyllaPoints earned! 30 minutes of study recorded.");
+          sendDeviceNotification("Study Milestone Achieved!", {
+            body: "+5 SyllaPoints earned for 30 minutes of study.",
+          });
           qc.invalidateQueries({ queryKey: ["profile"] });
           qc.invalidateQueries({ queryKey: ["ledger"] });
         } catch (err) {

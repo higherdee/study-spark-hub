@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { BookOpen, Bot, FileStack, LayoutDashboard, Loader2, Settings, Shield, Upload, Wallet } from "lucide-react";
+import { BookOpen, Home, Trophy, Upload, Wallet, Loader2, Shield } from "lucide-react";
 import { useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -20,12 +20,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 const nav: NavItem[] = [
-  { to: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
+  { to: "/dashboard/library", label: "Library", icon: BookOpen },
   { to: "/dashboard/upload", label: "Upload", icon: Upload },
-  { to: "/dashboard/library", label: "Library", icon: BookOpen, isFeatured: true },
-  { to: "/dashboard/materials", label: "My Notes", icon: FileStack },
+  { to: "/dashboard", label: "Home", icon: Home, exact: true, isFeatured: true },
+  { to: "/dashboard/leaderboard", label: "Rankings", icon: Trophy },
   { to: "/dashboard/wallet", label: "Wallet", icon: Wallet },
-  { to: "/dashboard/assistant", label: "AI Boss", icon: Bot },
 ];
 
 function DashboardLayout() {

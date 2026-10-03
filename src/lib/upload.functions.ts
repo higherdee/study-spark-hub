@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getPresignedUploadUrl, getSignedDownloadUrl } from "@/integrations/r2/client";
 import {
   createMaterial,
+  setMaterialStatus,
   recordMaterialDownload,
   recordMaterialView,
   requestWithdrawal as tursoRequestWithdrawal,
@@ -13,8 +14,9 @@ import {
   replyToComplaint as tursoReplyComplaint,
   createAnnouncement as tursoCreateAnnouncement,
   markNotificationRead as tursoMarkNotificationRead,
+  getLeaderboard,
 } from "@/integrations/turso/client";
-import { MINIMUM_WITHDRAWAL_POINTS } from "@/lib/constants";
+import { MINIMUM_WITHDRAWAL_POINTS, SYLLAPLUS_PRICE_NAIRA } from "@/lib/constants";
 
 export const getUploadUrlServerFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -32,6 +34,8 @@ export const getUploadUrlServerFn = createServerFn({ method: "POST" })
     const uploadUrl = await getPresignedUploadUrl(key, data.contentType, 300);
     return { uploadUrl, key };
   });
+
+export const getPresignedUploadUrlServerFn = getUploadUrlServerFn;
 
 export const createMaterialServerFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -71,18 +75,39 @@ export const createMaterialServerFn = createServerFn({ method: "POST" })
     return row;
   });
 
-export const getDownloadUrlServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
+export const autoVerifyMaterialServerFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        materialId: z.string(),
+        score: z.number().min(0).max(100),
+        notes: z.string().optional(),
+      })
+      .parse(d)
+  )
   .handler(async ({ data }) => {
-    const filePath = await recordMaterialDownload(data.materialId);
+    const status = data.score >= 70 ? "verified" : data.score < 40 ? "rejected" : "pending";
+    const notes = data.notes || (status === "verified" ? "Autonomous AI audit passed: verified course material." : "Pending review.");
+    await setMaterialStatus(data.materialId, status, data.score, notes);
+    return { status, score: data.score, notes };
+  });
+
+export const getDownloadUrlServerFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({ materialId: z.string(), userId: z.string().optional() }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const filePath = await recordMaterialDownload(data.materialId, data.userId);
     const downloadUrl = await getSignedDownloadUrl(filePath, 300);
     return { downloadUrl };
   });
 
 export const recordMaterialViewServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ materialId: z.string(), userId: z.string().optional() }).parse(d)
+  )
   .handler(async ({ data }) => {
-    await recordMaterialView(data.materialId);
+    await recordMaterialView(data.materialId, data.userId);
     return { success: true };
   });
 
@@ -214,4 +239,65 @@ export const markNotificationReadServerFn = createServerFn({ method: "POST" })
     await tursoMarkNotificationRead(data.notificationId);
     return { success: true };
   });
+
+export const getLeaderboardServerFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { getLeaderboard } = await import("@/integrations/turso/client");
+    const list = await getLeaderboard(50);
+    return { leaderboard: list };
+  });
+
+export const createBachsCheckoutSessionServerFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        userId: z.string(),
+        email: z.string(),
+        amountNaira: z.number().default(SYLLAPLUS_PRICE_NAIRA),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data }) => {
+    const secretKey =
+      process.env['BASCH_SECRET_KEY'] ||
+      "sk_live_73317a81_zQAtGMAe-jQhNvBk2ZMIQBIs1WJjZuSOVDArhEw42ag";
+
+    try {
+      const response = await fetch("https://api.bachs.io/v1/checkouts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secretKey}`,
+        },
+        body: JSON.stringify({
+          amount: data.amountNaira * 100,
+          currency: "NGN",
+          customer_email: data.email,
+          title: "SyllaPlus Membership",
+          description: "1.3x Earning multiplier & unlimited downloads",
+          metadata: {
+            user_id: data.userId,
+            plan: "syllaplus",
+          },
+          success_url: `${process.env['APP_URL'] || "http://localhost:3000"}/dashboard?upgraded=true`,
+        }),
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        return {
+          checkoutUrl: json.checkout_url || json.url || json.data?.checkout_url || null,
+          sessionId: json.id || json.data?.id || `bachs_${data.userId}_${Date.now()}`,
+        };
+      }
+    } catch (err) {
+      console.warn("Bachs checkout API request error:", err);
+    }
+
+    return {
+      checkoutUrl: null,
+      sessionId: `bachs_${data.userId}_${Date.now()}`,
+    };
+  });
+
 

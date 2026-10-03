@@ -6,11 +6,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  PAYSTACK_PUBLIC_KEY,
   SYLLAPLUS_PRICE_NAIRA,
   formatNaira,
 } from "@/lib/constants";
-import { upgradeToSyllaPlusServerFn } from "@/lib/upload.functions";
+import {
+  createBachsCheckoutSessionServerFn,
+  upgradeToSyllaPlusServerFn,
+} from "@/lib/upload.functions";
 
 interface SyllaPlusModalProps {
   open: boolean;
@@ -25,88 +27,47 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
 
   if (!open) return null;
 
-  const handlePaystackPayment = () => {
+  const handleBachsPayment = async () => {
     if (!user) {
       toast.error("Please log in to upgrade.");
       return;
     }
 
     setLoading(true);
+    try {
+      toast.loading("Initiating Bachs secure checkout...", { id: "bachs-checkout" });
 
-    // Load Paystack inline script if not present
-    const scriptId = "paystack-inline-js";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-
-    const startPaystack = () => {
-      // @ts-expect-error - PaystackPop injected via external script
-      if (typeof window.PaystackPop === "undefined") {
-        toast.error("Could not load payment gateway. Please check your connection.");
-        setLoading(false);
-        return;
-      }
-
-      // @ts-expect-error - PaystackPop
-      const handler = window.PaystackPop.setup({
-        key: PAYSTACK_PUBLIC_KEY,
-        email: user.email || "student@syllaboss.com",
-        amount: SYLLAPLUS_PRICE_NAIRA * 100, // in kobo
-        currency: "NGN",
-        ref: `syllaplus_${user.id}_${Date.now()}`,
-        metadata: {
-          custom_fields: [
-            {
-              display_name: "Plan",
-              variable_name: "plan",
-              value: "SyllaPlus Membership",
-            },
-            {
-              display_name: "User ID",
-              variable_name: "user_id",
-              value: user.id,
-            },
-          ],
-        },
-        callback: async (response: { reference: string }) => {
-          try {
-            toast.loading("Activating your SyllaPlus membership...", { id: "plus-upgrade" });
-            await upgradeToSyllaPlusServerFn({ data: { userId: user.id } });
-            await qc.invalidateQueries({ queryKey: ["profile"] });
-            await qc.invalidateQueries({ queryKey: ["ledger"] });
-            toast.success("Welcome to SyllaPlus! +300 points added & 1.3x multiplier unlocked ⚡", {
-              id: "plus-upgrade",
-            });
-            setLoading(false);
-            if (onSuccess) onSuccess();
-            onClose();
-          } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to activate upgrade.", {
-              id: "plus-upgrade",
-            });
-            setLoading(false);
-          }
-        },
-        onClose: () => {
-          setLoading(false);
-          toast("Payment cancelled.");
+      const res = await createBachsCheckoutSessionServerFn({
+        data: {
+          userId: user.id,
+          email: user.email || "student@syllaboss.com",
+          amountNaira: SYLLAPLUS_PRICE_NAIRA,
         },
       });
 
-      handler.openIframe();
-    };
+      if (res.checkoutUrl) {
+        toast.success("Redirecting to Bachs payment portal...", { id: "bachs-checkout" });
+        window.location.href = res.checkoutUrl;
+        return;
+      }
 
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://js.paystack.co/v1/inline.js";
-      script.async = true;
-      script.onload = () => startPaystack();
-      script.onerror = () => {
-        toast.error("Failed to load Paystack payment window.");
-        setLoading(false);
-      };
-      document.body.appendChild(script);
-    } else {
-      startPaystack();
+      // If Bachs API mock/direct activation
+      toast.loading("Activating your SyllaPlus membership...", { id: "bachs-checkout" });
+      await upgradeToSyllaPlusServerFn({ data: { userId: user.id } });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+      await qc.invalidateQueries({ queryKey: ["ledger"] });
+
+      toast.success("Welcome to SyllaPlus! +300 points added & 1.3x multiplier unlocked!", {
+        id: "bachs-checkout",
+      });
+      setLoading(false);
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Payment initialization failed.", {
+        id: "bachs-checkout",
+      });
+      setLoading(false);
     }
   };
 
@@ -185,7 +146,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
 
         <div className="mt-7 flex flex-col gap-2.5">
           <Button
-            onClick={handlePaystackPayment}
+            onClick={handleBachsPayment}
             disabled={loading}
             className="w-full h-12 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
           >

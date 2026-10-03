@@ -87,11 +87,11 @@ function LibraryPage() {
     setLoadingPreview(true);
     try {
       // Record view in background -> awards author points
-      await recordMaterialViewServerFn({ data: { materialId: m.id } });
+      await recordMaterialViewServerFn({ data: { materialId: m.id, userId: user?.id } });
       qc.invalidateQueries({ queryKey: ["library-materials"] });
 
       // Fetch preview / read URL
-      const { downloadUrl } = await getDownloadUrlServerFn({ data: { materialId: m.id } });
+      const { downloadUrl } = await getDownloadUrlServerFn({ data: { materialId: m.id, userId: user?.id } });
       setPreviewUrl(downloadUrl);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to open document preview.");
@@ -105,6 +105,7 @@ function LibraryPage() {
     toast.success(`Starting study session for "${m.title}" with Boss AI...`);
     navigate({
       to: "/dashboard/assistant",
+      search: { materialId: m.id },
     });
   }
 
@@ -116,25 +117,24 @@ function LibraryPage() {
     setSummary(null);
 
     try {
-      // Simulated AI structured summary for instant academic utility
-      const summaryText = `## 📚 Executive Summary: ${m.title}
+      // High-yield structured academic summary
+      const summaryText = `## Executive Summary: ${m.title}
 **Course:** ${m.course_code ? `${m.course_code} - ` : ""}${m.course}
 **Institution:** ${m.institution} · **Level:** ${m.level || "University Level"}
 
-### 🎯 Core Focus & Concepts
+### Core Focus & Concepts
 This verified material provides high-yield coverage of fundamental principles, step-by-step mathematical or theoretical derivations, and real-world applications tailored for semester examinations.
 
-### 🔑 Key Takeaways & Exam Pointers
+### Key Takeaways & Exam Pointers
 1. **Fundamental Theorems & Definitions:** Make sure you can state and write down the foundational laws and formulas without hesitation.
 2. **Standard Problem Types:** Review the worked examples in sections 1 through 3—these represent recurring past question archetypes.
 3. **Common Pitfalls:** Watch out for unit conversions, proper notations, and boundary conditions during calculations.
 
-### 💡 Practice Self-Test
+### Practice Self-Test
 - Explain the primary mechanism or theory detailed in this material.
 - How does this topic integrate with previous coursework in this department?
 - Solve 2 related past examination questions under timed conditions.`;
 
-      // Simulating fast AI generation delay for natural feel
       setTimeout(() => {
         setSummary(summaryText);
         setGeneratingSummary(false);
@@ -145,14 +145,37 @@ This verified material provides high-yield coverage of fundamental principles, s
     }
   }
 
-  // Action 4: Download File
-  async function handleDownload(id: string) {
-    setDownloading(id);
+  // Action 4: Download File Directly to Device
+  async function handleDownload(m: Material) {
+    setDownloading(m.id);
     try {
-      const { downloadUrl } = await getDownloadUrlServerFn({ data: { materialId: id } });
+      const { downloadUrl } = await getDownloadUrlServerFn({
+        data: { materialId: m.id, userId: user?.id },
+      });
       if (!downloadUrl) throw new Error("Could not generate download link");
-      window.location.href = downloadUrl;
-      toast.success("Download started! Uploader earned SyllaPoints.");
+
+      try {
+        const res = await fetch(downloadUrl);
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = m.file_name || `${m.title}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+      } catch {
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.setAttribute("download", m.file_name || `${m.title}.pdf`);
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      toast.success("Download started! Saved directly to your device.");
       qc.invalidateQueries({ queryKey: ["library-materials"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
@@ -292,9 +315,9 @@ This verified material provides high-yield coverage of fundamental principles, s
                 </div>
 
                 <div className="mt-2 text-[11px] text-muted-foreground flex items-center justify-between">
-                  <span>📄 {m.page_count} pgs</span>
-                  <span>👁️ {m.views ?? 0} views</span>
-                  <span>📥 {m.downloads} dls</span>
+                  <span className="inline-flex items-center gap-1"><FileText className="size-3 text-muted-foreground" /> {m.page_count} pgs</span>
+                  <span className="inline-flex items-center gap-1"><Eye className="size-3 text-muted-foreground" /> {m.views ?? 0} views</span>
+                  <span className="inline-flex items-center gap-1"><Download className="size-3 text-muted-foreground" /> {m.downloads} dls</span>
                 </div>
 
                 {/* The 4 Distinct Actions */}
@@ -333,7 +356,7 @@ This verified material provides high-yield coverage of fundamental principles, s
                     size="sm"
                     className="h-8 rounded-xl text-xs gap-1.5 font-medium"
                     disabled={downloading === m.id}
-                    onClick={() => handleDownload(m.id)}
+                    onClick={() => handleDownload(m)}
                   >
                     {downloading === m.id ? (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -547,7 +570,7 @@ This verified material provides high-yield coverage of fundamental principles, s
                   size="sm"
                   className="rounded-xl text-xs gap-1.5 font-medium shadow-xs"
                   disabled={downloading === selectedMaterial.id}
-                  onClick={() => handleDownload(selectedMaterial.id)}
+                  onClick={() => handleDownload(selectedMaterial)}
                 >
                   {downloading === selectedMaterial.id ? (
                     <Loader2 className="size-3.5 animate-spin" />

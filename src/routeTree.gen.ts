@@ -26,6 +26,7 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminWithdrawalsRouteImport } from './routes/_authenticated/admin.withdrawals'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard.index'
 import { Route as AuthenticatedDashboardAssistantRouteImport } from './routes/_authenticated/dashboard.assistant'
+import { Route as AuthenticatedDashboardLeaderboardRouteImport } from './routes/_authenticated/dashboard.leaderboard'
 import { Route as AuthenticatedDashboardLibraryRouteImport } from './routes/_authenticated/dashboard.library'
 import { Route as AuthenticatedDashboardMaterialsRouteImport } from './routes/_authenticated/dashboard.materials'
 import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard.settings'
@@ -122,6 +123,12 @@ const AuthenticatedDashboardAssistantRoute =
     path: '/assistant',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedDashboardLeaderboardRoute =
+  AuthenticatedDashboardLeaderboardRouteImport.update({
+    id: '/leaderboard',
+    path: '/leaderboard',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const AuthenticatedDashboardLibraryRoute =
   AuthenticatedDashboardLibraryRouteImport.update({
     id: '/library',
@@ -168,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -189,6 +197,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -214,6 +223,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/_authenticated/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
+  '/_authenticated/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/_authenticated/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/_authenticated/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/withdrawals'
     | '/dashboard/assistant'
+    | '/dashboard/leaderboard'
     | '/dashboard/library'
     | '/dashboard/materials'
     | '/dashboard/settings'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/withdrawals'
     | '/dashboard/assistant'
+    | '/dashboard/leaderboard'
     | '/dashboard/library'
     | '/dashboard/materials'
     | '/dashboard/settings'
@@ -284,6 +296,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/withdrawals'
     | '/_authenticated/dashboard/assistant'
+    | '/_authenticated/dashboard/leaderboard'
     | '/_authenticated/dashboard/library'
     | '/_authenticated/dashboard/materials'
     | '/_authenticated/dashboard/settings'
@@ -423,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardAssistantRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/dashboard/leaderboard': {
+      id: '/_authenticated/dashboard/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/dashboard/leaderboard'
+      preLoaderRoute: typeof AuthenticatedDashboardLeaderboardRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
     '/_authenticated/dashboard/library': {
       id: '/_authenticated/dashboard/library'
       path: '/library'
@@ -484,6 +504,7 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedDashboardRouteChildren {
   AuthenticatedDashboardAssistantRoute: typeof AuthenticatedDashboardAssistantRoute
+  AuthenticatedDashboardLeaderboardRoute: typeof AuthenticatedDashboardLeaderboardRoute
   AuthenticatedDashboardLibraryRoute: typeof AuthenticatedDashboardLibraryRoute
   AuthenticatedDashboardMaterialsRoute: typeof AuthenticatedDashboardMaterialsRoute
   AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
@@ -495,6 +516,8 @@ interface AuthenticatedDashboardRouteChildren {
 const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
   {
     AuthenticatedDashboardAssistantRoute: AuthenticatedDashboardAssistantRoute,
+    AuthenticatedDashboardLeaderboardRoute:
+      AuthenticatedDashboardLeaderboardRoute,
     AuthenticatedDashboardLibraryRoute: AuthenticatedDashboardLibraryRoute,
     AuthenticatedDashboardMaterialsRoute: AuthenticatedDashboardMaterialsRoute,
     AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,

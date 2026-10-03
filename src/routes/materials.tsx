@@ -244,9 +244,9 @@ function MaterialsPage() {
             </div>
 
             <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground px-1">
-              <span>📄 {previewMaterial.page_count} Pages</span>
-              <span>👁️ {previewMaterial.views ?? 0} Views</span>
-              <span>📥 {previewMaterial.downloads} Downloads</span>
+              <span className="inline-flex items-center gap-1.5"><FileText className="size-3.5" /> {previewMaterial.page_count} Pages</span>
+              <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5" /> {previewMaterial.views ?? 0} Views</span>
+              <span className="inline-flex items-center gap-1.5"><Download className="size-3.5" /> {previewMaterial.downloads} Downloads</span>
             </div>
 
             <div className="mt-6 flex items-center gap-3">

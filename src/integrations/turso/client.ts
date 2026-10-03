@@ -594,11 +594,29 @@ export async function setMaterialStatus(
   ]);
 }
 
-export async function recordMaterialView(materialId: string): Promise<void> {
+export async function recordMaterialView(materialId: string, viewerUserId?: string): Promise<void> {
   const matRs = await turso.execute({ sql: "SELECT user_id, title FROM materials WHERE id = ? LIMIT 1", args: [materialId] });
   if (matRs.rows.length === 0 || !matRs.rows[0]) return;
   const m = matRs.rows[0] as unknown as Record<string, unknown>;
   const uploaderId = String(m['user_id']);
+
+  // If viewer is provided, check if already viewed or if viewing own material
+  if (viewerUserId) {
+    if (viewerUserId === uploaderId) return; // Uploader viewing their own file does not inflate metrics
+
+    const viewedCheck = await turso.execute({
+      sql: "SELECT 1 FROM material_user_views WHERE user_id = ? AND material_id = ? LIMIT 1",
+      args: [viewerUserId, materialId],
+    });
+    if (viewedCheck.rows.length > 0) {
+      return; // Already viewed by this student
+    }
+
+    await turso.execute({
+      sql: "INSERT OR IGNORE INTO material_user_views (user_id, material_id) VALUES (?, ?)",
+      args: [viewerUserId, materialId],
+    });
+  }
 
   const uploaderProfile = await getProfile(uploaderId);
   const isPlus = Boolean(uploaderProfile?.sylla_plus);
@@ -626,11 +644,34 @@ export async function recordMaterialView(materialId: string): Promise<void> {
   ]);
 }
 
-export async function recordMaterialDownload(materialId: string): Promise<string> {
+export async function recordMaterialDownload(materialId: string, downloaderUserId?: string): Promise<string> {
   const matRs = await turso.execute({ sql: "SELECT file_path, user_id, title FROM materials WHERE id = ? LIMIT 1", args: [materialId] });
   if (matRs.rows.length === 0 || !matRs.rows[0]) throw new Error("Material not found");
   const m = matRs.rows[0] as unknown as Record<string, unknown>;
   const uploaderId = String(m['user_id']);
+
+  // Check single download rule: each student can only download a material once
+  if (downloaderUserId) {
+    const dlCheck = await turso.execute({
+      sql: "SELECT 1 FROM material_user_downloads WHERE user_id = ? AND material_id = ? LIMIT 1",
+      args: [downloaderUserId, materialId],
+    });
+
+    if (dlCheck.rows.length > 0) {
+      // Already downloaded by this user! Return file directly without double counting or re-awarding points
+      return String(m['file_path']);
+    }
+
+    await turso.execute({
+      sql: "INSERT OR IGNORE INTO material_user_downloads (user_id, material_id) VALUES (?, ?)",
+      args: [downloaderUserId, materialId],
+    });
+
+    // If downloader is the uploader, return file without points reward
+    if (downloaderUserId === uploaderId) {
+      return String(m['file_path']);
+    }
+  }
 
   const uploaderProfile = await getProfile(uploaderId);
   const isPlus = Boolean(uploaderProfile?.sylla_plus);
@@ -920,6 +961,55 @@ export async function adminAdjustPoints(userId: string, amount: number, reason: 
     },
   ]);
 }
+
+export interface LeaderboardEntry {
+  id: string;
+  rank: number;
+  full_name: string;
+  institution: string;
+  course: string;
+  level: string;
+  points: number;
+  study_minutes: number;
+  sylla_plus: boolean;
+  verified_uploads: number;
+}
+
+export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+  const rs = await turso.execute({
+    sql: `
+      SELECT 
+        p.id, 
+        p.full_name, 
+        p.institution, 
+        p.course, 
+        p.level, 
+        p.points, 
+        p.study_minutes, 
+        p.sylla_plus,
+        (SELECT COUNT(*) FROM materials m WHERE m.user_id = p.id AND m.status = 'verified') AS verified_uploads
+      FROM profiles p
+      WHERE p.points > 0 OR p.study_minutes > 0
+      ORDER BY p.points DESC, p.study_minutes DESC
+      LIMIT ?
+    `,
+    args: [limit],
+  });
+
+  return rs.rows.map((r, idx) => ({
+    id: String(r['id']),
+    rank: idx + 1,
+    full_name: r['full_name'] ? String(r['full_name']) : "Scholar",
+    institution: r['institution'] ? String(r['institution']) : "Nigerian University",
+    course: r['course'] ? String(r['course']) : "General Studies",
+    level: r['level'] ? String(r['level']) : "100 Level",
+    points: Number(r['points'] || 0),
+    study_minutes: Number(r['study_minutes'] || 0),
+    sylla_plus: Boolean(r['sylla_plus']),
+    verified_uploads: Number(r['verified_uploads'] || 0),
+  }));
+}
+
 
 export async function adminProcessWithdrawal(
   withdrawalId: string,
