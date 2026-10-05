@@ -153,7 +153,7 @@ function mapProfile(row: Record<string, unknown>): Profile {
         ? (JSON.parse((row['study_plan'] as string) || "{}") as Record<string, unknown>)
         : (row['study_plan'] as Record<string, unknown>) || {},
     suspended: Boolean(row['suspended']),
-    onboarding_step: Number(row['onboarding_step'] || 1),
+    onboarding_step: row['onboarding_step'] !== null && row['onboarding_step'] !== undefined ? Number(row['onboarding_step']) : 0,
     sylla_plus: Boolean(row['sylla_plus']),
     referral_code: row['referral_code'] ? String(row['referral_code']) : defaultRef,
     referred_by: row['referred_by'] ? String(row['referred_by']) : null,
@@ -239,7 +239,7 @@ export async function upsertProfile(data: {
           data.phone ?? null,
           data.referral_source ?? null,
           JSON.stringify(data.study_plan ?? {}),
-          data.onboarding_step ?? 1,
+          data.onboarding_step ?? 0,
           POINTS_REGISTRATION_BONUS,
           myRefCode,
           data.referred_by ?? null,

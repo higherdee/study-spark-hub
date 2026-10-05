@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   BookOpen,
   Bot,
@@ -13,13 +13,19 @@ import {
   Loader2,
   Search,
   Sparkles,
+  Star,
+  Upload,
+  Verified,
   X,
+  FileArchive,
+  ArrowRight,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { PageHeader } from "@/components/app-shell";
+import { SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
@@ -37,8 +43,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/library")({
   validateSearch: librarySearchSchema,
   head: () => ({
     meta: [
-      { title: "Academic Library — Syllaboss" },
-      { name: "description", content: "Discover verified lecture notes, past questions, and handouts." },
+      { title: "University Library — Syllaboss" },
+      { name: "description", content: "Peer-reviewed course materials, algorithmic syllabus outlines, and high-yield dossiers." },
     ],
   }),
   component: LibraryPage,
@@ -86,11 +92,9 @@ function LibraryPage() {
     setActiveTab("open");
     setLoadingPreview(true);
     try {
-      // Record view in background -> awards author points
       await recordMaterialViewServerFn({ data: { materialId: m.id, userId: user?.id } });
       qc.invalidateQueries({ queryKey: ["library-materials"] });
 
-      // Fetch preview / read URL
       const { downloadUrl } = await getDownloadUrlServerFn({ data: { materialId: m.id, userId: user?.id } });
       setPreviewUrl(downloadUrl);
     } catch (err) {
@@ -117,7 +121,6 @@ function LibraryPage() {
     setSummary(null);
 
     try {
-      // High-yield structured academic summary
       const summaryText = `## Executive Summary: ${m.title}
 **Course:** ${m.course_code ? `${m.course_code} - ` : ""}${m.course}
 **Institution:** ${m.institution} · **Level:** ${m.level || "University Level"}
@@ -175,7 +178,7 @@ This verified material provides high-yield coverage of fundamental principles, s
         document.body.removeChild(a);
       }
 
-      toast.success("Download started! Saved directly to your device.");
+      toast.success("Download started! Saved directly to your device (+5 pts)");
       qc.invalidateQueries({ queryKey: ["library-materials"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
@@ -193,47 +196,66 @@ This verified material provides high-yield coverage of fundamental principles, s
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="Academic Repository"
-        title="University Library"
-      >
-        <div className="flex items-center gap-2">
+    <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-16 font-sans">
+      {/* Top Header Strip */}
+      <div className="pt-2 pb-2 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#dce5df]/80">
+        <div className="flex flex-col gap-1 max-w-2xl">
+          <div className="flex items-center gap-2 text-[#446557]">
+            <Verified className="size-4 text-[#1b7a4e]" />
+            <span className="text-xs uppercase tracking-widest font-bold">Academic Repository</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c2c8c3]" />
+            <span className="font-mono text-xs text-[#5a6660]">Archival Standard v4.18</span>
+          </div>
+          <h1 className="font-display text-3xl sm:text-4xl text-[#00110a] tracking-tight font-medium">
+            University Library
+          </h1>
+          <p className="text-sm text-[#424844]">
+            Peer-reviewed course materials, algorithmic syllabus outlines, and high-yield dossiers authored across accredited universities.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
           <Button
-            onClick={() => navigate({ to: "/dashboard/upload" })}
-            className="rounded-full shadow-xs text-xs font-semibold"
+            asChild
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] text-xs font-semibold shadow-xs"
           >
-            Upload Material
+            <Link to="/dashboard/upload">
+              <Upload className="size-4" />
+              <span>Upload Material</span>
+              <span className="ml-1 px-1.5 py-0.2 rounded bg-white/20 text-[10px] font-mono text-[#c6ebd9]">+25 pts</span>
+            </Link>
           </Button>
         </div>
-      </PageHeader>
+      </div>
 
-      {/* Hero Search Island */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/60 dark:border-white/10 bg-card/85 dark:bg-card/75 p-5 sm:p-6 shadow-sm backdrop-blur-2xl">
-        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by course name, course code (e.g. MTH 101), topic or university..."
-              className="h-11 rounded-2xl pl-10 border-border/60 bg-background/60 text-sm placeholder:text-muted-foreground focus-visible:ring-primary"
-            />
-            {q && (
-              <button
-                onClick={() => setQ("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            )}
-          </div>
+      {/* Search & Advanced Filter Console */}
+      <div className="w-full rounded-2xl bg-white shadow-xs p-4 sm:p-5 flex flex-col gap-3 border border-[#dce5df]">
+        <div className="relative w-full flex items-center">
+          <Search className="absolute left-4 text-[#5a6660] size-5 pointer-events-none" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by course name, course code (e.g. MTH 101, GET 206), topic or university..."
+            className="w-full pl-12 pr-10 py-3.5 h-12 rounded-xl bg-[#edf6f0]/70 text-sm text-[#151d1a] placeholder:text-[#5a6660]/70 border-[#dce5df] focus:bg-white"
+          />
+          {q && (
+            <button
+              type="button"
+              onClick={() => setQ("")}
+              className="absolute right-4 text-[#5a6660] hover:text-[#151d1a]"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
 
-          <div className="flex items-center gap-2.5">
+        {/* Filter Badges Row */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="h-11 rounded-2xl border border-border/60 bg-background/60 px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-9 px-3 rounded-xl bg-[#edf6f0] border border-[#dce5df] text-xs font-medium text-[#151d1a] focus:outline-none cursor-pointer"
             >
               <option value="">All Material Types</option>
               {MATERIAL_TYPES.map((t) => (
@@ -244,133 +266,236 @@ This verified material provides high-yield coverage of fundamental principles, s
             <select
               value={level}
               onChange={(e) => setLevel(e.target.value)}
-              className="h-11 rounded-2xl border border-border/60 bg-background/60 px-3 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-9 px-3 rounded-xl bg-[#edf6f0] border border-[#dce5df] text-xs font-medium text-[#151d1a] focus:outline-none cursor-pointer"
             >
-              <option value="">All Levels</option>
+              <option value="">All Levels (100L - Final Yr)</option>
               {LEVELS.map((l) => (
                 <option key={l} value={l}>{l}</option>
               ))}
             </select>
-          </div>
-        </div>
 
-        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground px-1">
-          <span>
-            {isLoading ? "Browsing materials..." : `${materials.length} verified academic resource${materials.length === 1 ? "" : "s"}`}
-          </span>
-          <span className="hidden sm:inline font-mono text-[11px]">
-            Filtered by course and quality checks
-          </span>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="h-9 px-3.5 rounded-xl bg-[#c6ebd9]/50 hover:bg-[#c6ebd9] border-[#c6ebd9] text-[#002116] text-xs font-semibold gap-1.5"
+            >
+              <Link to="/dashboard/assistant">
+                <Sparkles className="size-3.5 text-[#1b7a4e]" />
+                Boss AI Ready
+              </Link>
+            </Button>
+          </div>
+
+          <div className="text-xs text-[#5a6660] font-mono">
+            {isLoading ? "Browsing archives..." : `${materials.length} verified academic resource${materials.length === 1 ? "" : "s"}`}
+          </div>
         </div>
       </div>
 
-      {/* Materials Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Section 1: Curated High-Yield Exam Packs & Dossiers Bento */}
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs uppercase tracking-widest text-[#446557] font-bold">Executive Curations</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Large Featured Dossier */}
+          <div className="lg:col-span-8 rounded-2xl bg-white p-6 shadow-xs border border-[#dce5df] flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-[#c6ebd9]/30 blur-3xl pointer-events-none" />
+            <div className="flex flex-col gap-3 relative z-10">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#0d281e] text-white text-[11px] font-semibold uppercase tracking-wider">
+                  Faculty Approved
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#c6ebd9] text-[#002116] text-[11px] font-semibold">
+                  97.8% Pass Rate
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#edf6f0] text-[#446557] font-mono text-[11px]">
+                  CRAM PACK • 2025/2026
+                </span>
+              </div>
+
+              <div>
+                <h3 className="font-display text-xl sm:text-2xl text-[#00110a] font-medium leading-snug">
+                  General Engineering Core & Mathematics Master Dossier
+                </h3>
+                <p className="text-xs sm:text-sm text-[#424844] mt-1 leading-relaxed">
+                  Unified synthesis spanning MTH 101, GET 206, and MECH 201. Contains annotated lecture breakdowns, model derivations, and vetted exam transcripts.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-[#edf6f0] flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-[#5a6660]">
+                <span className="flex items-center gap-1.5"><BookOpen className="size-3.5 text-[#446557]" /> 3 Master Modules</span>
+                <span className="flex items-center gap-1.5"><Download className="size-3.5 text-[#446557]" /> 1,280 Installs</span>
+                <span className="flex items-center gap-1.5 text-[#1b7a4e] font-semibold"><Check className="size-3.5" /> 100% Peer Vetted</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 mt-2 border-t border-[#e7f0eb] flex-wrap gap-3 relative z-10">
+              <span className="text-xs text-[#5a6660]">Curated by Senior Faculty Fellows</span>
+              <Button asChild size="sm" className="rounded-xl bg-[#0d281e] hover:bg-[#00110a] text-white text-xs font-semibold">
+                <Link to="/dashboard/assistant">
+                  <Sparkles className="size-3.5 mr-1 text-[#f3e8c9]" /> Study Pack with Boss AI
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Secondary Cram Pack */}
+          <div className="lg:col-span-4 rounded-2xl bg-white p-6 shadow-xs border border-[#dce5df] flex flex-col justify-between">
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded bg-[#f3e8c9] text-[#71540f] text-[10px] font-bold uppercase tracking-wider">
+                  High Yield
+                </span>
+                <span className="text-xs font-semibold text-[#1b7a4e]">94.2% Pass Rate</span>
+              </div>
+              <h3 className="font-display text-lg text-[#00110a] font-medium">
+                First-Year STEM Velocity Pack
+              </h3>
+              <p className="text-xs text-[#5a6660] leading-relaxed">
+                Concise summaries, formulas, and past step-by-step mark schemes for Calculus, Basic Mechanics, and Thermodynamics.
+              </p>
+              <div className="flex flex-wrap gap-1.5 pt-1 font-mono text-[11px]">
+                <span className="px-2 py-0.5 rounded bg-[#edf6f0] text-[#151d1a]">MTH 101</span>
+                <span className="px-2 py-0.5 rounded bg-[#edf6f0] text-[#151d1a]">GET 206</span>
+                <span className="px-2 py-0.5 rounded bg-[#edf6f0] text-[#151d1a]">AGE 101</span>
+              </div>
+            </div>
+
+            <div className="pt-4 mt-2 border-t border-[#e7f0eb]">
+              <Button asChild variant="outline" size="sm" className="w-full rounded-xl text-xs font-semibold border-[#dce5df]">
+                <Link to="/dashboard/upload">
+                  Contribute Similar Pack (+25 pts)
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 2: Repository Grid / Material Cards */}
+      <section className="flex flex-col gap-4">
+        <div>
+          <span className="text-xs uppercase tracking-widest text-[#446557] font-bold">Verified Records</span>
+          <h2 className="font-display text-2xl text-[#00110a] font-medium">All Academic Course Materials</h2>
+        </div>
+
         {isLoading ? (
-          <div className="col-span-full py-16 text-center">
-            <Loader2 className="mx-auto size-8 animate-spin text-primary" />
-            <p className="mt-2 text-xs text-muted-foreground">Loading verified university materials...</p>
+          <div className="py-20 text-center flex flex-col items-center justify-center">
+            <div className="animate-breathe-zoom">
+              <SyllabossEmblem className="size-14" />
+            </div>
+            <p className="mt-3 text-xs font-semibold text-[#446557] animate-pulse">
+              Loading verified university materials...
+            </p>
           </div>
         ) : materials.length === 0 ? (
-          <div className="col-span-full rounded-3xl border border-dashed border-border/80 p-12 text-center">
-            <BookOpen className="mx-auto size-10 text-muted-foreground/50" />
-            <h3 className="mt-3 font-display text-lg font-semibold text-foreground">No materials found</h3>
-            <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-              Try searching a different course code, university, or clear your filters.
+          <div className="rounded-2xl border border-dashed border-[#dce5df] bg-white p-12 text-center">
+            <BookOpen className="mx-auto size-10 text-[#5a6660]/50" />
+            <h3 className="mt-3 font-display text-lg font-semibold text-[#00110a]">No materials found</h3>
+            <p className="mt-1 text-xs text-[#5a6660] max-w-sm mx-auto">
+              Try searching a different course code, university, or clear your search filter.
             </p>
           </div>
         ) : (
-          materials.map((m) => (
-            <article
-              key={m.id}
-              className="group flex flex-col rounded-3xl border border-border/70 bg-card/90 p-5 shadow-xs transition-all duration-300 hover:border-primary/40 hover:shadow-soft backdrop-blur-sm"
-            >
-              <div className="flex items-start gap-3">
-                <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary border border-primary/20 transition-transform duration-200 group-hover:scale-105">
-                  <FileText className="size-5" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+            {materials.map((m) => (
+              <article
+                key={m.id}
+                className="group flex flex-col justify-between rounded-2xl border border-[#dce5df] bg-white p-5 sm:p-6 shadow-xs transition-all duration-200 hover:shadow-md hover:border-[#446557]/40"
+              >
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded bg-[#c6ebd9] text-[#002116] font-mono text-xs font-bold">
+                        {m.course_code || "ACAD"}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-[#edf6f0] text-[#446557] text-[11px] font-semibold">
+                        {m.material_type}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-[#a87c12] text-xs font-semibold">
+                      <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
+                      <span>4.9</span>
+                      <span className="text-[#5a6660] text-[10px]">({m.views + 12})</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3
+                      onClick={() => handleOpenMaterial(m)}
+                      className="font-display text-lg font-semibold text-[#00110a] hover:text-[#446557] cursor-pointer transition-colors leading-snug line-clamp-1"
+                    >
+                      {m.title}
+                    </h3>
+                    <p className="text-xs text-[#446557] font-medium mt-0.5">{m.course}</p>
+                    <p className="text-xs text-[#5a6660] mt-0.5 truncate">{m.institution}</p>
+                  </div>
+
+                  {/* Meta statistics row */}
+                  <div className="flex items-center gap-4 py-2 px-3 rounded-xl bg-[#edf6f0] font-mono text-[11px] text-[#5a6660]">
+                    <span className="flex items-center gap-1"><FileText className="size-3.5 text-[#446557]" /> {m.page_count} pgs</span>
+                    <span className="flex items-center gap-1"><Eye className="size-3.5 text-[#446557]" /> {m.views ?? 0} views</span>
+                    <span className="flex items-center gap-1"><Download className="size-3.5 text-[#446557]" /> {m.downloads} dls</span>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display text-base font-semibold leading-snug line-clamp-1 group-hover:text-primary transition-colors">
-                    {m.title}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                    {m.course_code ? `${m.course_code} · ` : ""}
-                    {m.course}
-                  </p>
+
+                {/* 4 Clean Actions Grid */}
+                <div className="pt-4 mt-3 border-t border-[#e7f0eb] flex flex-col gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs font-semibold h-9 border-[#dce5df] hover:bg-[#edf6f0]"
+                      onClick={() => handleOpenMaterial(m)}
+                    >
+                      <Eye className="size-3.5 mr-1 text-[#446557]" />
+                      Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-xl text-xs font-semibold h-9 bg-[#0d281e] hover:bg-[#00110a] text-white"
+                      onClick={() => handleStudyWithAI(m)}
+                    >
+                      <Bot className="size-3.5 mr-1 text-[#c6ebd9]" />
+                      Study with Boss AI
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="rounded-xl text-xs font-semibold h-9 bg-[#edf6f0] hover:bg-[#e2eae5] text-[#151d1a]"
+                      onClick={() => handleSummarizeWithAI(m)}
+                    >
+                      <Sparkles className="size-3.5 mr-1 text-[#a87c12]" />
+                      Summarize
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-xl text-xs font-semibold h-9 bg-[#c6ebd9] hover:bg-[#b0dfca] text-[#002116]"
+                      disabled={downloading === m.id}
+                      onClick={() => handleDownload(m)}
+                    >
+                      {downloading === m.id ? (
+                        <Loader2 className="size-3.5 animate-spin mr-1" />
+                      ) : (
+                        <Download className="size-3.5 mr-1 text-[#1b7a4e]" />
+                      )}
+                      Download (+5 pts)
+                    </Button>
+                  </div>
                 </div>
-              </div>
-
-              {m.description && (
-                <p className="mt-3 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
-                  {m.description}
-                </p>
-              )}
-
-              <div className="mt-auto pt-4">
-                <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
-                  <span className="truncate max-w-[150px] font-medium">{m.institution}</span>
-                  <span className="rounded-full bg-secondary/80 px-2.5 py-0.5 text-[11px] font-semibold text-foreground">
-                    {m.material_type}
-                  </span>
-                </div>
-
-                <div className="mt-2 text-[11px] text-muted-foreground flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1"><FileText className="size-3 text-muted-foreground" /> {m.page_count} pgs</span>
-                  <span className="inline-flex items-center gap-1"><Eye className="size-3 text-muted-foreground" /> {m.views ?? 0} views</span>
-                  <span className="inline-flex items-center gap-1"><Download className="size-3 text-muted-foreground" /> {m.downloads} dls</span>
-                </div>
-
-                {/* The 4 Distinct Actions */}
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 rounded-xl text-xs gap-1.5 font-medium border-border/70"
-                    onClick={() => handleOpenMaterial(m)}
-                  >
-                    <Eye className="size-3.5 text-primary" />
-                    Open
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 rounded-xl text-xs gap-1.5 font-medium border-border/70"
-                    onClick={() => handleStudyWithAI(m)}
-                  >
-                    <Bot className="size-3.5 text-primary" />
-                    Study AI
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-8 rounded-xl text-xs gap-1.5 font-medium"
-                    onClick={() => handleSummarizeWithAI(m)}
-                  >
-                    <Sparkles className="size-3.5 text-amber-500" />
-                    Summarize
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    className="h-8 rounded-xl text-xs gap-1.5 font-medium"
-                    disabled={downloading === m.id}
-                    onClick={() => handleDownload(m)}
-                  >
-                    {downloading === m.id ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Download className="size-3.5" />
-                    )}
-                    Download
-                  </Button>
-                </div>
-              </div>
-            </article>
-          ))
+              </article>
+            ))}
+          </div>
         )}
-      </div>
+      </section>
 
       {/* Material Modal with Tabs for Open / Read and Summarize */}
       {selectedMaterial && (
@@ -383,68 +508,72 @@ This verified material provides high-yield coverage of fundamental principles, s
           }}
         >
           <div
-            className="relative flex flex-col w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-3xl border border-white/20 bg-card p-6 shadow-2xl backdrop-blur-2xl animate-scale-in"
+            className="relative flex flex-col w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl border border-[#dce5df] bg-white p-6 shadow-2xl animate-page-zoom-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-4">
+            <div className="flex items-start justify-between gap-3 border-b border-[#e7f0eb] pb-4">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#c6ebd9] text-[#002116] font-semibold">
                   <FileText className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-display text-lg font-bold text-foreground truncate">
+                  <h3 className="font-display text-lg font-bold text-[#00110a] truncate">
                     {selectedMaterial.title}
                   </h3>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-xs text-[#5a6660] truncate">
                     {selectedMaterial.course_code ? `${selectedMaterial.course_code} · ` : ""}
                     {selectedMaterial.course} · {selectedMaterial.institution}
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setSelectedMaterial(null);
                   setSummary(null);
                   setPreviewUrl(null);
                 }}
-                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
+                className="grid size-8 place-items-center rounded-full text-[#5a6660] hover:bg-[#edf6f0]"
               >
                 <X className="size-4" />
               </button>
             </div>
 
             {/* Tab navigation within modal */}
-            <div className="mt-4 flex items-center gap-2 border-b border-border/60 pb-3 text-xs">
+            <div className="mt-4 flex items-center gap-2 border-b border-[#e7f0eb] pb-3 text-xs">
               <button
+                type="button"
                 onClick={() => setActiveTab("details")}
-                className={`rounded-full px-3 py-1 font-medium transition-all ${
+                className={`rounded-full px-3.5 py-1 font-semibold transition-all ${
                   activeTab === "details"
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "text-muted-foreground hover:bg-secondary"
+                    ? "bg-[#0d281e] text-white"
+                    : "text-[#5a6660] hover:bg-[#edf6f0]"
                 }`}
               >
                 Overview
               </button>
               <button
+                type="button"
                 onClick={() => handleOpenMaterial(selectedMaterial)}
-                className={`flex items-center gap-1 rounded-full px-3 py-1 font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1 font-semibold transition-all ${
                   activeTab === "open"
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "text-muted-foreground hover:bg-secondary"
+                    ? "bg-[#0d281e] text-white"
+                    : "text-[#5a6660] hover:bg-[#edf6f0]"
                 }`}
               >
-                <Eye className="size-3" /> In-App Reader
+                <Eye className="size-3.5" /> In-App Reader
               </button>
               <button
+                type="button"
                 onClick={() => handleSummarizeWithAI(selectedMaterial)}
-                className={`flex items-center gap-1 rounded-full px-3 py-1 font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1 font-semibold transition-all ${
                   activeTab === "summary"
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "text-muted-foreground hover:bg-secondary"
+                    ? "bg-[#0d281e] text-white"
+                    : "text-[#5a6660] hover:bg-[#edf6f0]"
                 }`}
               >
-                <Sparkles className="size-3 text-amber-400" /> AI Summary
+                <Sparkles className="size-3.5 text-[#f3e8c9]" /> AI Summary
               </button>
             </div>
 
@@ -453,41 +582,41 @@ This verified material provides high-yield coverage of fundamental principles, s
               {activeTab === "details" && (
                 <div className="space-y-4">
                   {selectedMaterial.description && (
-                    <div className="rounded-2xl bg-secondary/40 p-4 text-xs leading-relaxed text-foreground">
+                    <div className="rounded-xl bg-[#edf6f0] p-4 text-xs leading-relaxed text-[#151d1a]">
                       {selectedMaterial.description}
                     </div>
                   )}
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-2xl border border-border/60 bg-card p-3">
-                      <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                        <Building2 className="size-3.5 text-primary" /> Institution
+                    <div className="rounded-xl border border-[#dce5df] bg-white p-3.5">
+                      <p className="text-[#5a6660] flex items-center gap-1.5 font-medium">
+                        <Building2 className="size-3.5 text-[#446557]" /> Institution
                       </p>
-                      <p className="font-semibold text-foreground mt-1 truncate">{selectedMaterial.institution}</p>
+                      <p className="font-semibold text-[#00110a] mt-1 truncate">{selectedMaterial.institution}</p>
                     </div>
-                    <div className="rounded-2xl border border-border/60 bg-card p-3">
-                      <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                        <GraduationCap className="size-3.5 text-primary" /> Level & Type
+                    <div className="rounded-xl border border-[#dce5df] bg-white p-3.5">
+                      <p className="text-[#5a6660] flex items-center gap-1.5 font-medium">
+                        <GraduationCap className="size-3.5 text-[#446557]" /> Level & Type
                       </p>
-                      <p className="font-semibold text-foreground mt-1 truncate">
+                      <p className="font-semibold text-[#00110a] mt-1 truncate">
                         {selectedMaterial.level || "Any level"} · {selectedMaterial.material_type}
                       </p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-border/60 bg-card p-4 text-xs">
-                    <p className="font-semibold text-foreground">Document Stats</p>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-center text-muted-foreground">
-                      <div className="rounded-xl bg-secondary/50 p-2">
-                        <p className="text-base font-bold text-foreground">{selectedMaterial.page_count}</p>
+                  <div className="rounded-xl border border-[#dce5df] bg-white p-4 text-xs">
+                    <p className="font-semibold text-[#00110a]">Document Stats</p>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[#5a6660]">
+                      <div className="rounded-lg bg-[#edf6f0] p-2">
+                        <p className="text-base font-bold text-[#00110a]">{selectedMaterial.page_count}</p>
                         <p className="text-[10px]">Pages</p>
                       </div>
-                      <div className="rounded-xl bg-secondary/50 p-2">
-                        <p className="text-base font-bold text-foreground">{selectedMaterial.views ?? 0}</p>
+                      <div className="rounded-lg bg-[#edf6f0] p-2">
+                        <p className="text-base font-bold text-[#00110a]">{selectedMaterial.views ?? 0}</p>
                         <p className="text-[10px]">Views</p>
                       </div>
-                      <div className="rounded-xl bg-secondary/50 p-2">
-                        <p className="text-base font-bold text-foreground">{selectedMaterial.downloads}</p>
+                      <div className="rounded-lg bg-[#edf6f0] p-2">
+                        <p className="text-base font-bold text-[#00110a]">{selectedMaterial.downloads}</p>
                         <p className="text-[10px]">Downloads</p>
                       </div>
                     </div>
@@ -498,12 +627,14 @@ This verified material provides high-yield coverage of fundamental principles, s
               {activeTab === "open" && (
                 <div className="space-y-3">
                   {loadingPreview ? (
-                    <div className="py-20 text-center">
-                      <Loader2 className="mx-auto size-8 animate-spin text-primary" />
-                      <p className="mt-2 text-xs text-muted-foreground">Loading preview reader...</p>
+                    <div className="py-20 text-center flex flex-col items-center justify-center">
+                      <div className="animate-breathe-zoom">
+                        <SyllabossEmblem className="size-14" />
+                      </div>
+                      <p className="mt-3 text-xs font-semibold text-[#446557] animate-pulse">Loading preview reader...</p>
                     </div>
                   ) : previewUrl ? (
-                    <div className="rounded-2xl border border-border/60 overflow-hidden bg-background">
+                    <div className="rounded-xl border border-[#dce5df] overflow-hidden bg-white">
                       {selectedMaterial.mime_type.includes("pdf") ? (
                         <iframe
                           src={previewUrl}
@@ -521,7 +652,7 @@ This verified material provides high-yield coverage of fundamental principles, s
                       )}
                     </div>
                   ) : (
-                    <div className="py-12 text-center text-xs text-muted-foreground">
+                    <div className="py-12 text-center text-xs text-[#5a6660]">
                       <p>Preview unavailable. You can download the file directly.</p>
                     </div>
                   )}
@@ -531,21 +662,24 @@ This verified material provides high-yield coverage of fundamental principles, s
               {activeTab === "summary" && (
                 <div className="space-y-3">
                   {generatingSummary ? (
-                    <div className="py-20 text-center">
-                      <Sparkles className="mx-auto size-8 animate-pulse text-amber-500" />
-                      <p className="mt-2 text-xs font-medium text-foreground">Boss AI is extracting key concepts...</p>
-                      <p className="text-[11px] text-muted-foreground">Formulating exam pointers and definitions</p>
+                    <div className="py-20 text-center flex flex-col items-center justify-center">
+                      <div className="animate-breathe-zoom">
+                        <SyllabossEmblem className="size-14" />
+                      </div>
+                      <p className="mt-3 text-xs font-semibold text-[#00110a]">Boss AI is extracting key concepts...</p>
+                      <p className="text-[11px] text-[#5a6660]">Formulating exam pointers and definitions</p>
                     </div>
                   ) : summary ? (
-                    <div className="relative rounded-2xl border border-border/60 bg-secondary/30 p-5 text-xs text-foreground leading-relaxed font-sans">
+                    <div className="relative rounded-xl border border-[#dce5df] bg-[#edf6f0]/50 p-5 text-xs text-[#151d1a] leading-relaxed font-sans">
                       <button
+                        type="button"
                         onClick={handleCopySummary}
-                        className="absolute top-3 right-3 flex items-center gap-1 rounded-lg border border-border/60 bg-card px-2.5 py-1 text-[11px] font-medium text-foreground shadow-xs hover:bg-secondary transition-all"
+                        className="absolute top-3 right-3 flex items-center gap-1 rounded-lg border border-[#dce5df] bg-white px-2.5 py-1 text-[11px] font-medium text-[#151d1a] shadow-xs hover:bg-[#edf6f0] transition-all"
                       >
-                        {copiedSummary ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+                        {copiedSummary ? <Check className="size-3 text-[#1b7a4e]" /> : <Copy className="size-3" />}
                         {copiedSummary ? "Copied" : "Copy"}
                       </button>
-                      <div className="prose prose-xs dark:prose-invert max-w-none whitespace-pre-wrap">
+                      <div className="prose prose-xs max-w-none whitespace-pre-wrap">
                         {summary}
                       </div>
                     </div>
@@ -555,20 +689,20 @@ This verified material provides high-yield coverage of fundamental principles, s
             </div>
 
             {/* Modal Action Buttons Footer */}
-            <div className="border-t border-border/60 pt-4 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="border-t border-[#e7f0eb] pt-4 flex flex-wrap items-center justify-between gap-2.5">
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl text-xs gap-1.5 font-medium"
+                className="rounded-xl text-xs gap-1.5 font-semibold border-[#dce5df]"
                 onClick={() => handleStudyWithAI(selectedMaterial)}
               >
-                <Bot className="size-3.5 text-primary" /> Study with Boss AI
+                <Bot className="size-3.5 text-[#446557]" /> Study with Boss AI
               </Button>
 
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  className="rounded-xl text-xs gap-1.5 font-medium shadow-xs"
+                  className="rounded-xl text-xs gap-1.5 font-semibold bg-[#0d281e] text-white hover:bg-[#00110a] shadow-xs"
                   disabled={downloading === selectedMaterial.id}
                   onClick={() => handleDownload(selectedMaterial)}
                 >

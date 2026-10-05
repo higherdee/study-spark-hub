@@ -96,16 +96,8 @@ export function AppShell({
             </button>
 
             <Link to="/dashboard" className="hidden sm:inline-flex items-center">
-              <span className="font-display text-lg font-bold tracking-tight text-foreground">
-                Syllaboss
-              </span>
+              <SyllabossLogo asDiv />
             </Link>
-
-            {isPlus && (
-              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
-                <Sparkles className="size-3" /> SyllaPlus
-              </span>
-            )}
           </div>
 
           {/* Right: Dynamic Island widgets cluster matching Screenshot 2 */}
@@ -259,14 +251,21 @@ export function AppShell({
         </div>
       </aside>
 
-      {/* Floating Chatbot Bubble at Bottom Right (matching Screenshot 2) */}
+      {/* Floating & Breathing Boss AI Bubble at Bottom Right */}
       <Link
         to="/dashboard/assistant"
         aria-label="Open Boss AI study assistant"
         title="Chat with Boss AI"
-        className="fixed bottom-6 right-5 z-40 grid size-12 place-items-center rounded-full bg-foreground text-background shadow-xl ring-2 ring-primary/20 transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-5 z-40 flex items-center gap-2 rounded-full bg-[#0d281e] text-white px-3.5 py-2.5 shadow-2xl border border-[#446557]/50 animate-bot-float-breathe hover:scale-110 active:scale-95 transition-all group backdrop-blur-md"
       >
-        <Bot className="size-6 text-background" />
+        <div className="relative flex items-center justify-center">
+          <Bot className="size-5 text-[#c6ebd9] group-hover:scale-110 transition-transform" />
+          <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#1b7a4e] animate-ping" />
+          <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#1b7a4e]" />
+        </div>
+        <span className="text-xs font-semibold tracking-wide text-white pr-0.5 font-sans">
+          Boss AI
+        </span>
       </Link>
     </div>
   );

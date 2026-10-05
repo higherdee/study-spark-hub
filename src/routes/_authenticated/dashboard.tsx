@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import { AppShell, type NavItem } from "@/components/app-shell";
 import { useIsAdmin, useProfile } from "@/lib/profile";
 
+import { PageBreathingLoader } from "@/components/syllaboss-logo";
+
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
@@ -39,7 +41,7 @@ function DashboardLayout() {
   }, [profile, isLoading, navigate]);
 
   if (isLoading || !profile || profile.onboarding_step < 3) {
-    return <div className="grid min-h-screen place-items-center"><Loader2 className="animate-spin text-primary" /></div>;
+    return <PageBreathingLoader message="Synchronizing academic records..." />;
   }
 
   return (
@@ -55,7 +57,9 @@ function DashboardLayout() {
       }
     >
       {profile.suspended && <div className="mb-6 rounded-lg border border-destructive bg-destructive/5 p-4 text-sm text-destructive">Your account is suspended. You can't upload or cash out until an admin restores it.</div>}
-      <Outlet />
+      <div className="animate-page-zoom-in">
+        <Outlet />
+      </div>
     </AppShell>
   );
 }

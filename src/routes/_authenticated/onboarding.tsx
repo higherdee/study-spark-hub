@@ -15,7 +15,7 @@ import { courseOptions, institutionOptions, LEVELS, REFERRAL_SOURCES } from "@/l
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
-import { ThemePickerModal } from "@/components/theme-picker-modal";
+import { PageBreathingLoader } from "@/components/syllaboss-logo";
 import { SyllaPlusModal } from "@/components/syllaplus-modal";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
@@ -70,7 +70,12 @@ function Onboarding() {
       navigate({ to: "/dashboard" });
       return;
     }
-    setStep(profile.onboarding_step);
+    // Always start at Step 0 ("Your details") if institution or course is not yet provided
+    if (!profile.institution || !profile.course || profile.onboarding_step === 0) {
+      setStep(0);
+    } else {
+      setStep(Math.min(profile.onboarding_step, 2));
+    }
     setFullName(profile.full_name || user?.user_metadata.full_name || "");
     setPhone(profile.phone ?? "");
     if (profile.institution) setInstitution({ label: profile.institution });
@@ -80,24 +85,23 @@ function Onboarding() {
     setReferral(profile.referral_source ?? "");
   }, [profile, user, navigate]);
 
-  const [showThemePicker, setShowThemePicker] = useState(false);
   const [showPlusModal, setShowPlusModal] = useState(false);
 
-  async function save(values: Record<string, unknown>, next: number) {
+  async function save(values: Record<string, unknown>, nextStep: number) {
     if (!userId) {
       toast.error("User session not found");
       return;
     }
     setSaving(true);
     try {
-      await upsertProfile({ id: userId, ...values, onboarding_step: next });
+      await upsertProfile({ id: userId, ...values, onboarding_step: nextStep });
       await qc.invalidateQueries({ queryKey: ["profile"] });
-      if (next >= 3) {
+      if (nextStep >= 3) {
         toast.success("Profile saved!");
-        // Pop up Theme Picker first, followed by SyllaPlus upsell
-        setShowThemePicker(true);
+        // Immediately present SyllaPlus VIP upgrade CTA after registration
+        setShowPlusModal(true);
       } else {
-        setStep(next);
+        setStep(nextStep);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save profile");
@@ -121,11 +125,11 @@ function Onboarding() {
   }
 
   if (isLoading && !profile && !user) {
-    return <div className="grid min-h-screen place-items-center"><Loader2 className="animate-spin text-primary" /></div>;
+    return <PageBreathingLoader message="Setting up your academic profile..." />;
   }
 
   return (
-    <div className="min-h-screen bg-hero">
+    <div className="min-h-screen bg-[#f3fbf6] animate-page-zoom-in">
       <div className="mx-auto max-w-2xl px-4 py-8 sm:py-14">
         <SyllabossLogo />
         <ol className="mt-10 grid grid-cols-3 gap-2">
@@ -230,16 +234,7 @@ function Onboarding() {
         </div>
       </div>
 
-      {/* Theme Picker Modal */}
-      <ThemePickerModal
-        open={showThemePicker}
-        onConfirm={() => {
-          setShowThemePicker(false);
-          setShowPlusModal(true);
-        }}
-      />
-
-      {/* SyllaPlus Upsell Modal */}
+      {/* SyllaPlus Immediate Registration CTA Modal */}
       <SyllaPlusModal
         open={showPlusModal}
         onClose={() => {
