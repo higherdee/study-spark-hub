@@ -25,13 +25,12 @@ export function InstallButton({
   size = "default",
   className,
   label,
-  showDropdown = false,
 }: {
   variant?: "outline" | "default" | "secondary" | "ghost";
   size?: "sm" | "lg" | "default";
   className?: string;
   label?: string;
-  showDropdown?: boolean;
+  showDropdown?: boolean; // kept optional for backward compatibility
 }) {
   const { installed, platform } = useInstall();
   const [modalOpen, setModalOpen] = useState(false);
@@ -129,43 +128,25 @@ export function InstallButton({
 
   return (
     <>
-      <div className="inline-flex items-center gap-1">
-        <Button
-          variant={variant}
-          size={size}
-          className={cn("gap-2 font-semibold shadow-xs transition-all", className)}
-          onClick={handleMainClick}
-        >
-          {installed ? (
-            <Check className="size-4.5 shrink-0 text-emerald-400" />
-          ) : platform === "android" ? (
-            <AndroidOutlineIcon className="size-4.5 shrink-0" />
-          ) : platform === "windows" ? (
-            <WindowsOutlineIcon className="size-4.5 shrink-0" />
-          ) : platform === "ios" ? (
-            <AppleOutlineIcon className="size-4.5 shrink-0" />
-          ) : (
-            <Download className="size-4.5 shrink-0" />
-          )}
-          <span>{displayLabel}</span>
-        </Button>
-
-        {showDropdown && (
-          <Button
-            variant={variant}
-            size={size}
-            className={cn("px-2.5 shadow-xs", className)}
-            onClick={() => {
-              setActiveTab(platform);
-              setModalOpen(true);
-            }}
-            title="Choose platform"
-            aria-label="Choose platform"
-          >
-            <ChevronDown className="size-4" />
-          </Button>
+      <Button
+        variant={variant}
+        size={size}
+        className={cn("gap-2 font-semibold shadow-xs transition-all", className)}
+        onClick={handleMainClick}
+      >
+        {installed ? (
+          <Check className="size-4.5 shrink-0 text-emerald-400" />
+        ) : platform === "android" ? (
+          <AndroidOutlineIcon className="size-4.5 shrink-0" />
+        ) : platform === "windows" ? (
+          <WindowsOutlineIcon className="size-4.5 shrink-0" />
+        ) : platform === "ios" ? (
+          <AppleOutlineIcon className="size-4.5 shrink-0" />
+        ) : (
+          <Download className="size-4.5 shrink-0" />
         )}
-      </div>
+        <span>{displayLabel}</span>
+      </Button>
 
       {modalOpen && (
         <div

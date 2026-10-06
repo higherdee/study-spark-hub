@@ -67,19 +67,6 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-const UNIVERSITIES = [
-  "UNILAG",
-  "OAU",
-  "UNIBEN",
-  "UI",
-  "LASU",
-  "FUTA",
-  "UNN",
-  "ABU",
-  "UNILORIN",
-  "COVENANT",
-];
-
 const FAQ = [
   [
     "Is Syllaboss completely free to download and use?",
@@ -226,10 +213,7 @@ function HomePage() {
           <div className="relative mx-auto max-w-5xl px-4 text-center sm:px-6">
             {/* Pill Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#d6e3db] shadow-2xs text-[#155e3e] text-xs font-semibold mb-6 animate-fade-in">
-              <span className="relative flex size-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
-              </span>
+              <Sparkles className="size-3.5 text-[#155e3e]" />
               <span>Available for Android (.APK), Windows PC (.EXE) & iOS</span>
             </div>
 
@@ -251,7 +235,6 @@ function HomePage() {
             {/* Primary Action Buttons */}
             <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5">
               <InstallButton
-                showDropdown
                 size="lg"
                 className="w-full sm:w-auto h-12.5 rounded-full bg-[#0d281e] hover:bg-[#00110a] text-white text-sm sm:text-base font-bold px-8 shadow-sm transition-all hover:scale-[1.01]"
               />
@@ -283,133 +266,136 @@ function HomePage() {
                 <AppleOutlineIcon className="size-4 text-[#202924]" />
                 Apple iOS (Safari)
               </span>
-              <span className="text-[#c1d3c7]">•</span>
-              <span className="font-medium text-[#155e3e]">100% Free · Zero Ads</span>
             </div>
 
-            {/* Realistic Student Workstation Preview Mockup */}
-            <div className="mt-14 mx-auto max-w-4xl rounded-3xl border border-[#d2e0d7] bg-white p-3 sm:p-5 shadow-xl text-left relative overflow-hidden">
-              {/* Window Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#eaf0eb]">
-                <div className="flex items-center gap-2">
-                  <div className="size-3 rounded-full bg-rose-400" />
-                  <div className="size-3 rounded-full bg-amber-400" />
-                  <div className="size-3 rounded-full bg-emerald-400" />
-                  <span className="ml-2 text-xs font-semibold text-[#526359] font-mono">
-                    syllaboss.app · GST 111 Master Workspace
-                  </span>
-                </div>
-                <div className="hidden sm:flex items-center gap-2 text-[11px] font-semibold text-[#155e3e] bg-[#edf6f0] px-2.5 py-0.5 rounded-full">
-                  <CheckCircle2 className="size-3 text-[#155e3e]" />
-                  <span>Verified Department Syllabus · 2026</span>
-                </div>
-              </div>
+            {/* Realistic iPhone Showcase Mockup */}
+            <div className="mt-14 mx-auto max-w-sm sm:max-w-md relative flex justify-center">
+              {/* Soft Ambient Glow */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 -top-6 bg-gradient-to-b from-[#1b7a4e]/20 via-[#155e3e]/10 to-transparent blur-3xl rounded-full scale-110"
+              />
 
-              {/* Workspace Content Grid */}
-              <div className="grid gap-4 pt-4 md:grid-cols-12 items-start">
-                {/* Left Panel: Course Outline */}
-                <div className="md:col-span-4 rounded-2xl bg-[#f6faf7] border border-[#e1eae3] p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#00110a]">Course Chapters</span>
-                    <span className="text-[10px] font-bold text-[#155e3e] bg-white px-2 py-0.5 rounded-full border border-[#d6e3db]">
-                      8 Modules
-                    </span>
-                  </div>
+              {/* iPhone Outer Chassis */}
+              <div className="relative w-[310px] sm:w-[345px] rounded-[52px] p-3 sm:p-3.5 bg-gradient-to-b from-[#2a342e] via-[#161c18] to-[#0d120f] shadow-[0_25px_70px_-15px_rgba(0,17,10,0.4),0_0_0_1px_rgba(255,255,255,0.14),0_0_0_6px_#0e1410] border border-white/10">
+                {/* Physical side button notches */}
+                <div className="absolute -left-2 top-24 w-1 h-8 bg-[#1f2722] rounded-l" />
+                <div className="absolute -left-2 top-36 w-1 h-12 bg-[#1f2722] rounded-l" />
+                <div className="absolute -left-2 top-52 w-1 h-12 bg-[#1f2722] rounded-l" />
+                <div className="absolute -right-2 top-32 w-1 h-16 bg-[#1f2722] rounded-r" />
 
-                  <div className="space-y-1.5 text-xs">
-                    <div className="p-2.5 rounded-xl bg-white border border-[#155e3e]/30 shadow-2xs font-semibold text-[#00110a] flex items-center justify-between">
-                      <span className="truncate">Mod 1: Sentence Structure & Grammar</span>
-                      <span className="text-[10px] font-bold text-[#155e3e]">100%</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/70 border border-[#e1eae3] text-[#526359] flex items-center justify-between">
-                      <span className="truncate">Mod 2: Paragraph Development</span>
-                      <span className="text-[10px] font-bold text-[#155e3e]">Ready</span>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-white/70 border border-[#e1eae3] text-[#526359] flex items-center justify-between">
-                      <span className="truncate">Mod 3: Phonetics & Vowel Sound Charts</span>
-                      <span className="text-[10px] font-mono opacity-60">PDF</span>
-                    </div>
-                  </div>
+                {/* iPhone Screen Glass */}
+                <div className="relative rounded-[42px] bg-[#f7f2e6] overflow-hidden border border-black/30 shadow-inner flex flex-col text-left select-none">
+                  {/* iOS Status Bar & Dynamic Island */}
+                  <div className="relative pt-2.5 px-6 pb-1 flex items-center justify-between text-[11px] font-semibold text-[#1c2a22] z-30">
+                    <span className="font-medium tracking-tight">9:41</span>
 
-                  {/* Reward Ping Mockup */}
-                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-[11px] text-emerald-800">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      <Coins className="size-3.5 text-emerald-600" />
-                      <span>+125 SyllaPoints Earned</span>
+                    {/* Dynamic Island Pill */}
+                    <div className="absolute left-1/2 -translate-x-1/2 top-2 h-6 w-24 bg-black rounded-full flex items-center justify-between px-2.5 shadow-sm">
+                      <div className="size-2 rounded-full bg-[#1c221e] ring-1 ring-[#2c3630]/50" />
+                      <div className="size-2.5 rounded-full bg-[#0d1611] ring-1 ring-emerald-500/30" />
                     </div>
-                    <p className="mt-0.5 text-[10px] text-emerald-700 leading-snug">
-                      14 students viewed your lecture summary today.
-                    </p>
-                  </div>
-                </div>
 
-                {/* Center / Right: Boss AI Examination Assistant */}
-                <div className="md:col-span-8 rounded-2xl border border-[#e1eae3] bg-white p-4 space-y-3.5 shadow-2xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-[#f0f4f1]">
-                    <div className="flex items-center gap-2">
-                      <div className="size-8 rounded-xl bg-[#edf6f0] flex items-center justify-center text-[#155e3e]">
-                        <Bot className="size-4.5" />
+                    <div className="flex items-center gap-1.5 opacity-90">
+                      <svg className="w-3.5 h-3 fill-current" viewBox="0 0 16 12">
+                        <rect x="0" y="8" width="2.5" height="4" rx="0.5" />
+                        <rect x="4" y="5.5" width="2.5" height="6.5" rx="0.5" />
+                        <rect x="8" y="3" width="2.5" height="9" rx="0.5" />
+                        <rect x="12" y="0.5" width="2.5" height="11.5" rx="0.5" />
+                      </svg>
+                      <div className="w-5 h-2.5 rounded-sm border border-current p-0.5 flex items-center">
+                        <div className="w-3 h-full bg-current rounded-2xs" />
                       </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-[#00110a]">Boss AI Companion</h4>
-                        <p className="text-[10px] text-[#526359]">
-                          Grounded on your verified departmental notes
+                    </div>
+                  </div>
+
+                  {/* Syllaboss Mobile App Screen */}
+                  <div className="p-3.5 pt-2 space-y-2.5 font-sans">
+                    {/* Mobile App Header */}
+                    <div className="flex items-center justify-between pb-2 border-b border-[#e5ded0]">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src="/icon-512.png"
+                          alt="Syllaboss"
+                          className="size-7.5 rounded-lg object-contain shadow-2xs"
+                        />
+                        <span className="font-headline font-bold text-sm tracking-tight text-[#00110a]">
+                          Syllaboss
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100/90 border border-emerald-200 text-emerald-900 text-[11px] font-bold shadow-2xs">
+                        <Coins className="size-3 text-emerald-700" />
+                        <span>1,450 pts</span>
+                      </div>
+                    </div>
+
+                    {/* Active Course Card */}
+                    <div className="p-3 rounded-2xl bg-white border border-[#ded5c4] shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#155e3e]">
+                          Current Lecture
+                        </span>
+                        <span className="text-[10px] font-mono text-[#526359] bg-[#f7f2e6] px-1.5 py-0.5 rounded">
+                          GST 111
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-bold text-[#00110a] leading-tight">
+                        Sentence Structure, Concord & Morphology
+                      </h4>
+                      <div className="w-full bg-[#e8e1d3] h-1.5 rounded-full overflow-hidden">
+                        <div className="bg-[#155e3e] h-full w-[78%] rounded-full" />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-[#526359]">
+                        <span>Verified Syllabus</span>
+                        <span className="font-bold text-[#155e3e]">78% Done</span>
+                      </div>
+                    </div>
+
+                    {/* Boss AI Companion Card */}
+                    <div className="p-3 rounded-2xl bg-[#f0f7f3] border border-[#cbe4d4] space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <div className="size-5.5 rounded-lg bg-[#155e3e] text-white flex items-center justify-center">
+                            <Bot className="size-3.5" />
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-bold text-[#00110a] block leading-none">
+                              Boss AI Companion
+                            </span>
+                            <span className="text-[9px] text-[#155e3e] font-medium">Exam Analysis Mode</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white/90 border border-[#d6e9dc] text-[10.5px] text-[#2c3d33] leading-snug space-y-1">
+                        <p className="font-semibold text-[#00110a]">
+                          "What are the top repeated theory exam questions?"
+                        </p>
+                        <p className="text-[9.5px] text-[#44574c] leading-tight">
+                          • Differentiate topic sentence & supporting details (2019, 2021, 2023)
+                          <br />
+                          • Phonetic transcription of diphthongs vs monophthongs
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-[#155e3e] bg-[#edf6f0] px-2 py-0.5 rounded-md">
-                      Exam Prep Mode
-                    </span>
+
+                    {/* Earnings Micro-Card */}
+                    <div className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-800 text-white flex items-center justify-between shadow-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Coins className="size-3.5 text-amber-300" />
+                        <span className="text-[10px] font-bold">+125 SyllaPoints Earned Today</span>
+                      </div>
+                      <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded font-mono">
+                        Cashout
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="space-y-2 text-xs leading-relaxed">
-                    <div className="p-3 rounded-xl bg-[#f6faf7] border border-[#e1eae3] text-[#3f4d45]">
-                      <p className="font-semibold text-[#00110a] mb-1">
-                        Student Question:
-                      </p>
-                      "What are the 3 theory questions most frequently set on GST 111 past
-                      papers from 2018 to 2024?"
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-[#edf6f0]/70 border border-[#d6e3db] text-[#1e3427]">
-                      <p className="font-bold text-[#155e3e] flex items-center gap-1.5 mb-1.5">
-                        <Sparkles className="size-3.5" />
-                        Boss AI Exam Analysis:
-                      </p>
-                      <ul className="list-disc pl-4 space-y-1 text-[11px]">
-                        <li>
-                          <strong>Differentiate between topic sentence & supporting details</strong>{" "}
-                          (Appeared in 2019, 2021, and 2023 examinations).
-                        </li>
-                        <li>
-                          <strong>Phonetic transcription of diphthongs vs monophthongs</strong>{" "}
-                          with 5 contextual examples.
-                        </li>
-                        <li>
-                          <strong>Concord agreement rules</strong> when subjects are connected by
-                          correlative conjunctions.
-                        </li>
-                      </ul>
-                    </div>
+                  {/* iOS Home Indicator Bar */}
+                  <div className="pt-2 pb-2 bg-[#f7f2e6] flex justify-center">
+                    <div className="w-28 h-1 bg-black/40 rounded-full" />
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* University Logo Badges */}
-            <div className="mt-12 flex flex-col items-center">
-              <span className="text-xs font-semibold text-[#526359] uppercase tracking-wider mb-3">
-                Tailored for students across Nigeria's top institutions
-              </span>
-              <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
-                {UNIVERSITIES.map((uni) => (
-                  <span
-                    key={uni}
-                    className="px-3 py-1 rounded-full bg-white border border-[#d6e3db] text-xs font-bold text-[#1e3427] shadow-2xs"
-                  >
-                    {uni}
-                  </span>
-                ))}
               </div>
             </div>
           </div>
@@ -777,7 +763,7 @@ function HomePage() {
         {/* Bottom Banner */}
         <section className="bg-[#0d281e] text-white py-20 relative overflow-hidden">
           <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 flex flex-col items-center">
-            <SyllabossEmblem className="size-16 mb-5 text-emerald-400" />
+            <SyllabossEmblem className="size-16 mb-5 rounded-2xl shadow-lg" />
             <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">
               Ready to Study With Direction?
             </h2>
@@ -787,7 +773,6 @@ function HomePage() {
             </p>
             <div className="mt-9 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
               <InstallButton
-                showDropdown
                 size="lg"
                 className="w-full sm:w-auto rounded-full bg-[#cbe2d4] text-[#0d281e] hover:bg-white text-sm font-bold px-8 h-12.5 shadow-md"
               />

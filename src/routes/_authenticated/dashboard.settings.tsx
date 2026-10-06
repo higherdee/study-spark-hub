@@ -324,7 +324,7 @@ function SettingsPage() {
             </div>
             <p className="text-sm text-muted-foreground max-w-md">
               {profile?.sylla_plus
-                ? "You enjoy 1.3x reward earnings on all uploads and downloads, ad-free study, and unlimited Boss AI access."
+                ? "You enjoy 1.3x reward earnings on all uploads and downloads, priority study access, and unlimited Boss AI access."
                 : `Upgrade with Bachs payment to unlock +${POINTS_UPGRADE_BONUS} ${POINTS_NAME}, 1.3x points multiplier, and unlimited Boss AI.`}
             </p>
           </div>

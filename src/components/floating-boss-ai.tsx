@@ -77,13 +77,11 @@ export function FloatingBossAi() {
             isPeeking ? "opacity-90 hover:opacity-100" : "opacity-100"
           )}
         >
-          {/* Breathing Icon Bubble */}
+          {/* Icon Bubble */}
           <div className="relative flex items-center justify-center shrink-0">
             <div className="size-8 rounded-full bg-[#1b7a4e]/40 flex items-center justify-center border border-[#c6ebd9]/30">
               <Bot className="size-4.5 text-[#c6ebd9] group-hover:scale-110 transition-transform" />
             </div>
-            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-[#34d399] animate-ping" />
-            <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-[#34d399]" />
           </div>
 
           {/* Expanded Label & Status */}
