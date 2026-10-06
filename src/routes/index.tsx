@@ -17,6 +17,7 @@ import {
   X,
   Sparkles,
   Monitor,
+  Terminal,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -57,19 +58,20 @@ export const Route = createFileRoute("/")({
 });
 
 const DEVICES = [
-  { name: "iPhone", icon: Smartphone, desc: "iOS 16+ · Safari" },
-  { name: "Android", icon: Smartphone, desc: "Chrome · Samsung Internet" },
-  { name: "MacBook", icon: Laptop, desc: "macOS · Safari & Chrome" },
-  { name: "Windows PC", icon: Monitor, desc: "Windows 10/11 · Edge & Chrome" },
-  { name: "iPad & Tablet", icon: Tablet, desc: "iPadOS & Android Tablets" },
+  { name: "Android", icon: Smartphone, desc: "Direct .APK Download" },
+  { name: "Windows PC", icon: Monitor, desc: "Direct .EXE Setup Installer" },
+  { name: "iPhone & iPad", icon: Smartphone, desc: "Apple PWA · Add to Home Screen" },
+  { name: "MacBook", icon: Laptop, desc: "macOS · Desktop Window / Dock" },
+  { name: "Linux", icon: Terminal, desc: "Universal .AppImage Package" },
 ];
 
 const FAQ = [
   ["Is the Syllaboss app free?", "Yes. Downloading the app, searching verified materials, and studying is 100% free."],
-  ["Is Syllaboss on the Google Play Store or Apple App Store?", "No app store download is required. Syllaboss installs instantly as a lightweight, fast web app directly to your home screen or desktop without using up storage."],
+  ["Is Syllaboss on the Google Play Store or Apple App Store?", "No app store required! You can download the native .APK directly for Android, the .EXE installer for Windows, the .AppImage for Linux, or install it instantly via Safari on iPhone and iPad."],
+  ["How do I install the app on Android?", "Click 'Download for Android' to get Syllaboss.apk. Once downloaded, tap open in your notifications or Downloads folder to install!"],
+  ["How do I install on Windows?", "Click 'Download for Windows' to get Syllaboss-Setup.exe, run the installer, and launch Syllaboss from your Desktop or Start Menu."],
   ["How do I install the app on my iPhone or iPad?", "Open Syllaboss in Safari, tap the Share icon at the bottom, and select 'Add to Home Screen'. The Syllaboss icon will appear right with your other apps!"],
-  ["How do I install it on Android?", "Open Syllaboss in Chrome, tap the three dots (⋮) in the top right, and tap 'Install app' or 'Add to Home screen'."],
-  ["Can I install it on my MacBook or Windows laptop?", "Yes! Click the Install icon on the right side of the browser address bar in Chrome or Edge to add it to your Applications or Start Menu."],
+  ["Can I install it on my MacBook or Linux laptop?", "Yes! On Mac, click File -> Add to Dock in Safari or Install in Chrome. On Linux, download the universal Syllaboss.AppImage package."],
   ["How do SyllaPoints work?", `You get ${POINTS_REGISTRATION_BONUS} points on sign up, ${POINTS_INSTALL_APP_BONUS} points when you install the app, ${POINTS_PER_VERIFIED_UPLOAD} points per verified notes upload, and ${POINTS_PER_30_MIN_STUDY} points every 30 minutes you study. Points convert to Naira and can be withdrawn directly to your Nigerian bank!`],
 ];
 
@@ -115,9 +117,9 @@ function HomePage() {
 
           <div className="flex items-center gap-3">
             <InstallButton
+              showDropdown
               variant="default"
               size="sm"
-              label="Install App"
               className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] text-xs h-9 px-4 font-semibold shadow-xs"
             />
             {user ? (
@@ -139,7 +141,7 @@ function HomePage() {
           <div className="mx-auto max-w-4xl px-4 text-center sm:px-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#edf6f0] border border-[#dce5df] text-[#1b7a4e] text-xs font-semibold mb-6">
               <Sparkles className="size-3.5" />
-              <span>Available for iPhone, Android, Mac & Windows</span>
+              <span>Android (.APK) · Windows (.EXE) · Linux · Apple (PWA)</span>
             </div>
 
             <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-[#00110a] leading-[1.1]">
@@ -155,8 +157,8 @@ function HomePage() {
             {/* Primary Action: Big Legible Install CTA */}
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5">
               <InstallButton
+                showDropdown
                 size="lg"
-                label="Install Syllaboss App"
                 className="w-full sm:w-auto h-13 rounded-full bg-[#0d281e] hover:bg-[#00110a] text-white text-base font-bold px-8 shadow-md"
               />
               <Button
@@ -172,7 +174,7 @@ function HomePage() {
             </div>
 
             <p className="mt-4 text-xs text-[#5a6660]">
-              No app store download needed · Installs directly in seconds · Zero phone storage wasted
+              Direct downloads: Android (.APK) · Windows (.EXE) · Linux (.AppImage) · iPhone/iPad (PWA)
             </p>
 
             {/* Supported Devices Badges */}
@@ -252,51 +254,84 @@ function HomePage() {
               </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#00110a]">
-                  <Smartphone className="size-4 text-[#1b7a4e]" />
-                  <span>iPhone & iPad</span>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="size-4 text-[#1b7a4e]" />
+                      <span>Android (.APK)</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-[#1b7a4e] bg-[#edf6f0] px-1.5 py-0.5 rounded">.apk</span>
+                  </div>
+                  <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
+                    <li>Tap <strong>Download for Android</strong></li>
+                    <li>Syllaboss.apk downloads directly</li>
+                    <li>Tap open file to install to your phone</li>
+                    <li>Launch instantly from your app drawer!</li>
+                  </ol>
                 </div>
-                <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-2">
-                  <li>Open this site in Safari</li>
-                  <li>Tap the Share icon at the bottom</li>
-                  <li>Tap <strong>"Add to Home Screen"</strong></li>
-                  <li>The app icon is ready to use!</li>
-                </ol>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#00110a]">
-                  <Smartphone className="size-4 text-[#1b7a4e]" />
-                  <span>Android Phones & Tablets</span>
+              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="size-4 text-[#1b7a4e]" />
+                      <span>Windows (.EXE)</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">.exe</span>
+                  </div>
+                  <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
+                    <li>Tap <strong>Download for Windows</strong></li>
+                    <li>Syllaboss-Setup.exe downloads directly</li>
+                    <li>Run the setup installer on your PC</li>
+                    <li>Open anytime from your Start Menu!</li>
+                  </ol>
                 </div>
-                <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-2">
-                  <li>Open this site in Chrome</li>
-                  <li>Tap the three dots (⋮) menu icon</li>
-                  <li>Tap <strong>"Install app"</strong></li>
-                  <li>Confirm to add it to your home screen!</li>
-                </ol>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#00110a]">
-                  <Laptop className="size-4 text-[#1b7a4e]" />
-                  <span>MacBook & Windows PC</span>
+              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="size-4 text-[#1b7a4e]" />
+                      <span>iPhone & iPad</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Apple PWA</span>
+                  </div>
+                  <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
+                    <li>Open this page in <strong>Safari</strong></li>
+                    <li>Tap the <strong>Share</strong> icon at the bottom</li>
+                    <li>Tap <strong>"Add to Home Screen"</strong></li>
+                    <li>The app icon is ready on your screen!</li>
+                  </ol>
                 </div>
-                <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-2">
-                  <li>Open this site in Chrome or Edge</li>
-                  <li>Click the Install icon in the address bar</li>
-                  <li>Click <strong>"Install"</strong></li>
-                  <li>Access directly from your dock or Start menu!</li>
-                </ol>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
+                    <div className="flex items-center gap-2">
+                      <Laptop className="size-4 text-[#1b7a4e]" />
+                      <span>Mac & Linux</span>
+                    </div>
+                    <span className="font-mono text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">Desktop</span>
+                  </div>
+                  <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
+                    <li><strong>Mac</strong>: In Safari tap File &rarr; Add to Dock</li>
+                    <li><strong>Chrome</strong>: Click Install in address bar</li>
+                    <li><strong>Linux</strong>: Download .AppImage binary</li>
+                    <li>Access as a standalone desktop window!</li>
+                  </ol>
+                </div>
               </div>
             </div>
 
             <div className="mt-8 text-center">
               <InstallButton
+                showDropdown
                 size="lg"
-                label="Install Syllaboss App Now"
                 className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] px-8 h-12 font-bold shadow-md"
               />
             </div>
@@ -387,8 +422,8 @@ function HomePage() {
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center gap-3">
               <InstallButton
+                showDropdown
                 size="lg"
-                label="Install Syllaboss App"
                 className="w-full sm:w-auto rounded-full bg-[#cee9da] text-[#0d281e] hover:bg-white text-sm font-bold px-8 h-12 shadow-md"
               />
               <Button

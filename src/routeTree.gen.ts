@@ -17,6 +17,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiDownloadRouteImport } from './routes/api/download'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated/admin.broadcast'
@@ -70,6 +71,11 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDownloadRoute = ApiDownloadRouteImport.update({
+  id: '/api/download',
+  path: '/api/download',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUploadRoute = ApiUploadRouteImport.update({
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/download': typeof ApiDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
@@ -190,6 +197,7 @@ export interface FileRoutesByTo {
   '/materials': typeof MaterialsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/download': typeof ApiDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/download': typeof ApiDownloadRoute
   '/api/upload': typeof ApiUploadRoute
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/_authenticated/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
@@ -242,6 +251,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/onboarding'
     | '/api/chat'
+    | '/api/download'
     | '/api/upload'
     | '/admin/broadcast'
     | '/admin/complaints'
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/materials'
     | '/onboarding'
     | '/api/chat'
+    | '/api/download'
     | '/api/upload'
     | '/admin/broadcast'
     | '/admin/complaints'
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/onboarding'
     | '/api/chat'
+    | '/api/download'
     | '/api/upload'
     | '/_authenticated/admin/broadcast'
     | '/_authenticated/admin/complaints'
@@ -312,6 +324,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   MaterialsRoute: typeof MaterialsRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiDownloadRoute: typeof ApiDownloadRoute
   ApiUploadRoute: typeof ApiUploadRoute
 }
 
@@ -371,6 +384,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat'
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/download': {
+      id: '/api/download'
+      path: '/api/download'
+      fullPath: '/api/download'
+      preLoaderRoute: typeof ApiDownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/upload': {
@@ -552,6 +572,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   MaterialsRoute: MaterialsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiDownloadRoute: ApiDownloadRoute,
   ApiUploadRoute: ApiUploadRoute,
 }
 export const routeTree = rootRouteImport
