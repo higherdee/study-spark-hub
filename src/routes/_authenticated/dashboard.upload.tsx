@@ -12,12 +12,12 @@ import {
   Eye,
   Download,
   Lock,
-  VerifiedUser,
   ArrowRight,
   FileText,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 import { PageHeader } from "@/components/app-shell";
 import { SearchSelect, type SearchOption } from "@/components/search-select";

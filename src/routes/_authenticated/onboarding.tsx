@@ -114,7 +114,7 @@ function Onboarding() {
     if (step === 0) {
       if (fullName.trim().length < 2 || !institution || !course) { toast.error("Add your name, school and course"); return; }
       if (phone && !/^\+?[0-9 ]{10,15}$/.test(phone)) { toast.error("Enter a valid phone number"); return; }
-      save({ full_name: fullName.trim(), phone: phone.trim() || null, institution: institution.label, course: course.label, department: department.trim() || null, level }, 1);
+      save({ full_name: fullName.trim(), phone: phone.trim() || null, institution: institution.label, course: course.label, department: course.label, level }, 1);
     } else if (step === 1) {
       if (!referral) { toast.error("Pick one option"); return; }
       save({ referral_source: referral }, 2);
@@ -155,15 +155,12 @@ function Onboarding() {
                 <div className="space-y-2"><Label htmlFor="ph">Phone (optional)</Label><Input id="ph" value={phone} placeholder="0803 000 0000" onChange={(e) => setPhone(e.target.value)} /></div>
               </div>
               <SearchSelect id="inst" label="Institution" placeholder="Search your school" options={institutionOptions} value={institution} onChange={setInstitution} />
-              <SearchSelect id="course" label="Course" placeholder="Search your course" options={courseOptions} value={course} onChange={setCourse} />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2"><Label htmlFor="dep">Department / faculty</Label><Input id="dep" value={department} onChange={(e) => setDepartment(e.target.value)} /></div>
-                <div className="space-y-2">
-                  <Label htmlFor="lvl">Level</Label>
-                  <select id="lvl" value={level} onChange={(e) => setLevel(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-                    {LEVELS.map((l) => <option key={l}>{l}</option>)}
-                  </select>
-                </div>
+              <SearchSelect id="course" label="Course of study" placeholder="Search your course" options={courseOptions} value={course} onChange={setCourse} />
+              <div className="space-y-2">
+                <Label htmlFor="lvl">Level</Label>
+                <select id="lvl" value={level} onChange={(e) => setLevel(e.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {LEVELS.map((l) => <option key={l}>{l}</option>)}
+                </select>
               </div>
             </div>
           )}

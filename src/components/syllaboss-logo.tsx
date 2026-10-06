@@ -55,11 +55,13 @@ export function SyllabossLogo({
   compact = false,
   href = "/",
   asDiv = false,
+  showPlusBadge = false,
   className,
 }: {
   compact?: boolean;
   href?: string;
   asDiv?: boolean;
+  showPlusBadge?: boolean;
   className?: string;
 }) {
   const content = (
@@ -70,9 +72,11 @@ export function SyllabossLogo({
           <span className="font-headline tracking-tight text-xl sm:text-2xl font-semibold text-primary">
             Syllaboss
           </span>
-          <span className="px-1.5 py-0.5 rounded bg-[#f3e8c9] text-[#71540f] text-[10px] tracking-wider uppercase font-bold shadow-[0_1px_2px_rgba(113,84,15,0.08)]">
-            SyllaPlus
-          </span>
+          {showPlusBadge && (
+            <span className="px-1.5 py-0.5 rounded bg-[#f3e8c9] text-[#71540f] text-[10px] tracking-wider uppercase font-bold shadow-[0_1px_2px_rgba(113,84,15,0.08)]">
+              SyllaPlus
+            </span>
+          )}
         </div>
       )}
     </>

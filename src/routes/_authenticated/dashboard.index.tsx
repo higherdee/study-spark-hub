@@ -160,53 +160,52 @@ function HomePage() {
         </div>
       </section>
 
-      {/* 2. Executive Scholar Announcement / Monetization Hero Banner (Ivy Emerald Gradient) */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0d281e] via-[#123629] to-[#1a4435] text-white p-6 sm:p-8 shadow-lg border border-[#446557]/30">
-        <div className="absolute -right-16 -bottom-16 w-80 h-80 rounded-full bg-[#cee9da]/10 blur-3xl pointer-events-none" />
+      {/* 2. Upload & Rewards Hero Card (Clean Light Aesthetic) */}
+      <section className="relative overflow-hidden rounded-2xl bg-white text-[#00110a] p-6 sm:p-8 shadow-xs border border-[#dce5df]">
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex flex-col gap-2.5 max-w-2xl">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-[#cee9da] text-[11px] uppercase tracking-widest font-semibold backdrop-blur-md">
-                Endowment Repository
+              <span className="px-2.5 py-0.5 rounded-full bg-[#edf6f0] text-[#1b7a4e] text-[11px] uppercase tracking-wider font-semibold">
+                Course Materials
               </span>
-              <span className="text-[#b3ccbf] text-xs font-medium">Department of Engineering & Sciences</span>
+              <span className="text-[#5a6660] text-xs font-medium">Earn SyllaPoints per verified upload</span>
             </div>
-            <h2 className="font-display text-2xl sm:text-3xl text-white font-normal leading-snug">
-              Share your lecture notes & past questions.
+            <h2 className="font-display text-2xl sm:text-3xl text-[#00110a] font-medium leading-snug">
+              Share lecture notes & past questions.
             </h2>
-            <p className="text-sm text-[#749183] leading-relaxed">
-              Help students in your department prepare for semester exams. Upload verified course materials to earn cashable SyllaPoints every time peers read, study, or download your archives.
+            <p className="text-sm text-[#424844] leading-relaxed">
+              Help course mates prepare for exams. Upload verified materials to earn cashable SyllaPoints every time peers read, study, or download your files.
             </p>
             <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Button asChild className="rounded-full bg-[#cee9da] text-[#092017] hover:bg-white text-xs font-bold px-6 h-10 shadow-sm">
+              <Button asChild className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] text-xs font-semibold px-6 h-10 shadow-xs">
                 <Link to="/dashboard/upload">
                   Upload notes now
                   <ArrowRight className="size-3.5 ml-1.5" />
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="rounded-full bg-white/10 hover:bg-white/15 text-white border-white/20 text-xs font-semibold px-5 h-10 backdrop-blur-md">
+              <Button asChild variant="outline" className="rounded-full bg-white hover:bg-[#edf6f0] text-[#151d1a] border-[#dce5df] text-xs font-semibold px-5 h-10">
                 <Link to="/dashboard/assistant">
-                  <Sparkles className="size-3.5 mr-1.5 text-[#f3e8c9]" />
+                  <Sparkles className="size-3.5 mr-1.5 text-[#1b7a4e]" />
                   Study with Boss AI
                 </Link>
               </Button>
             </div>
           </div>
 
-          {/* Archival Preview Mosaic Badges */}
-          <div className="hidden xl:flex flex-col gap-2 min-w-[280px] bg-white/5 backdrop-blur-xl p-4 rounded-xl border border-white/10 shadow-inner">
-            <span className="text-[11px] text-[#cee9da] tracking-wider uppercase font-semibold">Faculty Archival Pulse</span>
-            <div className="flex items-center justify-between py-1.5 border-b border-white/10 text-xs">
-              <span className="text-white/80 font-medium">GET 206 Thermodynamics</span>
-              <span className="text-[#cee9da] font-mono font-semibold">Verified +25pt</span>
+          {/* Quick Rewards Preview */}
+          <div className="hidden xl:flex flex-col gap-2 min-w-[280px] bg-[#edf6f0]/60 p-4 rounded-xl border border-[#dce5df]">
+            <span className="text-[11px] text-[#446557] tracking-wider uppercase font-semibold">Recent Rewards</span>
+            <div className="flex items-center justify-between py-1.5 border-b border-[#dce5df] text-xs">
+              <span className="text-[#151d1a] font-medium">Lecture Notes Upload</span>
+              <span className="text-[#1b7a4e] font-mono font-semibold">+25 pts</span>
             </div>
-            <div className="flex items-center justify-between py-1.5 border-b border-white/10 text-xs">
-              <span className="text-white/80 font-medium">MTH 101 Calculus I</span>
-              <span className="text-[#cee9da] font-mono font-semibold">Verified +25pt</span>
+            <div className="flex items-center justify-between py-1.5 border-b border-[#dce5df] text-xs">
+              <span className="text-[#151d1a] font-medium">Peer Download</span>
+              <span className="text-[#1b7a4e] font-mono font-semibold">+5 pts</span>
             </div>
             <div className="flex items-center justify-between py-1.5 text-xs">
-              <span className="text-white/80 font-medium">MECH 201 Navier-Stokes</span>
-              <span className="text-[#b3ccbf] font-mono font-semibold">Processing OCR</span>
+              <span className="text-[#151d1a] font-medium">30 Min Study Focus</span>
+              <span className="text-[#1b7a4e] font-mono font-semibold">+5 pts</span>
             </div>
           </div>
         </div>

@@ -18,6 +18,7 @@ import { SyllabossLogo } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { NotificationsDrawer } from "@/components/notifications-drawer";
 import { SideNavSheet } from "@/components/side-nav-sheet";
+import { FloatingBossAi } from "@/components/floating-boss-ai";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useIsAdmin } from "@/lib/profile";
 import { useStudyTimer } from "@/hooks/use-study-timer";
@@ -96,7 +97,7 @@ export function AppShell({
             </button>
 
             <Link to="/dashboard" className="hidden sm:inline-flex items-center">
-              <SyllabossLogo asDiv />
+              <SyllabossLogo asDiv showPlusBadge={isPlus} />
             </Link>
           </div>
 
@@ -195,12 +196,12 @@ export function AppShell({
         onClose={() => setShowSideNav(false)}
       />
 
-      {/* Bottom Floating Navigation Dock (Cleaned: No logout, Home at center) */}
+      {/* Bottom Floating Navigation Dock (Significantly enlarged, native mobile app feel) */}
       <aside
         aria-label="Navigation dock"
-        className="fixed bottom-5 inset-x-0 z-50 mx-auto w-fit max-w-[96vw] pointer-events-none"
+        className="fixed bottom-3 sm:bottom-6 inset-x-0 z-50 mx-auto w-fit max-w-[98vw] pointer-events-none px-2"
       >
-        <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 rounded-full p-1.5 backdrop-blur-3xl bg-card/90 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.8),inset_0_-1px_1px_rgba(0,0,0,0.05)] transition-all duration-300">
+        <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-3xl bg-card/95 border border-border/90 shadow-[0_20px_60px_rgba(0,0,0,0.16),inset_0_1px_2px_rgba(255,255,255,0.85)] transition-all duration-300">
           {nav.map((item) => {
             const active = item.exact
               ? path === item.to
@@ -213,34 +214,42 @@ export function AppShell({
                   key={item.to}
                   to={item.to}
                   className={cn(
-                    "relative flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all duration-300 active:scale-95 select-none shadow-md",
+                    "relative flex items-center gap-1.5 sm:gap-2 rounded-full px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold transition-all duration-300 active:scale-95 select-none shadow-md",
                     active
-                      ? "bg-primary text-primary-foreground ring-2 ring-primary/40 shadow-primary/25 scale-[1.06]"
-                      : "bg-gradient-to-r from-primary/95 to-primary text-primary-foreground hover:scale-105 hover:shadow-primary/30"
+                      ? "bg-primary text-primary-foreground ring-2 ring-primary/40 shadow-primary/30 scale-[1.05]"
+                      : "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:scale-105 hover:shadow-primary/30"
                   )}
                 >
-                  <item.icon className="size-4 shrink-0" />
+                  <item.icon className="size-5 sm:size-5.5 shrink-0" />
                   <span>{item.label}</span>
                 </Link>
               );
             }
+
+            const isBossAi = item.label === "Boss AI";
 
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "relative flex items-center gap-1.5 rounded-full px-2.5 sm:px-3.5 py-2 text-xs font-medium transition-all duration-200 active:scale-90 select-none",
+                  "relative flex items-center gap-1.5 rounded-full px-2.5 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all duration-200 active:scale-90 select-none",
                   active
                     ? "bg-secondary text-foreground shadow-xs font-semibold scale-[1.02]"
-                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
+                  isBossAi && !active && "text-[#1b7a4e] font-semibold hover:bg-emerald-500/10"
                 )}
               >
-                <item.icon className="size-4 shrink-0 transition-transform duration-200" />
+                <div className="relative flex items-center justify-center">
+                  <item.icon className={cn("size-4.5 sm:size-5 shrink-0 transition-transform duration-200", isBossAi && "text-[#1b7a4e]")} />
+                  {isBossAi && (
+                    <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-[#1b7a4e] animate-pulse" />
+                  )}
+                </div>
                 <span
                   className={cn(
-                    "transition-all duration-200",
-                    active ? "inline" : "hidden sm:inline"
+                    "transition-all duration-200 font-medium",
+                    active ? "inline" : "hidden md:inline"
                   )}
                 >
                   {item.label}
@@ -251,22 +260,8 @@ export function AppShell({
         </div>
       </aside>
 
-      {/* Floating & Breathing Boss AI Bubble at Bottom Right */}
-      <Link
-        to="/dashboard/assistant"
-        aria-label="Open Boss AI study assistant"
-        title="Chat with Boss AI"
-        className="fixed bottom-6 right-5 z-40 flex items-center gap-2 rounded-full bg-[#0d281e] text-white px-3.5 py-2.5 shadow-2xl border border-[#446557]/50 animate-bot-float-breathe hover:scale-110 active:scale-95 transition-all group backdrop-blur-md"
-      >
-        <div className="relative flex items-center justify-center">
-          <Bot className="size-5 text-[#c6ebd9] group-hover:scale-110 transition-transform" />
-          <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#1b7a4e] animate-ping" />
-          <span className="absolute -top-1 -right-1 size-2 rounded-full bg-[#1b7a4e]" />
-        </div>
-        <span className="text-xs font-semibold tracking-wide text-white pr-0.5 font-sans">
-          Boss AI
-        </span>
-      </Link>
+      {/* Floating & Movable Boss AI Widget (upper side with auto-hide peek tab) */}
+      <FloatingBossAi />
     </div>
   );
 }
