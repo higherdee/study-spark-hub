@@ -38,12 +38,42 @@ export function InstallButton({
   const [installing, setInstalling] = useState(false);
   const navigate = useNavigate();
 
+  function triggerDownload(target: "windows" | "android" | "linux") {
+    if (target === "windows") {
+      toast.success("Downloading Syllaboss for Windows (.EXE)...", {
+        description: "Run the setup installer once downloaded.",
+      });
+      const link = document.createElement("a");
+      link.href = "/downloads/syllaboss-setup.exe";
+      link.download = "Syllaboss-Setup.exe";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (target === "android") {
+      toast.info("Downloading Syllaboss APK...", {
+        description: "Open the downloaded APK to install on your Android device.",
+      });
+      const link = document.createElement("a");
+      link.href = "/api/download?platform=android";
+      link.download = "Syllaboss.apk";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+
   async function handleMainClick() {
     if (installed) {
       toast.success("Syllaboss is installed! Opening dashboard...", {
         icon: <Check className="size-4 text-emerald-500" />,
       });
       navigate({ to: "/dashboard" });
+      return;
+    }
+
+    // On Windows, if user clicks install, trigger the real setup executable download directly
+    if (platform === "windows") {
+      triggerDownload("windows");
       return;
     }
 
@@ -70,10 +100,10 @@ export function InstallButton({
     label ||
     (installed
       ? "Open Syllaboss App"
+      : platform === "windows"
+      ? "Download for Windows (.EXE)"
       : platform === "android"
       ? "Install for Android"
-      : platform === "windows"
-      ? "Install for Windows PC"
       : platform === "ios"
       ? "Install on iPhone / iPad"
       : platform === "mac"
@@ -135,10 +165,10 @@ export function InstallButton({
                   <span>Available on all devices</span>
                 </div>
                 <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">
-                  Install Syllaboss App
+                  Get Syllaboss App
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  1-tap installation directly to your home screen or desktop.
+                  Choose direct download or instant device installation.
                 </p>
               </div>
               <Button
@@ -156,6 +186,21 @@ export function InstallButton({
             <div className="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-secondary mt-4">
               <button
                 type="button"
+                onClick={() => setActiveTab("windows")}
+                className={cn(
+                  "py-2 px-2 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all",
+                  activeTab === "windows"
+                    ? "bg-card text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Monitor className="size-4 text-blue-600" />
+                <span>Windows</span>
+                <span className="text-[9px] font-mono opacity-70">.EXE</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab("android")}
                 className={cn(
                   "py-2 px-2 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all",
@@ -166,6 +211,7 @@ export function InstallButton({
               >
                 <Smartphone className="size-4 text-emerald-600" />
                 <span>Android</span>
+                <span className="text-[9px] font-mono opacity-70">App</span>
               </button>
 
               <button
@@ -180,20 +226,7 @@ export function InstallButton({
               >
                 <Smartphone className="size-4 text-amber-600" />
                 <span>iPhone / iPad</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("windows")}
-                className={cn(
-                  "py-2 px-2 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all",
-                  activeTab === "windows"
-                    ? "bg-card text-foreground shadow-xs font-bold"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Monitor className="size-4 text-blue-600" />
-                <span>Windows PC</span>
+                <span className="text-[9px] font-mono opacity-70">iOS</span>
               </button>
 
               <button
@@ -208,16 +241,46 @@ export function InstallButton({
               >
                 <Laptop className="size-4 text-stone-600" />
                 <span>MacBook</span>
+                <span className="text-[9px] font-mono opacity-70">macOS</span>
               </button>
             </div>
 
             {/* Platform Details Card */}
             <div className="mt-4 p-4.5 rounded-2xl bg-secondary/50 border border-border/70 text-xs text-muted-foreground leading-relaxed">
+              {activeTab === "windows" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-foreground text-sm">Windows Setup Installer</h4>
+                      <p className="text-[11px] text-muted-foreground">Standalone 64-bit installer for Windows 10 & 11.</p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-[10px]">
+                      .EXE
+                    </span>
+                  </div>
+
+                  <Button
+                    className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 text-sm shadow-sm"
+                    onClick={() => {
+                      triggerDownload("windows");
+                      setModalOpen(false);
+                    }}
+                  >
+                    <Download className="size-4.5" />
+                    Download Syllaboss-Setup.exe (Windows 10/11)
+                  </Button>
+
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Downloads <code className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono">Syllaboss-Setup.exe</code>. Run the file once to create Desktop and Start Menu shortcuts and launch Syllaboss in a dedicated window.
+                  </p>
+                </div>
+              )}
+
               {activeTab === "android" && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-bold text-foreground text-sm">Android Installation</h4>
+                      <h4 className="font-bold text-foreground text-sm">Android App</h4>
                       <p className="text-[11px] text-muted-foreground">For Samsung, Pixel, Xiaomi, Tecno, Infinix, etc.</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-medium text-[10px]">
@@ -240,73 +303,35 @@ export function InstallButton({
                       }}
                     >
                       <Smartphone className="size-4.5" />
-                      Tap to Install on Your Phone Now
+                      1-Tap Install on This Device
                     </Button>
                   ) : null}
 
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 rounded-xl font-bold gap-2 text-xs"
+                    onClick={() => {
+                      triggerDownload("android");
+                      setModalOpen(false);
+                    }}
+                  >
+                    <Download className="size-4" />
+                    Download Syllaboss.apk Directly
+                  </Button>
+
                   <div className="p-3 rounded-xl bg-card border border-border/80 space-y-2">
                     <p className="text-[11px] font-semibold text-foreground">
-                      How to install in Chrome or Android Browser:
+                      How to install directly via Chrome:
                     </p>
                     <ol className="list-decimal pl-4 text-[11px] space-y-1.5 text-foreground/80">
                       <li>
-                        Tap the <strong>three dots (⋮)</strong> menu at the top-right of your browser.
+                        Tap the <strong>three dots (⋮)</strong> menu in Chrome.
                       </li>
                       <li>
                         Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
                       </li>
                       <li>
-                        Tap <strong>Install</strong>. Syllaboss appears directly in your app drawer and home screen!
-                      </li>
-                    </ol>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "windows" && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-foreground text-sm">Windows PC & Laptop</h4>
-                      <p className="text-[11px] text-muted-foreground">Standalone desktop app for Windows 10 & 11.</p>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium text-[10px]">
-                      Desktop App
-                    </span>
-                  </div>
-
-                  {canPrompt ? (
-                    <Button
-                      className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold gap-2 text-sm shadow-sm"
-                      onClick={async () => {
-                        setInstalling(true);
-                        const ok = await install();
-                        setInstalling(false);
-                        if (ok) {
-                          setModalOpen(false);
-                          toast.success("Syllaboss added to your Windows apps!");
-                          navigate({ to: "/dashboard" });
-                        }
-                      }}
-                    >
-                      <Monitor className="size-4.5" />
-                      Click to Install on Windows Now
-                    </Button>
-                  ) : null}
-
-                  <div className="p-3 rounded-xl bg-card border border-border/80 space-y-2">
-                    <p className="text-[11px] font-semibold text-foreground">
-                      How to install on Windows in Edge or Chrome:
-                    </p>
-                    <ol className="list-decimal pl-4 text-[11px] space-y-1.5 text-foreground/80">
-                      <li>
-                        Look at the right side of the address bar at the top for the <strong>Install App icon</strong> (computer with down arrow) or click <strong>⋯ / ⋮ menu</strong>.
-                      </li>
-                      <li>
-                        Click <strong>"Install Syllaboss"</strong>.
-                      </li>
-                      <li>
-                        Click <strong>Install</strong>. Syllaboss is added to your Desktop and Start Menu as a full desktop app!
+                        Tap <strong>Install</strong>. Syllaboss appears directly in your app drawer!
                       </li>
                     </ol>
                   </div>

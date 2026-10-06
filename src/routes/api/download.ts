@@ -12,6 +12,7 @@ export const Route = createFileRoute("/api/download")({
           if (remoteUrl) {
             return Response.redirect(remoteUrl, 302);
           }
+          // Redirect to Android install flow to prevent downloading an empty/404 HTML file
           return Response.redirect("/?install=android", 302);
         }
 
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/api/download")({
           if (remoteUrl) {
             return Response.redirect(remoteUrl, 302);
           }
-          return Response.redirect("/?install=windows", 302);
+          return Response.redirect("/downloads/syllaboss-setup.exe", 302);
         }
 
         if (platform === "linux" || platform === "appimage") {
@@ -28,10 +29,10 @@ export const Route = createFileRoute("/api/download")({
           if (remoteUrl) {
             return Response.redirect(remoteUrl, 302);
           }
-          return Response.redirect("/?install=linux", 302);
+          return Response.redirect("/downloads/syllaboss.AppImage", 302);
         }
 
-        return Response.redirect("/?install=app", 302);
+        return Response.redirect("/downloads/syllaboss-setup.exe", 302);
       },
     },
   },

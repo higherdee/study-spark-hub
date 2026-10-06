@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Syllaboss Universal Desktop Launcher for Linux
+APP_URL="https://study-spark-hub.vercel.app"
+
+echo "Launching Syllaboss..."
+
+for browser in google-chrome google-chrome-stable chromium chromium-browser brave-browser microsoft-edge-stable firefox; do
+  if command -v "$browser" >/dev/null 2>&1; then
+    if [ "$browser" != "firefox" ]; then
+      exec "$browser" --app="$APP_URL" --window-size=1280,820 "$@"
+    else
+      exec "$browser" --new-window "$APP_URL" "$@"
+    fi
+  fi
+done
+
+if command -v xdg-open >/dev/null 2>&1; then
+  exec xdg-open "$APP_URL"
+fi
