@@ -2,12 +2,10 @@ import {
   Download,
   Share,
   X,
-  Smartphone,
-  Laptop,
-  Monitor,
   ChevronDown,
   Check,
   Sparkles,
+  Laptop,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -16,6 +14,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useInstall, type DevicePlatform } from "@/hooks/use-install";
 import { cn } from "@/lib/utils";
+import {
+  WindowsOutlineIcon,
+  AndroidOutlineIcon,
+  AppleOutlineIcon,
+} from "@/components/device-icons";
 
 export function InstallButton({
   variant = "default",
@@ -54,7 +57,6 @@ export function InstallButton({
       toast.success("Downloading Syllaboss APK...", {
         description: "Tap the downloaded Syllaboss.apk file to install on your phone.",
       });
-      // Direct anchor download
       const link = document.createElement("a");
       link.href = "/downloads/syllaboss.apk";
       link.download = "Syllaboss.apk";
@@ -136,10 +138,12 @@ export function InstallButton({
         >
           {installed ? (
             <Check className="size-4.5 shrink-0 text-emerald-400" />
-          ) : platform === "android" || platform === "ios" ? (
-            <Smartphone className="size-4.5 shrink-0" />
-          ) : platform === "windows" || platform === "mac" ? (
-            <Laptop className="size-4.5 shrink-0" />
+          ) : platform === "android" ? (
+            <AndroidOutlineIcon className="size-4.5 shrink-0" />
+          ) : platform === "windows" ? (
+            <WindowsOutlineIcon className="size-4.5 shrink-0" />
+          ) : platform === "ios" ? (
+            <AppleOutlineIcon className="size-4.5 shrink-0" />
           ) : (
             <Download className="size-4.5 shrink-0" />
           )}
@@ -208,7 +212,7 @@ export function InstallButton({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Smartphone className="size-4 text-emerald-600" />
+                <AndroidOutlineIcon className="size-4 text-emerald-600" />
                 <span>Android</span>
                 <span className="text-[9px] font-mono opacity-70">.APK</span>
               </button>
@@ -223,7 +227,7 @@ export function InstallButton({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Monitor className="size-4 text-blue-600" />
+                <WindowsOutlineIcon className="size-4 text-blue-600" />
                 <span>Windows</span>
                 <span className="text-[9px] font-mono opacity-70">.EXE</span>
               </button>
@@ -238,7 +242,7 @@ export function InstallButton({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Smartphone className="size-4 text-amber-600" />
+                <AppleOutlineIcon className="size-4 text-amber-600" />
                 <span>iPhone / iPad</span>
                 <span className="text-[9px] font-mono opacity-70">iOS</span>
               </button>
@@ -265,7 +269,10 @@ export function InstallButton({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-bold text-foreground text-sm">Android App (.APK)</h4>
+                      <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                        <AndroidOutlineIcon className="size-4 text-emerald-600" />
+                        Android App (.APK)
+                      </h4>
                       <p className="text-[11px] text-muted-foreground">For Samsung, Xiaomi, Tecno, Infinix, Pixel, Redmi, etc.</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
@@ -293,10 +300,10 @@ export function InstallButton({
                         Tap <strong>Download Syllaboss.apk</strong> above.
                       </li>
                       <li>
-                        Open the downloaded file from your browser downloads or notification bar.
+                        If upgrading, remove any previously installed version first.
                       </li>
                       <li>
-                        Tap <strong>Install</strong> (allow install from this source if prompted).
+                        Open the downloaded file and tap <strong>Install</strong>.
                       </li>
                       <li>
                         Syllaboss will appear directly in your app drawer and home screen!
@@ -310,7 +317,10 @@ export function InstallButton({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-bold text-foreground text-sm">Windows Setup Installer</h4>
+                      <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                        <WindowsOutlineIcon className="size-4 text-blue-600" />
+                        Windows Setup Installer
+                      </h4>
                       <p className="text-[11px] text-muted-foreground">Standalone 64-bit installer for Windows 10 & 11.</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-[10px]">
@@ -339,7 +349,10 @@ export function InstallButton({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-bold text-foreground text-sm">Apple iPhone & iPad</h4>
+                      <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                        <AppleOutlineIcon className="size-4 text-amber-600" />
+                        Apple iPhone & iPad
+                      </h4>
                       <p className="text-[11px] text-muted-foreground">Add directly to your iOS Home Screen via Safari.</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-medium text-[10px]">
@@ -370,7 +383,10 @@ export function InstallButton({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-bold text-foreground text-sm">Apple MacBook & iMac</h4>
+                      <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                        <Laptop className="size-4 text-stone-600" />
+                        Apple MacBook & iMac
+                      </h4>
                       <p className="text-[11px] text-muted-foreground">Instant macOS desktop app.</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-medium text-[10px]">

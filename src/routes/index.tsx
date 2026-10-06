@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -8,16 +7,18 @@ import {
   Download,
   FileSearch,
   Laptop,
-  Menu,
   ShieldCheck,
   Smartphone,
-  Tablet,
-  Upload,
   Wallet,
-  X,
   Sparkles,
-  Monitor,
-  Terminal,
+  BookOpen,
+  GraduationCap,
+  Award,
+  ChevronRight,
+  Search,
+  FileText,
+  Star,
+  Zap,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -26,11 +27,12 @@ import { AppWelcomeGate } from "@/components/app-welcome-gate";
 import { SyllabossLogo, SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { turso } from "@/integrations/turso/client";
 import {
-  courseOptions,
-  formatNaira,
-  institutionOptions,
+  WindowsOutlineIcon,
+  AndroidOutlineIcon,
+  AppleOutlineIcon,
+} from "@/components/device-icons";
+import {
   POINTS_NAME,
   POINTS_PER_NAIRA,
   MINIMUM_WITHDRAWAL_NAIRA,
@@ -40,16 +42,24 @@ import {
   POINTS_PER_30_MIN_STUDY,
   POINTS_REGISTRATION_BONUS,
   POINTS_INSTALL_APP_BONUS,
-  pointsToNaira,
+  formatNaira,
 } from "@/lib/constants";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Syllaboss App — The Pocket Study & Syllabus App for Students" },
-      { name: "description", content: "Download the Syllaboss app to your iPhone, Android, MacBook, or Windows. Verified past questions, notes, and AI study companion." },
-      { property: "og:title", content: "Syllaboss App — Study with direction" },
-      { property: "og:description", content: "Install Syllaboss on iPhone, Android, Mac, or Windows. Verified course notes & Boss AI." },
+      { title: "Syllaboss — The Smart Campus Study & Syllabus App" },
+      {
+        name: "description",
+        content:
+          "Download Syllaboss for Android (.APK), Windows (.EXE), or Apple iOS. Verified past questions, course summaries, Boss AI, and cashable student rewards.",
+      },
+      { property: "og:title", content: "Syllaboss — Study With Direction" },
+      {
+        property: "og:description",
+        content:
+          "Vetted Nigerian university lecture notes, past exams, and AI study companion. Available on all devices.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -57,29 +67,58 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
-const DEVICES = [
-  { name: "Android", icon: Smartphone, desc: "Fast 1-Tap App Install" },
-  { name: "Windows PC", icon: Monitor, desc: "Standalone Desktop App" },
-  { name: "iPhone & iPad", icon: Smartphone, desc: "Home Screen App · Safari" },
-  { name: "MacBook", icon: Laptop, desc: "macOS Dock & Desktop App" },
-  { name: "Linux", icon: Terminal, desc: "Desktop Browser App" },
+const UNIVERSITIES = [
+  "UNILAG",
+  "OAU",
+  "UNIBEN",
+  "UI",
+  "LASU",
+  "FUTA",
+  "UNN",
+  "ABU",
+  "UNILORIN",
+  "COVENANT",
 ];
 
 const FAQ = [
-  ["Is the Syllaboss app free?", "Yes. Installing the app, searching verified materials, and studying is 100% free."],
-  ["Is Syllaboss on the Google Play Store or Apple App Store?", "No app store required! You can install Syllaboss directly on Android, Windows PC, MacBook, or iPhone in 1 tap."],
-  ["How do I install the app on Android?", "Tap 'Install for Android' and confirm Install. Syllaboss will be added directly to your app drawer and home screen instantly!"],
-  ["How do I install on Windows?", "Tap 'Install for Windows PC' and confirm Install in Edge or Chrome. Syllaboss runs in its own window as a desktop app."],
-  ["How do I install the app on my iPhone or iPad?", "Open Syllaboss in Safari, tap the Share icon at the bottom, and select 'Add to Home Screen'. The Syllaboss icon will appear right with your other apps!"],
-  ["Can I install it on my MacBook or Linux laptop?", "Yes! On Mac, click File -> Add to Dock in Safari or Install in Chrome. On Linux, click Install in Chrome, Brave, or Edge."],
-  ["How do SyllaPoints work?", `You get ${POINTS_REGISTRATION_BONUS} points on sign up, ${POINTS_INSTALL_APP_BONUS} points when you install the app, ${POINTS_PER_VERIFIED_UPLOAD} points per verified notes upload, and ${POINTS_PER_30_MIN_STUDY} points every 30 minutes you study. Points convert to Naira and can be withdrawn directly to your Nigerian bank!`],
+  [
+    "Is Syllaboss completely free to download and use?",
+    "Yes, 100% free! Downloading the app, browsing course materials, studying past questions, and chatting with Boss AI costs nothing.",
+  ],
+  [
+    "What do I do if Android says 'App not installed'?",
+    "This usually happens when you already have an older shortcut or test version of Syllaboss on your phone. Simply delete or uninstall the old Syllaboss app icon from your home screen first, then tap 'Download for Android (.APK)' and install the new version cleanly.",
+  ],
+  [
+    "How does the direct Android APK download work?",
+    "Tapping 'Download for Android (.APK)' directly downloads the lightweight (~900 KB) Syllaboss package. Tap the downloaded file from your browser notification bar and confirm 'Install'. It will appear straight in your app drawer.",
+  ],
+  [
+    "How do I install Syllaboss on my Windows laptop or desktop?",
+    "Click 'Download for Windows (.EXE)'. Run the setup file (Syllaboss-Setup.exe) once to generate Desktop and Start Menu shortcuts and launch Syllaboss in a dedicated standalone window.",
+  ],
+  [
+    "How do I use Syllaboss on my iPhone or iPad?",
+    "Apple devices don't require any app store download! Simply open Syllaboss in Safari, tap the Share icon at the bottom, and select 'Add to Home Screen'. Syllaboss launches fullscreen just like any native iOS app.",
+  ],
+  [
+    "How do SyllaPoints work and how do I withdraw to my bank?",
+    `You earn +${POINTS_REGISTRATION_BONUS} points on sign-up, +${POINTS_INSTALL_APP_BONUS} points when you install the app, +${POINTS_PER_VERIFIED_UPLOAD} points per verified lecture upload, plus royalties whenever peers view or download your notes. Once your balance reaches ${formatNaira(MINIMUM_WITHDRAWAL_NAIRA)}, you can request an instant withdrawal directly to your Nigerian commercial bank account (OPay, Kuda, GTBank, Access, etc.).`,
+  ],
 ];
 
 function HomePage() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [uploadsEstimate, setUploadsEstimate] = useState(6);
+  const [readsEstimate, setReadsEstimate] = useState(150);
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Calculate estimated earnings in Naira
+  const estimatedPoints =
+    uploadsEstimate * POINTS_PER_VERIFIED_UPLOAD +
+    readsEstimate * (POINTS_PER_VIEW + POINTS_PER_DOWNLOAD);
+  const estimatedNaira = Math.round(estimatedPoints / POINTS_PER_NAIRA);
 
   // Detect standalone installed mode
   useEffect(() => {
@@ -96,26 +135,54 @@ function HomePage() {
     }
   }, [user, navigate]);
 
-  // When launched inside the installed app without a session: show pure native App Welcome screen!
   if (isStandalone && !user) {
     return <AppWelcomeGate />;
   }
 
+  function handleTriggerDownload(target: "android" | "windows") {
+    if (target === "android") {
+      const link = document.createElement("a");
+      link.href = "/downloads/syllaboss.apk";
+      link.download = "Syllaboss.apk";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => {
+        window.location.assign("/downloads/syllaboss.apk");
+      }, 100);
+    } else {
+      const link = document.createElement("a");
+      link.href = "/downloads/syllaboss-setup.exe";
+      link.download = "Syllaboss-Setup.exe";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f3fbf6] text-[#00110a] font-sans">
+    <div className="min-h-screen overflow-x-hidden bg-[#f6faf7] text-[#00110a] font-sans selection:bg-[#1b7a4e]/20 selection:text-[#0b3321]">
       {/* Top Header */}
-      <header className="sticky top-0 z-40 border-b border-[#dce5df] bg-white/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-[#e1eae3] bg-[#f6faf7]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <SyllabossLogo />
 
-          <nav className="hidden items-center gap-6 text-xs font-semibold text-[#5a6660] md:flex">
-            <a href="#devices" className="hover:text-[#00110a] transition-colors">Supported Devices</a>
-            <a href="#features" className="hover:text-[#00110a] transition-colors">Features</a>
-            <a href="#earn" className="hover:text-[#00110a] transition-colors">Rewards</a>
-            <a href="#faq" className="hover:text-[#00110a] transition-colors">FAQ</a>
+          <nav className="hidden items-center gap-7 text-xs font-semibold text-[#526359] md:flex">
+            <a href="#downloads" className="hover:text-[#00110a] transition-colors">
+              Download App
+            </a>
+            <a href="#features" className="hover:text-[#00110a] transition-colors">
+              Study Features
+            </a>
+            <a href="#calculator" className="hover:text-[#00110a] transition-colors">
+              Earn SyllaPoints
+            </a>
+            <a href="#faq" className="hover:text-[#00110a] transition-colors">
+              FAQ
+            </a>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <InstallButton
               showDropdown
               variant="default"
@@ -123,12 +190,24 @@ function HomePage() {
               className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] text-xs h-9 px-4 font-semibold shadow-xs"
             />
             {user ? (
-              <Button asChild size="sm" variant="outline" className="rounded-full text-xs h-9 border-[#dce5df]">
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="rounded-full text-xs h-9 border-[#d6e3db] bg-white hover:bg-[#edf6f0]"
+              >
                 <Link to="/dashboard">Dashboard</Link>
               </Button>
             ) : (
-              <Button asChild size="sm" variant="ghost" className="rounded-full text-xs h-9 text-[#446557] hover:text-[#00110a]">
-                <Link to="/auth" search={{ mode: "signin" }}>Log In</Link>
+              <Button
+                asChild
+                size="sm"
+                variant="ghost"
+                className="rounded-full text-xs h-9 text-[#375a4a] hover:text-[#00110a] hover:bg-[#e7f2eb]"
+              >
+                <Link to="/auth" search={{ mode: "signin" }}>
+                  Log In
+                </Link>
               </Button>
             )}
           </div>
@@ -136,254 +215,531 @@ function HomePage() {
       </header>
 
       <main>
-        {/* Hero Section: Pure App Showcase */}
-        <section className="relative pt-16 pb-20 sm:pt-24 sm:pb-28 border-b border-[#dce5df]">
-          <div className="mx-auto max-w-4xl px-4 text-center sm:px-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#edf6f0] border border-[#dce5df] text-[#1b7a4e] text-xs font-semibold mb-6">
-              <Sparkles className="size-3.5" />
-              <span>Available on all devices · Android, iOS, Windows & Mac</span>
+        {/* Hero Section */}
+        <section className="relative pt-14 pb-20 sm:pt-20 sm:pb-28 border-b border-[#e1eae3] overflow-hidden">
+          {/* Subtle Ambient Glows */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-gradient-to-b from-[#1b7a4e]/10 to-transparent blur-3xl opacity-70"
+          />
+
+          <div className="relative mx-auto max-w-5xl px-4 text-center sm:px-6">
+            {/* Pill Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#d6e3db] shadow-2xs text-[#155e3e] text-xs font-semibold mb-6 animate-fade-in">
+              <span className="relative flex size-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
+              </span>
+              <span>Available for Android (.APK), Windows PC (.EXE) & iOS</span>
             </div>
 
-            <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-[#00110a] leading-[1.1]">
+            {/* Main Headline */}
+            <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-[#00110a] leading-[1.08]">
               The Pocket Study App <br />
-              <span className="font-normal text-[#1b7a4e] italic">Built for Your Campus.</span>
+              <span className="font-normal text-[#155e3e] italic">
+                Built for Your Campus.
+              </span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-[#424844] leading-relaxed">
-              Find verified course lecture notes, past questions, and summaries tailored to your university.
-              Study with Boss AI and earn SyllaPoints every time peers read your uploads.
+            {/* Sub-headline */}
+            <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-[#3f4d45] leading-relaxed">
+              Find verified lecture summaries, past questions, and marking guides tailored
+              to your university syllabus. Prepare effortlessly with <strong>Boss AI</strong>,
+              and earn cashable <strong>SyllaPoints</strong> every time classmates study your uploads.
             </p>
 
-            {/* Primary Action: Big Legible Install CTA */}
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+            {/* Primary Action Buttons */}
+            <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5">
               <InstallButton
                 showDropdown
                 size="lg"
-                className="w-full sm:w-auto h-13 rounded-full bg-[#0d281e] hover:bg-[#00110a] text-white text-base font-bold px-8 shadow-md"
+                className="w-full sm:w-auto h-12.5 rounded-full bg-[#0d281e] hover:bg-[#00110a] text-white text-sm sm:text-base font-bold px-8 shadow-sm transition-all hover:scale-[1.01]"
               />
               <Button
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto h-13 rounded-full border-[#dce5df] bg-white hover:bg-[#edf6f0] text-[#00110a] text-sm font-semibold px-6 shadow-2xs"
+                className="w-full sm:w-auto h-12.5 rounded-full border-[#d2e0d7] bg-white hover:bg-[#edf6f0] text-[#00110a] text-sm font-semibold px-6 shadow-2xs"
               >
                 <Link to="/auth" search={{ mode: "signin" }}>
-                  Already have the app? Sign In <ArrowRight className="size-4 ml-1.5" />
+                  Sign In to Web <ArrowRight className="size-4 ml-1.5" />
                 </Link>
               </Button>
             </div>
 
-            <p className="mt-4 text-xs text-[#5a6660]">
-              Available on all devices · Instant 1-tap installation · No app store needed
-            </p>
+            {/* Micro Device Badges */}
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-[#526359]">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <AndroidOutlineIcon className="size-4 text-[#1b7a4e]" />
+                Android (.APK)
+              </span>
+              <span className="text-[#c1d3c7]">•</span>
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <WindowsOutlineIcon className="size-4 text-[#1f66a8]" />
+                Windows (.EXE)
+              </span>
+              <span className="text-[#c1d3c7]">•</span>
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <AppleOutlineIcon className="size-4 text-[#202924]" />
+                Apple iOS (Safari)
+              </span>
+              <span className="text-[#c1d3c7]">•</span>
+              <span className="font-medium text-[#155e3e]">100% Free · Zero Ads</span>
+            </div>
 
-            {/* Supported Devices Badges */}
-            <div id="devices" className="mt-14 pt-8 border-t border-[#dce5df]/80">
-              <p className="text-xs font-semibold text-[#5a6660] uppercase tracking-wider mb-4">
-                Compatible with all student devices
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                {DEVICES.map((dev) => (
-                  <div
-                    key={dev.name}
-                    className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white border border-[#dce5df] shadow-xs"
-                  >
-                    <dev.icon className="size-4 text-[#1b7a4e]" />
-                    <div className="flex flex-col text-left">
-                      <span className="text-xs font-bold text-[#00110a]">{dev.name}</span>
-                      <span className="text-[10px] text-[#5a6660] font-mono">{dev.desc}</span>
+            {/* Realistic Student Workstation Preview Mockup */}
+            <div className="mt-14 mx-auto max-w-4xl rounded-3xl border border-[#d2e0d7] bg-white p-3 sm:p-5 shadow-xl text-left relative overflow-hidden">
+              {/* Window Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#eaf0eb]">
+                <div className="flex items-center gap-2">
+                  <div className="size-3 rounded-full bg-rose-400" />
+                  <div className="size-3 rounded-full bg-amber-400" />
+                  <div className="size-3 rounded-full bg-emerald-400" />
+                  <span className="ml-2 text-xs font-semibold text-[#526359] font-mono">
+                    syllaboss.app · GST 111 Master Workspace
+                  </span>
+                </div>
+                <div className="hidden sm:flex items-center gap-2 text-[11px] font-semibold text-[#155e3e] bg-[#edf6f0] px-2.5 py-0.5 rounded-full">
+                  <CheckCircle2 className="size-3 text-[#155e3e]" />
+                  <span>Verified Department Syllabus · 2026</span>
+                </div>
+              </div>
+
+              {/* Workspace Content Grid */}
+              <div className="grid gap-4 pt-4 md:grid-cols-12 items-start">
+                {/* Left Panel: Course Outline */}
+                <div className="md:col-span-4 rounded-2xl bg-[#f6faf7] border border-[#e1eae3] p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#00110a]">Course Chapters</span>
+                    <span className="text-[10px] font-bold text-[#155e3e] bg-white px-2 py-0.5 rounded-full border border-[#d6e3db]">
+                      8 Modules
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs">
+                    <div className="p-2.5 rounded-xl bg-white border border-[#155e3e]/30 shadow-2xs font-semibold text-[#00110a] flex items-center justify-between">
+                      <span className="truncate">Mod 1: Sentence Structure & Grammar</span>
+                      <span className="text-[10px] font-bold text-[#155e3e]">100%</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/70 border border-[#e1eae3] text-[#526359] flex items-center justify-between">
+                      <span className="truncate">Mod 2: Paragraph Development</span>
+                      <span className="text-[10px] font-bold text-[#155e3e]">Ready</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/70 border border-[#e1eae3] text-[#526359] flex items-center justify-between">
+                      <span className="truncate">Mod 3: Phonetics & Vowel Sound Charts</span>
+                      <span className="text-[10px] font-mono opacity-60">PDF</span>
                     </div>
                   </div>
+
+                  {/* Reward Ping Mockup */}
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-[11px] text-emerald-800">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Coins className="size-3.5 text-emerald-600" />
+                      <span>+125 SyllaPoints Earned</span>
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-emerald-700 leading-snug">
+                      14 students viewed your lecture summary today.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Center / Right: Boss AI Examination Assistant */}
+                <div className="md:col-span-8 rounded-2xl border border-[#e1eae3] bg-white p-4 space-y-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#f0f4f1]">
+                    <div className="flex items-center gap-2">
+                      <div className="size-8 rounded-xl bg-[#edf6f0] flex items-center justify-center text-[#155e3e]">
+                        <Bot className="size-4.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-[#00110a]">Boss AI Companion</h4>
+                        <p className="text-[10px] text-[#526359]">
+                          Grounded on your verified departmental notes
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-[#155e3e] bg-[#edf6f0] px-2 py-0.5 rounded-md">
+                      Exam Prep Mode
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs leading-relaxed">
+                    <div className="p-3 rounded-xl bg-[#f6faf7] border border-[#e1eae3] text-[#3f4d45]">
+                      <p className="font-semibold text-[#00110a] mb-1">
+                        Student Question:
+                      </p>
+                      "What are the 3 theory questions most frequently set on GST 111 past
+                      papers from 2018 to 2024?"
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-[#edf6f0]/70 border border-[#d6e3db] text-[#1e3427]">
+                      <p className="font-bold text-[#155e3e] flex items-center gap-1.5 mb-1.5">
+                        <Sparkles className="size-3.5" />
+                        Boss AI Exam Analysis:
+                      </p>
+                      <ul className="list-disc pl-4 space-y-1 text-[11px]">
+                        <li>
+                          <strong>Differentiate between topic sentence & supporting details</strong>{" "}
+                          (Appeared in 2019, 2021, and 2023 examinations).
+                        </li>
+                        <li>
+                          <strong>Phonetic transcription of diphthongs vs monophthongs</strong>{" "}
+                          with 5 contextual examples.
+                        </li>
+                        <li>
+                          <strong>Concord agreement rules</strong> when subjects are connected by
+                          correlative conjunctions.
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* University Logo Badges */}
+            <div className="mt-12 flex flex-col items-center">
+              <span className="text-xs font-semibold text-[#526359] uppercase tracking-wider mb-3">
+                Tailored for students across Nigeria's top institutions
+              </span>
+              <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
+                {UNIVERSITIES.map((uni) => (
+                  <span
+                    key={uni}
+                    className="px-3 py-1 rounded-full bg-white border border-[#d6e3db] text-xs font-bold text-[#1e3427] shadow-2xs"
+                  >
+                    {uni}
+                  </span>
                 ))}
               </div>
             </div>
           </div>
         </section>
 
-        {/* Feature Grid */}
-        <section id="features" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="text-xs font-semibold text-[#1b7a4e] uppercase tracking-wider">
-              Everything in One App
-            </span>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl font-bold text-[#00110a]">
-              Made for How Students Actually Study
-            </h2>
-            <p className="mt-3 text-sm text-[#424844]">
-              Everything you need to prepare for semester examinations, without the stress.
-            </p>
-          </div>
+        {/* Dedicated Multi-Device Download Hub */}
+        <section id="downloads" className="py-20 sm:py-24 bg-white border-b border-[#e1eae3]">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-14">
+              <span className="text-xs font-semibold text-[#155e3e] uppercase tracking-wider">
+                Install On Every Device
+              </span>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl font-bold text-[#00110a]">
+                Direct Downloads. Zero App Store Restrictions.
+              </h2>
+              <p className="mt-3 text-sm text-[#3f4d45]">
+                Download standalone installers directly to your PC and Android phone, or run
+                fullscreen on iOS via Safari.
+              </p>
+            </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              [FileSearch, "Verified Past Questions & Notes", "Access vetted lecture notes, past questions, and marking guides for your specific course and institution."],
-              [Bot, "Boss AI Study Companion", "Chat with documents, summarize lengthy chapters, generate flashcards, and test yourself with mock theory and objective questions."],
-              [Coins, "Cashable SyllaPoints", "Earn points when you install the app, study for 30 minutes, or upload lecture notes. Cash out directly to your Nigerian bank."],
-              [Smartphone, "Native Home Screen App", "Tap the app icon right from your home screen for instant access. Works offline and loads at lightning speed."],
-              [ShieldCheck, "Automated Verification", "Uploaded documents are checked for authenticity so you only study with relevant, verified materials."],
-              [Wallet, "Direct Bank Payouts", "Withdraw your earnings directly to your bank account anytime you reach the minimum threshold."],
-            ].map(([Icon, title, desc]) => {
-              const I = Icon as typeof FileSearch;
-              return (
-                <div key={String(title)} className="p-6 rounded-2xl bg-white border border-[#dce5df] shadow-xs flex flex-col justify-between">
-                  <div>
-                    <div className="size-10 rounded-xl bg-[#edf6f0] flex items-center justify-center text-[#1b7a4e] mb-4">
-                      <I className="size-5" />
+            {/* 3-Column Hero Device Cards */}
+            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+              {/* Card 1: Android (.APK) */}
+              <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#155e3e] transition-all">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="size-12 rounded-2xl bg-[#edf6f0] border border-[#d6e3db] flex items-center justify-center text-[#155e3e]">
+                      <AndroidOutlineIcon className="size-6 text-[#155e3e]" />
                     </div>
-                    <h3 className="font-display text-lg font-bold text-[#00110a]">{String(title)}</h3>
-                    <p className="mt-2 text-xs text-[#5a6660] leading-relaxed">{String(desc)}</p>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                      Direct .APK
+                    </span>
                   </div>
+
+                  <h3 className="font-display text-xl font-bold text-[#00110a]">
+                    Android Phone & Tablet
+                  </h3>
+                  <p className="text-xs text-[#526359] mt-1">
+                    Samsung, Tecno, Infinix, Xiaomi, Redmi, Pixel, Oppo, Vivo.
+                  </p>
+
+                  <ul className="mt-5 space-y-2 text-xs text-[#3f4d45]">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
+                      <span>Lightweight ~900 KB standalone package</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
+                      <span>Instant 1-tap download & install</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
+                      <span>Works seamlessly offline for study</span>
+                    </li>
+                  </ul>
                 </div>
-              );
-            })}
+
+                <div className="mt-6 pt-4 border-t border-[#e1eae3] space-y-2">
+                  <Button
+                    className="w-full h-11 rounded-2xl bg-[#155e3e] hover:bg-[#0b3321] text-white font-bold gap-2 text-sm shadow-xs"
+                    onClick={() => handleTriggerDownload("android")}
+                  >
+                    <Download className="size-4.5" />
+                    Download Syllaboss.apk
+                  </Button>
+                  <p className="text-[10px] text-center text-[#526359]">
+                    Tip: If updating, remove any older shortcut before installing.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2: Windows (.EXE) */}
+              <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#1f66a8] transition-all">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="size-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#1f66a8]">
+                      <WindowsOutlineIcon className="size-6 text-[#1f66a8]" />
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold uppercase tracking-wider">
+                      .EXE Setup
+                    </span>
+                  </div>
+
+                  <h3 className="font-display text-xl font-bold text-[#00110a]">
+                    Windows 10 & 11 PC
+                  </h3>
+                  <p className="text-xs text-[#526359] mt-1">
+                    Standalone 64-bit desktop application for laptops & PCs.
+                  </p>
+
+                  <ul className="mt-5 space-y-2 text-xs text-[#3f4d45]">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#1f66a8] shrink-0" />
+                      <span>Generates Desktop & Start Menu shortcuts</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#1f66a8] shrink-0" />
+                      <span>Runs in a dedicated distraction-free window</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#1f66a8] shrink-0" />
+                      <span>Ultra-lightweight setup executable (~8.7 KB)</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-[#e1eae3] space-y-2">
+                  <Button
+                    className="w-full h-11 rounded-2xl bg-[#1f66a8] hover:bg-[#154673] text-white font-bold gap-2 text-sm shadow-xs"
+                    onClick={() => handleTriggerDownload("windows")}
+                  >
+                    <Download className="size-4.5" />
+                    Download Syllaboss-Setup.exe
+                  </Button>
+                  <p className="text-[10px] text-center text-[#526359]">
+                    Compatible with Windows 10 and Windows 11.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3: Apple iOS */}
+              <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#00110a] transition-all">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="size-12 rounded-2xl bg-[#edf1ee] border border-[#d6e0d8] flex items-center justify-center text-[#00110a]">
+                      <AppleOutlineIcon className="size-6 text-[#00110a]" />
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-neutral-200 text-neutral-800 text-[10px] font-bold uppercase tracking-wider">
+                      Safari PWA
+                    </span>
+                  </div>
+
+                  <h3 className="font-display text-xl font-bold text-[#00110a]">
+                    iPhone & iPad (iOS)
+                  </h3>
+                  <p className="text-xs text-[#526359] mt-1">
+                    Direct Safari Home Screen install. Zero Apple App Store needed.
+                  </p>
+
+                  <ul className="mt-5 space-y-2 text-xs text-[#3f4d45]">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#00110a] shrink-0" />
+                      <span>Opens in Safari & tap Share button</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#00110a] shrink-0" />
+                      <span>Select "Add to Home Screen"</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#00110a] shrink-0" />
+                      <span>Launches fullscreen with home icon</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-[#e1eae3] space-y-2">
+                  <InstallButton
+                    variant="outline"
+                    className="w-full h-11 rounded-2xl border-[#00110a] text-[#00110a] hover:bg-[#edf6f0] font-bold text-sm"
+                    label="View iOS Install Guide"
+                    showDropdown={false}
+                  />
+                  <p className="text-[10px] text-center text-[#526359]">
+                    Works on all iPhones and iPads running iOS 14+.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* How to Install Section */}
-        <section className="bg-white border-y border-[#dce5df] py-16 sm:py-20">
+        {/* Feature Grid: The 3 Pillars */}
+        <section id="features" className="py-20 sm:py-24 border-b border-[#e1eae3]">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-14">
+              <span className="text-xs font-semibold text-[#155e3e] uppercase tracking-wider">
+                Why Students Excel With Syllaboss
+              </span>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl font-bold text-[#00110a]">
+                Everything You Need to Pass Your Semester
+              </h2>
+              <p className="mt-3 text-sm text-[#3f4d45]">
+                No more frantic searches across WhatsApp groups the night before an examination.
+              </p>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                [
+                  FileSearch,
+                  "Verified Course Notes & Past Questions",
+                  "Vetted lecture notes, solved past examination questions, and marking schemes organized cleanly by university, department, and course code.",
+                ],
+                [
+                  Bot,
+                  "Boss AI Examination Companion",
+                  "Chat directly with lengthy PDF slides, generate chapter summaries, quiz yourself with active recall cards, and solve calculation steps.",
+                ],
+                [
+                  Coins,
+                  "Cashable Student SyllaPoints",
+                  "Earn points on sign up, reading notes, and every time classmates study materials you upload. Cash out straight to your Nigerian bank account.",
+                ],
+                [
+                  ShieldCheck,
+                  "Automated Quality Verification",
+                  "Every uploaded document is automatically audited against your course curriculum to guarantee clear text, correct chapters, and zero spam.",
+                ],
+                [
+                  Wallet,
+                  "Instant Direct Bank Transfers",
+                  `Withdraw your earned royalties anytime your balance hits ${formatNaira(MINIMUM_WITHDRAWAL_NAIRA)}. Instant payouts to Kuda, OPay, GTB, Zenith, and all Nigerian banks.`,
+                ],
+                [
+                  GraduationCap,
+                  "Campus Syllabus Alignment",
+                  "Track topic-by-topic syllabus coverage before examination week so you know exactly what topics have been taught and what will be tested.",
+                ],
+              ].map(([Icon, title, desc]) => {
+                const I = Icon as typeof FileSearch;
+                return (
+                  <div
+                    key={String(title)}
+                    className="p-6 rounded-3xl bg-white border border-[#d2e0d7] shadow-2xs hover:border-[#155e3e] transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="size-11 rounded-2xl bg-[#edf6f0] flex items-center justify-center text-[#155e3e] mb-4">
+                        <I className="size-5.5" />
+                      </div>
+                      <h3 className="font-display text-lg font-bold text-[#00110a]">
+                        {String(title)}
+                      </h3>
+                      <p className="mt-2 text-xs text-[#526359] leading-relaxed">
+                        {String(desc)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Interactive Earnings Simulator */}
+        <section id="calculator" className="py-20 sm:py-24 bg-white border-b border-[#e1eae3]">
           <div className="mx-auto max-w-5xl px-4 sm:px-6">
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <span className="text-xs font-semibold text-[#1b7a4e] uppercase tracking-wider">
-                Simple Installation
-              </span>
-              <h2 className="mt-2 font-display text-3xl font-bold text-[#00110a]">
-                How to Download Syllaboss to Your Device
-              </h2>
-              <p className="mt-2 text-xs text-[#5a6660]">
-                No App Store or Google Play Store needed. Install directly in 2 taps.
-              </p>
-            </div>
+            <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
+              <div className="lg:col-span-6 space-y-4">
+                <span className="text-xs font-semibold text-[#155e3e] uppercase tracking-wider">
+                  The Student Earning Economy
+                </span>
+                <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#00110a] leading-tight">
+                  Get Paid for Helping Coursemates Learn
+                </h2>
+                <p className="text-sm text-[#3f4d45] leading-relaxed">
+                  Turn your tidy lecture summaries and past exam solutions into passive income.
+                  Every verified upload pays an instant base bonus, plus recurring royalties each time
+                  a student reads or downloads it.
+                </p>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col justify-between gap-3">
-                <div>
-                  <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
-                    <div className="flex items-center gap-2">
-                      <Smartphone className="size-4 text-[#1b7a4e]" />
-                      <span>Android (.APK)</span>
-                    </div>
-                    <span className="text-[10px] text-[#1b7a4e] bg-[#edf6f0] px-1.5 py-0.5 rounded font-medium">Direct APK</span>
+                <div className="pt-2">
+                  <InstallButton
+                    size="default"
+                    label="Install App to Start Earning"
+                    className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a]"
+                  />
+                </div>
+              </div>
+
+              {/* Interactive Calculator Card */}
+              <div className="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] shadow-xs space-y-6">
+                <div className="flex items-center justify-between pb-3 border-b border-[#e1eae3]">
+                  <h3 className="font-display text-base font-bold text-[#00110a]">
+                    Projected Monthly Royalty
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                    Instant Bank Transfer
+                  </span>
+                </div>
+
+                {/* Slider 1: Uploads */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-[#3f4d45]">Course Summaries Uploaded</span>
+                    <span className="font-mono text-[#155e3e]">{uploadsEstimate} materials</span>
                   </div>
-                  <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li>Tap <strong>Download for Android (.APK)</strong></li>
-                    <li>Open the downloaded <strong>Syllaboss.apk</strong></li>
-                    <li>Tap <strong>Install</strong> to add to your app drawer</li>
-                    <li>Launch and study anytime on your phone!</li>
-                  </ol>
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={uploadsEstimate}
+                    onChange={(e) => setUploadsEstimate(parseInt(e.target.value, 10))}
+                    className="w-full accent-[#155e3e] cursor-pointer"
+                  />
                 </div>
-              </div>
 
-              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col justify-between gap-3">
-                <div>
-                  <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
-                    <div className="flex items-center gap-2">
-                      <Monitor className="size-4 text-[#1b7a4e]" />
-                      <span>Windows PC</span>
-                    </div>
-                    <span className="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-medium">.EXE Installer</span>
+                {/* Slider 2: Monthly Reads */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-[#3f4d45]">Estimated Monthly Student Reads</span>
+                    <span className="font-mono text-[#155e3e]">{readsEstimate} reads</span>
                   </div>
-                  <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li>Tap <strong>Download for Windows (.EXE)</strong></li>
-                    <li>Run <strong>Syllaboss-Setup.exe</strong></li>
-                    <li>Creates Desktop & Start Menu shortcuts</li>
-                    <li>Runs in its own standalone window!</li>
-                  </ol>
+                  <input
+                    type="range"
+                    min="20"
+                    max="1000"
+                    step="10"
+                    value={readsEstimate}
+                    onChange={(e) => setReadsEstimate(parseInt(e.target.value, 10))}
+                    className="w-full accent-[#155e3e] cursor-pointer"
+                  />
                 </div>
-              </div>
 
-              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col justify-between gap-3">
-                <div>
-                  <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
-                    <div className="flex items-center gap-2">
-                      <Smartphone className="size-4 text-[#1b7a4e]" />
-                      <span>iPhone & iPad</span>
+                {/* Result Display */}
+                <div className="p-4 rounded-2xl bg-white border border-[#d6e3db] flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#526359]">
+                      Estimated Payout
+                    </span>
+                    <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#155e3e]">
+                      {formatNaira(estimatedNaira)}
                     </div>
-                    <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium">Apple iOS</span>
                   </div>
-                  <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li>Open this page in <strong>Safari</strong></li>
-                    <li>Tap the <strong>Share</strong> icon at the bottom</li>
-                    <li>Tap <strong>"Add to Home Screen"</strong></li>
-                    <li>The app icon is ready on your screen!</li>
-                  </ol>
-                </div>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] flex flex-col justify-between gap-3">
-                <div>
-                  <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
-                    <div className="flex items-center gap-2">
-                      <Laptop className="size-4 text-[#1b7a4e]" />
-                      <span>Mac & Linux</span>
-                    </div>
-                    <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-medium">Desktop</span>
+                  <div className="text-right">
+                    <span className="text-[10px] text-[#526359] block">Total Points</span>
+                    <span className="font-mono font-bold text-xs text-[#00110a]">
+                      +{estimatedPoints.toLocaleString()} {POINTS_NAME}
+                    </span>
                   </div>
-                  <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li><strong>Mac</strong>: In Safari click File &rarr; Add to Dock</li>
-                    <li><strong>Chrome</strong>: Click Install in address bar</li>
-                    <li><strong>Linux</strong>: Install via Chrome, Edge or Brave</li>
-                    <li>Runs as a standalone desktop application!</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 text-center">
-              <InstallButton
-                showDropdown
-                size="lg"
-                className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] px-8 h-12 font-bold shadow-md"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Rewards Section */}
-        <section id="earn" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-            <div>
-              <span className="text-xs font-semibold text-[#1b7a4e] uppercase tracking-wider">
-                Earn As You Study
-              </span>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl font-bold text-[#00110a] leading-tight">
-                Get Rewarded for Helping Your Peers Learn
-              </h2>
-              <p className="mt-4 text-sm text-[#424844] leading-relaxed">
-                Upload clear lecture notes, summaries, or past questions. Every verified upload earns you instant SyllaPoints, plus royalties whenever course mates view or download your material.
-              </p>
-              <div className="mt-6 flex items-center gap-3">
-                <InstallButton
-                  size="default"
-                  label="Install App to Start"
-                  className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a]"
-                />
-              </div>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-white border border-[#dce5df] shadow-xs">
-              <h3 className="font-display text-base font-bold text-[#00110a] mb-4">
-                SyllaPoints Earning Rates
-              </h3>
-              <div className="divide-y divide-[#edf6f0] text-xs">
-                <div className="py-2.5 flex justify-between items-center">
-                  <span className="text-[#5a6660]">Install App Bonus</span>
-                  <span className="font-mono font-bold text-[#1b7a4e]">+{POINTS_INSTALL_APP_BONUS} pts</span>
-                </div>
-                <div className="py-2.5 flex justify-between items-center">
-                  <span className="text-[#5a6660]">Account Sign-Up Bonus</span>
-                  <span className="font-mono font-bold text-[#1b7a4e]">+{POINTS_REGISTRATION_BONUS} pts</span>
-                </div>
-                <div className="py-2.5 flex justify-between items-center">
-                  <span className="text-[#5a6660]">Verified Notes Upload</span>
-                  <span className="font-mono font-bold text-[#1b7a4e]">+{POINTS_PER_VERIFIED_UPLOAD} pts</span>
-                </div>
-                <div className="py-2.5 flex justify-between items-center">
-                  <span className="text-[#5a6660]">Study Session (every 30m)</span>
-                  <span className="font-mono font-bold text-[#1b7a4e]">+{POINTS_PER_30_MIN_STUDY} pts</span>
-                </div>
-                <div className="py-2.5 flex justify-between items-center">
-                  <span className="text-[#5a6660]">Peer Material Download</span>
-                  <span className="font-mono font-bold text-[#1b7a4e]">+{POINTS_PER_DOWNLOAD} pts</span>
                 </div>
               </div>
             </div>
@@ -391,19 +747,27 @@ function HomePage() {
         </section>
 
         {/* FAQ Section */}
-        <section id="faq" className="bg-white border-t border-[#dce5df] py-16 sm:py-20">
+        <section id="faq" className="py-20 sm:py-24 border-b border-[#e1eae3]">
           <div className="mx-auto max-w-3xl px-4 sm:px-6">
-            <h2 className="font-display text-3xl font-bold text-[#00110a] text-center mb-8">
-              Frequently Asked Questions
-            </h2>
-            <div className="divide-y divide-[#dce5df] rounded-2xl border border-[#dce5df] overflow-hidden">
+            <div className="text-center mb-12">
+              <span className="text-xs font-semibold text-[#155e3e] uppercase tracking-wider">
+                Got Questions?
+              </span>
+              <h2 className="mt-2 font-display text-3xl font-bold text-[#00110a]">
+                Frequently Asked Questions
+              </h2>
+            </div>
+
+            <div className="divide-y divide-[#e1eae3] rounded-3xl border border-[#d2e0d7] bg-white overflow-hidden shadow-xs">
               {FAQ.map(([q, a]) => (
-                <details key={q} className="group p-5 bg-white">
+                <details key={q} className="group p-5">
                   <summary className="cursor-pointer list-none font-semibold text-xs sm:text-sm text-[#00110a] flex items-center justify-between">
                     <span>{q}</span>
-                    <span className="text-[#1b7a4e] font-bold text-base transition-transform group-open:rotate-45">+</span>
+                    <span className="text-[#155e3e] font-bold text-base transition-transform group-open:rotate-45">
+                      +
+                    </span>
                   </summary>
-                  <p className="mt-2 text-xs text-[#5a6660] leading-relaxed">{a}</p>
+                  <p className="mt-2.5 text-xs text-[#526359] leading-relaxed">{a}</p>
                 </details>
               ))}
             </div>
@@ -411,26 +775,27 @@ function HomePage() {
         </section>
 
         {/* Bottom Banner */}
-        <section className="bg-[#0d281e] text-white py-16">
-          <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 flex flex-col items-center">
-            <SyllabossEmblem className="size-14 mb-4" />
-            <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">
-              Ready to study with direction?
+        <section className="bg-[#0d281e] text-white py-20 relative overflow-hidden">
+          <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 flex flex-col items-center">
+            <SyllabossEmblem className="size-16 mb-5 text-emerald-400" />
+            <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">
+              Ready to Study With Direction?
             </h2>
-            <p className="mt-3 text-sm text-[#cee9da] max-w-md">
-              Download the Syllaboss app to your phone or laptop now and start learning smarter.
+            <p className="mt-3.5 text-sm sm:text-base text-[#cbe2d4] max-w-lg leading-relaxed">
+              Download the Syllaboss app to your phone or laptop now and access verified lecture
+              summaries and past exam solutions.
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row items-center gap-3">
+            <div className="mt-9 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
               <InstallButton
                 showDropdown
                 size="lg"
-                className="w-full sm:w-auto rounded-full bg-[#cee9da] text-[#0d281e] hover:bg-white text-sm font-bold px-8 h-12 shadow-md"
+                className="w-full sm:w-auto rounded-full bg-[#cbe2d4] text-[#0d281e] hover:bg-white text-sm font-bold px-8 h-12.5 shadow-md"
               />
               <Button
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto rounded-full border-white/20 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-6 h-12"
+                className="w-full sm:w-auto rounded-full border-white/20 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-6 h-12.5"
               >
                 <Link to="/auth" search={{ mode: "signin" }}>
                   Sign In to Web
@@ -442,11 +807,11 @@ function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#dce5df] bg-white py-8">
+      <footer className="border-t border-[#e1eae3] bg-[#f6faf7] py-9">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <SyllabossLogo />
-          <p className="text-xs text-[#5a6660]">
-            © 2026 Syllaboss. Study with direction.
+          <p className="text-xs text-[#526359]">
+            © 2026 Syllaboss Technologies. Study with direction.
           </p>
         </div>
       </footer>
