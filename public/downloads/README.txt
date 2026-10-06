@@ -1,14 +1,12 @@
 Syllaboss Native App Downloads Folder
 =======================================
 
-This folder hosts the downloadable binaries for non-Apple platforms:
-- syllaboss.apk : Android APK for direct installation on Android phones/tablets
-- syllaboss-setup.exe : Windows 10/11 64-bit installer
-- syllaboss.AppImage : Universal Linux desktop package
+Syllaboss installs natively on all devices (Android, Windows, iOS, Mac, Linux) directly via 1-tap Progressive Web App (PWA / WebAPK) without requiring manual binary downloads or Play Store / App Store approvals.
 
-Note:
-You can also host these binaries on a remote CDN, Cloudflare R2, or GitHub Releases by setting:
-APK_DOWNLOAD_URL="https://your-host.com/syllaboss.apk"
-EXE_DOWNLOAD_URL="https://your-host.com/syllaboss-setup.exe"
-LINUX_DOWNLOAD_URL="https://your-host.com/syllaboss.AppImage"
-in your environment variables.
+If you compile and host custom standalone native binaries (e.g. built via Capacitor or Electron):
+Set the environment variables:
+- APK_DOWNLOAD_URL="https://your-host.com/syllaboss.apk"
+- EXE_DOWNLOAD_URL="https://your-host.com/syllaboss-setup.exe"
+- LINUX_DOWNLOAD_URL="https://your-host.com/syllaboss.AppImage"
+
+Do NOT place mock or text placeholder files here, as operating systems (Windows and Android) will reject them as corrupted packages ("This app can't run on your PC" / "There was a problem parsing the package").

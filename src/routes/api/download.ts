@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/download")({
           if (remoteUrl) {
             return Response.redirect(remoteUrl, 302);
           }
-          return Response.redirect("/downloads/syllaboss.apk", 302);
+          return Response.redirect("/?install=android", 302);
         }
 
         if (platform === "windows" || platform === "exe") {
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/download")({
           if (remoteUrl) {
             return Response.redirect(remoteUrl, 302);
           }
-          return Response.redirect("/downloads/syllaboss-setup.exe", 302);
+          return Response.redirect("/?install=windows", 302);
         }
 
         if (platform === "linux" || platform === "appimage") {
@@ -28,10 +28,10 @@ export const Route = createFileRoute("/api/download")({
           if (remoteUrl) {
             return Response.redirect(remoteUrl, 302);
           }
-          return Response.redirect("/downloads/syllaboss.AppImage", 302);
+          return Response.redirect("/?install=linux", 302);
         }
 
-        return Response.redirect("/downloads/syllaboss.apk", 302);
+        return Response.redirect("/?install=app", 302);
       },
     },
   },

@@ -58,20 +58,20 @@ export const Route = createFileRoute("/")({
 });
 
 const DEVICES = [
-  { name: "Android", icon: Smartphone, desc: "Direct .APK Download" },
-  { name: "Windows PC", icon: Monitor, desc: "Direct .EXE Setup Installer" },
-  { name: "iPhone & iPad", icon: Smartphone, desc: "Apple PWA · Add to Home Screen" },
-  { name: "MacBook", icon: Laptop, desc: "macOS · Desktop Window / Dock" },
-  { name: "Linux", icon: Terminal, desc: "Universal .AppImage Package" },
+  { name: "Android", icon: Smartphone, desc: "Fast 1-Tap App Install" },
+  { name: "Windows PC", icon: Monitor, desc: "Standalone Desktop App" },
+  { name: "iPhone & iPad", icon: Smartphone, desc: "Home Screen App · Safari" },
+  { name: "MacBook", icon: Laptop, desc: "macOS Dock & Desktop App" },
+  { name: "Linux", icon: Terminal, desc: "Desktop Browser App" },
 ];
 
 const FAQ = [
-  ["Is the Syllaboss app free?", "Yes. Downloading the app, searching verified materials, and studying is 100% free."],
-  ["Is Syllaboss on the Google Play Store or Apple App Store?", "No app store required! You can download the native .APK directly for Android, the .EXE installer for Windows, the .AppImage for Linux, or install it instantly via Safari on iPhone and iPad."],
-  ["How do I install the app on Android?", "Click 'Download for Android' to get Syllaboss.apk. Once downloaded, tap open in your notifications or Downloads folder to install!"],
-  ["How do I install on Windows?", "Click 'Download for Windows' to get Syllaboss-Setup.exe, run the installer, and launch Syllaboss from your Desktop or Start Menu."],
+  ["Is the Syllaboss app free?", "Yes. Installing the app, searching verified materials, and studying is 100% free."],
+  ["Is Syllaboss on the Google Play Store or Apple App Store?", "No app store required! You can install Syllaboss directly on Android, Windows PC, MacBook, or iPhone in 1 tap."],
+  ["How do I install the app on Android?", "Tap 'Install for Android' and confirm Install. Syllaboss will be added directly to your app drawer and home screen instantly!"],
+  ["How do I install on Windows?", "Tap 'Install for Windows PC' and confirm Install in Edge or Chrome. Syllaboss runs in its own window as a desktop app."],
   ["How do I install the app on my iPhone or iPad?", "Open Syllaboss in Safari, tap the Share icon at the bottom, and select 'Add to Home Screen'. The Syllaboss icon will appear right with your other apps!"],
-  ["Can I install it on my MacBook or Linux laptop?", "Yes! On Mac, click File -> Add to Dock in Safari or Install in Chrome. On Linux, download the universal Syllaboss.AppImage package."],
+  ["Can I install it on my MacBook or Linux laptop?", "Yes! On Mac, click File -> Add to Dock in Safari or Install in Chrome. On Linux, click Install in Chrome, Brave, or Edge."],
   ["How do SyllaPoints work?", `You get ${POINTS_REGISTRATION_BONUS} points on sign up, ${POINTS_INSTALL_APP_BONUS} points when you install the app, ${POINTS_PER_VERIFIED_UPLOAD} points per verified notes upload, and ${POINTS_PER_30_MIN_STUDY} points every 30 minutes you study. Points convert to Naira and can be withdrawn directly to your Nigerian bank!`],
 ];
 
@@ -141,7 +141,7 @@ function HomePage() {
           <div className="mx-auto max-w-4xl px-4 text-center sm:px-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#edf6f0] border border-[#dce5df] text-[#1b7a4e] text-xs font-semibold mb-6">
               <Sparkles className="size-3.5" />
-              <span>Android (.APK) · Windows (.EXE) · Linux · Apple (PWA)</span>
+              <span>Available on all devices · Android, iOS, Windows & Mac</span>
             </div>
 
             <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-[#00110a] leading-[1.1]">
@@ -174,7 +174,7 @@ function HomePage() {
             </div>
 
             <p className="mt-4 text-xs text-[#5a6660]">
-              Direct downloads: Android (.APK) · Windows (.EXE) · Linux (.AppImage) · iPhone/iPad (PWA)
+              Available on all devices · Instant 1-tap installation · No app store needed
             </p>
 
             {/* Supported Devices Badges */}
@@ -260,15 +260,15 @@ function HomePage() {
                   <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
                     <div className="flex items-center gap-2">
                       <Smartphone className="size-4 text-[#1b7a4e]" />
-                      <span>Android (.APK)</span>
+                      <span>Android</span>
                     </div>
-                    <span className="font-mono text-[10px] text-[#1b7a4e] bg-[#edf6f0] px-1.5 py-0.5 rounded">.apk</span>
+                    <span className="text-[10px] text-[#1b7a4e] bg-[#edf6f0] px-1.5 py-0.5 rounded font-medium">1-Tap Install</span>
                   </div>
                   <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li>Tap <strong>Download for Android</strong></li>
-                    <li>Syllaboss.apk downloads directly</li>
-                    <li>Tap open file to install to your phone</li>
-                    <li>Launch instantly from your app drawer!</li>
+                    <li>Tap <strong>Install for Android</strong></li>
+                    <li>Confirm <strong>Install</strong> in Chrome/Edge</li>
+                    <li>Syllaboss is added to your app drawer</li>
+                    <li>Launch instantly from your home screen!</li>
                   </ol>
                 </div>
               </div>
@@ -278,15 +278,15 @@ function HomePage() {
                   <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
                     <div className="flex items-center gap-2">
                       <Monitor className="size-4 text-[#1b7a4e]" />
-                      <span>Windows (.EXE)</span>
+                      <span>Windows PC</span>
                     </div>
-                    <span className="font-mono text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">.exe</span>
+                    <span className="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-medium">Desktop App</span>
                   </div>
                   <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li>Tap <strong>Download for Windows</strong></li>
-                    <li>Syllaboss-Setup.exe downloads directly</li>
-                    <li>Run the setup installer on your PC</li>
-                    <li>Open anytime from your Start Menu!</li>
+                    <li>Tap <strong>Install for Windows PC</strong></li>
+                    <li>Confirm <strong>Install</strong> in the browser</li>
+                    <li>Added to your Start Menu and Desktop</li>
+                    <li>Runs in its own standalone window!</li>
                   </ol>
                 </div>
               </div>
@@ -298,7 +298,7 @@ function HomePage() {
                       <Smartphone className="size-4 text-[#1b7a4e]" />
                       <span>iPhone & iPad</span>
                     </div>
-                    <span className="font-mono text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Apple PWA</span>
+                    <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded font-medium">Apple iOS</span>
                   </div>
                   <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
                     <li>Open this page in <strong>Safari</strong></li>
@@ -316,13 +316,13 @@ function HomePage() {
                       <Laptop className="size-4 text-[#1b7a4e]" />
                       <span>Mac & Linux</span>
                     </div>
-                    <span className="font-mono text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">Desktop</span>
+                    <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-medium">Desktop</span>
                   </div>
                   <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li><strong>Mac</strong>: In Safari tap File &rarr; Add to Dock</li>
+                    <li><strong>Mac</strong>: In Safari click File &rarr; Add to Dock</li>
                     <li><strong>Chrome</strong>: Click Install in address bar</li>
-                    <li><strong>Linux</strong>: Download .AppImage binary</li>
-                    <li>Access as a standalone desktop window!</li>
+                    <li><strong>Linux</strong>: Install via Chrome, Edge or Brave</li>
+                    <li>Runs as a standalone desktop application!</li>
                   </ol>
                 </div>
               </div>
