@@ -7,31 +7,40 @@ export const Route = createFileRoute("/api/download")({
         const url = new URL(request.url);
         const platform = (url.searchParams.get("platform") || "android").toLowerCase();
 
-        if (platform === "android" || platform === "apk") {
-          const remoteUrl = process.env['APK_DOWNLOAD_URL'] || process.env['VITE_APK_URL'];
-          if (remoteUrl) {
-            return Response.redirect(remoteUrl, 302);
-          }
-          return Response.redirect("/downloads/syllaboss.apk", 302);
-        }
+        let filename = "syllaboss.apk";
+        let downloadName = "Syllaboss.apk";
+        let contentType = "application/vnd.android.package-archive";
 
         if (platform === "windows" || platform === "exe") {
-          const remoteUrl = process.env['EXE_DOWNLOAD_URL'] || process.env['VITE_EXE_URL'];
-          if (remoteUrl) {
-            return Response.redirect(remoteUrl, 302);
-          }
-          return Response.redirect("/downloads/syllaboss-setup.exe", 302);
+          filename = "syllaboss-setup.exe";
+          downloadName = "Syllaboss-Setup.exe";
+          contentType = "application/vnd.microsoft.portable-executable";
+        } else if (platform === "linux" || platform === "appimage") {
+          filename = "syllaboss.AppImage";
+          downloadName = "Syllaboss.AppImage";
+          contentType = "application/octet-stream";
         }
 
-        if (platform === "linux" || platform === "appimage") {
-          const remoteUrl = process.env['LINUX_DOWNLOAD_URL'] || process.env['VITE_LINUX_URL'];
-          if (remoteUrl) {
-            return Response.redirect(remoteUrl, 302);
-          }
-          return Response.redirect("/downloads/syllaboss.AppImage", 302);
+        const remoteUrl =
+          platform === "windows" || platform === "exe"
+            ? process.env["EXE_DOWNLOAD_URL"] || process.env["VITE_EXE_URL"]
+            : platform === "linux" || platform === "appimage"
+            ? process.env["LINUX_DOWNLOAD_URL"] || process.env["VITE_LINUX_URL"]
+            : process.env["APK_DOWNLOAD_URL"] || process.env["VITE_APK_URL"];
+
+        if (remoteUrl) {
+          return Response.redirect(remoteUrl, 302);
         }
 
-        return Response.redirect("/downloads/syllaboss-setup.exe", 302);
+        const targetUrl = new URL(`/downloads/${filename}`, request.url).toString();
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: targetUrl,
+            "Content-Type": contentType,
+            "Content-Disposition": `attachment; filename="${downloadName}"`,
+          },
+        });
       },
     },
   },

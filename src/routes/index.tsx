@@ -260,15 +260,15 @@ function HomePage() {
                   <div className="flex items-center justify-between text-xs font-bold text-[#00110a]">
                     <div className="flex items-center gap-2">
                       <Smartphone className="size-4 text-[#1b7a4e]" />
-                      <span>Android</span>
+                      <span>Android (.APK)</span>
                     </div>
-                    <span className="text-[10px] text-[#1b7a4e] bg-[#edf6f0] px-1.5 py-0.5 rounded font-medium">1-Tap Install</span>
+                    <span className="text-[10px] text-[#1b7a4e] bg-[#edf6f0] px-1.5 py-0.5 rounded font-medium">Direct APK</span>
                   </div>
                   <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li>Tap <strong>Install for Android</strong></li>
-                    <li>Confirm <strong>Install</strong> in Chrome/Edge</li>
-                    <li>Syllaboss is added to your app drawer</li>
-                    <li>Launch instantly from your home screen!</li>
+                    <li>Tap <strong>Download for Android (.APK)</strong></li>
+                    <li>Open the downloaded <strong>Syllaboss.apk</strong></li>
+                    <li>Tap <strong>Install</strong> to add to your app drawer</li>
+                    <li>Launch and study anytime on your phone!</li>
                   </ol>
                 </div>
               </div>
@@ -280,12 +280,12 @@ function HomePage() {
                       <Monitor className="size-4 text-[#1b7a4e]" />
                       <span>Windows PC</span>
                     </div>
-                    <span className="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-medium">Desktop App</span>
+                    <span className="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-medium">.EXE Installer</span>
                   </div>
                   <ol className="list-decimal pl-4 text-xs text-[#5a6660] space-y-1.5 mt-3">
-                    <li>Tap <strong>Install for Windows PC</strong></li>
-                    <li>Confirm <strong>Install</strong> in the browser</li>
-                    <li>Added to your Start Menu and Desktop</li>
+                    <li>Tap <strong>Download for Windows (.EXE)</strong></li>
+                    <li>Run <strong>Syllaboss-Setup.exe</strong></li>
+                    <li>Creates Desktop & Start Menu shortcuts</li>
                     <li>Runs in its own standalone window!</li>
                   </ol>
                 </div>
