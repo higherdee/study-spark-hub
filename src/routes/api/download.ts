@@ -12,8 +12,7 @@ export const Route = createFileRoute("/api/download")({
           if (remoteUrl) {
             return Response.redirect(remoteUrl, 302);
           }
-          // Redirect to Android install flow to prevent downloading an empty/404 HTML file
-          return Response.redirect("/?install=android", 302);
+          return Response.redirect("/downloads/syllaboss.apk", 302);
         }
 
         if (platform === "windows" || platform === "exe") {
