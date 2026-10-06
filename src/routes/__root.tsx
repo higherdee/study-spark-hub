@@ -131,6 +131,11 @@ function RootShell({ children }: { children: ReactNode }) {
                 document.documentElement.classList.add('light');
                 localStorage.setItem('syllaboss-theme', 'light');
               } catch(e) {}
+              if ('serviceWorker' in navigator) {
+                try {
+                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                } catch(e) {}
+              }
               window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;window.dispatchEvent(new Event('bip-ready'));});
             `,
           }}
