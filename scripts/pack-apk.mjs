@@ -2,8 +2,11 @@ import fs from "fs";
 import zlib from "zlib";
 
 // Clean standalone ZIP packer for Android APK
-// Ensures resources.arsc is STORED (Compression Method = 0) and uncompressed
-// Ensures all entries are properly hashed and aligned
+// Complies strictly with Android OS libziparchive (zip_archive.cc) and zipalign standards:
+// 1. Resources.arsc and stored assets are 4-byte aligned.
+// 2. Extra fields adhere to the ZIP TLV specification using Android's official tag 0xd935.
+// 3. Central Directory headers omit the alignment padding (extraFieldLength = 0), matching zipalign.
+// 4. META-INF files have zero extra fields.
 
 export function buildApk(entries, outputPath) {
   const buffers = [];
@@ -15,22 +18,26 @@ export function buildApk(entries, outputPath) {
     const nameBuf = Buffer.from(name, "utf8");
     const crc = zlib.crc32(data);
     let compData = data;
-    let compMethod = method; // 0 = Stored, 8 = Deflate
+    const compMethod = method; // 0 = Stored, 8 = Deflate
 
     if (compMethod === 8) {
       compData = zlib.deflateRawSync(data);
     }
 
     // Android 4-byte alignment check for uncompressed entries (like resources.arsc)
-    // If stored, the file data offset from the start of the archive should ideally be 4-byte aligned
     let extraBuf = Buffer.alloc(0);
-    if (compMethod === 0) {
-      const headerLen = 30 + nameBuf.length;
-      const dataOffset = currentOffset + headerLen;
-      const rem = dataOffset % 4;
+    const isMeta = name.startsWith("META-INF/");
+
+    if (compMethod === 0 && !isMeta) {
+      const baseOffset = currentOffset + 30 + nameBuf.length;
+      const rem = baseOffset % 4;
       if (rem !== 0) {
+        // Alignment tag 0xd935 (kAlignmentExtraFieldTag)
+        // Format: [0x35, 0xd9] (2-byte ID) + [padLen (2 bytes)] + padLen zero bytes
         const padLen = 4 - rem;
-        extraBuf = Buffer.alloc(padLen);
+        extraBuf = Buffer.alloc(4 + padLen);
+        extraBuf.writeUInt16LE(0xd935, 0);
+        extraBuf.writeUInt16LE(padLen, 2);
       }
     }
 
@@ -55,7 +62,6 @@ export function buildApk(entries, outputPath) {
     // Save for Central Directory
     cdEntries.push({
       nameBuf,
-      extraBuf,
       crc,
       compMethod,
       compSize: compData.length,
@@ -79,15 +85,15 @@ export function buildApk(entries, outputPath) {
     cdHeader.writeUInt32LE(cd.compSize, 20); // compressed size
     cdHeader.writeUInt32LE(cd.uncompSize, 24); // uncompressed size
     cdHeader.writeUInt16LE(cd.nameBuf.length, 28); // file name length
-    cdHeader.writeUInt16LE(cd.extraBuf.length, 30); // extra field length
+    cdHeader.writeUInt16LE(0, 30); // extra field length in CD is ALWAYS 0 (zipalign standard)
     cdHeader.writeUInt16LE(0, 32); // comment length
     cdHeader.writeUInt16LE(0, 34); // disk number start
     cdHeader.writeUInt16LE(0, 36); // internal file attributes
     cdHeader.writeUInt32LE(0, 38); // external file attributes
     cdHeader.writeUInt32LE(cd.offset, 42); // relative offset of local header
 
-    buffers.push(cdHeader, cd.nameBuf, cd.extraBuf);
-    currentOffset += cdHeader.length + cd.nameBuf.length + cd.extraBuf.length;
+    buffers.push(cdHeader, cd.nameBuf);
+    currentOffset += cdHeader.length + cd.nameBuf.length;
   }
 
   const cdSize = currentOffset - cdStart;
