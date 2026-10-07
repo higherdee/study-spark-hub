@@ -62,10 +62,6 @@ export function InstallButton({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      // Fallback navigation ensures all mobile browsers (Chrome, Samsung Internet, Firefox) initiate download
-      setTimeout(() => {
-        window.location.assign("/downloads/syllaboss.apk");
-      }, 100);
     } else if (target === "linux") {
       toast.success("Downloading Syllaboss for Linux (.AppImage)...");
       const link = document.createElement("a");

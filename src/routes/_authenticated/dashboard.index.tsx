@@ -558,7 +558,7 @@ function HomePage() {
               <div className="flex flex-col gap-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-[#5a6660] font-medium">
-                    September ({Math.max(0, (Number(studyHours) * 0.4).toFixed(1))} hrs studied)
+                    September ({Math.max(0, Number(studyHours) * 0.4).toFixed(1)} hrs studied)
                   </span>
                   <span className="font-mono text-[#00110a] font-semibold">
                     {Math.round(points * 0.35)} pts

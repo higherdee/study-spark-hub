@@ -19,6 +19,12 @@ import {
   FileText,
   Star,
   Zap,
+  Bell,
+  Home,
+  Trophy,
+  Play,
+  Check,
+  Flame,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -134,9 +140,6 @@ function HomePage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setTimeout(() => {
-        window.location.assign("/downloads/syllaboss.apk");
-      }, 100);
     } else {
       const link = document.createElement("a");
       link.href = "/downloads/syllaboss-setup.exe";
@@ -268,91 +271,174 @@ function HomePage() {
               </span>
             </div>
 
-            {/* Realistic iPhone Showcase Mockup */}
+            {/* Ultra-Lifelike Flagship iPhone 16 Pro Showcase */}
             <div className="mt-14 mx-auto max-w-sm sm:max-w-md relative flex justify-center">
-              {/* Soft Ambient Glow */}
+              {/* Vibrant Ambient Glow Backdrop */}
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 -top-6 bg-gradient-to-b from-[#1b7a4e]/20 via-[#155e3e]/10 to-transparent blur-3xl rounded-full scale-110"
+                className="pointer-events-none absolute inset-0 -top-10 bg-gradient-to-b from-[#1b7a4e]/25 via-[#155e3e]/15 to-transparent blur-3xl rounded-full scale-125"
               />
 
-              {/* iPhone Outer Chassis */}
-              <div className="relative w-[310px] sm:w-[345px] rounded-[52px] p-3 sm:p-3.5 bg-gradient-to-b from-[#2a342e] via-[#161c18] to-[#0d120f] shadow-[0_25px_70px_-15px_rgba(0,17,10,0.4),0_0_0_1px_rgba(255,255,255,0.14),0_0_0_6px_#0e1410] border border-white/10">
-                {/* Physical side button notches */}
-                <div className="absolute -left-2 top-24 w-1 h-8 bg-[#1f2722] rounded-l" />
-                <div className="absolute -left-2 top-36 w-1 h-12 bg-[#1f2722] rounded-l" />
-                <div className="absolute -left-2 top-52 w-1 h-12 bg-[#1f2722] rounded-l" />
-                <div className="absolute -right-2 top-32 w-1 h-16 bg-[#1f2722] rounded-r" />
+              {/* iPhone 16 Pro Precision Titanium Chassis */}
+              <div className="relative w-[360px] sm:w-[385px] h-[780px] sm:h-[824px] rounded-[54px] sm:rounded-[58px] p-3 sm:p-3.5 bg-gradient-to-b from-[#262f29] via-[#141a16] to-[#0a0f0c] shadow-[0_30px_90px_-20px_rgba(0,17,10,0.55),0_0_0_1px_rgba(255,255,255,0.18),0_0_0_7px_#121714,0_0_0_8px_rgba(255,255,255,0.06)] border border-white/10 flex flex-col">
+                {/* Physical Hardware Controls (Left Side) */}
+                {/* Action Button */}
+                <div className="absolute -left-2 top-24 w-1 h-7 bg-[#242d27] rounded-l-md shadow-xs border-l border-white/10" />
+                {/* Volume Up */}
+                <div className="absolute -left-2 top-35 w-1 h-13 bg-[#242d27] rounded-l-md shadow-xs border-l border-white/10" />
+                {/* Volume Down */}
+                <div className="absolute -left-2 top-51 w-1 h-13 bg-[#242d27] rounded-l-md shadow-xs border-l border-white/10" />
 
-                {/* iPhone Screen Glass */}
-                <div className="relative rounded-[42px] bg-[#f7f2e6] overflow-hidden border border-black/30 shadow-inner flex flex-col text-left select-none">
-                  {/* iOS Status Bar & Dynamic Island */}
-                  <div className="relative pt-2.5 px-6 pb-1 flex items-center justify-between text-[11px] font-semibold text-[#1c2a22] z-30">
-                    <span className="font-medium tracking-tight">9:41</span>
+                {/* Physical Hardware Controls (Right Side) */}
+                {/* Side / Power Button */}
+                <div className="absolute -right-2 top-32 w-1 h-18 bg-[#242d27] rounded-r-md shadow-xs border-r border-white/10" />
+                {/* Camera Control Capacitive Slider */}
+                <div className="absolute -right-2 top-56 w-1 h-15 bg-[#1b221d] rounded-r-md shadow-xs border-r border-white/15" />
 
-                    {/* Dynamic Island Pill */}
-                    <div className="absolute left-1/2 -translate-x-1/2 top-2 h-6 w-24 bg-black rounded-full flex items-center justify-between px-2.5 shadow-sm">
-                      <div className="size-2 rounded-full bg-[#1c221e] ring-1 ring-[#2c3630]/50" />
-                      <div className="size-2.5 rounded-full bg-[#0d1611] ring-1 ring-emerald-500/30" />
+                {/* iPhone Screen Glass Frame */}
+                <div className="relative flex-1 rounded-[44px] sm:rounded-[48px] bg-[#f7f2e6] overflow-hidden border border-black/40 shadow-inner flex flex-col text-left select-none">
+                  {/* Specular Diagonal Light Glare on Glass */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -inset-full bg-gradient-to-tr from-transparent via-white/[0.04] to-white/[0.14] rotate-12 z-40"
+                  />
+
+                  {/* iOS Status Bar with Dynamic Island */}
+                  <div className="relative pt-3 px-6 pb-2 flex items-center justify-between text-[11.5px] font-semibold text-[#1c2a22] z-30 shrink-0 bg-[#f7f2e6]/95 backdrop-blur-sm border-b border-[#ebdcca]/50">
+                    <span className="font-semibold tracking-tight">9:41</span>
+
+                    {/* Interactive Dynamic Island */}
+                    <div className="absolute left-1/2 -translate-x-1/2 top-2.5 h-6.5 w-29 bg-black rounded-full flex items-center justify-between px-2.5 shadow-md">
+                      {/* TrueDepth Front Camera with deep reflection */}
+                      <div className="size-2.5 rounded-full bg-[#0d1611] ring-1 ring-[#223328]/60 flex items-center justify-center">
+                        <div className="size-1 rounded-full bg-[#1b7a4e]/40" />
+                      </div>
+                      {/* Live Study Activity Micro Waveform */}
+                      <div className="flex items-center gap-0.5 opacity-90">
+                        <span className="w-0.5 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                        <span className="w-0.5 h-3 bg-emerald-400 rounded-full animate-pulse delay-75" />
+                        <span className="w-0.5 h-1.5 bg-emerald-400 rounded-full animate-pulse delay-150" />
+                      </div>
+                      {/* Ambient Light Sensor */}
+                      <div className="size-2 rounded-full bg-[#070b09]" />
                     </div>
 
+                    {/* Status Icons: Cellular, Wi-Fi, Battery */}
                     <div className="flex items-center gap-1.5 opacity-90">
+                      <span className="text-[10px] font-bold">5G</span>
                       <svg className="w-3.5 h-3 fill-current" viewBox="0 0 16 12">
                         <rect x="0" y="8" width="2.5" height="4" rx="0.5" />
                         <rect x="4" y="5.5" width="2.5" height="6.5" rx="0.5" />
                         <rect x="8" y="3" width="2.5" height="9" rx="0.5" />
                         <rect x="12" y="0.5" width="2.5" height="11.5" rx="0.5" />
                       </svg>
-                      <div className="w-5 h-2.5 rounded-sm border border-current p-0.5 flex items-center">
-                        <div className="w-3 h-full bg-current rounded-2xs" />
+                      {/* Battery Capsule with 96% Fill */}
+                      <div className="w-5.5 h-2.5 rounded-sm border border-current p-0.5 flex items-center">
+                        <div className="w-[92%] h-full bg-[#155e3e] rounded-2xs" />
                       </div>
                     </div>
                   </div>
 
-                  {/* Syllaboss Mobile App Screen */}
-                  <div className="p-3.5 pt-2 space-y-2.5 font-sans">
-                    {/* Mobile App Header */}
-                    <div className="flex items-center justify-between pb-2 border-b border-[#e5ded0]">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src="/icon-512.png"
-                          alt="Syllaboss"
-                          className="size-7.5 rounded-lg object-contain shadow-2xs"
-                        />
-                        <span className="font-headline font-bold text-sm tracking-tight text-[#00110a]">
+                  {/* Top App Header */}
+                  <div className="px-4 py-2 flex items-center justify-between border-b border-[#e5ded0] bg-white/70 backdrop-blur-xs shrink-0 z-20">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src="/icon-512.png"
+                        alt="Syllaboss"
+                        className="size-7 rounded-lg object-contain shadow-2xs"
+                      />
+                      <div>
+                        <span className="font-headline font-bold text-sm tracking-tight text-[#00110a] block leading-none">
                           Syllaboss
                         </span>
-                      </div>
-
-                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100/90 border border-emerald-200 text-emerald-900 text-[11px] font-bold shadow-2xs">
-                        <Coins className="size-3 text-emerald-700" />
-                        <span>1,450 pts</span>
+                        <span className="text-[9.5px] font-medium text-[#526359] block mt-0.5">
+                          UNILAG • 300L Comp Sci
+                        </span>
                       </div>
                     </div>
 
-                    {/* Active Course Card */}
+                    <div className="flex items-center gap-2">
+                      {/* SyllaPoints Live Balance Chip */}
+                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-[11px] font-bold shadow-2xs">
+                        <Coins className="size-3 text-emerald-700" />
+                        <span>2,450 pts</span>
+                      </div>
+                      <div className="size-7 rounded-full bg-white border border-[#d8d0c0] flex items-center justify-center text-[#526359] shadow-2xs">
+                        <Bell className="size-3.5" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scrollable Authentic App Content Body */}
+                  <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-2.5 font-sans [&::-webkit-scrollbar]:hidden">
+                    {/* Welcome Banner Card */}
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-white to-[#f0f6f2] border border-[#d9e5dc] shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-[#00110a] flex items-center gap-1.5">
+                          <span>Good morning, David</span>
+                          <span className="text-[11px]">👋</span>
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[9.5px] font-bold uppercase tracking-wider border border-amber-200">
+                          ✦ SyllaPlus (1.3x)
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#526359] mt-0.5">
+                        First Semester 2025/2026 • 6 Courses Enrolled
+                      </p>
+                    </div>
+
+                    {/* Boss AI Instant Search / Prompt Bar */}
+                    <div className="relative">
+                      <div className="h-9 w-full rounded-xl bg-white border border-[#ded5c4] shadow-2xs flex items-center px-2.5 gap-2 text-[#526359]">
+                        <Search className="size-3.5 text-[#155e3e]" />
+                        <span className="text-[10.5px] text-[#6b7d72] truncate">
+                          Search courses, past questions, or ask Boss AI...
+                        </span>
+                        <div className="ml-auto size-5 rounded-md bg-[#edf6f0] text-[#155e3e] flex items-center justify-center">
+                          <Bot className="size-3" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Active Course Card (Operating Systems) */}
                     <div className="p-3 rounded-2xl bg-white border border-[#ded5c4] shadow-2xs space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#155e3e]">
-                          Current Lecture
+                        <span className="text-[9.5px] font-bold uppercase tracking-wider text-[#155e3e] flex items-center gap-1">
+                          <CheckCircle2 className="size-3 text-[#155e3e]" />
+                          Current Active Course
                         </span>
-                        <span className="text-[10px] font-mono text-[#526359] bg-[#f7f2e6] px-1.5 py-0.5 rounded">
-                          GST 111
+                        <span className="text-[10px] font-mono font-bold text-[#155e3e] bg-[#edf6f0] px-1.5 py-0.5 rounded">
+                          CSC 301
                         </span>
                       </div>
-                      <h4 className="text-xs font-bold text-[#00110a] leading-tight">
-                        Sentence Structure, Concord & Morphology
-                      </h4>
-                      <div className="w-full bg-[#e8e1d3] h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-[#155e3e] h-full w-[78%] rounded-full" />
+                      <div>
+                        <h4 className="text-[11.5px] font-bold text-[#00110a] leading-tight">
+                          Operating Systems & Concurrency
+                        </h4>
+                        <p className="text-[9.5px] text-[#526359] mt-0.5">
+                          Lecturer: Dr. Adeyemi • 14 Summaries • 8 Past Questions
+                        </p>
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-[#526359]">
-                        <span>Verified Syllabus</span>
-                        <span className="font-bold text-[#155e3e]">78% Done</span>
+                      <div className="space-y-1 pt-0.5">
+                        <div className="w-full bg-[#e8e1d3] h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-gradient-to-r from-[#155e3e] to-[#259b66] h-full w-[84%] rounded-full" />
+                        </div>
+                        <div className="flex items-center justify-between text-[9.5px] text-[#526359]">
+                          <span>Verified Syllabus Progress</span>
+                          <span className="font-bold text-[#155e3e]">84% Completed</span>
+                        </div>
+                      </div>
+                      <div className="pt-1 flex items-center justify-between border-t border-[#f0ebd9]">
+                        <span className="text-[9.5px] font-semibold text-[#00110a] flex items-center gap-1">
+                          <Flame className="size-3 text-orange-500" /> Exam in 18 Days
+                        </span>
+                        <span className="text-[9.5px] font-bold text-[#155e3e] bg-[#edf6f0] px-2 py-0.5 rounded-full">
+                          Continue Study →
+                        </span>
                       </div>
                     </div>
 
-                    {/* Boss AI Companion Card */}
+                    {/* Boss AI Exam Radar Card */}
                     <div className="p-3 rounded-2xl bg-[#f0f7f3] border border-[#cbe4d4] space-y-2 shadow-2xs">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
@@ -361,39 +447,100 @@ function HomePage() {
                           </div>
                           <div>
                             <span className="text-[11px] font-bold text-[#00110a] block leading-none">
-                              Boss AI Companion
+                              Boss AI Exam Radar
                             </span>
-                            <span className="text-[9px] text-[#155e3e] font-medium">Exam Analysis Mode</span>
+                            <span className="text-[9px] text-[#155e3e] font-semibold">
+                              3 High-Yield Topics Detected
+                            </span>
                           </div>
                         </div>
+                        <span className="text-[9px] bg-[#d7ece0] text-[#114b32] px-1.5 py-0.5 rounded font-bold">
+                          98% Match
+                        </span>
                       </div>
-                      <div className="p-2 rounded-xl bg-white/90 border border-[#d6e9dc] text-[10.5px] text-[#2c3d33] leading-snug space-y-1">
-                        <p className="font-semibold text-[#00110a]">
-                          "What are the top repeated theory exam questions?"
+                      <div className="p-2 rounded-xl bg-white/95 border border-[#d6e9dc] text-[10px] text-[#2c3d33] leading-snug space-y-1">
+                        <p className="font-bold text-[#00110a]">
+                          "Predicted Theory Questions (2019–2024 Analysis):"
                         </p>
-                        <p className="text-[9.5px] text-[#44574c] leading-tight">
-                          • Differentiate topic sentence & supporting details (2019, 2021, 2023)
+                        <p className="text-[9px] text-[#44574c] leading-tight">
+                          1. Round-Robin vs Multi-Level Feedback Queue scheduling (4 appearances)
                           <br />
-                          • Phonetic transcription of diphthongs vs monophthongs
+                          2. Banker's Algorithm for deadlock avoidance (3 appearances)
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Quick Course Grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2.5 rounded-xl bg-white border border-[#ded5c4] shadow-2xs space-y-1">
+                        <span className="text-[9px] font-mono font-bold text-[#155e3e] bg-[#edf6f0] px-1.5 py-0.5 rounded">
+                          GST 111
+                        </span>
+                        <h5 className="text-[10px] font-bold text-[#00110a] leading-tight">
+                          Syntax & Morphology
+                        </h5>
+                        <p className="text-[8.5px] text-[#526359]">12 Summaries • Verified</p>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-white border border-[#ded5c4] shadow-2xs space-y-1">
+                        <span className="text-[9px] font-mono font-bold text-[#1f66a8] bg-[#edf3f8] px-1.5 py-0.5 rounded">
+                          MTH 101
+                        </span>
+                        <h5 className="text-[10px] font-bold text-[#00110a] leading-tight">
+                          Calculus & Vectors
+                        </h5>
+                        <p className="text-[8.5px] text-[#526359]">24 Past Questions</p>
                       </div>
                     </div>
 
                     {/* Earnings Micro-Card */}
-                    <div className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-800 text-white flex items-center justify-between shadow-xs">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex items-center justify-between shadow-xs">
                       <div className="flex items-center gap-1.5">
                         <Coins className="size-3.5 text-amber-300" />
-                        <span className="text-[10px] font-bold">+125 SyllaPoints Earned Today</span>
+                        <div>
+                          <span className="text-[9.5px] font-bold block leading-none">
+                            +150 SyllaPoints Earned Today
+                          </span>
+                          <span className="text-[8px] text-emerald-200 block mt-0.5">
+                            3 classmates downloaded your CSC 301 note
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded font-mono">
-                        Cashout
+                      <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded font-mono font-bold">
+                        Cashout ₦
                       </span>
                     </div>
                   </div>
 
+                  {/* Authentic App Bottom Navigation Bar */}
+                  <div className="px-3 pt-2 pb-1.5 bg-white border-t border-[#e2d9c9] flex items-center justify-around shrink-0 z-20">
+                    <div className="flex flex-col items-center gap-0.5 text-[#155e3e]">
+                      <Home className="size-4" />
+                      <span className="text-[9px] font-bold">Home</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-[#6b7d72]">
+                      <BookOpen className="size-4" />
+                      <span className="text-[9px] font-medium">Library</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-[#155e3e] relative -top-1">
+                      <div className="size-7 rounded-full bg-[#155e3e] text-white flex items-center justify-center shadow-xs">
+                        <Bot className="size-4" />
+                      </div>
+                      <span className="text-[9px] font-bold text-[#155e3e]">Boss AI</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-[#6b7d72]">
+                      <Trophy className="size-4" />
+                      <span className="text-[9px] font-medium">Rankings</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-[#6b7d72]">
+                      <Wallet className="size-4" />
+                      <span className="text-[9px] font-medium">Wallet</span>
+                    </div>
+                  </div>
+
                   {/* iOS Home Indicator Bar */}
-                  <div className="pt-2 pb-2 bg-[#f7f2e6] flex justify-center">
-                    <div className="w-28 h-1 bg-black/40 rounded-full" />
+                  <div className="pb-2 pt-1 bg-white flex justify-center shrink-0">
+                    <div className="w-32 h-1 bg-black/40 rounded-full" />
                   </div>
                 </div>
               </div>
