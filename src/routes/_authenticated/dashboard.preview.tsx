@@ -520,7 +520,7 @@ Include:
             </span>
           </div>
 
-          {/* Rating pill matching user's image */}
+          {/* Rating pill */}
           <button
             type="button"
             onClick={() => setShowRatingModal(true)}
@@ -528,8 +528,14 @@ Include:
             title="Click to rate this document"
           >
             <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
-            <span>{(material.rating_avg || 4.9).toFixed(1)}</span>
-            <span className="text-[#a87c12]/80">({material.rating_count || 181})</span>
+            {material.rating_count && material.rating_count > 0 ? (
+              <>
+                <span>{Number(material.rating_avg || 0).toFixed(1)}</span>
+                <span className="text-[#a87c12]/80">({material.rating_count})</span>
+              </>
+            ) : (
+              <span>Rate this material</span>
+            )}
           </button>
 
           {/* Action Toolbar */}

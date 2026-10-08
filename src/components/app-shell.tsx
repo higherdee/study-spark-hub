@@ -207,48 +207,21 @@ export function AppShell({
               ? path === item.to
               : path === item.to || path.startsWith(`${item.to}/`);
 
-            if (item.isFeatured) {
-              // Bolder prominent central button (Home)
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "relative flex items-center gap-1.5 sm:gap-2 rounded-full px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold transition-all duration-300 active:scale-95 select-none shadow-md",
-                    active
-                      ? "bg-primary text-primary-foreground ring-2 ring-primary/40 shadow-primary/30 scale-[1.05]"
-                      : "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:scale-105 hover:shadow-primary/30"
-                  )}
-                >
-                  <item.icon className="size-5 sm:size-5.5 shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            }
-
-            const isBossAi = item.label === "Boss AI";
-
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "relative flex items-center gap-1.5 rounded-full px-2.5 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all duration-200 active:scale-90 select-none",
+                  "relative flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors select-none",
                   active
-                    ? "bg-secondary text-foreground shadow-xs font-semibold scale-[1.02]"
-                    : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
-                  isBossAi && !active && "text-[#1b7a4e] font-semibold hover:bg-emerald-500/10"
+                    ? "bg-slate-100 text-slate-900 font-semibold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
-                <div className="relative flex items-center justify-center">
-                  <item.icon className={cn("size-4.5 sm:size-5 shrink-0 transition-transform duration-200", isBossAi && "text-[#1b7a4e]")} />
-                  {isBossAi && (
-                    <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-[#1b7a4e] animate-pulse" />
-                  )}
-                </div>
+                <item.icon className="size-4.5 sm:size-5 shrink-0 text-slate-500" />
                 <span
                   className={cn(
-                    "transition-all duration-200 font-medium",
+                    "transition-all font-medium",
                     active ? "inline" : "hidden md:inline"
                   )}
                 >
@@ -258,6 +231,7 @@ export function AppShell({
             );
           })}
         </div>
+
       </aside>
 
       {/* Floating & Movable Boss AI Widget (upper side with auto-hide peek tab) */}

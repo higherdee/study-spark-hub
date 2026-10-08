@@ -324,11 +324,18 @@ This verified material provides high-yield coverage of fundamental principles, s
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1 text-[#a87c12] text-xs font-semibold">
-                      <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
-                      <span>{(m.rating_avg || 4.9).toFixed(1)}</span>
-                      <span className="text-[#a87c12]/80 text-[10px]">({m.rating_count || 181})</span>
-                    </div>
+                    {m.rating_count && m.rating_count > 0 ? (
+                      <div className="flex items-center gap-1 text-[#a87c12] text-xs font-semibold">
+                        <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
+                        <span>{Number(m.rating_avg || 0).toFixed(1)}</span>
+                        <span className="text-[#a87c12]/80 text-[10px]">({m.rating_count})</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-slate-400 text-xs">
+                        <Star className="size-3.5 text-slate-300" />
+                        <span className="text-[11px] text-slate-500 font-normal">Unrated</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>

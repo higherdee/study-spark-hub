@@ -191,8 +191,8 @@ function mapMaterial(row: Record<string, unknown>): Material {
     verification_notes: row['verification_notes'] ? String(row['verification_notes']) : null,
     downloads: Number(row['downloads'] || 0),
     views: Number(row['views'] || 0),
-    rating_avg: row['rating_avg'] !== null && row['rating_avg'] !== undefined ? Number(row['rating_avg']) : 4.9,
-    rating_count: row['rating_count'] !== null && row['rating_count'] !== undefined ? Number(row['rating_count']) : 181,
+    rating_avg: row['rating_avg'] !== null && row['rating_avg'] !== undefined ? Number(row['rating_avg']) : 0,
+    rating_count: row['rating_count'] !== null && row['rating_count'] !== undefined ? Number(row['rating_count']) : 0,
     reviewed_at: row['reviewed_at'] ? String(row['reviewed_at']) : null,
     created_at: String(row['created_at']),
   };

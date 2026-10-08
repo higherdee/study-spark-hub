@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "farm": "node scripts/farm-materials.mjs",
+    "farm:infinite": "node scripts/farm-materials.mjs --infinite"
   },
   "overrides": {
     "rolldown": "1.2.1"

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 const nav: NavItem[] = [
-  { to: "/dashboard", label: "Home", icon: Home, exact: true, isFeatured: true },
+  { to: "/dashboard", label: "Home", icon: Home, exact: true },
   { to: "/dashboard/library", label: "Library", icon: BookOpen },
   { to: "/dashboard/assistant", label: "Boss AI", icon: Bot },
   { to: "/dashboard/upload", label: "Upload", icon: Upload },

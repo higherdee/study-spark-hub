@@ -100,58 +100,44 @@ export function SideNavSheet({ open, onClose }: SideNavSheetProps) {
             )}
           </div>
 
-          {/* Main Navigation List */}
-          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+          {/* Main Navigation List - Basic Uniform Generic Drawer */}
+          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentPath === item.href;
               return (
                 <Link
                   key={item.href}
                   to={item.href}
                   onClick={onClose}
-                  className={cn(
-                    "flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium transition-colors",
-                    isActive
-                      ? "bg-[#0d281e] text-white font-semibold"
-                      : "text-[#2d3a33] hover:bg-[#edf6f0] hover:text-[#00110a]"
-                  )}
+                  className="flex items-center gap-3.5 rounded-lg px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon className={cn("size-4 shrink-0", isActive ? "text-[#c6ebd9]" : "text-[#5a6660]")} />
-                    <span>{item.label}</span>
-                  </div>
-                  {isActive && <span className="size-1.5 rounded-full bg-[#c6ebd9]" />}
+                  <Icon className="size-4 shrink-0 text-slate-500" />
+                  <span>{item.label}</span>
                 </Link>
               );
             })}
 
-            <div className="my-2 border-t border-[#e7f0eb]" />
+            <div className="my-2 border-t border-slate-200" />
 
             <button
+              type="button"
               onClick={() => {
                 setShowFaqModal(true);
               }}
-              className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium text-[#2d3a33] hover:bg-[#edf6f0] hover:text-[#00110a] transition-colors text-left"
+              className="w-full flex items-center gap-3.5 rounded-lg px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors text-left"
             >
-              <div className="flex items-center gap-3">
-                <HelpCircle className="size-4 text-[#5a6660] shrink-0" />
-                <span>Help & FAQs</span>
-              </div>
-              <ChevronRight className="size-3.5 text-[#5a6660]" />
+              <HelpCircle className="size-4 text-slate-500 shrink-0" />
+              <span>Help & FAQs</span>
             </button>
 
             {isAdmin && (
               <Link
                 to="/admin"
                 onClick={onClose}
-                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs text-amber-900 bg-amber-50 border border-amber-200/80 font-semibold transition-colors mt-1"
+                className="flex items-center gap-3.5 rounded-lg px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <Shield className="size-4 text-amber-700 shrink-0" />
-                  <span>Admin Control</span>
-                </div>
-                <ChevronRight className="size-3.5 text-amber-700" />
+                <Shield className="size-4 text-slate-500 shrink-0" />
+                <span>Admin Control</span>
               </Link>
             )}
           </nav>

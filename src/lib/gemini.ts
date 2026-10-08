@@ -15,6 +15,9 @@ export function getGeminiApiKey(): string {
   if (typeof process !== "undefined" && process.env?.GEMINI_API_KEY) {
     return process.env.GEMINI_API_KEY;
   }
+  if (typeof process !== "undefined" && process.env?.VITE_GEMINI_API_KEY) {
+    return process.env.VITE_GEMINI_API_KEY;
+  }
   if (typeof window !== "undefined") {
     try {
       const stored = window.localStorage.getItem("gemini_api_key");
@@ -24,28 +27,33 @@ export function getGeminiApiKey(): string {
   return "";
 }
 
+// Live tested working models prioritized with verified quota:
 const SUPPORTED_MODELS = [
-  "gemini-3.6-flash",
   "gemini-3.1-flash-lite",
   "gemini-flash-lite-latest",
-  "gemini-3.7-flash",
   "gemini-3.5-flash-lite",
-  "gemini-3-flash-preview",
-  "gemini-3.5-flash",
-  "gemini-3.8-flash",
+  "gemini-3.1-flash-lite-preview",
   "gemma-4-26b-a4b-it",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.8-flash",
 ];
 
 export async function askGeminiAI(
   promptOrMessages: string | GeminiMessage[],
-  options?: {
-    model?: string;
-    systemPrompt?: string;
-    temperature?: number;
-    responseMimeType?: string;
-  }
+  options?:
+    | string
+    | {
+        model?: string;
+        systemPrompt?: string;
+        temperature?: number;
+        responseMimeType?: string;
+      }
 ): Promise<string> {
   const apiKey = getGeminiApiKey();
+
+  // Normalize options: allow either string systemPrompt or options object
+  const opts = typeof options === "string" ? { systemPrompt: options } : options || {};
 
   // Format payload for Google Gemini REST API
   let contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
@@ -68,8 +76,8 @@ export async function askGeminiAI(
 
   // Extract system prompt
   let systemInstruction: { parts: Array<{ text: string }> } | undefined = undefined;
-  if (options?.systemPrompt) {
-    systemInstruction = { parts: [{ text: options.systemPrompt }] };
+  if (opts.systemPrompt) {
+    systemInstruction = { parts: [{ text: opts.systemPrompt }] };
   } else if (Array.isArray(promptOrMessages)) {
     const sysMsg = promptOrMessages.find((m) => m.role === "system");
     if (sysMsg) {
@@ -78,14 +86,14 @@ export async function askGeminiAI(
   }
 
   const generationConfig: Record<string, any> = {
-    temperature: options?.temperature ?? 0.7,
+    temperature: opts.temperature ?? 0.7,
   };
-  if (options?.responseMimeType) {
-    generationConfig.responseMimeType = options.responseMimeType;
+  if (opts.responseMimeType) {
+    generationConfig.responseMimeType = opts.responseMimeType;
   }
 
-  const modelsToTry = options?.model
-    ? [options.model, ...SUPPORTED_MODELS.filter((m) => m !== options.model)]
+  const modelsToTry = opts.model
+    ? [opts.model, ...SUPPORTED_MODELS.filter((m) => m !== opts.model)]
     : SUPPORTED_MODELS;
 
   let lastError: any = null;
@@ -101,15 +109,15 @@ export async function askGeminiAI(
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(7000),
+        signal: AbortSignal.timeout(10000),
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.warn(`Gemini (${model}) returned HTTP ${res.status}:`, errorText);
+        console.warn(`Gemini model ${model} HTTP ${res.status}:`, errorText.slice(0, 150));
         lastError = new Error(`HTTP ${res.status}: ${errorText}`);
-        continue;
+        continue; // Fallback immediately to next available model (e.g. flash-lite)
       }
 
       const data = await res.json();
@@ -117,15 +125,16 @@ export async function askGeminiAI(
       if (text) {
         return text;
       }
-    } catch (err) {
-      console.warn(`Gemini network attempt with model ${model} failed:`, err);
+    } catch (err: any) {
+      console.warn(`Gemini network attempt with model ${model} failed:`, err?.message || err);
       lastError = err;
     }
   }
 
-  console.error("All Gemini models encountered issues. Using fallback academic engine:", lastError);
+  console.error("All online Gemini models exhausted. Using resilient academic engine fallback:", lastError);
   return generateOfflineAcademicResponse(promptOrMessages);
 }
+
 
 
 function generateOfflineAcademicResponse(
