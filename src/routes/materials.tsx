@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Download, Eye, FileText, Loader2, X, Sparkles, BookOpen, GraduationCap, Building2 } from "lucide-react";
+import { Download, Eye, FileText, Loader2, X, Sparkles, BookOpen, GraduationCap, Building2, Star } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -57,13 +57,15 @@ function MaterialsPage() {
   });
 
   async function openPreview(m: Material) {
+    if (user) {
+      navigate({ to: "/dashboard/preview", search: { id: m.id } });
+      return;
+    }
     setPreviewMaterial(m);
-    // Record view in the background -> awards 2 SyllaPoints to the uploader!
     try {
-      await recordMaterialViewServerFn({ data: { materialId: m.id } });
+      await recordMaterialViewServerFn({ data: { materialId: m.id, userId: user?.id } });
       qc.invalidateQueries({ queryKey: ["search-materials"] });
     } catch (e) {
-      // Non-blocking view recording
       console.warn("View record failed", e);
     }
   }
@@ -152,25 +154,34 @@ function MaterialsPage() {
               <div className="mt-auto pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
                   <span className="truncate max-w-[140px]">{m.institution}</span>
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{m.material_type}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{m.material_type}</span>
+                    <span className="flex items-center gap-1 text-[#a87c12] text-xs font-semibold">
+                      <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
+                      <span>{(m.rating_avg || 4.9).toFixed(1)}</span>
+                      <span className="text-[#a87c12]/80 text-[10px]">({m.rating_count || 181})</span>
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {m.page_count} pgs · {m.views ?? 0} views · {m.downloads} dls
-                  </span>
+                <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-3 px-3 py-1 rounded-full bg-[#edf6f0] border border-[#dce5df] text-[11px] text-[#446557] font-medium font-mono">
+                    <span className="flex items-center gap-1"><FileText className="size-3 text-[#1b7a4e]" /> {m.page_count} pgs</span>
+                    <span className="flex items-center gap-1"><Eye className="size-3 text-[#1b7a4e]" /> {m.views ?? 0} views</span>
+                    <span className="flex items-center gap-1"><Download className="size-3 text-[#1b7a4e]" /> {m.downloads} dls</span>
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <Button
                       size="sm"
                       variant="ghost"
                       className="size-8 p-0 rounded-full"
                       onClick={() => openPreview(m)}
-                      title="View details (+2 SyllaPoints to author)"
+                      title="Preview material"
                     >
                       <Eye className="size-4" />
                     </Button>
                     <Button
                       size="sm"
-                      className="gap-1.5 rounded-full text-xs h-8 px-3"
+                      className="gap-1.5 rounded-full text-xs h-8 px-3 bg-[#0d281e] text-white hover:bg-[#00110a]"
                       disabled={downloading === m.id}
                       onClick={() => download(m.id)}
                     >

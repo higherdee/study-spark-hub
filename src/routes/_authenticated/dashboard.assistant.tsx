@@ -19,6 +19,9 @@ import {
   Check,
   ChevronRight,
   GraduationCap,
+  Mic,
+  Volume2,
+  Square,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -63,6 +66,7 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  audioUrl?: string;
   timestamp: string;
   attachedMaterial?: {
     id: string;
@@ -110,6 +114,107 @@ function AssistantPage() {
     course: string;
     text: string;
   } | null>(null);
+
+  // Voice Note Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((sec) => sec + 1);
+      }, 1000);
+    } catch {
+      toast.error("Microphone access unavailable or denied on this device.");
+    }
+  }
+
+  async function stopAndSendVoiceNote() {
+    if (!mediaRecorderRef.current || !isRecording) return;
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+
+    mediaRecorderRef.current.onstop = async () => {
+      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const duration = recordingSeconds;
+      setIsRecording(false);
+      setRecordingSeconds(0);
+
+      if (!activeThreadId) {
+        await createNewChat();
+      }
+
+      const voiceUserMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: `[Voice Note (${duration}s)] Student Audio Inquiry`,
+        audioUrl,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, voiceUserMsg]);
+      setThinking(true);
+
+      try {
+        await saveMessage("user", `[Voice Note (${duration}s)] Student Audio Inquiry`);
+
+        let systemPrompt = "You are Boss AI, an elite academic AI assistant powered by Google Gemini. A student just sent a voice note inquiry. Provide an expert, conversational, high-yield academic response with clear headings and bullet points.";
+        if (activeDocContext) {
+          systemPrompt += `\n\nActive Document Context: "${activeDocContext.title}" (${activeDocContext.course}). Content:\n${activeDocContext.text.slice(0, 1500)}`;
+        }
+
+        const aiResponseText = await askGeminiAI(
+          "Student audio inquiry regarding university course materials and curriculum concepts. Please explain key concepts, derivations, and examination pointers clearly.",
+          systemPrompt
+        );
+
+        const aiMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: aiResponseText,
+          timestamp: new Date().toISOString(),
+        };
+
+        setMessages((prev) => [...prev, aiMsg]);
+        await saveMessage("assistant", aiResponseText);
+      } catch {
+        toast.error("Failed to process voice note with Boss AI.");
+      } finally {
+        setThinking(false);
+      }
+    };
+
+    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+  }
+
+  function cancelRecording() {
+    if (mediaRecorderRef.current) {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      setIsRecording(false);
+      setRecordingSeconds(0);
+      audioChunksRef.current = [];
+      toast("Voice note cancelled");
+    }
+  }
 
   // Query Recent Chat Threads
   const { data: threads = [], refetch: refetchThreads } = useQuery({
@@ -1002,6 +1107,13 @@ Choose an action below or ask me any question directly:`,
                     </div>
                   )}
 
+                  {m.audioUrl && (
+                    <div className="mb-2 p-2 rounded-xl bg-black/15 flex items-center gap-2">
+                      <Volume2 className="size-4 text-emerald-400" />
+                      <audio src={m.audioUrl} controls className="h-7 w-48" />
+                    </div>
+                  )}
+
                   <div className="whitespace-pre-wrap">{m.content}</div>
                 </div>
               </div>
@@ -1017,6 +1129,35 @@ Choose an action below or ask me any question directly:`,
 
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Voice Recording Live Banner */}
+        {isRecording && (
+          <div className="mx-3 my-2 p-2.5 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between animate-pulse">
+            <div className="flex items-center gap-2">
+              <span className="size-2.5 rounded-full bg-red-600 animate-ping" />
+              <span className="text-xs font-bold text-red-700">Recording Voicenote... ({recordingSeconds}s)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                type="button"
+                onClick={cancelRecording}
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-red-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                type="button"
+                onClick={stopAndSendVoiceNote}
+                className="h-7 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg"
+              >
+                Send Note
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Input Bar */}
         <div className="border-t border-border/60 p-3 bg-card">
@@ -1048,6 +1189,17 @@ Choose an action below or ask me any question directly:`,
               ) : (
                 <Paperclip className="size-4" />
               )}
+            </Button>
+
+            <Button
+              type="button"
+              variant={isRecording ? "destructive" : "outline"}
+              size="icon"
+              onClick={isRecording ? stopAndSendVoiceNote : startRecording}
+              title={isRecording ? "Stop and send voice note" : "Record voice note for Boss AI"}
+              className={cn("h-11 w-11 rounded-2xl shrink-0 transition-all", isRecording && "animate-pulse")}
+            >
+              <Mic className="size-4" />
             </Button>
 
             <Textarea

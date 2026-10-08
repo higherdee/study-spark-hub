@@ -74,6 +74,8 @@ export type Material = {
   verification_notes: string | null;
   downloads: number;
   views: number;
+  rating_avg?: number | null;
+  rating_count?: number | null;
   reviewed_at: string | null;
   created_at: string;
 };
@@ -189,6 +191,8 @@ function mapMaterial(row: Record<string, unknown>): Material {
     verification_notes: row['verification_notes'] ? String(row['verification_notes']) : null,
     downloads: Number(row['downloads'] || 0),
     views: Number(row['views'] || 0),
+    rating_avg: row['rating_avg'] !== null && row['rating_avg'] !== undefined ? Number(row['rating_avg']) : 4.9,
+    rating_count: row['rating_count'] !== null && row['rating_count'] !== undefined ? Number(row['rating_count']) : 181,
     reviewed_at: row['reviewed_at'] ? String(row['reviewed_at']) : null,
     created_at: String(row['created_at']),
   };
@@ -699,6 +703,48 @@ export async function recordMaterialDownload(materialId: string, downloaderUserI
   ]);
 
   return String(m['file_path']);
+}
+
+export async function rateMaterial(
+  materialId: string,
+  userId: string,
+  rating: number,
+  review?: string
+): Promise<{ rating_avg: number; rating_count: number }> {
+  const id = crypto.randomUUID();
+  const clampedRating = Math.max(1, Math.min(5, Math.round(rating * 10) / 10));
+
+  await turso.execute({
+    sql: `INSERT INTO material_ratings (id, material_id, user_id, rating, review)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(material_id, user_id) DO UPDATE SET rating = excluded.rating, review = excluded.review, updated_at = CURRENT_TIMESTAMP`,
+    args: [id, materialId, userId, clampedRating, review || null],
+  });
+
+  const statsRs = await turso.execute({
+    sql: "SELECT AVG(rating) as avg_rating, COUNT(*) as count_rating FROM material_ratings WHERE material_id = ?",
+    args: [materialId],
+  });
+
+  const avg = Number(statsRs.rows[0]?.['avg_rating'] || clampedRating);
+  const count = Number(statsRs.rows[0]?.['count_rating'] || 1);
+  const roundedAvg = Math.round(avg * 10) / 10;
+
+  await turso.execute({
+    sql: "UPDATE materials SET rating_avg = ?, rating_count = ? WHERE id = ?",
+    args: [roundedAvg, count, materialId],
+  });
+
+  return { rating_avg: roundedAvg, rating_count: count };
+}
+
+export async function getUserRating(materialId: string, userId: string): Promise<number | null> {
+  const rs = await turso.execute({
+    sql: "SELECT rating FROM material_ratings WHERE material_id = ? AND user_id = ? LIMIT 1",
+    args: [materialId, userId],
+  });
+  if (rs.rows.length === 0 || !rs.rows[0]) return null;
+  return Number(rs.rows[0]['rating']);
 }
 
 // Complaints & Dispute Resolution

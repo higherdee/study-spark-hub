@@ -1,22 +1,24 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   X,
-  Settings,
+  LayoutDashboard,
+  BookOpen,
+  Bot,
+  Upload,
   FileStack,
+  Wallet,
+  Trophy,
+  Settings,
   Shield,
   HelpCircle,
   LogOut,
   Sparkles,
-  GraduationCap,
-  Timer,
-  Share2,
-  ExternalLink,
   ChevronRight,
-  BookOpen,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SyllabossLogo } from "@/components/syllaboss-logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useIsAdmin } from "@/lib/profile";
 import { PLAN_NAME, POINTS_NAME } from "@/lib/constants";
@@ -32,130 +34,143 @@ export function SideNavSheet({ open, onClose }: SideNavSheetProps) {
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
   const [showFaqModal, setShowFaqModal] = useState(false);
+  const routerState = useRouterState();
+  const currentPath = routerState.location.pathname;
 
   if (!open) return null;
 
   const name = profile?.full_name || user?.email?.split("@")[0] || "Student";
   const initial = name.charAt(0).toUpperCase();
 
+  const navItems = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "University Library", href: "/dashboard/library", icon: BookOpen },
+    { label: "Boss AI Study Suite", href: "/dashboard/assistant", icon: Bot },
+    { label: "Upload Material", href: "/dashboard/upload", icon: Upload },
+    { label: "My Uploads & Notes", href: "/dashboard/materials", icon: FileStack },
+    { label: "Wallet & Points", href: "/dashboard/wallet", icon: Wallet },
+    { label: "Campus Leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
+    { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity animate-fade-in"
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity animate-fade-in"
       />
 
-      {/* Side Slide-Over Drawer */}
-      <div className="relative z-10 flex w-full max-w-xs flex-1 flex-col justify-between bg-card p-6 shadow-2xl animate-in slide-in-from-left duration-300">
-        <div className="space-y-6">
-          {/* Header with Close Button */}
-          <div className="flex items-center justify-between">
-            <span className="font-display text-lg font-bold tracking-tight text-foreground">
-              Syllaboss
-            </span>
+      {/* Standard App Navigation Drawer */}
+      <div className="relative z-10 flex w-[290px] max-w-[85vw] flex-1 flex-col justify-between bg-white text-[#151d1a] shadow-2xl animate-in slide-in-from-left duration-250 border-r border-[#dce5df]">
+        <div className="flex flex-col flex-1 min-h-0">
+          {/* Drawer Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#e7f0eb]">
+            <SyllabossLogo />
             <button
               onClick={onClose}
-              className="grid size-8 place-items-center rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              className="grid size-8 place-items-center rounded-lg text-[#5a6660] hover:bg-[#edf6f0] hover:text-[#00110a] transition-colors"
               aria-label="Close menu"
             >
-              <X className="size-4" />
+              <X className="size-5" />
             </button>
           </div>
 
-          {/* Student Profile Card */}
-          <div className="rounded-2xl border border-border/80 bg-secondary/30 p-4">
+          {/* User Account Snippet */}
+          <div className="p-4 bg-[#edf6f0]/60 border-b border-[#e7f0eb]">
             <div className="flex items-center gap-3">
-              <div className="grid size-11 place-items-center rounded-2xl bg-primary text-primary-foreground font-bold text-sm shadow-xs">
+              <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[#0d281e] text-[#c6ebd9] font-bold text-sm shadow-xs">
                 {initial}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-foreground">{name}</p>
-                <p className="truncate text-xs text-muted-foreground">{profile?.email || user?.email}</p>
+                <p className="truncate text-sm font-semibold text-[#00110a]">{name}</p>
+                <p className="truncate text-xs text-[#5a6660]">{profile?.institution || "Nigerian University"}</p>
               </div>
             </div>
 
-            <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground truncate">{profile?.institution || "University"}</span>
-              <span className="font-semibold text-primary">{profile?.points ?? 0} {POINTS_NAME}</span>
+            <div className="mt-2.5 pt-2 flex items-center justify-between text-xs border-t border-[#dce5df]/60">
+              <span className="text-[#5a6660]">Points Balance:</span>
+              <span className="font-bold text-[#1b7a4e]">{profile?.points ?? 0} {POINTS_NAME}</span>
             </div>
 
             {profile?.sylla_plus && (
-              <div className="mt-2 flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 w-fit">
+              <div className="mt-2 flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 w-fit">
                 <Sparkles className="size-3" /> {PLAN_NAME} Active
               </div>
             )}
           </div>
 
-          {/* Navigation Links */}
-          <nav className="space-y-1 text-sm font-medium">
-            <Link
-              to="/dashboard/materials"
-              onClick={onClose}
-              className="flex items-center justify-between rounded-xl px-3 py-2.5 text-foreground hover:bg-secondary transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <FileStack className="size-4 text-primary" />
-                <span>My Uploads & Notes</span>
-              </div>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </Link>
+          {/* Main Navigation List */}
+          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentPath === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium transition-colors",
+                    isActive
+                      ? "bg-[#0d281e] text-white font-semibold"
+                      : "text-[#2d3a33] hover:bg-[#edf6f0] hover:text-[#00110a]"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className={cn("size-4 shrink-0", isActive ? "text-[#c6ebd9]" : "text-[#5a6660]")} />
+                    <span>{item.label}</span>
+                  </div>
+                  {isActive && <span className="size-1.5 rounded-full bg-[#c6ebd9]" />}
+                </Link>
+              );
+            })}
 
-            <Link
-              to="/dashboard/settings"
-              onClick={onClose}
-              className="flex items-center justify-between rounded-xl px-3 py-2.5 text-foreground hover:bg-secondary transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <Settings className="size-4 text-primary" />
-                <span>Settings & Preferences</span>
-              </div>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </Link>
+            <div className="my-2 border-t border-[#e7f0eb]" />
 
             <button
               onClick={() => {
                 setShowFaqModal(true);
               }}
-              className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-foreground hover:bg-secondary transition-colors text-left"
+              className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium text-[#2d3a33] hover:bg-[#edf6f0] hover:text-[#00110a] transition-colors text-left"
             >
               <div className="flex items-center gap-3">
-                <HelpCircle className="size-4 text-primary" />
+                <HelpCircle className="size-4 text-[#5a6660] shrink-0" />
                 <span>Help & FAQs</span>
               </div>
-              <ChevronRight className="size-4 text-muted-foreground" />
+              <ChevronRight className="size-3.5 text-[#5a6660]" />
             </button>
 
             {isAdmin && (
               <Link
                 to="/admin"
                 onClick={onClose}
-                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-amber-800 bg-amber-500/10 border border-amber-500/20 font-semibold transition-colors mt-2"
+                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs text-amber-900 bg-amber-50 border border-amber-200/80 font-semibold transition-colors mt-1"
               >
                 <div className="flex items-center gap-3">
-                  <Shield className="size-4 text-amber-600" />
-                  <span>Admin Control Center</span>
+                  <Shield className="size-4 text-amber-700 shrink-0" />
+                  <span>Admin Control</span>
                 </div>
-                <ChevronRight className="size-4 text-amber-700" />
+                <ChevronRight className="size-3.5 text-amber-700" />
               </Link>
             )}
           </nav>
         </div>
 
-        {/* Footer with Sign Out */}
-        <div className="pt-6 border-t border-border/60 space-y-3">
+        {/* Drawer Footer */}
+        <div className="p-3 border-t border-[#e7f0eb] space-y-2">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => {
               onClose();
               signOut();
             }}
-            className="w-full justify-start gap-2.5 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive font-semibold"
+            className="w-full justify-start gap-2.5 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 text-xs font-semibold h-9"
           >
-            <LogOut className="size-4" /> Sign out of account
+            <LogOut className="size-4" /> Sign out
           </Button>
-
-          <p className="px-2 text-[10px] text-muted-foreground">
+          <p className="px-2 text-[10px] text-[#5a6660] font-mono">
             Syllaboss v2.4 · Academic Excellence
           </p>
         </div>
@@ -163,34 +178,34 @@ export function SideNavSheet({ open, onClose }: SideNavSheetProps) {
 
       {/* FAQs Modal */}
       {showFaqModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="relative w-full max-w-lg rounded-3xl bg-card p-6 shadow-2xl border border-border">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="font-display text-lg font-bold text-foreground">Frequently Asked Questions</h3>
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-[#dce5df]">
+            <div className="flex items-center justify-between border-b border-[#e7f0eb] pb-3">
+              <h3 className="font-display text-lg font-bold text-[#00110a]">Frequently Asked Questions</h3>
               <button
                 onClick={() => setShowFaqModal(false)}
-                className="grid size-7 place-items-center rounded-full bg-secondary text-muted-foreground"
+                className="grid size-7 place-items-center rounded-full bg-[#edf6f0] text-[#5a6660] hover:text-[#00110a]"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-3 text-xs leading-relaxed text-muted-foreground pr-1">
+            <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-3.5 text-xs leading-relaxed text-[#424844] pr-1">
               <div>
-                <strong className="text-foreground text-sm block">How do I earn SyllaPoints?</strong>
+                <strong className="text-[#00110a] text-sm block">How do I earn SyllaPoints?</strong>
                 You earn +25 points per verified upload, +5 points per 30 minutes studying on the site, +5 points when a peer downloads your material, and +2 points per view.
               </div>
               <div>
-                <strong className="text-foreground text-sm block">Can I download files directly?</strong>
+                <strong className="text-[#00110a] text-sm block">Can I download files directly?</strong>
                 Yes! Every verified material has a direct Download button that saves the document straight to your phone or laptop storage.
               </div>
               <div>
-                <strong className="text-foreground text-sm block">What is the minimum withdrawal?</strong>
+                <strong className="text-[#00110a] text-sm block">What is the minimum withdrawal?</strong>
                 The minimum withdrawal is 17,500 SyllaPoints, which can be withdrawn directly to your Nigerian bank account.
               </div>
               <div>
-                <strong className="text-foreground text-sm block">How does Boss AI work?</strong>
-                Boss AI is powered by Google Gemini. You can attach documents to automatically categorize and register them into the campus library, generate MCQ or theory practice quizzes with automated marking, and study flashcards.
+                <strong className="text-[#00110a] text-sm block">How does Boss AI work?</strong>
+                Boss AI is powered by Google Gemini. You can preview study materials, split the screen to chat with documents in real time, highlight text to explain, send voicenotes, and generate practice quizzes.
               </div>
             </div>
           </div>

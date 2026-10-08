@@ -33,6 +33,7 @@ import { Route as AuthenticatedDashboardAssistantRouteImport } from './routes/_a
 import { Route as AuthenticatedDashboardLeaderboardRouteImport } from './routes/_authenticated/dashboard.leaderboard'
 import { Route as AuthenticatedDashboardLibraryRouteImport } from './routes/_authenticated/dashboard.library'
 import { Route as AuthenticatedDashboardMaterialsRouteImport } from './routes/_authenticated/dashboard.materials'
+import { Route as AuthenticatedDashboardPreviewRouteImport } from './routes/_authenticated/dashboard.preview'
 import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard.settings'
 import { Route as AuthenticatedDashboardUploadRouteImport } from './routes/_authenticated/dashboard.upload'
 import { Route as AuthenticatedDashboardWalletRouteImport } from './routes/_authenticated/dashboard.wallet'
@@ -166,6 +167,12 @@ const AuthenticatedDashboardMaterialsRoute =
     path: '/materials',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedDashboardPreviewRoute =
+  AuthenticatedDashboardPreviewRouteImport.update({
+    id: '/preview',
+    path: '/preview',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const AuthenticatedDashboardSettingsRoute =
   AuthenticatedDashboardSettingsRouteImport.update({
     id: '/settings',
@@ -207,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/dashboard/preview': typeof AuthenticatedDashboardPreviewRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
@@ -233,6 +241,7 @@ export interface FileRoutesByTo {
   '/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/dashboard/preview': typeof AuthenticatedDashboardPreviewRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
@@ -263,6 +272,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/_authenticated/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/_authenticated/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/_authenticated/dashboard/preview': typeof AuthenticatedDashboardPreviewRoute
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/_authenticated/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/_authenticated/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/dashboard/leaderboard'
     | '/dashboard/library'
     | '/dashboard/materials'
+    | '/dashboard/preview'
     | '/dashboard/settings'
     | '/dashboard/upload'
     | '/dashboard/wallet'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/dashboard/leaderboard'
     | '/dashboard/library'
     | '/dashboard/materials'
+    | '/dashboard/preview'
     | '/dashboard/settings'
     | '/dashboard/upload'
     | '/dashboard/wallet'
@@ -348,6 +360,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/leaderboard'
     | '/_authenticated/dashboard/library'
     | '/_authenticated/dashboard/materials'
+    | '/_authenticated/dashboard/preview'
     | '/_authenticated/dashboard/settings'
     | '/_authenticated/dashboard/upload'
     | '/_authenticated/dashboard/wallet'
@@ -537,6 +550,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardMaterialsRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/dashboard/preview': {
+      id: '/_authenticated/dashboard/preview'
+      path: '/preview'
+      fullPath: '/dashboard/preview'
+      preLoaderRoute: typeof AuthenticatedDashboardPreviewRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
     '/_authenticated/dashboard/settings': {
       id: '/_authenticated/dashboard/settings'
       path: '/settings'
@@ -589,6 +609,7 @@ interface AuthenticatedDashboardRouteChildren {
   AuthenticatedDashboardLeaderboardRoute: typeof AuthenticatedDashboardLeaderboardRoute
   AuthenticatedDashboardLibraryRoute: typeof AuthenticatedDashboardLibraryRoute
   AuthenticatedDashboardMaterialsRoute: typeof AuthenticatedDashboardMaterialsRoute
+  AuthenticatedDashboardPreviewRoute: typeof AuthenticatedDashboardPreviewRoute
   AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
   AuthenticatedDashboardUploadRoute: typeof AuthenticatedDashboardUploadRoute
   AuthenticatedDashboardWalletRoute: typeof AuthenticatedDashboardWalletRoute
@@ -602,6 +623,7 @@ const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
       AuthenticatedDashboardLeaderboardRoute,
     AuthenticatedDashboardLibraryRoute: AuthenticatedDashboardLibraryRoute,
     AuthenticatedDashboardMaterialsRoute: AuthenticatedDashboardMaterialsRoute,
+    AuthenticatedDashboardPreviewRoute: AuthenticatedDashboardPreviewRoute,
     AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
     AuthenticatedDashboardUploadRoute: AuthenticatedDashboardUploadRoute,
     AuthenticatedDashboardWalletRoute: AuthenticatedDashboardWalletRoute,

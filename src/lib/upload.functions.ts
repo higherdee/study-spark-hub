@@ -6,6 +6,8 @@ import {
   setMaterialStatus,
   recordMaterialDownload,
   recordMaterialView,
+  rateMaterial,
+  getUserRating,
   requestWithdrawal as tursoRequestWithdrawal,
   claimAppInstallBonus as tursoClaimInstall,
   upgradeToSyllaPlus as tursoUpgradePlus,
@@ -125,6 +127,31 @@ export const recordMaterialViewServerFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await recordMaterialView(data.materialId, data.userId);
     return { success: true };
+  });
+
+export const rateMaterialServerFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        materialId: z.string(),
+        userId: z.string(),
+        rating: z.number().min(1).max(5),
+        review: z.string().optional(),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data }) => {
+    const res = await rateMaterial(data.materialId, data.userId, data.rating, data.review);
+    return res;
+  });
+
+export const getUserRatingServerFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({ materialId: z.string(), userId: z.string() }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const rating = await getUserRating(data.materialId, data.userId);
+    return { rating };
   });
 
 export const requestWithdrawalServerFn = createServerFn({ method: "POST" })

@@ -27,17 +27,22 @@ export const Route = createFileRoute("/api/materials")({
 
         const m = rs.rows[0] as Record<string, unknown>;
         const filePath = String(m.file_path || "");
-        const rawFileName = String(m.file_name || `${m.title || "study-material"}.pdf`);
-        const fileName = rawFileName.endsWith(".pdf") ? rawFileName : `${rawFileName}.pdf`;
+        const mimeType = String(m.mime_type || "application/pdf");
+        const isImage = mimeType.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(filePath);
+        const rawFileName = String(m.file_name || `${m.title || "study-material"}${isImage ? ".png" : ".pdf"}`);
+        const fileName = isImage
+          ? (/\.(png|jpe?g|webp|gif)$/i.test(rawFileName) ? rawFileName : `${rawFileName}.png`)
+          : (rawFileName.endsWith(".pdf") ? rawFileName : `${rawFileName}.pdf`);
 
         // 2. Case A: Stored in R2 (does not start with http:// or https://)
         if (filePath && !filePath.startsWith("http://") && !filePath.startsWith("https://")) {
           try {
             const r2Data = await getFromR2(filePath);
+            const contentType = isImage ? (mimeType || r2Data.contentType || "image/png") : (r2Data.contentType || "application/pdf");
             return new Response(r2Data.bytes, {
               status: 200,
               headers: {
-                "Content-Type": r2Data.contentType || "application/pdf",
+                "Content-Type": contentType,
                 "Content-Disposition": `${isDownload ? "attachment" : "inline"}; filename="${encodeURIComponent(fileName)}"`,
                 "Cache-Control": "public, max-age=86400",
                 "X-Content-Type-Options": "nosniff",

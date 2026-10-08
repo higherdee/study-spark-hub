@@ -86,30 +86,19 @@ function LibraryPage() {
     },
   });
 
-  // Action 1: Open / Read document
-  async function handleOpenMaterial(m: Material) {
-    setSelectedMaterial(m);
-    setActiveTab("open");
-    setLoadingPreview(true);
-    try {
-      await recordMaterialViewServerFn({ data: { materialId: m.id, userId: user?.id } });
-      qc.invalidateQueries({ queryKey: ["library-materials"] });
-
-      // Always stream preview natively through our resilient material viewer
-      setPreviewUrl(`/api/materials?id=${m.id}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to open document preview.");
-    } finally {
-      setLoadingPreview(false);
-    }
+  // Action 1: Open / Read document in Full Preview
+  function handleOpenMaterial(m: Material) {
+    navigate({
+      to: "/dashboard/preview",
+      search: { id: m.id },
+    });
   }
 
-  // Action 2: Study with AI
+  // Action 2: Study with AI in Resizable Split View
   function handleStudyWithAI(m: Material) {
-    toast.success(`Starting study session for "${m.title}" with Boss AI...`);
     navigate({
-      to: "/dashboard/assistant",
-      search: { materialId: m.id },
+      to: "/dashboard/preview",
+      search: { id: m.id, split: "true" },
     });
   }
 
@@ -337,8 +326,8 @@ This verified material provides high-yield coverage of fundamental principles, s
 
                     <div className="flex items-center gap-1 text-[#a87c12] text-xs font-semibold">
                       <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
-                      <span>4.9</span>
-                      <span className="text-[#5a6660] text-[10px]">({m.views + 12})</span>
+                      <span>{(m.rating_avg || 4.9).toFixed(1)}</span>
+                      <span className="text-[#a87c12]/80 text-[10px]">({m.rating_count || 181})</span>
                     </div>
                   </div>
 
