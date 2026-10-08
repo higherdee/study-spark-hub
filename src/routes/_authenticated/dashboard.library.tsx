@@ -95,8 +95,8 @@ function LibraryPage() {
       await recordMaterialViewServerFn({ data: { materialId: m.id, userId: user?.id } });
       qc.invalidateQueries({ queryKey: ["library-materials"] });
 
-      const { downloadUrl } = await getDownloadUrlServerFn({ data: { materialId: m.id, userId: user?.id } });
-      setPreviewUrl(downloadUrl);
+      // Always stream preview natively through our resilient material viewer
+      setPreviewUrl(`/api/materials?id=${m.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to open document preview.");
     } finally {

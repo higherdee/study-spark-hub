@@ -1,0 +1,42 @@
+name: Autonomous Academic Material Harvester (20k Daily Target)
+
+on:
+  schedule:
+    # Runs every hour at minute 0 (24 runs per day x ~850 items = ~20,400 daily materials)
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: 'Number of materials to harvest in this batch'
+        required: true
+        default: '850'
+        type: string
+
+jobs:
+  harvest:
+    name: Ingest & Classify Academic Corpus
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Execute Autonomous Harvester Batch
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL || 'libsql://syllaboss-db-kunle.aws-us-east-2.turso.io' }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3OTA5NDU2ODUsImlkIjoiMDFhMGZjYWUtNDUwMS03ZTQxLTkxNzItZGEzNzhkNmNlNDIxIiwia2lkIjoiSW1vS2lmVHNJNEZkMDFsOUVfNDJQQ01TTUtuUXkyR2pTWGhKOUZ1OEVtWSIsInJpZCI6IjQyZjEyNjgxLWZhMGMtNDYwZS04MWIyLTkwMWNjOWQ1MDcyMyJ9.eD10y_k_LzyciYuiNuCsuFRMouzlWrrYTStmQWEuR5XgbM0uWmCutRBc8mnBQSKQN5XYlBM_zpGCi0Q-X23aAQ' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          BATCH_SIZE="${{ github.event.inputs.batch_size || '850' }}"
+          echo "Starting Syllaboss Academic Material Harvester with batch size: $BATCH_SIZE"
+          node scripts/farm-materials.mjs --count=$BATCH_SIZE

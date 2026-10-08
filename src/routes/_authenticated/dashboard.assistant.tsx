@@ -27,8 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
-import { turso, getMaterialById, type Material } from "@/integrations/turso/client";
-import { askPuterAI } from "@/lib/puter";
+import { askGeminiAI } from "@/lib/gemini";
 import {
   categorizeDocumentAutonomously,
   auditUploadAutonomous,
@@ -283,7 +282,7 @@ function AssistantPage() {
         extractedSample = `${file.name} - Academic Course Material for ${profile?.institution || "University"}`;
       }
 
-      // Step 1: Autonomous Categorization using Puter AI + Student profile
+      // Step 1: Autonomous Categorization using Google Gemini AI + Student profile
       const cat = await categorizeDocumentAutonomously(file.name, extractedSample, profile);
 
       // Step 2: Upload to Cloudflare R2
@@ -401,7 +400,7 @@ Choose an action below or ask me any question directly:`,
     }
   }
 
-  // Send Chat Prompt to Puter AI
+  // Send Chat Prompt to Google Gemini AI
   async function handleSend(textToSend?: string) {
     const query = (textToSend || input).trim();
     if (!query || thinking) return;
@@ -425,12 +424,12 @@ Choose an action below or ask me any question directly:`,
       await saveMessage("user", query);
 
       // System context with active document if present
-      let systemPrompt = "You are Boss, an elite academic AI assistant built specifically for Nigerian university students on Syllaboss. You provide clear, concise, highly structured explanations with step-by-step mathematical or conceptual derivations. Never use unicode emojis; use clean bullet points and markdown headers.";
+      let systemPrompt = "You are Boss, an elite academic AI assistant built specifically for university students on Syllaboss, powered by Google Gemini. You provide clear, concise, highly structured explanations with step-by-step mathematical or conceptual derivations. Never use unicode emojis; use clean bullet points and markdown headers.";
       if (activeDocContext) {
         systemPrompt += `\n\nActive Document Context: "${activeDocContext.title}" (${activeDocContext.course}). Content overview:\n${activeDocContext.text.slice(0, 1500)}`;
       }
 
-      const aiResponseText = await askPuterAI(query, { systemPrompt });
+      const aiResponseText = await askGeminiAI(query, { systemPrompt });
 
       const aiMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -631,7 +630,7 @@ Choose an action below or ask me any question directly:`,
               <div className="flex items-center gap-2">
                 <h2 className="font-display text-base font-bold text-foreground">Boss AI</h2>
                 <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                  Puter AI Ready
+                  Google Gemini Ready
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground truncate max-w-xs">

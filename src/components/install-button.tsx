@@ -43,12 +43,12 @@ export function InstallButton({
 
   function triggerDownload(target: "windows" | "android" | "linux") {
     if (target === "windows") {
-      toast.success("Downloading Syllaboss for Windows (.EXE)...", {
-        description: "Run Syllaboss-Setup.exe once downloaded to install.",
+      toast.success("Downloading Syllaboss for Windows (.MSI)...", {
+        description: "Run Syllaboss-Setup.msi once downloaded to install.",
       });
       const link = document.createElement("a");
-      link.href = "/downloads/syllaboss-setup.exe";
-      link.download = "Syllaboss-Setup.exe";
+      link.href = "/downloads/syllaboss-setup.msi";
+      link.download = "Syllaboss-Setup.msi";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -313,11 +313,11 @@ export function InstallButton({
                     }}
                   >
                     <Download className="size-4.5" />
-                    Download Syllaboss-Setup.exe (Windows 10/11)
+                    Download Syllaboss-Setup.msi (Windows 10/11)
                   </Button>
 
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Downloads <code className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono">Syllaboss-Setup.exe</code>. Run the file once to create Desktop and Start Menu shortcuts and launch Syllaboss in a dedicated window.
+                    Downloads <code className="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono">Syllaboss-Setup.msi</code>. Run the file once to install Syllaboss and place an official desktop executable shortcut.
                   </p>
                 </div>
               )}

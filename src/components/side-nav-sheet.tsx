@@ -190,7 +190,7 @@ export function SideNavSheet({ open, onClose }: SideNavSheetProps) {
               </div>
               <div>
                 <strong className="text-foreground text-sm block">How does Boss AI work?</strong>
-                Boss AI is powered by Puter AI. You can attach documents to automatically categorize and register them into the campus library, generate MCQ or theory practice quizzes with automated marking, and study flashcards.
+                Boss AI is powered by Google Gemini. You can attach documents to automatically categorize and register them into the campus library, generate MCQ or theory practice quizzes with automated marking, and study flashcards.
               </div>
             </div>
           </div>

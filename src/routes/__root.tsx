@@ -123,7 +123,6 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" className="light" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <script src="https://js.puter.com/v2/"></script>
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -134,7 +133,18 @@ function RootShell({ children }: { children: ReactNode }) {
               } catch(e) {}
               if ('serviceWorker' in navigator) {
                 try {
-                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                  navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    for (var i = 0; i < regs.length; i++) {
+                      regs[i].unregister();
+                    }
+                  });
+                  if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                      for (var j = 0; j < names.length; j++) {
+                        caches.delete(names[j]);
+                      }
+                    });
+                  }
                 } catch(e) {}
               }
               window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;window.dispatchEvent(new Event('bip-ready'));});

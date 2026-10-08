@@ -18,10 +18,13 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiDownloadRouteImport } from './routes/api/download'
+import { Route as ApiHarvesterRouteImport } from './routes/api/harvester'
+import { Route as ApiMaterialsRouteImport } from './routes/api/materials'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated/admin.broadcast'
 import { Route as AuthenticatedAdminComplaintsRouteImport } from './routes/_authenticated/admin.complaints'
+import { Route as AuthenticatedAdminHarvesterRouteImport } from './routes/_authenticated/admin.harvester'
 import { Route as AuthenticatedAdminMaterialsRouteImport } from './routes/_authenticated/admin.materials'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminWithdrawalsRouteImport } from './routes/_authenticated/admin.withdrawals'
@@ -78,6 +81,16 @@ const ApiDownloadRoute = ApiDownloadRouteImport.update({
   path: '/api/download',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHarvesterRoute = ApiHarvesterRouteImport.update({
+  id: '/api/harvester',
+  path: '/api/harvester',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMaterialsRoute = ApiMaterialsRouteImport.update({
+  id: '/api/materials',
+  path: '/api/materials',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiUploadRoute = ApiUploadRouteImport.update({
   id: '/api/upload',
   path: '/api/upload',
@@ -98,6 +111,12 @@ const AuthenticatedAdminComplaintsRoute =
   AuthenticatedAdminComplaintsRouteImport.update({
     id: '/complaints',
     path: '/complaints',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminHarvesterRoute =
+  AuthenticatedAdminHarvesterRouteImport.update({
+    id: '/harvester',
+    path: '/harvester',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminMaterialsRoute =
@@ -175,9 +194,12 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
   '/api/download': typeof ApiDownloadRoute
+  '/api/harvester': typeof ApiHarvesterRoute
+  '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
+  '/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
   '/admin/materials': typeof AuthenticatedAdminMaterialsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
@@ -198,9 +220,12 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
   '/api/download': typeof ApiDownloadRoute
+  '/api/harvester': typeof ApiHarvesterRoute
+  '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
+  '/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
   '/admin/materials': typeof AuthenticatedAdminMaterialsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
@@ -225,9 +250,12 @@ export interface FileRoutesById {
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/api/chat': typeof ApiChatRoute
   '/api/download': typeof ApiDownloadRoute
+  '/api/harvester': typeof ApiHarvesterRoute
+  '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/_authenticated/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
+  '/_authenticated/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
   '/_authenticated/admin/materials': typeof AuthenticatedAdminMaterialsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
@@ -252,9 +280,12 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/api/chat'
     | '/api/download'
+    | '/api/harvester'
+    | '/api/materials'
     | '/api/upload'
     | '/admin/broadcast'
     | '/admin/complaints'
+    | '/admin/harvester'
     | '/admin/materials'
     | '/admin/users'
     | '/admin/withdrawals'
@@ -275,9 +306,12 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/api/chat'
     | '/api/download'
+    | '/api/harvester'
+    | '/api/materials'
     | '/api/upload'
     | '/admin/broadcast'
     | '/admin/complaints'
+    | '/admin/harvester'
     | '/admin/materials'
     | '/admin/users'
     | '/admin/withdrawals'
@@ -301,9 +335,12 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding'
     | '/api/chat'
     | '/api/download'
+    | '/api/harvester'
+    | '/api/materials'
     | '/api/upload'
     | '/_authenticated/admin/broadcast'
     | '/_authenticated/admin/complaints'
+    | '/_authenticated/admin/harvester'
     | '/_authenticated/admin/materials'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/withdrawals'
@@ -325,6 +362,8 @@ export interface RootRouteChildren {
   MaterialsRoute: typeof MaterialsRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiDownloadRoute: typeof ApiDownloadRoute
+  ApiHarvesterRoute: typeof ApiHarvesterRoute
+  ApiMaterialsRoute: typeof ApiMaterialsRoute
   ApiUploadRoute: typeof ApiUploadRoute
 }
 
@@ -393,6 +432,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/harvester': {
+      id: '/api/harvester'
+      path: '/api/harvester'
+      fullPath: '/api/harvester'
+      preLoaderRoute: typeof ApiHarvesterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/materials': {
+      id: '/api/materials'
+      path: '/api/materials'
+      fullPath: '/api/materials'
+      preLoaderRoute: typeof ApiMaterialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/upload': {
       id: '/api/upload'
       path: '/api/upload'
@@ -419,6 +472,13 @@ declare module '@tanstack/react-router' {
       path: '/complaints'
       fullPath: '/admin/complaints'
       preLoaderRoute: typeof AuthenticatedAdminComplaintsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/harvester': {
+      id: '/_authenticated/admin/harvester'
+      path: '/harvester'
+      fullPath: '/admin/harvester'
+      preLoaderRoute: typeof AuthenticatedAdminHarvesterRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/materials': {
@@ -504,6 +564,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBroadcastRoute: typeof AuthenticatedAdminBroadcastRoute
   AuthenticatedAdminComplaintsRoute: typeof AuthenticatedAdminComplaintsRoute
+  AuthenticatedAdminHarvesterRoute: typeof AuthenticatedAdminHarvesterRoute
   AuthenticatedAdminMaterialsRoute: typeof AuthenticatedAdminMaterialsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminWithdrawalsRoute: typeof AuthenticatedAdminWithdrawalsRoute
@@ -513,6 +574,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBroadcastRoute: AuthenticatedAdminBroadcastRoute,
   AuthenticatedAdminComplaintsRoute: AuthenticatedAdminComplaintsRoute,
+  AuthenticatedAdminHarvesterRoute: AuthenticatedAdminHarvesterRoute,
   AuthenticatedAdminMaterialsRoute: AuthenticatedAdminMaterialsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminWithdrawalsRoute: AuthenticatedAdminWithdrawalsRoute,
@@ -573,6 +635,8 @@ const rootRouteChildren: RootRouteChildren = {
   MaterialsRoute: MaterialsRoute,
   ApiChatRoute: ApiChatRoute,
   ApiDownloadRoute: ApiDownloadRoute,
+  ApiHarvesterRoute: ApiHarvesterRoute,
+  ApiMaterialsRoute: ApiMaterialsRoute,
   ApiUploadRoute: ApiUploadRoute,
 }
 export const routeTree = rootRouteImport

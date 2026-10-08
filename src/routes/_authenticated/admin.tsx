@@ -17,6 +17,7 @@ import {
   Smartphone,
   Download,
   LogOut,
+  Bot,
 } from "lucide-react";
 import { useState, type FormEvent, useEffect } from "react";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const nav: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+  { to: "/admin/harvester", label: "AI Harvester", icon: Bot },
   { to: "/admin/materials", label: "Review", icon: FileStack },
   { to: "/admin/complaints", label: "Appeals", icon: AlertCircle },
   { to: "/admin/broadcast", label: "Broadcast", icon: Megaphone },

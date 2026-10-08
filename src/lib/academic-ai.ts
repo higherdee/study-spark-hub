@@ -1,4 +1,4 @@
-import { askPuterAI } from "./puter";
+import { askGeminiAI } from "./gemini";
 import type { Profile } from "@/integrations/turso/client";
 
 export interface QuizQuestion {
@@ -66,7 +66,7 @@ Respond with ONLY valid JSON with this exact structure:
 }`;
 
   try {
-    const raw = await askPuterAI(prompt, {
+    const raw = await askGeminiAI(prompt, {
       systemPrompt: "You are an accurate academic document classifier. Output ONLY JSON.",
     });
 
@@ -142,7 +142,7 @@ Output ONLY JSON:
 }`;
 
   try {
-    const raw = await askPuterAI(prompt);
+    const raw = await askGeminiAI(prompt);
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
@@ -201,7 +201,7 @@ Output ONLY a JSON array of objects:
 ]`;
 
   try {
-    const raw = await askPuterAI(prompt);
+    const raw = await askGeminiAI(prompt);
     const match = raw.match(/\[[\s\S]*\]/);
     if (match) {
       const list = JSON.parse(match[0]);
@@ -268,7 +268,7 @@ Output ONLY JSON:
 }`;
 
   try {
-    const raw = await askPuterAI(prompt);
+    const raw = await askGeminiAI(prompt);
     const match = raw.match(/\{[\s\S]*\}/);
     if (match) {
       const parsed = JSON.parse(match[0]);
@@ -317,7 +317,7 @@ Output ONLY a JSON array of objects:
 ]`;
 
   try {
-    const raw = await askPuterAI(prompt);
+    const raw = await askGeminiAI(prompt);
     const match = raw.match(/\[[\s\S]*\]/);
     if (match) {
       const list = JSON.parse(match[0]);

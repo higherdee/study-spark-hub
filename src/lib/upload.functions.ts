@@ -98,8 +98,24 @@ export const getDownloadUrlServerFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const filePath = await recordMaterialDownload(data.materialId, data.userId);
-    const downloadUrl = await getSignedDownloadUrl(filePath, 300);
-    return { downloadUrl };
+    // If filePath is an external URL or missing, route to our resilient material streaming endpoint
+    if (!filePath || filePath.startsWith("http://") || filePath.startsWith("https://")) {
+      return { downloadUrl: `/api/materials?id=${data.materialId}&download=true` };
+    }
+    try {
+      const downloadUrl = await getSignedDownloadUrl(filePath, 300);
+      return { downloadUrl };
+    } catch {
+      return { downloadUrl: `/api/materials?id=${data.materialId}&download=true` };
+    }
+  });
+
+export const getPreviewUrlServerFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({ materialId: z.string() }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    return { previewUrl: `/api/materials?id=${data.materialId}` };
   });
 
 export const recordMaterialViewServerFn = createServerFn({ method: "POST" })

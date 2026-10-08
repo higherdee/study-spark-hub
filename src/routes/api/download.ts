@@ -11,10 +11,10 @@ export const Route = createFileRoute("/api/download")({
         let downloadName = "Syllaboss.apk";
         let contentType = "application/vnd.android.package-archive";
 
-        if (platform === "windows" || platform === "exe") {
-          filename = "syllaboss-setup.exe";
-          downloadName = "Syllaboss-Setup.exe";
-          contentType = "application/vnd.microsoft.portable-executable";
+        if (platform === "windows" || platform === "msi" || platform === "exe") {
+          filename = "syllaboss-setup.msi";
+          downloadName = "Syllaboss-Setup.msi";
+          contentType = "application/x-msi";
         } else if (platform === "linux" || platform === "appimage") {
           filename = "syllaboss.AppImage";
           downloadName = "Syllaboss.AppImage";

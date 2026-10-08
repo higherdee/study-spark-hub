@@ -88,7 +88,7 @@ const FAQ = [
   ],
   [
     "How do I install Syllaboss on my Windows laptop or desktop?",
-    "Click 'Download for Windows (.EXE)'. Run the setup file (Syllaboss-Setup.exe) once to generate Desktop and Start Menu shortcuts and launch Syllaboss in a dedicated standalone window.",
+    "Click 'Download for Windows (.MSI)'. Run the installer (Syllaboss-Setup.msi) once to install the app and generate an official executable shortcut on your Desktop.",
   ],
   [
     "How do I use Syllaboss on my iPhone or iPad?",
@@ -142,8 +142,8 @@ function HomePage() {
       document.body.removeChild(link);
     } else {
       const link = document.createElement("a");
-      link.href = "/downloads/syllaboss-setup.exe";
-      link.download = "Syllaboss-Setup.exe";
+      link.href = "/downloads/syllaboss-setup.msi";
+      link.download = "Syllaboss-Setup.msi";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -652,7 +652,7 @@ function HomePage() {
                     onClick={() => handleTriggerDownload("windows")}
                   >
                     <Download className="size-4.5" />
-                    Download Syllaboss-Setup.exe
+                    Download Syllaboss-Setup.msi
                   </Button>
                   <p className="text-[10px] text-center text-[#526359]">
                     Compatible with Windows 10 and Windows 11.
