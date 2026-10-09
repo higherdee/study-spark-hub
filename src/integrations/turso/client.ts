@@ -452,12 +452,16 @@ export async function getMaterials(params: {
     conditions.push("level = ?");
     args.push(params.level);
   }
-  if (params.q) {
-    const term = `%${params.q.trim()}%`;
-    conditions.push(
-      "(title LIKE ? OR course LIKE ? OR course_code LIKE ? OR institution LIKE ? OR description LIKE ?)"
-    );
-    args.push(term, term, term, term, term);
+  if (params.q && params.q.trim()) {
+    const rawTerms = params.q.trim().split(/\s+/).filter(Boolean);
+    // Combine tokens into search conditions so multi-word queries like "GET 206 lathe" or "Achievers GET 206" find matching materials
+    for (const word of rawTerms) {
+      const term = `%${word}%`;
+      conditions.push(
+        "(title LIKE ? OR course LIKE ? OR course_code LIKE ? OR institution LIKE ? OR description LIKE ?)"
+      );
+      args.push(term, term, term, term, term);
+    }
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -472,6 +476,22 @@ export async function getMaterials(params: {
 
   return rs.rows.map((r) => mapMaterial(r as unknown as Record<string, unknown>));
 }
+
+export async function getTotalMaterialsCount(params?: {
+  status?: string | undefined;
+}): Promise<number> {
+  const conditions: string[] = [];
+  const args: InValue[] = [];
+  if (params?.status) {
+    conditions.push("status = ?");
+    args.push(params.status);
+  }
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const sql = `SELECT COUNT(*) as count FROM materials ${whereClause}`;
+  const rs = await turso.execute({ sql, args });
+  return Number(rs.rows[0]?.['count'] || 0);
+}
+
 
 export async function getMaterialById(id: string): Promise<Material | null> {
   const rs = await turso.execute({

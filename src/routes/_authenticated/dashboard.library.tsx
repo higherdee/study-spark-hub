@@ -29,7 +29,7 @@ import { SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
-import { getMaterials, type Material } from "@/integrations/turso/client";
+import { getMaterials, getTotalMaterialsCount, type Material } from "@/integrations/turso/client";
 import { LEVELS, MATERIAL_TYPES, POINTS_NAME } from "@/lib/constants";
 import { getDownloadUrlServerFn, recordMaterialViewServerFn } from "@/lib/upload.functions";
 
@@ -73,6 +73,13 @@ function LibraryPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
+  const { data: totalCount = 0 } = useQuery({
+    queryKey: ["library-materials-total-count"],
+    queryFn: async () => {
+      return await getTotalMaterialsCount({ status: "verified" });
+    },
+  });
+
   const { data: materials = [], isLoading } = useQuery({
     queryKey: ["library-materials", q, type, level],
     queryFn: async () => {
@@ -81,7 +88,7 @@ function LibraryPage() {
         type: type || undefined,
         level: level || undefined,
         status: "verified",
-        limit: 80,
+        limit: 500,
       });
     },
   });
@@ -277,7 +284,11 @@ This verified material provides high-yield coverage of fundamental principles, s
           </div>
 
           <div className="text-xs text-[#5a6660] font-mono">
-            {isLoading ? "Browsing archives..." : `${materials.length} verified academic resource${materials.length === 1 ? "" : "s"}`}
+            {isLoading
+              ? "Browsing archives..."
+              : Boolean(q || type || level)
+                ? `${materials.length} matching of ${(totalCount || materials.length).toLocaleString()} verified academic resources`
+                : `${(totalCount || materials.length).toLocaleString()} verified academic resource${(totalCount || materials.length) === 1 ? "" : "s"}`}
           </div>
         </div>
       </div>
