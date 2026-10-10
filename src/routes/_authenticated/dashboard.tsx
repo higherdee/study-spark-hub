@@ -7,6 +7,10 @@ import { useIsAdmin, useProfile } from "@/lib/profile";
 
 import { PageBreathingLoader } from "@/components/syllaboss-logo";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { updateStreakServerFn } from "@/lib/community.functions";
+
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
@@ -24,17 +28,30 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 const nav: NavItem[] = [
   { to: "/dashboard", label: "Home", icon: Home, exact: true },
   { to: "/dashboard/library", label: "Library", icon: BookOpen },
-  { to: "/dashboard/assistant", label: "Boss AI", icon: Bot },
+  { to: "/dashboard/assistant", label: "Boss AI", icon: Bot, hideOnMobile: true },
   { to: "/dashboard/community", label: "Study Hub", icon: Users },
   { to: "/dashboard/upload", label: "Upload", icon: Upload },
-  { to: "/dashboard/leaderboard", label: "Rankings", icon: Trophy },
+  { to: "/dashboard/leaderboard", label: "Rankings", icon: Trophy, hideOnMobile: true },
   { to: "/dashboard/wallet", label: "Wallet", icon: Wallet },
 ];
 
 function DashboardLayout() {
+  const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const { data: isAdmin } = useIsAdmin();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Auto-activate streak as soon as student enters the app (no manual check-in needed)
+  useEffect(() => {
+    if (user?.id) {
+      updateStreakServerFn({ data: { userId: user.id } })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["profile"] });
+        })
+        .catch(() => {});
+    }
+  }, [user?.id, queryClient]);
 
   useEffect(() => {
     if (!isLoading && (!profile || profile.onboarding_step < 3)) {

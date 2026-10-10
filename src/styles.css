@@ -233,3 +233,13 @@
 .animate-page-zoom-in {
   animation: pageZoomIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Mobile Keyboard & Chat Focus: Prevent Navigation Dock from covering typing area */
+@media (max-width: 768px) {
+  body:has(input:focus) #main-navigation-dock,
+  body:has(textarea:focus) #main-navigation-dock,
+  body.hide-bottom-dock #main-navigation-dock {
+    display: none !important;
+  }
+}
+

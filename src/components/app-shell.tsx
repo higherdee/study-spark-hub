@@ -33,6 +33,7 @@ export type NavItem = {
   icon: LucideIcon;
   exact?: boolean;
   isFeatured?: boolean;
+  hideOnMobile?: boolean;
 };
 
 export function AppShell({
@@ -167,7 +168,16 @@ export function AppShell({
       </header>
 
       {/* Main Content Area */}
-      <main className="mx-auto max-w-7xl px-4 py-6 pb-28 sm:px-6 sm:pb-32 lg:px-8">
+      <main
+        className={cn(
+          "mx-auto max-w-7xl px-2 sm:px-6 lg:px-8",
+          (path.startsWith("/dashboard/assistant") ||
+            path.startsWith("/dashboard/community") ||
+            path.startsWith("/dashboard/preview"))
+            ? "py-0 pb-0 sm:py-1 sm:pb-1 h-[calc(100dvh-64px)] overflow-hidden"
+            : "py-6 pb-28 sm:pb-32"
+        )}
+      >
         {children}
       </main>
 
@@ -185,8 +195,13 @@ export function AppShell({
 
       {/* Bottom Floating Navigation Dock (Significantly enlarged, native mobile app feel) */}
       <aside
+        id="main-navigation-dock"
         aria-label="Navigation dock"
-        className="fixed bottom-3 sm:bottom-6 inset-x-0 z-50 mx-auto w-fit max-w-[98vw] pointer-events-none px-2"
+        className={cn(
+          "fixed bottom-3 sm:bottom-6 inset-x-0 z-30 mx-auto w-fit max-w-[98vw] pointer-events-none px-2 transition-all duration-200",
+          showSideNav && "hidden pointer-events-none opacity-0",
+          (path.startsWith("/dashboard/assistant") || path.startsWith("/dashboard/preview")) && "hidden md:block"
+        )}
       >
         <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-3xl bg-card/95 border border-border/90 shadow-[0_20px_60px_rgba(0,0,0,0.16),inset_0_1px_2px_rgba(255,255,255,0.85)] transition-all duration-300">
           {nav.map((item) => {
@@ -200,6 +215,7 @@ export function AppShell({
                 to={item.to}
                 className={cn(
                   "relative flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors select-none",
+                  item.hideOnMobile && "hidden md:flex",
                   active
                     ? "bg-slate-100 text-slate-900 font-semibold"
                     : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -218,7 +234,6 @@ export function AppShell({
             );
           })}
         </div>
-
       </aside>
 
       {/* Floating & Movable Boss AI Widget (upper side with auto-hide peek tab) */}

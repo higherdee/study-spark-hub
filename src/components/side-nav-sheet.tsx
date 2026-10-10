@@ -54,15 +54,15 @@ export function SideNavSheet({ open, onClose }: SideNavSheetProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-[100] flex">
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity animate-fade-in"
+        className="fixed inset-0 z-[95] bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
       />
 
       {/* Standard App Navigation Drawer */}
-      <div className="relative z-10 flex w-[290px] max-w-[85vw] flex-1 flex-col justify-between bg-white text-[#151d1a] shadow-2xl animate-in slide-in-from-left duration-250 border-r border-[#dce5df]">
+      <div className="relative z-[100] flex w-[290px] max-w-[85vw] flex-1 flex-col justify-between bg-white text-[#151d1a] shadow-2xl animate-in slide-in-from-left duration-250 border-r border-[#dce5df]">
         <div className="flex flex-col flex-1 min-h-0">
           {/* Drawer Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#e7f0eb]">

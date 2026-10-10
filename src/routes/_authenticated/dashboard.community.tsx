@@ -25,6 +25,7 @@ import {
   Share2,
   Clock,
   MoreVertical,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -175,9 +176,31 @@ function CommunityPage() {
     },
   });
 
-  // Default selection on desktop if none selected
+  // Attach Material Search & Device Upload
+  const [materialSearchQuery, setMaterialSearchQuery] = useState("");
+  const fileUploadInputRef = useRef<HTMLInputElement>(null);
+  const hasInitializedDesktopChatRef = useRef(false);
+
+  // Auto-hide bottom navigation dock on mobile when active chat is open
   useEffect(() => {
-    if (!activeChat) {
+    if (typeof window === "undefined") return;
+    if (activeChat && window.innerWidth < 768) {
+      document.body.classList.add("hide-bottom-dock");
+    } else {
+      document.body.classList.remove("hide-bottom-dock");
+    }
+    return () => {
+      document.body.classList.remove("hide-bottom-dock");
+    };
+  }, [activeChat]);
+
+  // Default selection on desktop ONLY (never auto-reopen on mobile when user presses back)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isDesktop = window.innerWidth >= 768;
+    if (!isDesktop) return;
+
+    if (!hasInitializedDesktopChatRef.current && !activeChat) {
       if (directConversations.length > 0) {
         const first = directConversations[0];
         setActiveChat({
@@ -188,6 +211,7 @@ function CommunityPage() {
           avatarUrl: first.peer.avatar_url,
           peerId: first.peer.id,
         });
+        hasInitializedDesktopChatRef.current = true;
       } else if (studyGroups.length > 0) {
         const first = studyGroups[0];
         setActiveChat({
@@ -197,9 +221,10 @@ function CommunityPage() {
           subtitle: `${first.member_count} members`,
           memberCount: first.member_count,
         });
+        hasInitializedDesktopChatRef.current = true;
       }
     }
-  }, [directConversations, studyGroups, activeChat]);
+  }, [directConversations, studyGroups]);
 
   // Supabase Realtime Subscription for active chat
   useEffect(() => {
@@ -401,7 +426,10 @@ function CommunityPage() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-80px)] w-full max-w-[1400px] mx-auto overflow-hidden rounded-3xl border border-border/80 bg-card shadow-xl font-sans">
+    <div
+      data-chat-active={Boolean(activeChat)}
+      className="flex h-full w-full max-w-[1400px] mx-auto overflow-hidden rounded-3xl border border-border/80 bg-card shadow-xl font-sans"
+    >
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: Conversations List (WhatsApp / Telegram / iMessage Style) */}
       {/* ========================================================================= */}
@@ -424,7 +452,7 @@ function CommunityPage() {
               <h2 className="text-xs font-bold text-foreground truncate">
                 {profile?.full_name || "Scholar"}
               </h2>
-              <p className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 truncate">
+              <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
                 @{profile?.username || "student"}
               </p>
             </div>
@@ -608,7 +636,7 @@ function CommunityPage() {
                       <h4 className="text-xs font-semibold text-foreground truncate">
                         {conv.peer.full_name}
                       </h4>
-                      <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                      <span className="text-[10px] text-muted-foreground shrink-0 font-medium">
                         {conv.last_message_at ? new Date(conv.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
                       </span>
                     </div>
@@ -616,7 +644,7 @@ function CommunityPage() {
                       <p className="text-[11px] text-muted-foreground truncate">
                         {conv.last_message_text || "Started conversation"}
                       </p>
-                      <span className="text-[10px] text-emerald-600 font-mono">
+                      <span className="text-[10px] text-emerald-600 font-medium">
                         @{conv.peer.username}
                       </span>
                     </div>
@@ -655,7 +683,7 @@ function CommunityPage() {
                         {group.name}
                       </h4>
                       {group.course_code && (
-                        <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono">
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-medium">
                           {group.course_code}
                         </Badge>
                       )}
@@ -688,7 +716,12 @@ function CommunityPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setActiveChat(null)}
+                  onClick={() => {
+                    setActiveChat(null);
+                    if (typeof window !== "undefined") {
+                      document.body.classList.remove("hide-bottom-dock");
+                    }
+                  }}
                   className="size-8 rounded-full md:hidden text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="size-4" />
@@ -705,7 +738,7 @@ function CommunityPage() {
                   <h3 className="text-xs sm:text-sm font-bold text-foreground truncate leading-tight">
                     {activeChat.title}
                   </h3>
-                  <p className="text-[11px] text-muted-foreground font-mono truncate">
+                  <p className="text-[11px] text-muted-foreground font-medium truncate">
                     {activeChat.subtitle || (activeChat.type === "peer" ? "Active now" : "Course Hub")}
                   </p>
                 </div>
@@ -757,7 +790,7 @@ function CommunityPage() {
                     >
                       {/* Sender Tag in Group Chat */}
                       {!isMe && activeChat.type === "group" && (
-                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-0.5 px-1 font-mono">
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-0.5 px-1 font-sans">
                           {senderDisplay}
                         </span>
                       )}
@@ -787,7 +820,7 @@ function CommunityPage() {
                                 <p className="font-semibold truncate text-[11px] leading-tight">
                                   {matTitle || "Course Document"}
                                 </p>
-                                <p className="text-[10px] font-mono opacity-80 truncate">
+                                <p className="text-[10px] font-sans opacity-80 truncate">
                                   {matCourse || "Academic Library"}
                                 </p>
                               </div>
@@ -809,7 +842,7 @@ function CommunityPage() {
 
                         <div
                           className={cn(
-                            "flex items-center justify-end gap-1 text-[9px] pt-0.5 opacity-75 font-mono",
+                            "flex items-center justify-end gap-1 text-[9px] pt-0.5 opacity-75 font-sans font-medium",
                             isMe ? "text-emerald-100" : "text-muted-foreground"
                           )}
                         >
@@ -1064,42 +1097,108 @@ function CommunityPage() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="mt-3 max-h-72 overflow-y-auto space-y-1.5 pr-1">
-            {availableMaterials.length === 0 ? (
+          {/* Search bar for materials */}
+          <div className="relative mt-2">
+            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+            <Input
+              value={materialSearchQuery}
+              onChange={(e) => setMaterialSearchQuery(e.target.value)}
+              placeholder="Search library materials, courses..."
+              className="pl-9 rounded-full text-xs h-9 bg-secondary/50"
+            />
+          </div>
+
+          {/* Upload from device option */}
+          <div className="pt-2">
+            <input
+              type="file"
+              ref={fileUploadInputRef}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.txt"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const fileName = file.name.replace(/\.[^/.]+$/, "");
+                setSelectedMaterial({
+                  id: `device-${Date.now()}`,
+                  title: fileName,
+                  course: "Device Upload",
+                });
+                setIsAttachMaterialOpen(false);
+                toast.success(`Attached "${file.name}" from your device`);
+                if (fileUploadInputRef.current) fileUploadInputRef.current.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileUploadInputRef.current?.click()}
+              className="w-full rounded-2xl gap-2 text-xs font-semibold border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+            >
+              <Upload className="size-3.5" />
+              Upload from your device
+            </Button>
+          </div>
+
+          {/* Materials List */}
+          <div className="mt-2 max-h-64 overflow-y-auto space-y-1.5 pr-1">
+            {availableMaterials.filter((mat: any) => {
+              if (!materialSearchQuery.trim()) return true;
+              const q = materialSearchQuery.toLowerCase();
+              return (
+                mat.title?.toLowerCase().includes(q) ||
+                mat.course?.toLowerCase().includes(q) ||
+                mat.course_code?.toLowerCase().includes(q) ||
+                mat.institution?.toLowerCase().includes(q)
+              );
+            }).length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
-                No verified materials found in library.
+                {materialSearchQuery.trim()
+                  ? "No matching materials found."
+                  : "No verified materials found in library."}
               </div>
             ) : (
-              availableMaterials.map((mat: any) => (
-                <button
-                  key={mat.id}
-                  onClick={() => {
-                    setSelectedMaterial({
-                      id: mat.id,
-                      title: mat.title,
-                      course: mat.course_code || mat.course,
-                    });
-                    setIsAttachMaterialOpen(false);
-                    toast.success(`Attached "${mat.title}"`);
-                  }}
-                  className="flex w-full items-center justify-between p-2.5 rounded-xl hover:bg-secondary/60 text-left transition-all border border-border/40"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="grid size-8 place-items-center rounded-lg bg-emerald-600/10 text-emerald-600 shrink-0">
-                      <FileText className="size-4" />
+              availableMaterials
+                .filter((mat: any) => {
+                  if (!materialSearchQuery.trim()) return true;
+                  const q = materialSearchQuery.toLowerCase();
+                  return (
+                    mat.title?.toLowerCase().includes(q) ||
+                    mat.course?.toLowerCase().includes(q) ||
+                    mat.course_code?.toLowerCase().includes(q) ||
+                    mat.institution?.toLowerCase().includes(q)
+                  );
+                })
+                .map((mat: any) => (
+                  <button
+                    key={mat.id}
+                    onClick={() => {
+                      setSelectedMaterial({
+                        id: mat.id,
+                        title: mat.title,
+                        course: mat.course_code || mat.course,
+                      });
+                      setIsAttachMaterialOpen(false);
+                      toast.success(`Attached "${mat.title}"`);
+                    }}
+                    className="flex w-full items-center justify-between p-2.5 rounded-xl hover:bg-secondary/60 text-left transition-all border border-border/40"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="grid size-8 place-items-center rounded-lg bg-emerald-600/10 text-emerald-600 shrink-0">
+                        <FileText className="size-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{mat.title}</p>
+                        <p className="text-[10px] font-sans text-muted-foreground truncate">
+                          {mat.course_code || "ACADEMIC"} • {mat.institution}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-foreground truncate">{mat.title}</p>
-                      <p className="text-[10px] font-mono text-muted-foreground truncate">
-                        {mat.course_code || "ACADEMIC"} • {mat.institution}
-                      </p>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs rounded-full">
-                    Select
-                  </Button>
-                </button>
-              ))
+                    <Button size="sm" variant="ghost" className="h-7 text-xs rounded-full">
+                      Select
+                    </Button>
+                  </button>
+                ))
             )}
           </div>
         </DialogContent>

@@ -3,24 +3,20 @@ import { z } from "zod";
 import { turso } from "@/integrations/turso/client";
 import { GROQ_API_KEY } from "@/lib/ai/gateway.server";
 
-// Smart model assignment based on academic task
+// Smart model assignment prioritizing llama-3.1-8b-instant with resilient fallback
 export type AcademicTaskType = "general" | "quiz" | "theory-grade" | "flashcards" | "summary";
 
 function pickBestGroqModel(taskType?: AcademicTaskType): string[] {
   switch (taskType) {
     case "quiz":
-      // Qwen 27B excels at strict JSON schema, math, and objective questions
-      return ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
+      return ["llama-3.1-8b-instant", "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
     case "theory-grade":
-      // GPT-OSS 120B has massive reasoning depth for exam marking rubrics
-      return ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"];
+      return ["llama-3.1-8b-instant", "openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
     case "flashcards":
     case "summary":
-      // 20B provides instant <500ms synthesis for cards & overviews
-      return ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b"];
+      return ["llama-3.1-8b-instant", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b"];
     default:
-      // General study assistant
-      return ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
+      return ["llama-3.1-8b-instant", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"];
   }
 }
 

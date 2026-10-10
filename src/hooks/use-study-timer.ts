@@ -12,12 +12,34 @@ export function useStudyTimer() {
   const { data: profile } = useProfile();
   const qc = useQueryClient();
 
-  const [seconds, setSeconds] = useState(0);
+  const storageKey = user?.id ? `syllaboss_study_timer_${user.id}` : "syllaboss_study_timer_guest";
+
+  const [seconds, setSeconds] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const val = Number(stored);
+          if (!isNaN(val) && val >= 0) return val;
+        }
+      } catch {
+        // Fallback for private browsing
+      }
+    }
+    return 0;
+  });
+
   const [isInactive, setIsInactive] = useState(false);
   const [manualPause, setManualPause] = useState(false);
+  const [isAppFocused, setIsAppFocused] = useState(true);
 
   const lastActiveRef = useRef(Date.now());
-  const secondsRef = useRef(0);
+  const secondsRef = useRef(seconds);
+
+  // Keep secondsRef in sync with state
+  useEffect(() => {
+    secondsRef.current = seconds;
+  }, [seconds]);
 
   // Update activity timestamp on user interaction
   const markActive = useCallback(() => {
@@ -28,6 +50,7 @@ export function useStudyTimer() {
     }
   }, [isInactive]);
 
+  // Detect user interactions across the app
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -40,27 +63,83 @@ export function useStudyTimer() {
     };
   }, [markActive]);
 
+  // Track app visibility & focus: pauses when user leaves, resumes when user enters
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setIsAppFocused(false);
+        try {
+          localStorage.setItem(storageKey, String(secondsRef.current));
+        } catch {}
+      } else {
+        setIsAppFocused(true);
+        lastActiveRef.current = Date.now();
+      }
+    };
+
+    const handleBlur = () => {
+      setIsAppFocused(false);
+      try {
+        localStorage.setItem(storageKey, String(secondsRef.current));
+      } catch {}
+    };
+
+    const handleFocus = () => {
+      setIsAppFocused(true);
+      lastActiveRef.current = Date.now();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("beforeunload", () => {
+      try {
+        localStorage.setItem(storageKey, String(secondsRef.current));
+      } catch {}
+    });
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [storageKey]);
+
+  // Main timer engine: starts automatically, pauses when user leaves, resumes seamlessly
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(async () => {
-      if (manualPause) return;
+      if (manualPause || !isAppFocused) return;
 
       const idleDuration = Date.now() - lastActiveRef.current;
       if (idleDuration >= STUDY_INACTIVITY_LIMIT_MS) {
         if (!isInactive) {
           setIsInactive(true);
         }
-        return; // Paused due to 1-hour inactivity
+        return; // Paused due to 1-hour inactivity timeout
       }
 
-      secondsRef.current += 1;
-      setSeconds(secondsRef.current);
+      const next = secondsRef.current + 1;
+      secondsRef.current = next;
+      setSeconds(next);
+
+      // Save to localStorage every 5 seconds or upon milestones
+      if (next % 5 === 0) {
+        try {
+          localStorage.setItem(storageKey, String(next));
+        } catch {}
+      }
 
       // Award 5 SyllaPoints every 30 minutes (1800 seconds)
-      if (secondsRef.current >= STUDY_TIMER_INTERVAL_SECONDS) {
+      if (next >= STUDY_TIMER_INTERVAL_SECONDS) {
         secondsRef.current = 0;
         setSeconds(0);
+        try {
+          localStorage.setItem(storageKey, "0");
+        } catch {}
 
         try {
           await recordStudySessionServerFn({
@@ -79,7 +158,7 @@ export function useStudyTimer() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [user, manualPause, isInactive, qc]);
+  }, [user, manualPause, isInactive, isAppFocused, storageKey, qc]);
 
   const togglePause = () => setManualPause((p) => !p);
 
@@ -87,7 +166,7 @@ export function useStudyTimer() {
     seconds,
     isInactive,
     manualPause,
-    isPaused: manualPause || isInactive,
+    isPaused: manualPause || isInactive || !isAppFocused,
     totalStudyMinutes: profile?.study_minutes ?? 0,
     togglePause,
     markActive,

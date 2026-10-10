@@ -118,6 +118,13 @@ function DocumentPreviewPage() {
 
   // Download state
   const [downloading, setDownloading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsMobile(window.innerWidth < 768);
+    }
+  }, []);
 
   // Summary state
   const [showSummarySheet, setShowSummarySheet] = useState(false);
@@ -364,28 +371,19 @@ Answer concisely with clear headings, bullet points, theoretical derivations, an
       });
       if (!downloadUrl) throw new Error("Could not retrieve download link");
 
-      try {
-        const res = await fetch(downloadUrl);
-        const blob = await res.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = material.file_name || `${material.title}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(blobUrl);
-      } catch {
-        const a = document.createElement("a");
-        a.href = downloadUrl;
-        a.setAttribute("download", material.file_name || `${material.title}.pdf`);
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
+      // Direct instant download without navigating or opening blank tabs
+      const directUrl = downloadUrl.includes("?")
+        ? `${downloadUrl}&download=true`
+        : `${downloadUrl}?download=true`;
 
-      toast.success("Download started! Saved directly to your device (+5 pts)");
+      const link = document.createElement("a");
+      link.href = directUrl;
+      link.setAttribute("download", material.file_name || `${material.title}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success("Download started directly to your device (+5 pts)");
       qc.invalidateQueries({ queryKey: ["material-preview", materialId] });
     } catch (err: any) {
       toast.error(err.message || "Download failed");
@@ -609,7 +607,15 @@ Include:
             </div>
           ) : (
             <iframe
-              src={`${previewStreamUrl}#toolbar=0`}
+              src={
+                isMobile
+                  ? `https://docs.google.com/viewer?url=${encodeURIComponent(
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}${previewStreamUrl}`
+                        : `https://study-spark-hub.vercel.app${previewStreamUrl}`
+                    )}&embedded=true`
+                  : `${previewStreamUrl}#toolbar=0`
+              }
               className="w-full h-full border-0 bg-white"
               title={material.title}
             />

@@ -22,12 +22,19 @@ import {
   Mic,
   Volume2,
   Square,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import { askGeminiAI } from "@/lib/gemini";
@@ -97,11 +104,13 @@ function AssistantPage() {
   const qc = useQueryClient();
 
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [showMobileHistory, setShowMobileHistory] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mobileFileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Active Interactive Tools State
@@ -596,7 +605,7 @@ Choose an action below or ask me any question directly:`,
   }
 
   return (
-    <div className="flex h-[calc(100svh-110px)] flex-col gap-4 lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="flex h-full w-full max-h-[calc(100dvh-70px)] sm:max-h-[calc(100dvh-82px)] overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[260px_1fr]">
       {/* Left Sidebar: Recent Chats & Actions */}
       <aside className="hidden flex-col justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-sm lg:flex">
         <div className="space-y-4">
@@ -718,6 +727,17 @@ Choose an action below or ask me any question directly:`,
 
           {/* Quick Action Badges */}
           <div className="flex items-center gap-1.5 overflow-x-auto">
+            {/* Mobile Past Chats Drawer Launcher */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowMobileHistory(true)}
+              className="h-8 rounded-full text-xs gap-1 font-semibold border-primary/40 text-primary hover:bg-primary/10 lg:hidden"
+            >
+              <History className="size-3 text-primary" />
+              <span>Chats</span>
+            </Button>
+
             <Button
               size="sm"
               variant="outline"
@@ -1199,6 +1219,106 @@ Choose an action below or ask me any question directly:`,
           </form>
         </div>
       </section>
+
+      {/* Mobile Previous Chats Modal */}
+      <Dialog open={showMobileHistory} onOpenChange={setShowMobileHistory}>
+        <DialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <History className="size-5 text-primary" />
+              Previous Study Chats
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-2">
+            <Button
+              onClick={() => {
+                createNewChat();
+                setShowMobileHistory(false);
+              }}
+              className="w-full justify-start gap-2 rounded-2xl font-semibold shadow-xs"
+            >
+              <MessageSquarePlus className="size-4" /> New Study Chat
+            </Button>
+
+            {/* Document Attachment Button for Mobile */}
+            <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3 text-center">
+              <input
+                type="file"
+                ref={mobileFileInputRef}
+                onChange={(e) => {
+                  handleFileUpload(e);
+                  setShowMobileHistory(false);
+                }}
+                className="hidden"
+                accept=".pdf,.doc,.docx,.txt,image/*"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploadingDoc}
+                onClick={() => mobileFileInputRef.current?.click()}
+                className="w-full gap-2 rounded-xl text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10"
+              >
+                {uploadingDoc ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Paperclip className="size-3.5" />
+                )}
+                {uploadingDoc ? "Processing..." : "Add Document to Chat"}
+              </Button>
+            </div>
+
+            {/* Threads List */}
+            <div className="space-y-1">
+              <p className="px-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Recent Chats
+              </p>
+              <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
+                {threads.length === 0 ? (
+                  <p className="px-2 py-4 text-xs text-muted-foreground">No recent conversations.</p>
+                ) : (
+                  threads.map((t) => (
+                    <div
+                      key={t.id}
+                      className={cn(
+                        "group flex items-center justify-between gap-1 rounded-xl px-2.5 py-2 text-xs transition-colors",
+                        activeThreadId === t.id
+                          ? "bg-secondary font-semibold text-foreground"
+                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                      )}
+                    >
+                      <button
+                        className="min-w-0 flex-1 truncate text-left"
+                        onClick={() => {
+                          setActiveThreadId(t.id);
+                          setQuizQuestions(null);
+                          setFlashcards(null);
+                          setShowMobileHistory(false);
+                        }}
+                      >
+                        {t.title}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Delete chat"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteChat(t.id);
+                        }}
+                        className="p-1 hover:text-destructive text-muted-foreground"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

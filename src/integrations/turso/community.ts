@@ -328,21 +328,18 @@ export type DirectMessage = {
 };
 
 /**
- * Searches students by username, full name, or institution
+ * Searches students strictly by @username for privacy protection
  */
 export async function searchPeers(query: string, currentUserId?: string, limit = 20): Promise<PeerUser[]> {
-  const cleanQ = `%${query.trim().toLowerCase()}%`;
+  const stripped = query.trim().toLowerCase().replace(/^@/, "");
+  const cleanQ = `%${stripped}%`;
   const rs = await turso.execute({
     sql: `SELECT id, username, full_name, avatar_url, institution, course, level, points
           FROM profiles
-          WHERE id != ? AND (
-            LOWER(COALESCE(username, '')) LIKE ? OR
-            LOWER(COALESCE(full_name, '')) LIKE ? OR
-            LOWER(COALESCE(course, '')) LIKE ?
-          )
+          WHERE id != ? AND LOWER(COALESCE(username, '')) LIKE ?
           ORDER BY points DESC
           LIMIT ?`,
-    args: [currentUserId || "", cleanQ, cleanQ, cleanQ, limit],
+    args: [currentUserId || "", cleanQ, limit],
   });
 
   return rs.rows.map((r: any) => ({
