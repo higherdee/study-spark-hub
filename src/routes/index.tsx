@@ -30,6 +30,7 @@ import { useState, useEffect } from "react";
 
 import { InstallButton } from "@/components/install-button";
 import { AppWelcomeGate } from "@/components/app-welcome-gate";
+import { PopAdsTrigger } from "@/components/popads-trigger";
 import { SyllabossLogo, SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -153,6 +154,7 @@ function HomePage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f6faf7] text-[#00110a] font-sans selection:bg-[#1b7a4e]/20 selection:text-[#0b3321]">
+      <PopAdsTrigger />
       {/* Top Header */}
       <header className="sticky top-0 z-40 border-b border-[#e1eae3] bg-[#f6faf7]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">

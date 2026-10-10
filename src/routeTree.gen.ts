@@ -22,7 +22,6 @@ import { Route as ApiHarvesterRouteImport } from './routes/api/harvester'
 import { Route as ApiMaterialsRouteImport } from './routes/api/materials'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
 import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated/admin.broadcast'
 import { Route as AuthenticatedAdminComplaintsRouteImport } from './routes/_authenticated/admin.complaints'
 import { Route as AuthenticatedAdminHarvesterRouteImport } from './routes/_authenticated/admin.harvester'
@@ -104,12 +103,6 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const AuthenticatedAdminAnalyticsRoute =
-  AuthenticatedAdminAnalyticsRouteImport.update({
-    id: '/analytics',
-    path: '/analytics',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
 const AuthenticatedAdminBroadcastRoute =
   AuthenticatedAdminBroadcastRouteImport.update({
     id: '/broadcast',
@@ -218,7 +211,6 @@ export interface FileRoutesByFullPath {
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
-  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
@@ -247,7 +239,6 @@ export interface FileRoutesByTo {
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
-  '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
@@ -280,7 +271,6 @@ export interface FileRoutesById {
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
-  '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/_authenticated/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/_authenticated/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
@@ -313,7 +303,6 @@ export interface FileRouteTypes {
     | '/api/harvester'
     | '/api/materials'
     | '/api/upload'
-    | '/admin/analytics'
     | '/admin/broadcast'
     | '/admin/complaints'
     | '/admin/harvester'
@@ -342,7 +331,6 @@ export interface FileRouteTypes {
     | '/api/harvester'
     | '/api/materials'
     | '/api/upload'
-    | '/admin/analytics'
     | '/admin/broadcast'
     | '/admin/complaints'
     | '/admin/harvester'
@@ -374,7 +362,6 @@ export interface FileRouteTypes {
     | '/api/harvester'
     | '/api/materials'
     | '/api/upload'
-    | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/broadcast'
     | '/_authenticated/admin/complaints'
     | '/_authenticated/admin/harvester'
@@ -499,13 +486,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/analytics': {
-      id: '/_authenticated/admin/analytics'
-      path: '/analytics'
-      fullPath: '/admin/analytics'
-      preLoaderRoute: typeof AuthenticatedAdminAnalyticsRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/admin/broadcast': {
       id: '/_authenticated/admin/broadcast'
       path: '/broadcast'
@@ -622,7 +602,6 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
   AuthenticatedAdminBroadcastRoute: typeof AuthenticatedAdminBroadcastRoute
   AuthenticatedAdminComplaintsRoute: typeof AuthenticatedAdminComplaintsRoute
   AuthenticatedAdminHarvesterRoute: typeof AuthenticatedAdminHarvesterRoute
@@ -633,7 +612,6 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
   AuthenticatedAdminBroadcastRoute: AuthenticatedAdminBroadcastRoute,
   AuthenticatedAdminComplaintsRoute: AuthenticatedAdminComplaintsRoute,
   AuthenticatedAdminHarvesterRoute: AuthenticatedAdminHarvesterRoute,
