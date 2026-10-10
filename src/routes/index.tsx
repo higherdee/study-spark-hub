@@ -30,7 +30,11 @@ import { useState, useEffect } from "react";
 
 import { InstallButton } from "@/components/install-button";
 import { AppWelcomeGate } from "@/components/app-welcome-gate";
-import { PopAdsTrigger } from "@/components/popads-trigger";
+import {
+  AdsterraBanner,
+  AdsterraNativeBanner,
+  AdsterraAutoClicker,
+} from "@/components/adsterra";
 import { SyllabossLogo, SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -154,7 +158,12 @@ function HomePage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f6faf7] text-[#00110a] font-sans selection:bg-[#1b7a4e]/20 selection:text-[#0b3321]">
-      <PopAdsTrigger />
+      <AdsterraAutoClicker />
+      {/* Top Sponsored Adsterra Leaderboard */}
+      <div className="w-full bg-[#eef5f1] border-b border-[#e1eae3] py-1.5 flex justify-center items-center">
+        <AdsterraBanner format="728x90" className="hidden sm:flex my-0" />
+        <AdsterraBanner format="320x50" className="flex sm:hidden my-0" />
+      </div>
       {/* Top Header */}
       <header className="sticky top-0 z-40 border-b border-[#e1eae3] bg-[#f6faf7]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
@@ -547,6 +556,14 @@ function HomePage() {
           </div>
         </section>
 
+        {/* Adsterra Content Banner 300x250 */}
+        <div className="py-6 flex flex-col items-center justify-center bg-[#f0f6f2] border-b border-[#e1eae3]">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#526359] mb-1">
+            Sponsored
+          </span>
+          <AdsterraBanner format="300x250" className="my-0" />
+        </div>
+
         {/* Dedicated Multi-Device Download Hub */}
         <section id="downloads" className="py-20 sm:py-24 bg-white border-b border-[#e1eae3]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -878,6 +895,16 @@ function HomePage() {
           </div>
         </section>
 
+        {/* Adsterra Native Recommendation Banner */}
+        <section className="py-6 px-4 max-w-5xl mx-auto">
+          <div className="flex flex-col items-center justify-center">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#526359] mb-2">
+              Sponsored Recommendations
+            </span>
+            <AdsterraNativeBanner className="max-w-4xl" />
+          </div>
+        </section>
+
         {/* FAQ Section */}
         <section id="faq" className="py-20 sm:py-24 border-b border-[#e1eae3]">
           <div className="mx-auto max-w-3xl px-4 sm:px-6">
@@ -905,6 +932,12 @@ function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Adsterra Bottom Display Banner */}
+        <div className="w-full bg-[#f0f6f2] py-4 flex justify-center items-center border-b border-[#e1eae3]">
+          <AdsterraBanner format="728x90" className="hidden sm:flex my-0" />
+          <AdsterraBanner format="320x50" className="flex sm:hidden my-0" />
+        </div>
 
         {/* Bottom Banner */}
         <section className="bg-[#0d281e] text-white py-20 relative overflow-hidden">

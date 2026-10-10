@@ -26,6 +26,7 @@ import { z } from "zod";
 
 import { PageHeader } from "@/components/app-shell";
 import { SyllabossEmblem } from "@/components/syllaboss-logo";
+import { AdsterraBanner } from "@/components/adsterra";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
@@ -291,6 +292,12 @@ This verified material provides high-yield coverage of fundamental principles, s
                 : `${(totalCount || materials.length).toLocaleString()} verified academic resource${(totalCount || materials.length) === 1 ? "" : "s"}`}
           </div>
         </div>
+      </div>
+
+      {/* Sponsored Adsterra Banner */}
+      <div className="w-full flex justify-center py-2 bg-[#edf6f0]/50 border border-[#dce5df] rounded-2xl overflow-hidden my-2">
+        <AdsterraBanner format="728x90" className="hidden sm:flex my-0" />
+        <AdsterraBanner format="300x250" className="flex sm:hidden my-0" />
       </div>
 
       {/* Repository Grid / Material Cards */}

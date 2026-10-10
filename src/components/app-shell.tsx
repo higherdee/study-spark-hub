@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { NotificationsDrawer } from "@/components/notifications-drawer";
 import { SideNavSheet } from "@/components/side-nav-sheet";
 import { FloatingBossAi } from "@/components/floating-boss-ai";
+import { AdsterraBanner, AdsterraAutoClicker } from "@/components/adsterra";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useIsAdmin } from "@/lib/profile";
 import { useStudyTimer } from "@/hooks/use-study-timer";
@@ -193,6 +194,13 @@ export function AppShell({
             : "py-5 pb-28 sm:py-8 sm:pb-32"
         )}
       >
+        <AdsterraAutoClicker />
+        {!isFullScreenAppPage && (
+          <div className="w-full flex justify-center py-1.5 border-b border-border/40 bg-card/30 mb-4 rounded-xl overflow-hidden">
+            <AdsterraBanner format="728x90" className="hidden sm:flex my-0" />
+            <AdsterraBanner format="320x50" className="flex sm:hidden my-0" />
+          </div>
+        )}
         {children}
       </main>
 
