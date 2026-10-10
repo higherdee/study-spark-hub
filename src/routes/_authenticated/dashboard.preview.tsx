@@ -612,7 +612,7 @@ Include:
                   ? `https://docs.google.com/viewer?url=${encodeURIComponent(
                       typeof window !== "undefined"
                         ? `${window.location.origin}${previewStreamUrl}`
-                        : `https://study-spark-hub.vercel.app${previewStreamUrl}`
+                        : `https://syllaboss.org${previewStreamUrl}`
                     )}&embedded=true`
                   : `${previewStreamUrl}#toolbar=0`
               }

@@ -297,7 +297,7 @@ function SettingsPage() {
   };
 
   const refCode = profile?.referral_code ?? `SYLLA-${(user?.id ?? "").slice(-6).toUpperCase()}`;
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://syllaboss.com";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://syllaboss.org";
   const refLink = `${origin}/auth?mode=signup&ref=${refCode}`;
 
   const copyCode = () => {
@@ -329,7 +329,7 @@ function SettingsPage() {
       const res = await createBachsCheckoutSessionServerFn({
         data: {
           userId: user.id,
-          email: user.email || "student@syllaboss.com",
+          email: user.email || "student@syllaboss.org",
           amountNaira: SYLLAPLUS_PRICE_NAIRA,
         },
       });

@@ -8,7 +8,7 @@ namespace Syllaboss
 {
     static class Program
     {
-        private const string AppUrl = "https://study-spark-hub.vercel.app";
+        private const string AppUrl = "https://syllaboss.org";
         private const string AppName = "Syllaboss";
 
         [STAThread]

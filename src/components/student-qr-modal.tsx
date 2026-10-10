@@ -30,7 +30,7 @@ export function StudentQrModal({
 
   const profileUrl = typeof window !== "undefined"
     ? `${window.location.origin}/u/${username}`
-    : `https://syllaboss.com/u/${username}`;
+    : `https://syllaboss.org/u/${username}`;
 
   useEffect(() => {
     if (open && username) {

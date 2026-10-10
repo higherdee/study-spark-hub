@@ -86,10 +86,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "theme-color", content: "#0d281e" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Syllaboss" },
+      { property: "og:site_name", content: "Syllaboss" },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://syllaboss.org" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
+      { rel: "canonical", href: "https://syllaboss.org" },
       {
         rel: "stylesheet",
         href: appCss,

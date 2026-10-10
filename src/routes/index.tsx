@@ -67,6 +67,7 @@ export const Route = createFileRoute("/")({
           "Vetted Nigerian university lecture notes, past exams, and AI study companion. Available on all devices.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://syllaboss.org" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),

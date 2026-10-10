@@ -40,7 +40,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
       const res = await createBachsCheckoutSessionServerFn({
         data: {
           userId: user.id,
-          email: user.email || "student@syllaboss.com",
+          email: user.email || "student@syllaboss.org",
           amountNaira: SYLLAPLUS_PRICE_NAIRA,
         },
       });

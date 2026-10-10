@@ -57,6 +57,7 @@ export const Route = createFileRoute("/api/materials")({
         if (
           filePath &&
           (filePath.startsWith("http://") || filePath.startsWith("https://")) &&
+          !filePath.includes("storage.syllaboss.org") &&
           !filePath.includes("storage.syllaboss.com")
         ) {
           try {

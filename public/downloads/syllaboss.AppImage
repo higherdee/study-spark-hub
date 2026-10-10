@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Syllaboss Universal Desktop Launcher for Linux
-APP_URL="https://study-spark-hub.vercel.app"
+APP_URL="https://syllaboss.org"
 
 echo "Launching Syllaboss..."
 

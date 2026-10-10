@@ -257,7 +257,7 @@ export async function buildAcademicPdf({
   }
 
   // Footer for Page 1
-  page1.drawText("Page 1 of 2 | Syllaboss Official Document | Verify at syllaboss.com", {
+  page1.drawText("Page 1 of 2 | Syllaboss Official Document | Verify at syllaboss.org", {
     x: 45,
     y: 30,
     size: 8,
@@ -407,7 +407,7 @@ export async function buildAcademicPdf({
   });
 
   // Footer for Page 2
-  page2.drawText("Page 2 of 2 | Syllaboss Official Document | Distributed via syllaboss.com", {
+  page2.drawText("Page 2 of 2 | Syllaboss Official Document | Distributed via syllaboss.org", {
     x: 45,
     y: 30,
     size: 8,
