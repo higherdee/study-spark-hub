@@ -428,7 +428,7 @@ function CommunityPage() {
   return (
     <div
       data-chat-active={Boolean(activeChat)}
-      className="flex h-full w-full max-w-[1400px] mx-auto overflow-hidden rounded-3xl border border-border/80 bg-card shadow-xl font-sans"
+      className="flex flex-1 min-h-0 h-full w-full max-w-[1400px] mx-auto overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-card shadow-xl font-sans"
     >
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: Conversations List (WhatsApp / Telegram / iMessage Style) */}
@@ -502,24 +502,6 @@ function CommunityPage() {
           </div>
         </div>
 
-        {/* Daily Streak Banner Pill */}
-        <div className="px-3 py-2 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-border/50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Flame className="size-4 text-amber-500 fill-amber-500" />
-            <span className="text-xs font-semibold text-foreground">
-              {profile?.current_streak || 1} Day Streak
-            </span>
-          </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => streakMutation.mutate()}
-            disabled={streakMutation.isPending}
-            className="h-6 px-2 text-[11px] font-semibold text-amber-600 hover:text-amber-700 hover:bg-amber-500/15 rounded-full"
-          >
-            Check In Today
-          </Button>
-        </div>
 
         {/* Search Bar */}
         <div className="p-3 border-b border-border/70 bg-card/60">
@@ -703,7 +685,7 @@ function CommunityPage() {
       {/* ========================================================================= */}
       <div
         className={cn(
-          "flex-1 flex flex-col bg-background h-full overflow-hidden",
+          "flex-1 min-h-0 flex flex-col bg-background h-full overflow-hidden",
           activeChat ? "flex" : "hidden md:flex"
         )}
       >
@@ -718,6 +700,7 @@ function CommunityPage() {
                   size="icon"
                   onClick={() => {
                     setActiveChat(null);
+                    hasInitializedDesktopChatRef.current = true;
                     if (typeof window !== "undefined") {
                       document.body.classList.remove("hide-bottom-dock");
                     }

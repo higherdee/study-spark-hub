@@ -82,10 +82,27 @@ export function AppShell({
   const timerSecs = remainingSecs % 60;
   const timerDisplay = `${String(timerMins).padStart(2, "0")}:${String(timerSecs).padStart(2, "0")}`;
 
+  const isFullScreenAppPage =
+    path.startsWith("/dashboard/assistant") ||
+    path.startsWith("/dashboard/community") ||
+    path.startsWith("/dashboard/preview");
+
   return (
-    <div className="relative min-h-screen bg-background text-foreground antialiased selection:bg-primary/20">
+    <div
+      className={cn(
+        "relative bg-background text-foreground antialiased selection:bg-primary/20",
+        isFullScreenAppPage
+          ? "h-dvh max-h-dvh overflow-hidden flex flex-col"
+          : "min-h-screen"
+      )}
+    >
       {/* Top Bar matching Screenshot 2: Hamburger on left, widgets on right */}
-      <header className="sticky top-0 z-40 px-3 py-2.5 transition-all sm:px-6 lg:px-8">
+      <header
+        className={cn(
+          "px-3 transition-all sm:px-6 lg:px-8",
+          isFullScreenAppPage ? "shrink-0 py-2" : "sticky top-0 z-40 py-2.5"
+        )}
+      >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-3xl border border-border/70 bg-card/90 px-3.5 py-2 shadow-xs backdrop-blur-2xl transition-all">
           {/* Left: Hamburger menu icon opening side drop menu */}
           <div className="flex items-center gap-2.5">
@@ -170,11 +187,9 @@ export function AppShell({
       {/* Main Content Area */}
       <main
         className={cn(
-          "mx-auto max-w-7xl px-2 sm:px-6 lg:px-8",
-          (path.startsWith("/dashboard/assistant") ||
-            path.startsWith("/dashboard/community") ||
-            path.startsWith("/dashboard/preview"))
-            ? "py-0 pb-0 sm:py-1 sm:pb-1 h-[calc(100dvh-64px)] overflow-hidden"
+          "mx-auto w-full max-w-7xl px-2 sm:px-6 lg:px-8",
+          isFullScreenAppPage
+            ? "flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-1 sm:pb-2"
             : "py-6 pb-28 sm:pb-32"
         )}
       >
@@ -200,7 +215,7 @@ export function AppShell({
         className={cn(
           "fixed bottom-3 sm:bottom-6 inset-x-0 z-30 mx-auto w-fit max-w-[98vw] pointer-events-none px-2 transition-all duration-200",
           showSideNav && "hidden pointer-events-none opacity-0",
-          (path.startsWith("/dashboard/assistant") || path.startsWith("/dashboard/preview")) && "hidden md:block"
+          isFullScreenAppPage && "hidden md:block"
         )}
       >
         <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-3xl bg-card/95 border border-border/90 shadow-[0_20px_60px_rgba(0,0,0,0.16),inset_0_1px_2px_rgba(255,255,255,0.85)] transition-all duration-300">

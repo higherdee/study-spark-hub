@@ -605,19 +605,19 @@ Choose an action below or ask me any question directly:`,
   }
 
   return (
-    <div className="flex h-full w-full max-h-[calc(100dvh-70px)] sm:max-h-[calc(100dvh-82px)] overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[260px_1fr]">
       {/* Left Sidebar: Recent Chats & Actions */}
-      <aside className="hidden flex-col justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-sm lg:flex">
-        <div className="space-y-4">
+      <aside className="hidden flex-col justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-sm lg:flex min-h-0 overflow-hidden">
+        <div className="space-y-4 flex-1 min-h-0 flex flex-col overflow-hidden">
           <Button
             onClick={createNewChat}
-            className="w-full justify-start gap-2 rounded-2xl font-semibold shadow-xs"
+            className="w-full justify-start gap-2 rounded-2xl font-semibold shadow-xs shrink-0"
           >
             <MessageSquarePlus className="size-4" /> New Study Chat
           </Button>
 
           {/* Document Attachment Button */}
-          <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3 text-center">
+          <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3 text-center shrink-0">
             <input
               type="file"
               ref={fileInputRef}
@@ -646,11 +646,11 @@ Choose an action below or ask me any question directly:`,
           </div>
 
           {/* Recent Chats List */}
-          <div className="space-y-1">
-            <p className="px-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="space-y-1 flex-1 min-h-0 flex flex-col overflow-hidden">
+            <p className="px-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">
               Recent Chats
             </p>
-            <div className="max-h-[calc(100svh-380px)] overflow-y-auto space-y-1 pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
               {threads.length === 0 ? (
                 <p className="px-2 py-4 text-xs text-muted-foreground">No recent conversations.</p>
               ) : (
@@ -693,7 +693,7 @@ Choose an action below or ask me any question directly:`,
         </div>
 
         {/* Student Context Card */}
-        <div className="rounded-2xl border border-border/60 bg-secondary/30 p-3 text-xs">
+        <div className="rounded-2xl border border-border/60 bg-secondary/30 p-3 text-xs shrink-0 mt-3">
           <div className="flex items-center gap-2 font-medium text-foreground">
             <GraduationCap className="size-4 text-primary" />
             <span className="truncate">{profile?.institution || "Campus AI"}</span>

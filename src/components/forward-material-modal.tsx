@@ -106,43 +106,40 @@ export function ForwardMaterialModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
-            <Send className="size-5 text-emerald-600" />
+      <DialogContent className="max-w-sm sm:max-w-md rounded-3xl p-4.5 sm:p-5 border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogHeader className="space-y-0.5">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold tracking-tight">
+            <Send className="size-4.5 text-emerald-600" />
             Forward to Peers
           </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Share this academic material directly into a study chat or peer thread.
-          </p>
         </DialogHeader>
 
-        {/* Selected Document Pill */}
-        <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-emerald-600/10 text-emerald-600 shrink-0">
-            <FileText className="size-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-semibold text-foreground truncate">{materialTitle}</h4>
-            <p className="text-[11px] text-muted-foreground font-mono truncate">
-              {materialCourse || "Academic Material"}
-            </p>
-          </div>
+        {/* Compact Material Chip */}
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 min-w-0">
+          <FileText className="size-4 text-emerald-600 shrink-0" />
+          <span className="text-xs font-semibold text-foreground truncate flex-1 min-w-0">
+            {materialTitle}
+          </span>
+          {materialCourse && (
+            <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-sans shrink-0">
+              · {materialCourse}
+            </span>
+          )}
         </div>
 
         {/* Search */}
-        <div className="mt-4 relative">
-          <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search peer or group..."
-            className="pl-9 rounded-full text-xs h-9"
+            className="pl-8.5 rounded-full text-xs h-8.5 bg-secondary/40 border-border/60"
           />
         </div>
 
         {/* Chat List */}
-        <div className="mt-3 max-h-56 overflow-y-auto space-y-1.5 pr-1">
+        <div className="max-h-60 sm:max-h-72 overflow-y-auto space-y-1 pr-1">
           {filteredPeers.length === 0 && filteredGroups.length === 0 ? (
             <div className="py-6 text-center text-xs text-muted-foreground">
               No recent chats found. Start a conversation in the Study Hub first!
@@ -150,7 +147,7 @@ export function ForwardMaterialModal({
           ) : (
             <>
               {filteredPeers.length > 0 && (
-                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-1">
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-0.5">
                   Direct Chats
                 </div>
               )}
@@ -184,7 +181,7 @@ export function ForwardMaterialModal({
                         <p className="text-xs font-semibold text-foreground truncate">
                           {c.peer.full_name}
                         </p>
-                        <p className="text-[10px] font-mono text-emerald-600 truncate">
+                        <p className="text-[10px] font-sans text-emerald-600 truncate">
                           @{c.peer.username}
                         </p>
                       </div>

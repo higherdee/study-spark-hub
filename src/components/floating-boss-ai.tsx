@@ -6,7 +6,10 @@ import { cn } from "@/lib/utils";
 export function FloatingBossAi() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const isAssistantPage = path.startsWith("/dashboard/assistant");
+  const isExcludedPage =
+    path.startsWith("/dashboard/assistant") ||
+    path.startsWith("/dashboard/community") ||
+    path.startsWith("/dashboard/preview");
 
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -88,7 +91,7 @@ export function FloatingBossAi() {
     }
   };
 
-  if (isAssistantPage || !position) return null;
+  if (isExcludedPage || !position) return null;
 
   return (
     <div
