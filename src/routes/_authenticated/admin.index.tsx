@@ -1,6 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Clock, Coins, Download, FileStack, Users, Wallet, XCircle } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  CheckCircle2,
+  Clock,
+  Coins,
+  Download,
+  FileStack,
+  Users,
+  Wallet,
+  XCircle,
+  BarChart3,
+  ExternalLink,
+  ArrowRight,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -8,6 +20,7 @@ import { PageHeader, StatCard } from "@/components/app-shell";
 import { turso } from "@/integrations/turso/client";
 import { formatNaira } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { GA_MEASUREMENT_ID, GA_CONSOLE_URL } from "@/lib/analytics";
 
 export const Route = createFileRoute("/_authenticated/admin/")({ component: AdminOverview });
 
@@ -100,6 +113,49 @@ function AdminOverview() {
         <StatCard label="Points awarded" value={t.pointsAwarded} hint={`${t.pointsOutstanding} unspent`} icon={Coins} />
         <StatCard label="Paid out" value={formatNaira(t.paid)} icon={Wallet} />
         <StatCard label="Pending payouts" value={formatNaira(t.pendingPayout)} icon={XCircle} />
+      </div>
+
+      {/* Google Analytics Quick Telemetry Banner */}
+      <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-card to-card p-4 shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="grid size-11 place-items-center rounded-xl bg-primary/15 text-primary">
+            <BarChart3 className="size-5" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-display text-sm font-bold text-foreground">
+                Google Analytics 4 Telemetry
+              </span>
+              <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Active
+              </span>
+              <span className="font-mono text-[11px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                {GA_MEASUREMENT_ID}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Live tracking student traffic, library visits, material downloads, and search queries across syllaboss.org.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+          <Link
+            to="/admin/analytics"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-semibold hover:bg-secondary transition-all"
+          >
+            Analytics Hub <ArrowRight className="size-3.5" />
+          </Link>
+          <a
+            href={GA_CONSOLE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all"
+          >
+            Open GA4 Console <ExternalLink className="size-3.5" />
+          </a>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-2">

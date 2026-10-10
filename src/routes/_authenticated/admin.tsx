@@ -18,6 +18,8 @@ import {
   Download,
   LogOut,
   Bot,
+  BarChart3,
+  ExternalLink,
 } from "lucide-react";
 import { useState, type FormEvent, useEffect } from "react";
 import { toast } from "sonner";
@@ -47,6 +49,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const nav: NavItem[] = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+  { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/admin/harvester", label: "AI Harvester", icon: Bot },
   { to: "/admin/materials", label: "Review", icon: FileStack },
   { to: "/admin/complaints", label: "Appeals", icon: AlertCircle },
@@ -263,6 +266,17 @@ function AdminLayout() {
           >
             <GraduationCap className="size-3.5 text-primary" /> Student view
           </Link>
+          <a
+            href="https://analytics.google.com/analytics/web/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all shadow-xs"
+            title="Open Google Analytics (G-B39BXVTQXG)"
+          >
+            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            GA4 Console
+            <ExternalLink className="size-3 ml-0.5 opacity-70" />
+          </a>
           <button
             onClick={handleLockSession}
             className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
