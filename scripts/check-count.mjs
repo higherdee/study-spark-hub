@@ -29,10 +29,16 @@ async function main() {
   console.log("\nBY INSTITUTION:", byInst.rows);
   const byCourse = await turso.execute("SELECT course_code, count(*) as count FROM materials GROUP BY course_code ORDER BY count DESC");
   console.log("\nBY COURSE:", byCourse.rows);
-  const books = await turso.execute("SELECT title, course_code, file_size FROM materials WHERE material_type = 'textbook'");
-  console.log("\nFARMED TEXTBOOKS (" + books.rows.length + "):");
+  const books = await turso.execute("SELECT title, institution, course_code, material_type, file_size, page_count, downloads, views, rating_avg FROM materials WHERE institution LIKE '%Achievers%' LIMIT 10");
+  console.log("\nSAMPLE ACHIEVERS UNIVERSITY MATERIALS (" + books.rows.length + "):");
   for (const b of books.rows) {
-    console.log(`- [${b.course_code}] ${b.title} (${(Number(b.file_size) / 1024 / 1024).toFixed(2)} MB)`);
+    console.log(`- [${b.course_code}] ${b.title} (${(Number(b.file_size) / 1024 / 1024).toFixed(2)} MB, ${b.page_count} pgs, ${b.material_type}, dl:${b.downloads}, v:${b.views}, r:${b.rating_avg})`);
+  }
+
+  const globalSample = await turso.execute("SELECT title, institution, course_code, file_size, page_count FROM materials WHERE institution LIKE '%Cambridge%' OR institution LIKE '%MIT%' OR institution LIKE '%Massachusetts%' OR institution LIKE '%Oxford%' LIMIT 10");
+  console.log("\nSAMPLE GLOBAL MATERIALS (" + globalSample.rows.length + "):");
+  for (const g of globalSample.rows) {
+    console.log(`- [${g.course_code}] ${g.institution}: ${g.title} (${(Number(g.file_size) / 1024 / 1024).toFixed(2)} MB, ${g.page_count} pgs)`);
   }
 }
 

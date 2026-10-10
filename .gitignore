@@ -32,4 +32,8 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# Local Scratch & Certs
+scratch/
+scripts/*.pfx
+scripts/*.cer
+scripts/*.exe
