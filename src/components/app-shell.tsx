@@ -187,7 +187,7 @@ export function AppShell({
       {/* Main Content Area */}
       <main
         className={cn(
-          "mx-auto w-full max-w-7xl px-2 sm:px-6 lg:px-8",
+          "mx-auto w-full max-w-7xl px-0 sm:px-6 lg:px-8",
           isFullScreenAppPage
             ? "flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-1 sm:pb-2"
             : "py-5 pb-28 sm:py-8 sm:pb-32"

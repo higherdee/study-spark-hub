@@ -742,7 +742,7 @@ function CommunityPage() {
             </div>
 
             {/* Chat Messages Stream */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3.5 sm:p-5 space-y-3.5 bg-slate-50/60 dark:bg-zinc-950/40">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 pb-6 sm:p-5 sm:pb-8 space-y-3.5 bg-slate-50/60 dark:bg-zinc-950/40 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]">
               {chatMessages.length === 0 ? (
                 <div className="py-16 text-center flex flex-col items-center">
                   <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-2">

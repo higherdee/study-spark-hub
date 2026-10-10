@@ -605,7 +605,7 @@ Choose an action below or ask me any question directly:`,
   }
 
   return (
-    <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
       {/* Left Sidebar: Recent Chats & Actions */}
       <aside className="hidden flex-col justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-sm lg:flex min-h-0 overflow-hidden">
         <div className="space-y-4 flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -705,7 +705,7 @@ Choose an action below or ask me any question directly:`,
       </aside>
 
       {/* Main Chat & Interactive Study Center */}
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-sm">
         {/* Chat Header with Active Context and Quick Tool Launchers */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 bg-secondary/20">
           <div className="flex items-center gap-2.5">
@@ -726,7 +726,7 @@ Choose an action below or ask me any question directly:`,
           </div>
 
           {/* Quick Action Badges */}
-          <div className="flex items-center gap-1.5 overflow-x-auto">
+          <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
             {/* Mobile Past Chats Drawer Launcher */}
             <Button
               size="sm"
@@ -1017,7 +1017,7 @@ Choose an action below or ask me any question directly:`,
         )}
 
         {/* Message Thread History */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3 sm:p-4 space-y-4 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]">
           {messages.length === 0 ? (
             <div className="grid h-full place-items-center p-6 text-center">
               <div className="max-w-md space-y-3">
