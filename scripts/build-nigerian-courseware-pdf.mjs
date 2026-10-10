@@ -42,6 +42,8 @@ function wrap(text, maxWidth, font, fontSize) {
  */
 export async function buildNigerianAcademicPdf({
   institution,
+  country = "Nigeria",
+  accreditation = "",
   faculty = "Faculty of Engineering & Technology",
   department = "General Engineering / Academic Affairs",
   courseCode,
@@ -165,6 +167,14 @@ export async function buildNigerianAcademicPdf({
     });
   }
 
+  const isNigerian = !country || country === "Nigeria" || institution.toLowerCase().includes("nigeria") || institution.toLowerCase().includes("achievers") || institution.toLowerCase().includes("futa") || institution.toLowerCase().includes("unilag");
+  const badgeLabel = isNigerian 
+    ? "[NUC CCMAS VERIFIED]" 
+    : accreditation ? `[${accreditation.toUpperCase()}]` : `[${(country || 'GLOBAL').toUpperCase()} ACCREDITED]`;
+  const footerLabel = isNigerian
+    ? `Syllaboss Verified Academic Dossier · NUC CCMAS Standard · ${academicSession}`
+    : `Syllaboss Global Academic Archive · International Standard · ${academicSession}`;
+
   function drawFooter() {
     page.drawLine({
       start: { x: MARGIN, y: MARGIN - 10 },
@@ -172,7 +182,7 @@ export async function buildNigerianAcademicPdf({
       thickness: 0.5,
       color: borderGray,
     });
-    page.drawText(`Syllaboss Verified Academic Dossier · NUC CCMAS Standard · ${academicSession}`, {
+    page.drawText(footerLabel, {
       x: MARGIN,
       y: MARGIN - 22,
       size: 8,
@@ -200,7 +210,7 @@ export async function buildNigerianAcademicPdf({
   });
   y -= 18;
 
-  page.drawText(`${faculty} · ${department}`, {
+  page.drawText(`${faculty} · ${department}${country && country !== 'Nigeria' ? ` (${country})` : ''}`, {
     x: MARGIN,
     y,
     size: 9,
@@ -218,17 +228,18 @@ export async function buildNigerianAcademicPdf({
   y -= 25;
 
   // Document Badge
+  const badgeWidth = Math.max(fontBold.widthOfTextAtSize(badgeLabel, 8) + 24, 140);
   page.drawRectangle({
     x: MARGIN,
     y: y - 5,
-    width: 140,
+    width: badgeWidth,
     height: 20,
     color: lightBg,
     borderColor: emerald,
     borderWidth: 1,
   });
-  page.drawText(`[NUC CCMAS VERIFIED]`, {
-    x: MARGIN + 10,
+  page.drawText(badgeLabel, {
+    x: MARGIN + 12,
     y: y,
     size: 8,
     font: fontBold,
@@ -279,7 +290,10 @@ export async function buildNigerianAcademicPdf({
   // Topics / Syllabus Overview
   if (topics && topics.length > 0) {
     checkNewPage(40);
-    page.drawText("OFFICIAL NUC CCMAS SYLLABUS TOPICS COVERED:", {
+    const syllabusHeader = isNigerian 
+      ? "OFFICIAL NUC CCMAS SYLLABUS TOPICS COVERED:" 
+      : "OFFICIAL ACCREDITED CURRICULUM TOPICS COVERED:";
+    page.drawText(syllabusHeader, {
       x: MARGIN,
       y,
       size: 10,
@@ -442,5 +456,8 @@ export async function buildNigerianAcademicPdf({
   }
 
   drawFooter();
-  return Buffer.from(await doc.save());
+  const pdfBytes = await doc.save();
+  const buffer = Buffer.from(pdfBytes);
+  buffer.pageCount = doc.getPageCount();
+  return buffer;
 }

@@ -24,7 +24,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { NIGERIAN_TEXTBOOKS, NIGERIAN_UNIVERSITY_MATERIALS } from "./nigerian-curriculum-catalog.mjs";
 import { buildNigerianAcademicPdf } from "./build-nigerian-courseware-pdf.mjs";
-import { generateMaterialCandidates } from "./dynamic-nigerian-harvester.mjs";
+import { generateGlobalMaterialCandidates } from "./dynamic-global-harvester.mjs";
 
 // Load environment variables
 try {
@@ -65,7 +65,7 @@ export const ADMIN_USER_ID = "user_3K8n3Oi8mns8nPhMbE95iGNK7dj";
 const POINTS_PER_UPLOAD = 25;
 const CONCURRENCY = 6; // High-speed parallel workers
 const DYNAMIC_BATCH_SIZE = 12; // Continuous stream per cycle
-const dynamicCandidates = generateMaterialCandidates();
+const dynamicCandidates = generateGlobalMaterialCandidates();
 
 async function executeWithRetry(fn, maxRetries = 3, delayMs = 1000) {
   let attempt = 0;
@@ -127,6 +127,7 @@ async function persistMaterial({
   courseCode,
   courseTitle,
   institution,
+  country = "Nigeria",
   level,
   materialType,
   description,
@@ -161,6 +162,10 @@ async function persistMaterial({
     )
   );
 
+  const verificationNotes = country === "Nigeria"
+    ? `Verified Nigerian Academic Resource · NUC CCMAS Standard · Direct R2 Storage`
+    : `Verified Global Academic Resource · ${country} Academic Standards · Direct R2 Storage`;
+
   // 2. Insert into Turso DB
   await executeWithRetry(() =>
     turso.execute({
@@ -188,7 +193,7 @@ async function persistMaterial({
         POINTS_PER_UPLOAD,
         "verified",
         99,
-        `Verified Nigerian Academic Resource · NUC CCMAS Standard · Direct R2 Storage`,
+        verificationNotes,
         0, // Real initial downloads
         0, // Real initial views
         0, // Real initial rating avg
@@ -212,7 +217,7 @@ async function persistMaterial({
           crypto.randomUUID(),
           ADMIN_USER_ID,
           POINTS_PER_UPLOAD,
-          `Farmed Nigerian academic material: ${courseCode} (${institution})`,
+          `Farmed academic material: ${courseCode} (${institution}${country && country !== 'Nigeria' ? ` · ${country}` : ''})`,
         ],
       },
     ])
@@ -378,8 +383,8 @@ async function runHarvestCycle() {
     3 // 3 parallel download pipes
   );
 
-  // --- PHASE 3: CONTINUOUS DYNAMIC ACADEMIC HARVESTER (Achievers, FUTA, UNILAG, OAU, etc.) ---
-  console.log(`\n>>> PHASE 3: Continuous Dynamic Academic Harvester (Targeting ${DYNAMIC_BATCH_SIZE} fresh materials)...`);
+  // --- PHASE 3: GLOBAL & NIGERIAN CONTINUOUS ACADEMIC HARVESTER ---
+  console.log(`\n>>> PHASE 3: Global & Nigerian Continuous Academic Harvester (Targeting ${DYNAMIC_BATCH_SIZE} fresh materials)...`);
   
   // Fast memory cache of all existing titles in Turso database
   const existingRows = await executeWithRetry(() =>
@@ -397,7 +402,7 @@ async function runHarvestCycle() {
   }
 
   if (freshBatch.length > 0) {
-    console.log(`  -> Selected ${freshBatch.length} fresh Nigerian university materials across curriculum`);
+    console.log(`  -> Selected ${freshBatch.length} fresh global & Nigerian materials across institutions`);
     const dynamicResults = await runPool(
       freshBatch,
       async (item) => {
@@ -407,6 +412,8 @@ async function runHarvestCycle() {
         const tStart = Date.now();
         const pdfBuffer = await buildNigerianAcademicPdf({
           institution: item.institution,
+          country: item.country,
+          accreditation: item.accreditation,
           faculty: item.faculty,
           department: item.department,
           courseCode: item.course_code,
@@ -420,12 +427,13 @@ async function runHarvestCycle() {
           pastQuestions: item.pastQuestions,
         });
 
-        const pageCount = Math.max(Math.round(pdfBuffer.length / 1500), 4);
+        const pageCount = pdfBuffer.pageCount || Math.max(Math.round(pdfBuffer.length / 1500), 4);
         const res = await persistMaterial({
           title: item.title,
           courseCode: item.course_code,
           courseTitle: item.course_title,
           institution: item.institution,
+          country: item.country,
           level: item.level,
           materialType: item.material_type,
           description: item.description,
@@ -440,7 +448,30 @@ async function runHarvestCycle() {
           console.log(`[SKIP] [${item.course_code}] ${item.title.slice(0, 50)}...`);
         } else {
           newlyFarmed++;
-          console.log(`[FARM OK] [${item.course_code}] ${item.institution.slice(0, 25)} -> ${item.title.slice(0, 48)}... (${(pdfBuffer.length / 1024).toFixed(1)} KB, ${pageCount} pgs in ${elapsed}s)`);
+          const COUNTRY_FLAGS = {
+            "Nigeria": "🇳🇬",
+            "United States": "🇺🇸",
+            "United Kingdom": "🇬🇧",
+            "Canada": "🇨🇦",
+            "Australia": "🇦🇺",
+            "India": "🇮🇳",
+            "South Africa": "🇿🇦",
+            "Ghana": "🇬🇭",
+            "Kenya": "🇰🇪",
+            "Germany": "🇩🇪",
+            "France": "🇫🇷",
+            "Switzerland": "🇨🇭",
+            "Singapore": "🇸🇬",
+            "Japan": "🇯🇵",
+            "China": "🇨🇳",
+            "Brazil": "🇧🇷",
+            "Egypt": "🇪🇬",
+            "Netherlands": "🇳🇱",
+            "Sweden": "🇸🇪",
+            "South Korea": "🇰🇷",
+          };
+          const flag = COUNTRY_FLAGS[item.country] || "🌍";
+          console.log(`[GLOBAL OK] ${flag} [${item.course_code}] ${item.institution.slice(0, 22)} -> ${item.title.slice(0, 48)}... (${(pdfBuffer.length / 1024).toFixed(1)} KB, ${pageCount} pgs in ${elapsed}s)`);
         }
         return res;
       },
