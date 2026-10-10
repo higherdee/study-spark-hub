@@ -24,6 +24,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { NIGERIAN_TEXTBOOKS, NIGERIAN_UNIVERSITY_MATERIALS } from "./nigerian-curriculum-catalog.mjs";
 import { buildNigerianAcademicPdf } from "./build-nigerian-courseware-pdf.mjs";
+import { generateMaterialCandidates } from "./dynamic-nigerian-harvester.mjs";
 
 // Load environment variables
 try {
@@ -63,6 +64,8 @@ const R2_BUCKET = process.env.R2_BUCKET_NAME || "syllaboss";
 export const ADMIN_USER_ID = "user_3K8n3Oi8mns8nPhMbE95iGNK7dj";
 const POINTS_PER_UPLOAD = 25;
 const CONCURRENCY = 6; // High-speed parallel workers
+const DYNAMIC_BATCH_SIZE = 12; // Continuous stream per cycle
+const dynamicCandidates = generateMaterialCandidates();
 
 async function executeWithRetry(fn, maxRetries = 3, delayMs = 1000) {
   let attempt = 0;
@@ -375,6 +378,76 @@ async function runHarvestCycle() {
     3 // 3 parallel download pipes
   );
 
+  // --- PHASE 3: CONTINUOUS DYNAMIC ACADEMIC HARVESTER (Achievers, FUTA, UNILAG, OAU, etc.) ---
+  console.log(`\n>>> PHASE 3: Continuous Dynamic Academic Harvester (Targeting ${DYNAMIC_BATCH_SIZE} fresh materials)...`);
+  
+  // Fast memory cache of all existing titles in Turso database
+  const existingRows = await executeWithRetry(() =>
+    turso.execute("SELECT title FROM materials")
+  );
+  const existingSet = new Set(existingRows.rows.map(r => r.title));
+
+  const freshBatch = [];
+  for (const cand of dynamicCandidates) {
+    if (!existingSet.has(cand.title)) {
+      freshBatch.push(cand);
+      existingSet.add(cand.title); // Prevent duplicates inside current batch
+      if (freshBatch.length >= DYNAMIC_BATCH_SIZE) break;
+    }
+  }
+
+  if (freshBatch.length > 0) {
+    console.log(`  -> Selected ${freshBatch.length} fresh Nigerian university materials across curriculum`);
+    const dynamicResults = await runPool(
+      freshBatch,
+      async (item) => {
+        const fileName = `${item.course_code.replace(/\s+/g, "_")}_${item.institution.slice(0, 8).replace(/[^a-zA-Z]/g, "")}_${item.topic.slice(0, 10).replace(/[^a-zA-Z]/g, "")}_${item.material_type}.pdf`;
+        const r2Key = `materials/courseware/${fileName}`;
+
+        const tStart = Date.now();
+        const pdfBuffer = await buildNigerianAcademicPdf({
+          institution: item.institution,
+          faculty: item.faculty,
+          department: item.department,
+          courseCode: item.course_code,
+          courseTitle: item.course_title,
+          level: item.level,
+          materialType: item.material_type,
+          title: item.title,
+          academicSession: item.academicSession,
+          topics: item.topics,
+          modules: item.modules,
+          pastQuestions: item.pastQuestions,
+        });
+
+        const pageCount = Math.max(Math.round(pdfBuffer.length / 1500), 4);
+        const res = await persistMaterial({
+          title: item.title,
+          courseCode: item.course_code,
+          courseTitle: item.course_title,
+          institution: item.institution,
+          level: item.level,
+          materialType: item.material_type,
+          description: item.description,
+          pdfBuffer,
+          r2Key,
+          fileName,
+          pageCount,
+        });
+
+        const elapsed = ((Date.now() - tStart) / 1000).toFixed(2);
+        if (res.skipped) {
+          console.log(`[SKIP] [${item.course_code}] ${item.title.slice(0, 50)}...`);
+        } else {
+          newlyFarmed++;
+          console.log(`[FARM OK] [${item.course_code}] ${item.institution.slice(0, 25)} -> ${item.title.slice(0, 48)}... (${(pdfBuffer.length / 1024).toFixed(1)} KB, ${pageCount} pgs in ${elapsed}s)`);
+        }
+        return res;
+      },
+      CONCURRENCY
+    );
+  }
+
   // Total in DB
   const countRes = await turso.execute("SELECT count(*) as total FROM materials WHERE status = 'verified'");
   const totalVerified = countRes.rows[0].total;
@@ -404,8 +477,8 @@ async function main() {
     }
 
     if (isInfinite) {
-      console.log("Sleeping 45s before next continuous harvest cycle... (Ctrl+C to stop)");
-      await new Promise(r => setTimeout(r, 45000));
+      console.log("Sleeping 8s before next continuous harvest cycle... (Ctrl+C to stop)");
+      await new Promise(r => setTimeout(r, 8000));
     }
   } while (isInfinite);
 }

@@ -123,24 +123,6 @@ export const NIGERIAN_TEXTBOOKS = [
     download_url: "https://archive.org/download/nelkon-parker-advanced-level-physics_202102/Nelkon%20Parker-%20Advanced%20Level%20Physics.pdf"
   },
   {
-    course_code: "GET 201",
-    course_title: "Engineering Mathematics I / Mathematical Methods (NUC Prescribed)",
-    course: "Faculty of Engineering / General Engineering",
-    level: "200L",
-    institution: "National Curriculum (NUC CCMAS Recommended)",
-    material_type: "textbook",
-    title: "Engineering Mathematics - K. A. Stroud & Dexter Booth (Official NUC Standard)",
-    description: "The definitive engineering mathematics textbook prescribed across all Nigerian universities: programmes in algebra, complex numbers, vectors, calculus, differential equations, Fourier series, and Laplace transforms.",
-    topics: [
-      "Complex Numbers, De Moivre's Theorem and Hyperbolic Functions",
-      "Matrix Algebra, Determinants and Systems of Linear Equations",
-      "Calculus: Partial Differentiation and Chain Rule Applications",
-      "First and Second Order Ordinary Differential Equations (ODEs)",
-      "Laplace Transforms and Applications in Engineering Systems"
-    ],
-    download_url: "https://archive.org/download/engineeringmathe0006stro/engineeringmathe0006stro.pdf"
-  },
-  {
     course_code: "PHY 102",
     course_title: "General Physics II (Electricity, Magnetism and Optics)",
     course: "Physical Sciences / Engineering",
