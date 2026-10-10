@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { BookOpen, Home, Trophy, Upload, Wallet, Loader2, Shield, Bot } from "lucide-react";
+import { BookOpen, Home, Trophy, Upload, Wallet, Loader2, Shield, Bot, Users } from "lucide-react";
 import { useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -25,6 +25,7 @@ const nav: NavItem[] = [
   { to: "/dashboard", label: "Home", icon: Home, exact: true },
   { to: "/dashboard/library", label: "Library", icon: BookOpen },
   { to: "/dashboard/assistant", label: "Boss AI", icon: Bot },
+  { to: "/dashboard/community", label: "Study Hub", icon: Users },
   { to: "/dashboard/upload", label: "Upload", icon: Upload },
   { to: "/dashboard/leaderboard", label: "Rankings", icon: Trophy },
   { to: "/dashboard/wallet", label: "Wallet", icon: Wallet },

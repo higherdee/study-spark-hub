@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -12,6 +12,7 @@ import {
   Download,
   Eye,
   FileText,
+  Flame,
   GraduationCap,
   Layers,
   MoreVertical,
@@ -20,9 +21,11 @@ import {
   Timer,
   TrendingUp,
   Upload,
+  Users,
   Verified,
   Wallet,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { SyllaPlusModal } from "@/components/syllaplus-modal";
@@ -30,6 +33,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, getPointsLedger } from "@/integrations/turso/client";
 import { useProfile } from "@/lib/profile";
 import { POINTS_NAME, pointsToNaira, formatNaira } from "@/lib/constants";
+import { updateStreakServerFn } from "@/lib/community.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard/")({
@@ -49,6 +53,21 @@ function HomePage() {
   const [interval, setInterval] = useState<"30d" | "90d">("30d");
   const [activeTooltip, setActiveTooltip] = useState<{ label: string; value: string } | null>(null);
   const [showPlusModal, setShowPlusModal] = useState(false);
+
+  const queryClient = useQueryClient();
+  const streakMutation = useMutation({
+    mutationFn: updateStreakServerFn,
+    onSuccess: (status) => {
+      toast.success(`🔥 Daily Streak Kept! Day ${status.currentStreak} secured!`);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+
+  const currentStreak = (profile as any)?.current_streak || 1;
+  const longestStreak = (profile as any)?.longest_streak || 1;
+  const lastStreakDate = (profile as any)?.last_streak_date || "";
+  const today = new Date().toISOString().slice(0, 10);
+  const streakCompletedToday = lastStreakDate === today;
 
   const { data: materials = [] } = useQuery({
     queryKey: ["my-materials", user?.id],
@@ -448,6 +467,69 @@ function HomePage() {
 
         {/* Right Column (Span 4): Wallet, Activity Breakdown & Semester Cadence */}
         <div className="lg:col-span-4 flex flex-col gap-6">
+          {/* Daily Reading Streak & Study Hub Card */}
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-white to-orange-500/10 shadow-xs border border-amber-500/30 flex flex-col gap-3 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame className="size-5 text-amber-500 animate-pulse" />
+                <span className="text-xs uppercase tracking-wider text-[#00110a] font-bold">
+                  Daily Study Streak
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[11px] font-bold">
+                🔥 {currentStreak} Days
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-3xl font-bold text-[#00110a]">
+                {currentStreak}
+              </span>
+              <span className="text-xs text-[#5a6660]">
+                consecutive days active (Best: {longestStreak} days)
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-white/80 border border-amber-500/20 flex flex-col gap-1.5 text-xs">
+              <div className="flex justify-between items-center text-[11px] font-semibold">
+                <span className="text-[#446557]">Daily Goal: 20 mins reading</span>
+                <span className="text-amber-600 font-medium">
+                  {streakCompletedToday ? "Completed today!" : "Goal pending"}
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-amber-100 overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                  style={{ width: streakCompletedToday ? "100%" : "35%" }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                size="sm"
+                variant={streakCompletedToday ? "outline" : "default"}
+                onClick={() => {
+                  if (profile?.id) streakMutation.mutate({ data: { userId: profile.id } });
+                }}
+                disabled={streakMutation.isPending || streakCompletedToday}
+                className={cn(
+                  "flex-1 h-9 rounded-xl text-xs font-semibold gap-1.5",
+                  !streakCompletedToday && "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                )}
+              >
+                <Flame className="size-3.5" />
+                {streakCompletedToday ? "Streak Kept!" : "Check In Today"}
+              </Button>
+              <Button asChild size="sm" variant="outline" className="h-9 rounded-xl text-xs border-primary/30 hover:bg-primary/5">
+                <Link to="/dashboard/community">
+                  <Users className="size-3.5 text-primary mr-1" />
+                  Study Hub
+                </Link>
+              </Button>
+            </div>
+          </div>
+
           {/* SyllaPoints Balance Card */}
           <div className="p-6 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-4 relative overflow-hidden">
             <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-[#c6ebd9]/40 blur-2xl pointer-events-none" />

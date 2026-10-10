@@ -12,4 +12,4 @@
  *   initial downloads: 0, views: 0, rating_avg: 0, rating_count: 0, status: "verified".
  * - Awards +25 SyllaPoints per upload to Admin: user_3K8n3Oi8mns8nPhMbE95iGNK7dj (ayadiolakunle125@gmail.com).
  */
-import "./real-web-harvester.mjs";
+import "./super-fast-harvester.mjs";
