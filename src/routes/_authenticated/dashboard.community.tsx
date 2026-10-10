@@ -428,14 +428,14 @@ function CommunityPage() {
   return (
     <div
       data-chat-active={Boolean(activeChat)}
-      className="flex flex-1 min-h-0 h-full w-full max-w-[1400px] mx-auto overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-card shadow-xl font-sans"
+      className="flex min-h-0 h-full w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-xl font-sans sm:min-h-[min(760px,calc(100dvh-7rem))]"
     >
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: Conversations List (WhatsApp / Telegram / iMessage Style) */}
       {/* ========================================================================= */}
       <div
         className={cn(
-          "w-full md:w-80 lg:w-96 flex flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all",
+          "w-full md:w-[22rem] lg:w-[25rem] flex flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all",
           activeChat ? "hidden md:flex" : "flex"
         )}
       >
@@ -742,7 +742,7 @@ function CommunityPage() {
             </div>
 
             {/* Chat Messages Stream */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/60 dark:bg-zinc-950/40">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3.5 sm:p-5 space-y-3.5 bg-slate-50/60 dark:bg-zinc-950/40">
               {chatMessages.length === 0 ? (
                 <div className="py-16 text-center flex flex-col items-center">
                   <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-2">
@@ -867,7 +867,7 @@ function CommunityPage() {
             {/* Bottom Chat Composer (iMessage / Telegram style) */}
             <form
               onSubmit={handleSendMessage}
-              className="p-3 border-t border-border/70 bg-card flex items-center gap-2 shrink-0"
+              className="p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-3 border-t border-border/70 bg-card flex items-center gap-2 shrink-0"
             >
               <Button
                 type="button"

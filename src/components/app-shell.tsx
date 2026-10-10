@@ -90,7 +90,7 @@ export function AppShell({
   return (
     <div
       className={cn(
-        "relative bg-background text-foreground antialiased selection:bg-primary/20",
+        "relative min-h-dvh bg-background text-foreground antialiased selection:bg-primary/20",
         isFullScreenAppPage
           ? "h-dvh max-h-dvh overflow-hidden flex flex-col"
           : "min-h-screen"
@@ -103,7 +103,7 @@ export function AppShell({
           isFullScreenAppPage ? "shrink-0 py-2" : "sticky top-0 z-40 py-2.5"
         )}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 rounded-3xl border border-border/70 bg-card/90 px-3.5 py-2 shadow-xs backdrop-blur-2xl transition-all">
+        <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 rounded-[1.35rem] border border-border/70 bg-card/90 px-3 py-2 shadow-[0_12px_32px_-18px_rgba(13,40,30,0.35)] backdrop-blur-2xl transition-all sm:px-4">
           {/* Left: Hamburger menu icon opening side drop menu */}
           <div className="flex items-center gap-2.5">
             <button
@@ -190,7 +190,7 @@ export function AppShell({
           "mx-auto w-full max-w-7xl px-2 sm:px-6 lg:px-8",
           isFullScreenAppPage
             ? "flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-1 sm:pb-2"
-            : "py-6 pb-28 sm:pb-32"
+            : "py-5 pb-28 sm:py-8 sm:pb-32"
         )}
       >
         {children}
