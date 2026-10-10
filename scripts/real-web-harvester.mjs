@@ -151,10 +151,10 @@ async function registerMaterial({
   fileName,
   pageCount,
 }) {
-  // Check if title already exists in DB for this institution
+  // Check if title already exists in DB
   const existing = await turso.execute({
-    sql: "SELECT id FROM materials WHERE title = ? AND institution = ? LIMIT 1",
-    args: [title, institution],
+    sql: "SELECT id FROM materials WHERE title = ? LIMIT 1",
+    args: [title],
   });
   if (existing.rows.length > 0) {
     return { skipped: true, title };
@@ -337,82 +337,35 @@ export async function runRealHarvest() {
     const r2Key = `materials/web_farmed/${doc.courseCode.replace(/\s+/g, "_")}_${fileHash}.pdf`;
     const fileName = `${doc.courseCode.replace(/\s+/g, "_")}_${doc.title.slice(0, 25).replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
 
-    // 1. Attribute to key Nigerian institutions
-    // Especially GET 206 for Achievers University, Owo and engineering universities!
-    const targetNigerianUnis = doc.courseCode === "GET 206"
-      ? KEY_NIGERIAN_UNIVERSITIES // All top Nigerian engineering universities
-      : KEY_NIGERIAN_UNIVERSITIES.slice(0, 8); // Top universities
+    // Attribute to its canonical institution and country (strictly 1:1, NO DUPLICATE CLONES!)
+    const institution = doc.institution || "National Curriculum (NUC CCMAS Recommended)";
+    const country = doc.country || "Nigeria";
 
-    for (const uniName of targetNigerianUnis) {
-      const uniTitle = `${doc.title} (${uniName})`;
-      try {
-        const res = await registerMaterial({
-          title: uniTitle,
-          courseCode: doc.courseCode,
-          courseTitle: doc.courseTitle,
-          institution: uniName,
-          country: "Nigeria",
-          level: doc.level,
-          materialType: doc.materialType,
-          description: `${doc.description} Curated for ${uniName} undergraduate curriculum under NUC CCMAS standards.`,
-          pdfBuffer,
-          r2Key,
-          fileName,
-          pageCount,
-        });
+    try {
+      const res = await registerMaterial({
+        title: doc.title,
+        courseCode: doc.courseCode,
+        courseTitle: doc.courseTitle,
+        institution,
+        country,
+        level: doc.level,
+        materialType: doc.materialType,
+        description: doc.description,
+        pdfBuffer,
+        r2Key,
+        fileName,
+        pageCount,
+      });
 
-        if (res.success) {
-          totalFarmed++;
-          totalBytes += pdfBuffer.length;
-          console.log(`  [HARVESTED 🇳🇬] [${doc.courseCode}] ${uniName} -> ${(pdfBuffer.length / 1024 / 1024).toFixed(2)} MB | ${pageCount} pgs`);
-        }
-      } catch (err) {
-        console.error(`  [DB/R2 ERROR] for ${uniName}:`, err.message);
+      if (res.success) {
+        totalFarmed++;
+        totalBytes += pdfBuffer.length;
+        console.log(`  [HARVESTED] [${doc.courseCode}] ${doc.title} -> ${institution} (${country}) | ${(pdfBuffer.length / 1024 / 1024).toFixed(2)} MB | ${pageCount} pgs`);
+      } else if (res.skipped) {
+        console.log(`  [ALREADY IN LIBRARY] [${doc.courseCode}] ${doc.title}`);
       }
-    }
-
-    // 2. Attribute to Global International Institutions
-    // Pick relevant universities based on discipline
-    let targetGlobalUnis = [];
-    if (doc.title.includes("MIT")) {
-      targetGlobalUnis = KEY_GLOBAL_UNIVERSITIES.filter(u => u.name.includes("Massachusetts"));
-    } else if (doc.title.includes("Cambridge")) {
-      targetGlobalUnis = KEY_GLOBAL_UNIVERSITIES.filter(u => u.name.includes("Cambridge"));
-    } else if (doc.title.includes("Groundwork of Nigerian History")) {
-      // African & International African Studies departments
-      targetGlobalUnis = KEY_GLOBAL_UNIVERSITIES.filter(u => ["Ghana", "Kenya", "South Africa", "United Kingdom", "United States"].includes(u.country)).slice(0, 4);
-    } else {
-      // Distribute broadly across international institutions in America, Europe, Asia, Africa
-      const sliceStart = (i * 3) % KEY_GLOBAL_UNIVERSITIES.length;
-      targetGlobalUnis = KEY_GLOBAL_UNIVERSITIES.slice(sliceStart, sliceStart + 5);
-    }
-
-    for (const uni of targetGlobalUnis) {
-      const uniTitle = `${doc.title} (${uni.name})`;
-      try {
-        const res = await registerMaterial({
-          title: uniTitle,
-          courseCode: doc.courseCode,
-          courseTitle: doc.courseTitle,
-          institution: uni.name,
-          country: uni.country,
-          level: doc.level,
-          materialType: doc.materialType,
-          description: `${doc.description} Associated with ${uni.name} academic curriculum.`,
-          pdfBuffer,
-          r2Key,
-          fileName,
-          pageCount,
-        });
-
-        if (res.success) {
-          totalFarmed++;
-          totalBytes += pdfBuffer.length;
-          console.log(`  [HARVESTED 🌍] [${doc.courseCode}] ${uni.name} (${uni.country}) -> ${(pdfBuffer.length / 1024 / 1024).toFixed(2)} MB | ${pageCount} pgs`);
-        }
-      } catch (err) {
-        console.error(`  [DB/R2 ERROR] for ${uni.name}:`, err.message);
-      }
+    } catch (err) {
+      console.error(`  [DB/R2 ERROR] for ${institution}:`, err.message);
     }
   }
 
