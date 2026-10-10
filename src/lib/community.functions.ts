@@ -68,3 +68,96 @@ export const getMaterialsForChatServerFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     return await getMaterials({ status: "verified", limit: data.limit || 40 });
   });
+
+export const searchPeersServerFn = createServerFn({ method: "GET" })
+  .validator((d: { query: string; currentUserId?: string }) => d)
+  .handler(async ({ data }) => {
+    const { searchPeers } = await import("@/integrations/turso/community");
+    return await searchPeers(data.query, data.currentUserId);
+  });
+
+export const checkUsernameAvailableServerFn = createServerFn({ method: "GET" })
+  .validator((d: { username: string; excludeUserId?: string }) => d)
+  .handler(async ({ data }) => {
+    const { checkUsernameAvailable } = await import("@/integrations/turso/community");
+    return await checkUsernameAvailable(data.username, data.excludeUserId);
+  });
+
+export const updateUsernameServerFn = createServerFn({ method: "POST" })
+  .validator((d: { userId: string; username: string }) => d)
+  .handler(async ({ data }) => {
+    const { updateUsername } = await import("@/integrations/turso/community");
+    return await updateUsername(data.userId, data.username);
+  });
+
+export const updateAvatarUrlServerFn = createServerFn({ method: "POST" })
+  .validator((d: { userId: string; avatarUrl: string }) => d)
+  .handler(async ({ data }) => {
+    const { updateAvatarUrl } = await import("@/integrations/turso/community");
+    return await updateAvatarUrl(data.userId, data.avatarUrl);
+  });
+
+export const getOrCreatePeerConversationServerFn = createServerFn({ method: "POST" })
+  .validator((d: { user1Id: string; user2Id: string }) => d)
+  .handler(async ({ data }) => {
+    const { getOrCreatePeerConversation } = await import("@/integrations/turso/community");
+    return await getOrCreatePeerConversation(data.user1Id, data.user2Id);
+  });
+
+export const getStudentConversationsServerFn = createServerFn({ method: "GET" })
+  .validator((d: { userId: string }) => d)
+  .handler(async ({ data }) => {
+    const { getStudentConversations } = await import("@/integrations/turso/community");
+    return await getStudentConversations(data.userId);
+  });
+
+export const getDirectMessagesServerFn = createServerFn({ method: "GET" })
+  .validator((d: { conversationId: string }) => d)
+  .handler(async ({ data }) => {
+    const { getDirectMessages } = await import("@/integrations/turso/community");
+    return await getDirectMessages(data.conversationId);
+  });
+
+export const sendDirectMessageServerFn = createServerFn({ method: "POST" })
+  .validator((d: {
+    conversationId: string;
+    senderId: string;
+    content: string;
+    materialId?: string;
+  }) => d)
+  .handler(async ({ data }) => {
+    const { sendDirectMessage } = await import("@/integrations/turso/community");
+    return await sendDirectMessage(data);
+  });
+
+export const forwardMaterialToChatServerFn = createServerFn({ method: "POST" })
+  .validator((d: {
+    targetType: "peer" | "group";
+    targetId: string;
+    senderId: string;
+    senderName: string;
+    materialId: string;
+    note?: string;
+  }) => d)
+  .handler(async ({ data }) => {
+    const { sendDirectMessage, sendGroupMessage } = await import("@/integrations/turso/community");
+    const content = data.note ? data.note.trim() : "Shared a course document with you.";
+
+    if (data.targetType === "peer") {
+      return await sendDirectMessage({
+        conversationId: data.targetId,
+        senderId: data.senderId,
+        content,
+        materialId: data.materialId,
+      });
+    } else {
+      return await sendGroupMessage({
+        groupId: data.targetId,
+        userId: data.senderId,
+        userName: data.senderName,
+        content,
+        materialId: data.materialId,
+      });
+    }
+  });
+

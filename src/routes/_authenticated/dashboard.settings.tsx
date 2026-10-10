@@ -20,8 +20,14 @@ import {
   Timer,
   User,
   Zap,
+  Camera,
+  QrCode,
+  Play,
+  Pause,
+  Loader2,
+  Upload,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app-shell";
@@ -38,6 +44,15 @@ import {
   SYLLAPLUS_PRICE_NAIRA,
 } from "@/lib/constants";
 import { useProfile } from "@/lib/profile";
+import { useStudyTimer } from "@/hooks/use-study-timer";
+import { StudentQrModal } from "@/components/student-qr-modal";
+import { QrScannerModal } from "@/components/qr-scanner-modal";
+import {
+  checkUsernameAvailableServerFn,
+  updateUsernameServerFn,
+  updateAvatarUrlServerFn,
+} from "@/lib/community.functions";
+import { cn } from "@/lib/utils";
 import {
   claimAppInstallBonusServerFn,
   createBachsCheckoutSessionServerFn,
@@ -110,6 +125,25 @@ function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Username edit states
+  const [username, setUsername] = useState("");
+  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameError, setUsernameError] = useState("");
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
+
+  // Avatar state
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Modals for QR Code and QR Scanner
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
+
+  // Active study timer hook (Relocated from Header)
+  const { seconds, isPaused, togglePause, totalStudyMinutes } = useStudyTimer();
+
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
       setNotificationPermission(Notification.permission);
@@ -140,6 +174,8 @@ function SettingsPage() {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || "");
+      setUsername(profile.username || "");
+      setAvatarUrl(profile.avatar_url || "");
       setInstitution(profile.institution || "");
       setCourse(profile.course || "");
       setDepartment(profile.department || "");
@@ -147,6 +183,118 @@ function SettingsPage() {
       setPhone(profile.phone || "");
     }
   }, [profile]);
+
+  // Debounced check username availability
+  useEffect(() => {
+    const clean = username.trim().toLowerCase();
+    if (!clean || clean === (profile?.username || "").toLowerCase()) {
+      setIsUsernameAvailable(null);
+      setUsernameError("");
+      return;
+    }
+    if (clean.length < 3) {
+      setIsUsernameAvailable(false);
+      setUsernameError("Username must be at least 3 characters.");
+      return;
+    }
+    if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+      setIsUsernameAvailable(false);
+      setUsernameError("Only lowercase letters, numbers, and underscores allowed.");
+      return;
+    }
+
+    setUsernameChecking(true);
+    setUsernameError("");
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkUsernameAvailableServerFn({
+          data: { username: clean, excludeUserId: user?.id },
+        });
+        setIsUsernameAvailable(res.available);
+        if (!res.available) {
+          setUsernameError("This username is already taken.");
+        }
+      } catch {
+        // network fallback
+      } finally {
+        setUsernameChecking(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [username, profile?.username, user?.id]);
+
+  const handleSaveUsername = async () => {
+    if (!user || !username.trim()) return;
+    const clean = username.trim().toLowerCase();
+    if (isUsernameAvailable === false) {
+      toast.error(usernameError || "Username is not available.");
+      return;
+    }
+    setIsSavingUsername(true);
+    try {
+      const res = await updateUsernameServerFn({
+        data: { userId: user.id, username: clean },
+      });
+      if (res.success) {
+        toast.success(`Username updated to @${clean}!`);
+        await qc.invalidateQueries({ queryKey: ["profile"] });
+        setIsUsernameAvailable(null);
+      } else {
+        toast.error(res.message || "Failed to update username.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update username.");
+    } finally {
+      setIsSavingUsername(false);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file must be under 5 MB.");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    toast.loading("Compressing & updating profile picture...", { id: "avatar-upload" });
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          const size = 256;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            const minSide = Math.min(img.width, img.height);
+            const sx = (img.width - minSide) / 2;
+            const sy = (img.height - minSide) / 2;
+            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+            const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+            await updateAvatarUrlServerFn({
+              data: { userId: user.id, avatarUrl: compressedDataUrl },
+            });
+            setAvatarUrl(compressedDataUrl);
+            await qc.invalidateQueries({ queryKey: ["profile"] });
+            toast.success("Profile picture updated successfully!", { id: "avatar-upload" });
+          }
+          setIsUploadingAvatar(false);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setIsUploadingAvatar(false);
+      toast.error("Failed to update profile picture.", { id: "avatar-upload" });
+    }
+  };
 
   const refCode = profile?.referral_code ?? `SYLLA-${(user?.id ?? "").slice(-6).toUpperCase()}`;
   const origin = typeof window !== "undefined" ? window.location.origin : "https://syllaboss.com";
@@ -303,6 +451,12 @@ function SettingsPage() {
     }
   };
 
+  const handleScanPeer = (scannedUsername: string) => {
+    setShowScannerModal(false);
+    toast.success(`Scanned @${scannedUsername}! Directing to chat...`);
+    window.location.href = `/dashboard/community`;
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-20">
       <PageHeader
@@ -421,15 +575,58 @@ function SettingsPage() {
         </div>
       </div>
 
-      {/* Study Session & Timer Configuration */}
+      {/* Study Session & Timer Configuration (Relocated from Header) */}
       <div className="space-y-2">
         <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
           <Timer className="size-3.5 text-primary" /> Study Timer & Productivity Controls
         </p>
         <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40 shadow-xs">
+          {/* Active Live Stopwatch Display matching former header 16:08 pill */}
+          <div className="p-5 bg-gradient-to-r from-primary/5 via-card to-background flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                <span className="relative flex size-2">
+                  <span className={cn("absolute inline-flex size-full rounded-full bg-emerald-400 opacity-75", !isPaused && "animate-ping")} />
+                  <span className={cn("relative inline-flex size-2 rounded-full", isPaused ? "bg-amber-500" : "bg-emerald-500")} />
+                </span>
+                Active Study Session Timer
+              </span>
+              <div className="flex items-baseline gap-2 font-mono">
+                <span className="font-display text-3xl font-extrabold text-foreground tracking-tight">
+                  {String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}
+                </span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  {isPaused ? "(Paused)" : "(Tracking focus)"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Earn <strong>+5 SyllaPoints</strong> automatically every 30 minutes of active reading!
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant={isPaused ? "default" : "outline"}
+                onClick={togglePause}
+                className="h-9 rounded-xl text-xs gap-1.5 font-semibold px-4 shadow-xs"
+              >
+                {isPaused ? (
+                  <>
+                    <Play className="size-3.5 fill-current text-white" /> Resume Timer
+                  </>
+                ) : (
+                  <>
+                    <Pause className="size-3.5 fill-current" /> Pause Timer
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between p-4 text-sm">
-            <span className="text-muted-foreground">Recorded Study Time</span>
-            <span className="font-semibold text-foreground">{profile?.study_minutes ?? 0} minutes</span>
+            <span className="text-muted-foreground">Recorded Lifetime Study Time</span>
+            <span className="font-semibold text-foreground font-mono">{totalStudyMinutes} minutes ({(totalStudyMinutes / 60).toFixed(1)} hrs)</span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 text-sm gap-2">
@@ -530,13 +727,138 @@ function SettingsPage() {
         </div>
       </div>
 
-      {/* Student Academic Profile Editor */}
+      {/* Student Identity, Avatar & Academic Profile */}
       <div className="space-y-2">
         <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <GraduationCap className="size-3.5 text-primary" /> Academic Profile & University
+          <GraduationCap className="size-3.5 text-primary" /> Student Identity & Academic Profile
         </p>
-        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-5 shadow-xs">
+          {/* Avatar & Student SyllaID / Scanner Row */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-secondary/30 border border-border/70">
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={fullName}
+                    className="size-16 rounded-full object-cover border-2 border-primary/40 shadow-xs"
+                  />
+                ) : (
+                  <div className="size-16 rounded-full bg-primary/10 text-primary font-bold text-xl flex items-center justify-center border-2 border-primary/20 shadow-xs">
+                    {(fullName || username || "S")[0].toUpperCase()}
+                  </div>
+                )}
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  onChange={handleAvatarChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  title="Upload profile picture"
+                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-primary-foreground shadow-md hover:scale-105 active:scale-95 transition-transform"
+                >
+                  {isUploadingAvatar ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+                </button>
+              </div>
+
+              <div>
+                <p className="text-sm font-bold text-foreground">Profile Picture</p>
+                <p className="text-xs text-muted-foreground">
+                  Upload a photo for your student card, groups, and peer chats.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="mt-1 text-xs text-primary font-semibold hover:underline inline-flex items-center gap-1"
+                >
+                  <Upload className="size-3" /> Change Picture
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowQrModal(true)}
+                className="flex-1 sm:flex-initial h-8 rounded-xl text-xs gap-1.5 font-semibold border-primary/30 text-primary hover:bg-primary/5"
+              >
+                <QrCode className="size-3.5" /> My SyllaID QR
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowScannerModal(true)}
+                className="flex-1 sm:flex-initial h-8 rounded-xl text-xs gap-1.5 font-semibold"
+              >
+                <Camera className="size-3.5" /> Scan QR
+              </Button>
+            </div>
+          </div>
+
+          {/* Unique Username Editor with Live Availability Validation */}
+          <div className="space-y-2 rounded-xl border border-border/80 bg-background p-3.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <User className="size-3.5 text-primary" /> Student Username (@handle)
+              </label>
+              <span className="text-[11px] text-muted-foreground">Unique across all students</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-2 text-xs font-semibold text-muted-foreground select-none">@</span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20))}
+                  placeholder="e.g. adekunle_01"
+                  className="w-full rounded-xl border border-border bg-background pl-7 pr-12 py-1.5 text-xs font-mono font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <div className="absolute right-2.5 top-2 flex items-center">
+                  {usernameChecking && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
+                  {!usernameChecking && isUsernameAvailable === true && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                      <Check className="size-2.5" /> Available
+                    </span>
+                  )}
+                  {!usernameChecking && isUsernameAvailable === false && (
+                    <span className="text-[10px] text-destructive font-semibold bg-destructive/10 px-1.5 py-0.5 rounded-full border border-destructive/20">
+                      Taken
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveUsername}
+                disabled={isSavingUsername || isUsernameAvailable === false || !username.trim() || username === profile?.username}
+                className="h-8 rounded-xl text-xs gap-1 font-semibold"
+              >
+                {isSavingUsername ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+                Save Handle
+              </Button>
+            </div>
+
+            {usernameError && (
+              <p className="text-xs text-destructive">{usernameError}</p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              This username will be displayed on the Leaderboard and used by peers to message you.
+            </p>
+          </div>
+
+          {/* Academic Details Form */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Full Name</label>
               <input
@@ -723,6 +1045,27 @@ function SettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Personal SyllaID QR Card Modal */}
+      <StudentQrModal
+        open={showQrModal}
+        onOpenChange={setShowQrModal}
+        username={username || profile?.username || "student"}
+        fullName={fullName || profile?.full_name || "Student"}
+        avatarUrl={avatarUrl || profile?.avatar_url}
+        institution={institution || profile?.institution}
+        onOpenScanner={() => {
+          setShowQrModal(false);
+          setShowScannerModal(true);
+        }}
+      />
+
+      {/* Live QR Camera Scanner Modal */}
+      <QrScannerModal
+        open={showScannerModal}
+        onOpenChange={setShowScannerModal}
+        onScanPeer={handleScanPeer}
+      />
     </div>
   );
 }

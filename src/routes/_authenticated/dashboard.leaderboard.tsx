@@ -229,7 +229,21 @@ function LeaderboardPage() {
                     <Medal className="size-3.5 text-slate-500" /> 2nd Place
                   </div>
                 </div>
-                <h3 className="font-display text-lg font-semibold text-[#00110a] truncate">{topThree[1].full_name}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  {topThree[1].avatar_url ? (
+                    <img src={topThree[1].avatar_url} alt="" className="size-8 rounded-full object-cover border border-[#dce5df]" />
+                  ) : (
+                    <div className="size-8 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center">
+                      {(topThree[1].username || topThree[1].full_name)[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <h3 className="font-display text-base font-bold text-[#00110a] truncate">
+                      @{topThree[1].username || topThree[1].full_name.toLowerCase().replace(/\s+/g, "_")}
+                    </h3>
+                    <p className="text-[11px] text-[#5a6660] truncate">{topThree[1].full_name}</p>
+                  </div>
+                </div>
                 <p className="text-xs text-[#5a6660] truncate">{topThree[1].institution}</p>
                 <p className="text-[11px] text-[#446557] truncate mt-0.5">{topThree[1].course}</p>
 
@@ -265,7 +279,21 @@ function LeaderboardPage() {
                     <Sparkles className="size-3.5 text-amber-600" /> 1st Place
                   </div>
                 </div>
-                <h3 className="font-display text-xl font-bold text-[#00110a] truncate">{topThree[0].full_name}</h3>
+                <div className="flex items-center gap-2.5 mb-1">
+                  {topThree[0].avatar_url ? (
+                    <img src={topThree[0].avatar_url} alt="" className="size-9 rounded-full object-cover border-2 border-amber-300" />
+                  ) : (
+                    <div className="size-9 rounded-full bg-amber-100 text-amber-900 font-bold text-sm flex items-center justify-center border border-amber-300">
+                      {(topThree[0].username || topThree[0].full_name)[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <h3 className="font-display text-lg font-bold text-[#00110a] truncate">
+                      @{topThree[0].username || topThree[0].full_name.toLowerCase().replace(/\s+/g, "_")}
+                    </h3>
+                    <p className="text-[11px] text-[#5a6660] truncate">{topThree[0].full_name}</p>
+                  </div>
+                </div>
                 <p className="text-xs text-[#5a6660] truncate">{topThree[0].institution}</p>
                 <p className="text-[11px] text-[#446557] truncate mt-0.5">{topThree[0].course}</p>
 
@@ -298,7 +326,21 @@ function LeaderboardPage() {
                     <Award className="size-3.5 text-amber-800" /> 3rd Place
                   </div>
                 </div>
-                <h3 className="font-display text-lg font-semibold text-[#00110a] truncate">{topThree[2].full_name}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  {topThree[2].avatar_url ? (
+                    <img src={topThree[2].avatar_url} alt="" className="size-8 rounded-full object-cover border border-[#dce5df]" />
+                  ) : (
+                    <div className="size-8 rounded-full bg-orange-100 text-amber-950 font-bold text-xs flex items-center justify-center">
+                      {(topThree[2].username || topThree[2].full_name)[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <h3 className="font-display text-base font-bold text-[#00110a] truncate">
+                      @{topThree[2].username || topThree[2].full_name.toLowerCase().replace(/\s+/g, "_")}
+                    </h3>
+                    <p className="text-[11px] text-[#5a6660] truncate">{topThree[2].full_name}</p>
+                  </div>
+                </div>
                 <p className="text-xs text-[#5a6660] truncate">{topThree[2].institution}</p>
                 <p className="text-[11px] text-[#446557] truncate mt-0.5">{topThree[2].course}</p>
 
@@ -336,7 +378,7 @@ function LeaderboardPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by student name or school..."
+              placeholder="Search by student username, name, or school..."
               className="pl-9 pr-4 py-2 rounded-full bg-[#edf6f0] text-xs text-[#151d1a] border border-[#dce5df] focus:bg-white focus:outline-none w-64"
             />
           </div>
@@ -347,7 +389,7 @@ function LeaderboardPage() {
             <thead>
               <tr className="text-[#5a6660] uppercase tracking-wider border-b border-[#e7f0eb] font-semibold">
                 <th className="py-3 px-3 w-16">Rank</th>
-                <th className="py-3 px-3 min-w-[200px]">Student & Course</th>
+                <th className="py-3 px-3 min-w-[200px]">Student Username & Course</th>
                 <th className="py-3 px-3 min-w-[180px]">Institution</th>
                 <th className="py-3 px-3 text-right font-mono">Study Time</th>
                 <th className="py-3 px-3 text-right font-mono">SyllaPoints</th>
@@ -357,6 +399,7 @@ function LeaderboardPage() {
             <tbody className="divide-y divide-[#e7f0eb]">
               {remainingList.map((s) => {
                 const isCurrentUser = s.id === user?.id;
+                const userDisplayHandle = s.username ? `@${s.username}` : `@${s.full_name.toLowerCase().replace(/\s+/g, "_")}`;
                 return (
                   <tr
                     key={s.id}
@@ -367,9 +410,18 @@ function LeaderboardPage() {
                   >
                     <td className="py-3.5 px-3 font-mono font-semibold text-[#00110a]">#{s.rank}</td>
                     <td className="py-3.5 px-3">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-[#151d1a]">{s.full_name}</span>
-                        <span className="text-[11px] text-[#5a6660]">{s.course}</span>
+                      <div className="flex items-center gap-2.5">
+                        {s.avatar_url ? (
+                          <img src={s.avatar_url} alt="" className="size-7 rounded-full object-cover border border-[#dce5df]" />
+                        ) : (
+                          <div className="size-7 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] flex items-center justify-center">
+                            {(s.username || s.full_name)[0].toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-[#151d1a]">{userDisplayHandle}</span>
+                          <span className="text-[11px] text-[#5a6660]">{s.course}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-[#5a6660]">{s.institution}</td>

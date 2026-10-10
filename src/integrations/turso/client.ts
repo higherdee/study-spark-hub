@@ -34,6 +34,9 @@ export type Profile = {
   id: string;
   email: string | null;
   full_name: string | null;
+  username?: string | null;
+  avatar_url?: string | null;
+  current_streak?: number;
   institution: string | null;
   course: string | null;
   department: string | null;
@@ -143,6 +146,9 @@ function mapProfile(row: Record<string, unknown>): Profile {
     id,
     email: row['email'] ? String(row['email']) : null,
     full_name: row['full_name'] ? String(row['full_name']) : null,
+    username: row['username'] ? String(row['username']) : null,
+    avatar_url: row['avatar_url'] ? String(row['avatar_url']) : null,
+    current_streak: Number(row['current_streak'] || 1),
     institution: row['institution'] ? String(row['institution']) : null,
     course: row['course'] ? String(row['course']) : null,
     department: row['department'] ? String(row['department']) : null,
@@ -213,6 +219,8 @@ export async function upsertProfile(data: {
   id: string;
   email?: string | null | undefined;
   full_name?: string | null | undefined;
+  username?: string | null | undefined;
+  avatar_url?: string | null | undefined;
   institution?: string | null | undefined;
   course?: string | null | undefined;
   department?: string | null | undefined;
@@ -226,16 +234,24 @@ export async function upsertProfile(data: {
   const existing = await getProfile(data.id);
   const myRefCode = `SYLLA-${data.id.slice(-6).toUpperCase()}`;
 
+  // Fallback initial username if not provided
+  const initialUsername =
+    data.username ||
+    (data.full_name ? data.full_name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 15) : null) ||
+    `student_${data.id.slice(-5)}`;
+
   if (!existing) {
     // 200 SyllaPoints registration bonus!
     const batchStatements: { sql: string; args: InValue[] }[] = [
       {
-        sql: `INSERT INTO profiles (id, email, full_name, institution, course, department, level, phone, referral_source, study_plan, onboarding_step, points, referral_code, referred_by)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO profiles (id, email, full_name, username, avatar_url, institution, course, department, level, phone, referral_source, study_plan, onboarding_step, points, referral_code, referred_by)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           data.id,
           data.email ?? null,
           data.full_name ?? null,
+          initialUsername,
+          data.avatar_url ?? null,
           data.institution ?? null,
           data.course ?? null,
           data.department ?? null,
@@ -294,6 +310,8 @@ export async function upsertProfile(data: {
       sql: `UPDATE profiles SET
               email = COALESCE(?, email),
               full_name = COALESCE(?, full_name),
+              username = COALESCE(?, username),
+              avatar_url = COALESCE(?, avatar_url),
               institution = COALESCE(?, institution),
               course = COALESCE(?, course),
               department = COALESCE(?, department),
@@ -308,6 +326,8 @@ export async function upsertProfile(data: {
       args: [
         data.email ?? null,
         data.full_name ?? null,
+        data.username ?? null,
+        data.avatar_url ?? null,
         data.institution ?? null,
         data.course ?? null,
         data.department ?? null,
@@ -1032,6 +1052,8 @@ export interface LeaderboardEntry {
   id: string;
   rank: number;
   full_name: string;
+  username?: string | null;
+  avatar_url?: string | null;
   institution: string;
   course: string;
   level: string;
@@ -1047,6 +1069,8 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
       SELECT 
         p.id, 
         p.full_name, 
+        p.username,
+        p.avatar_url,
         p.institution, 
         p.course, 
         p.level, 
@@ -1066,6 +1090,8 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
     id: String(r['id']),
     rank: idx + 1,
     full_name: r['full_name'] ? String(r['full_name']) : "Scholar",
+    username: r['username'] ? String(r['username']) : null,
+    avatar_url: r['avatar_url'] ? String(r['avatar_url']) : null,
     institution: r['institution'] ? String(r['institution']) : "Nigerian University",
     course: r['course'] ? String(r['course']) : "General Studies",
     level: r['level'] ? String(r['level']) : "100 Level",

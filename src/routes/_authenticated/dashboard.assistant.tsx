@@ -32,6 +32,16 @@ import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import { askGeminiAI } from "@/lib/gemini";
 import {
+  createStudyThreadServerFn,
+  getStudyThreadsServerFn,
+  deleteStudyThreadServerFn,
+  getStudyMessagesServerFn,
+  askBossAiServerFn,
+  saveStudyMessageServerFn,
+  updateStudyThreadTitleServerFn,
+  getStudyMaterialByIdServerFn,
+} from "@/lib/ai/study-assistant.functions";
+import {
   categorizeDocumentAutonomously,
   auditUploadAutonomous,
   generatePracticeQuestions,
@@ -146,7 +156,7 @@ function AssistantPage() {
   }
 
   async function stopAndSendVoiceNote() {
-    if (!mediaRecorderRef.current || !isRecording) return;
+    if (!mediaRecorderRef.current || !isRecording || !user) return;
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
 
     mediaRecorderRef.current.onstop = async () => {
@@ -156,8 +166,10 @@ function AssistantPage() {
       setIsRecording(false);
       setRecordingSeconds(0);
 
-      if (!activeThreadId) {
-        await createNewChat();
+      let targetThreadId = activeThreadId;
+      if (!targetThreadId) {
+        targetThreadId = await createNewChat();
+        if (!targetThreadId) return;
       }
 
       const voiceUserMsg: ChatMessage = {
@@ -172,27 +184,25 @@ function AssistantPage() {
       setThinking(true);
 
       try {
-        await saveMessage("user", `[Voice Note (${duration}s)] Student Audio Inquiry`);
-
-        let systemPrompt = "You are Boss AI, an elite academic AI assistant powered by Google Gemini. A student just sent a voice note inquiry. Provide an expert, conversational, high-yield academic response with clear headings and bullet points.";
-        if (activeDocContext) {
-          systemPrompt += `\n\nActive Document Context: "${activeDocContext.title}" (${activeDocContext.course}). Content:\n${activeDocContext.text.slice(0, 1500)}`;
-        }
-
-        const aiResponseText = await askGeminiAI(
-          "Student audio inquiry regarding university course materials and curriculum concepts. Please explain key concepts, derivations, and examination pointers clearly.",
-          systemPrompt
-        );
+        const result = await askBossAiServerFn({
+          data: {
+            userId: user.id,
+            threadId: targetThreadId,
+            query: `[Voice Note (${duration}s)] Student Audio Inquiry: Please provide a high-yield academic breakdown and study pointers.`,
+            taskType: "general",
+            docContext: activeDocContext ?? undefined,
+          },
+        });
 
         const aiMsg: ChatMessage = {
-          id: crypto.randomUUID(),
+          id: result.assistantMessageId,
           role: "assistant",
-          content: aiResponseText,
+          content: result.response,
           timestamp: new Date().toISOString(),
         };
 
         setMessages((prev) => [...prev, aiMsg]);
-        await saveMessage("assistant", aiResponseText);
+        refetchThreads();
       } catch {
         toast.error("Failed to process voice note with Boss AI.");
       } finally {
@@ -219,21 +229,17 @@ function AssistantPage() {
   // Query Recent Chat Threads
   const { data: threads = [], refetch: refetchThreads } = useQuery({
     queryKey: ["chat-threads", user?.id],
-    enabled: Boolean(user),
+    enabled: Boolean(user?.id),
     queryFn: async () => {
       if (!user) return [];
-      const rs = await turso.execute({
-        sql: "SELECT id, title, updated_at FROM chat_threads WHERE user_id = ? ORDER BY updated_at DESC",
-        args: [user.id],
-      });
-      return rs.rows as unknown as { id: string; title: string; updated_at: string }[];
+      return await getStudyThreadsServerFn({ data: { userId: user.id } });
     },
   });
 
   // Load Material context if passed via search params
   useEffect(() => {
     if (materialId) {
-      getMaterialById(materialId).then((m) => {
+      getStudyMaterialByIdServerFn({ data: { materialId } }).then((m) => {
         if (m) {
           setActiveDocContext({
             title: m.title,
@@ -262,38 +268,8 @@ function AssistantPage() {
 
     async function loadThread() {
       try {
-        const rs = await turso.execute({
-          sql: "SELECT message_id, role, parts, created_at FROM chat_messages WHERE thread_id = ? ORDER BY created_at ASC",
-          args: [activeThreadId],
-        });
-
-        const loaded: ChatMessage[] = rs.rows.map((row) => {
-          let text = "";
-          let attached: any = null;
-          try {
-            const parsed = typeof row['parts'] === "string" ? JSON.parse(row['parts'] as string) : row['parts'];
-            if (Array.isArray(parsed)) {
-              text = parsed.map((p: any) => p.text || "").join("\n");
-            } else if (parsed && typeof parsed === "object") {
-              text = parsed.text || "";
-              attached = parsed.attachedMaterial || null;
-            } else {
-              text = String(parsed || "");
-            }
-          } catch {
-            text = String(row['parts'] || "");
-          }
-
-          return {
-            id: String(row['message_id']),
-            role: String(row['role']) as "user" | "assistant" | "system",
-            content: text,
-            timestamp: String(row['created_at'] || new Date().toISOString()),
-            attachedMaterial: attached,
-          };
-        });
-
-        setMessages(loaded);
+        const loaded = await getStudyMessagesServerFn({ data: { threadId: activeThreadId } });
+        setMessages(loaded as ChatMessage[]);
       } catch (err) {
         console.error("Failed to load thread messages:", err);
       }
@@ -308,32 +284,30 @@ function AssistantPage() {
 
   // Create New Chat Thread
   async function createNewChat() {
-    if (!user) return;
-    const id = crypto.randomUUID();
+    if (!user) return null;
     try {
-      await turso.execute({
-        sql: "INSERT INTO chat_threads (id, user_id, title) VALUES (?, ?, ?)",
-        args: [id, user.id, "New Study Session"],
+      const created = await createStudyThreadServerFn({
+        data: { userId: user.id, title: "New Study Session" },
       });
       await refetchThreads();
-      setActiveThreadId(id);
+      setActiveThreadId(created.id);
       setMessages([]);
       setQuizQuestions(null);
       setFlashcards(null);
       setActiveDocContext(null);
       toast.success("New study conversation started.");
+      return created.id;
     } catch (err) {
+      console.error("Create chat error:", err);
       toast.error("Could not create chat");
+      return null;
     }
   }
 
   // Delete Chat Thread
   async function deleteChat(id: string) {
     try {
-      await turso.batch([
-        { sql: "DELETE FROM chat_threads WHERE id = ?", args: [id] },
-        { sql: "DELETE FROM chat_messages WHERE thread_id = ?", args: [id] },
-      ]);
+      await deleteStudyThreadServerFn({ data: { threadId: id } });
       if (activeThreadId === id) {
         setActiveThreadId(null);
         setMessages([]);
@@ -345,22 +319,18 @@ function AssistantPage() {
     }
   }
 
-  // Save Message to Turso
-  async function saveMessage(role: "user" | "assistant", text: string, attachedMaterial?: any) {
-    if (!activeThreadId) return;
-    const msgId = crypto.randomUUID();
-    const payload = attachedMaterial
-      ? JSON.stringify({ text, attachedMaterial })
-      : JSON.stringify([{ type: "text", text }]);
-
+  // Save Message to Turso via Server Function
+  async function saveMessage(role: "user" | "assistant" | "system", text: string, attachedMaterial?: any) {
+    if (!activeThreadId || !user) return;
     try {
-      await turso.execute({
-        sql: "INSERT INTO chat_messages (message_id, thread_id, role, parts) VALUES (?, ?, ?, ?)",
-        args: [msgId, activeThreadId, role, payload],
-      });
-      await turso.execute({
-        sql: "UPDATE chat_threads SET updated_at = datetime('now') WHERE id = ?",
-        args: [activeThreadId],
+      await saveStudyMessageServerFn({
+        data: {
+          threadId: activeThreadId,
+          userId: user.id,
+          role,
+          content: text,
+          attachedMaterial,
+        },
       });
     } catch (err) {
       console.warn("Failed to persist chat message to database:", err);
@@ -490,9 +460,8 @@ Choose an action below or ask me any question directly:`,
 
       // If active thread title was generic, update it
       if (activeThreadId) {
-        turso.execute({
-          sql: "UPDATE chat_threads SET title = ? WHERE id = ?",
-          args: [`Study: ${cat.course}`, activeThreadId],
+        await updateStudyThreadTitleServerFn({
+          data: { threadId: activeThreadId, title: `Study: ${cat.course}` },
         });
         refetchThreads();
       }
@@ -505,13 +474,15 @@ Choose an action below or ask me any question directly:`,
     }
   }
 
-  // Send Chat Prompt to Google Gemini AI
+  // Send Chat Prompt to Boss AI (Groq Cloud LPU with Smart Model Selection)
   async function handleSend(textToSend?: string) {
     const query = (textToSend || input).trim();
-    if (!query || thinking) return;
+    if (!query || thinking || !user) return;
 
-    if (!activeThreadId) {
-      await createNewChat();
+    let targetThreadId = activeThreadId;
+    if (!targetThreadId) {
+      targetThreadId = await createNewChat();
+      if (!targetThreadId) return;
     }
 
     const userMsg: ChatMessage = {
@@ -526,26 +497,27 @@ Choose an action below or ask me any question directly:`,
     setThinking(true);
 
     try {
-      await saveMessage("user", query);
-
-      // System context with active document if present
-      let systemPrompt = "You are Boss, an elite academic AI assistant built specifically for university students on Syllaboss, powered by Google Gemini. You provide clear, concise, highly structured explanations with step-by-step mathematical or conceptual derivations. Never use unicode emojis; use clean bullet points and markdown headers.";
-      if (activeDocContext) {
-        systemPrompt += `\n\nActive Document Context: "${activeDocContext.title}" (${activeDocContext.course}). Content overview:\n${activeDocContext.text.slice(0, 1500)}`;
-      }
-
-      const aiResponseText = await askGeminiAI(query, { systemPrompt });
+      const result = await askBossAiServerFn({
+        data: {
+          userId: user.id,
+          threadId: targetThreadId,
+          query,
+          taskType: "general",
+          docContext: activeDocContext ?? undefined,
+        },
+      });
 
       const aiMsg: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: result.assistantMessageId,
         role: "assistant",
-        content: aiResponseText,
+        content: result.response,
         timestamp: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, aiMsg]);
-      await saveMessage("assistant", aiResponseText);
+      refetchThreads();
     } catch (err) {
+      console.error("AI inference error:", err);
       toast.error("Failed to generate response. Please try again.");
     } finally {
       setThinking(false);

@@ -5,6 +5,7 @@ import {
   Sparkles,
   Timer,
   Play,
+  Flame,
   Shield,
   Bell,
   Menu,
@@ -103,29 +104,15 @@ export function AppShell({
 
           {/* Right: Dynamic Island widgets cluster matching Screenshot 2 */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Study Timer Widget */}
-            <button
-              onClick={togglePause}
-              title={isPaused ? (isInactive ? "Paused (1h idle). Click to resume" : "Paused. Click to resume") : "Study timer running (+5 pts every 30m). Click to pause"}
-              className={cn(
-                "group flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-mono transition-all duration-200 active:scale-95 shadow-xs border",
-                isInactive
-                  ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
-                  : isPaused
-                  ? "bg-secondary text-muted-foreground border-border"
-                  : "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 animate-pulse-subtle"
-              )}
+            {/* Study Streak Capsule (Replaces header timer) */}
+            <Link
+              to="/dashboard/community"
+              title="Daily Study Streak — Click to visit Community & Study Hub"
+              className="group flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 shadow-xs border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
             >
-              {isPaused ? (
-                <Play className="size-3 text-current transition-transform group-hover:scale-110" />
-              ) : (
-                <Timer className="size-3 text-current transition-transform group-hover:scale-110" />
-              )}
-              <span className="hidden xs:inline font-medium text-[11px]">
-                {isInactive ? "Idle" : isPaused ? "Paused" : "Study"}
-              </span>
-              <span>{timerDisplay}</span>
-            </button>
+              <Flame className="size-3.5 text-amber-500 fill-amber-500 transition-transform group-hover:scale-125" />
+              <span>{profile?.current_streak || 1} {Number(profile?.current_streak || 1) === 1 ? "Day" : "Days"}</span>
+            </Link>
 
             {/* SyllaPoints Capsule - pure points, no Naira! */}
             <Link

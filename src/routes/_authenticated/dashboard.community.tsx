@@ -6,21 +6,25 @@ import {
   MessageSquare,
   Send,
   Plus,
-  BookOpen,
-  Flame,
   Search,
-  Sparkles,
   Paperclip,
   GraduationCap,
-  CheckCircle2,
-  Clock,
   FileText,
   ExternalLink,
   ChevronRight,
-  ShieldCheck,
-  Award,
-  Bell,
+  Flame,
+  ArrowLeft,
+  QrCode,
+  ScanLine,
+  Check,
+  CheckCheck,
+  UserPlus,
+  Sparkles,
+  BookOpen,
   X,
+  Share2,
+  Clock,
+  MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,454 +32,795 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import {
+  getStudentConversationsServerFn,
+  getDirectMessagesServerFn,
+  sendDirectMessageServerFn,
   getStudyGroupsServerFn,
   createStudyGroupServerFn,
-  joinStudyGroupServerFn,
   getGroupMessagesServerFn,
   sendGroupMessageServerFn,
-  updateStreakServerFn,
+  searchPeersServerFn,
+  getOrCreatePeerConversationServerFn,
   getMaterialsForChatServerFn,
+  updateStreakServerFn,
 } from "@/lib/community.functions";
+import {
+  subscribeToChatChannel,
+  broadcastChatMessage,
+} from "@/lib/supabase-realtime";
+import { StudentQrModal } from "@/components/student-qr-modal";
+import { QrScannerModal } from "@/components/qr-scanner-modal";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard/community")({
   head: () => ({
     meta: [
-      { title: "Student Study Hub & Groups — Syllaboss" },
+      { title: "Student Study Chats & Groups — Syllaboss" },
       {
         name: "description",
-        content: "Collaborate in student study groups, share academic materials, and maintain your daily reading streak.",
+        content: "Chat with peers, create study groups, and share verified academic materials in real-time.",
       },
     ],
   }),
   component: CommunityPage,
 });
 
+type ChatType = "peer" | "group";
+
+interface ActiveChat {
+  type: ChatType;
+  id: string; // conversationId for peer, groupId for group
+  title: string;
+  subtitle?: string | null;
+  avatarUrl?: string | null;
+  peerId?: string;
+  memberCount?: number;
+}
+
 function CommunityPage() {
+  const { user } = useAuth();
   const { data: profile } = useProfile();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Navigation & View States
+  const [activeChat, setActiveChat] = useState<ActiveChat | null>(null);
+  const [chatTab, setChatTab] = useState<"all" | "direct" | "groups">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("group-get206-achievers");
   const [messageInput, setMessageInput] = useState("");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isShareMaterialOpen, setIsShareMaterialOpen] = useState(false);
+
+  // Modals
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const [isNewDirectChatOpen, setIsNewDirectChatOpen] = useState(false);
+  const [isAttachMaterialOpen, setIsAttachMaterialOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<{
     id: string;
     title: string;
-    course_code: string;
+    course: string;
   } | null>(null);
 
-  // New Group Form State
+  // New Group Form
   const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupDesc, setNewGroupDesc] = useState("");
   const [newGroupCourse, setNewGroupCourse] = useState("");
-  const [newGroupInstitution, setNewGroupInstitution] = useState(profile?.institution || "Achievers University, Owo");
-  const [newGroupDescription, setNewGroupDescription] = useState("");
-  const [newGroupCategory, setNewGroupCategory] = useState("Engineering");
 
-  // Query: Study Groups
-  const { data: groups = [], isLoading: isLoadingGroups } = useQuery({
-    queryKey: ["study-groups", profile?.id, searchQuery],
-    queryFn: () => getStudyGroupsServerFn({ data: { userId: profile?.id, query: searchQuery } }),
-    refetchInterval: 10000,
-  });
+  // Direct Peer Search
+  const [peerSearchQuery, setPeerSearchQuery] = useState("");
 
-  // Active Group
-  const activeGroup = groups.find((g) => g.id === selectedGroupId) || groups[0];
-
-  // Query: Group Messages
-  const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
-    queryKey: ["group-messages", activeGroup?.id],
-    queryFn: () => (activeGroup ? getGroupMessagesServerFn({ data: { groupId: activeGroup.id } }) : []),
-    enabled: Boolean(activeGroup?.id),
-    refetchInterval: 3000, // Reactive polling for live chat feel
-  });
-
-  // Query: Available Materials for Sharing
-  const { data: materialsData } = useQuery({
-    queryKey: ["library-materials-for-chat"],
-    queryFn: () => getMaterialsForChatServerFn({ data: { limit: 40 } }),
-    enabled: isShareMaterialOpen,
-  });
-
-  // Mutation: Send Message
-  const sendMessageMutation = useMutation({
-    mutationFn: sendGroupMessageServerFn,
-    onSuccess: () => {
-      setMessageInput("");
-      setSelectedMaterial(null);
-      queryClient.invalidateQueries({ queryKey: ["group-messages", activeGroup?.id] });
+  // 1. Fetch 1-on-1 Direct Conversations
+  const { data: directConversations = [], refetch: refetchConversations } = useQuery({
+    queryKey: ["direct-conversations", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      if (!user) return [];
+      return await getStudentConversationsServerFn({ data: { userId: user.id } });
     },
-    onError: (err: any) => {
-      toast.error("Failed to send message: " + (err.message || "Network error"));
+    refetchInterval: 12000,
+  });
+
+  // 2. Fetch Study Groups
+  const { data: studyGroups = [], refetch: refetchGroups } = useQuery({
+    queryKey: ["study-groups", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      return await getStudyGroupsServerFn({ data: { userId: user?.id } });
+    },
+    refetchInterval: 15000,
+  });
+
+  // 3. Search Peers for New Direct Chat
+  const { data: searchedPeers = [], isFetching: isSearchingPeers } = useQuery({
+    queryKey: ["search-peers", peerSearchQuery, user?.id],
+    enabled: Boolean(user?.id && peerSearchQuery.trim().length >= 1),
+    queryFn: async () => {
+      return await searchPeersServerFn({
+        data: { query: peerSearchQuery.trim(), currentUserId: user?.id },
+      });
     },
   });
 
-  // Mutation: Create Group
-  const createGroupMutation = useMutation({
-    mutationFn: createStudyGroupServerFn,
-    onSuccess: (newGroup) => {
-      toast.success(`Group "${newGroup.name}" created!`);
-      setIsCreateOpen(false);
-      setNewGroupName("");
-      setNewGroupDescription("");
-      setNewGroupCourse("");
-      queryClient.invalidateQueries({ queryKey: ["study-groups"] });
-      setSelectedGroupId(newGroup.id);
-    },
-    onError: (err: any) => {
-      toast.error("Could not create study group: " + err.message);
+  // 4. Fetch Available Materials for Attachment Picker
+  const { data: availableMaterials = [] } = useQuery({
+    queryKey: ["materials-for-chat"],
+    enabled: isAttachMaterialOpen,
+    queryFn: async () => {
+      return await getMaterialsForChatServerFn();
     },
   });
 
-  // Mutation: Join Group
-  const joinGroupMutation = useMutation({
-    mutationFn: joinStudyGroupServerFn,
-    onSuccess: () => {
-      toast.success("Joined group successfully!");
-      queryClient.invalidateQueries({ queryKey: ["study-groups"] });
+  // 5. Active Chat Messages Query
+  const isDirect = activeChat?.type === "peer";
+  const { data: chatMessages = [], refetch: refetchActiveMessages } = useQuery({
+    queryKey: [isDirect ? "direct-messages" : "group-messages", activeChat?.id],
+    enabled: Boolean(activeChat?.id),
+    queryFn: async () => {
+      if (!activeChat) return [];
+      if (activeChat.type === "peer") {
+        return await getDirectMessagesServerFn({ data: { conversationId: activeChat.id } });
+      } else {
+        return await getGroupMessagesServerFn({ data: { groupId: activeChat.id } });
+      }
     },
   });
 
-  // Mutation: Record Daily Reading Streak
-  const streakMutation = useMutation({
-    mutationFn: updateStreakServerFn,
-    onSuccess: (status) => {
-      toast.success(`🔥 Streak Active! Day ${status.currentStreak} secured!`);
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-    },
-  });
+  // Default selection on desktop if none selected
+  useEffect(() => {
+    if (!activeChat) {
+      if (directConversations.length > 0) {
+        const first = directConversations[0];
+        setActiveChat({
+          type: "peer",
+          id: first.id,
+          title: first.peer.full_name,
+          subtitle: `@${first.peer.username}`,
+          avatarUrl: first.peer.avatar_url,
+          peerId: first.peer.id,
+        });
+      } else if (studyGroups.length > 0) {
+        const first = studyGroups[0];
+        setActiveChat({
+          type: "group",
+          id: first.id,
+          title: first.name,
+          subtitle: `${first.member_count} members`,
+          memberCount: first.member_count,
+        });
+      }
+    }
+  }, [directConversations, studyGroups, activeChat]);
 
-  // Scroll to bottom of chat
+  // Supabase Realtime Subscription for active chat
+  useEffect(() => {
+    if (!activeChat?.id) return;
+
+    const channel = subscribeToChatChannel(activeChat.id, (payload) => {
+      refetchActiveMessages();
+      refetchConversations();
+    });
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [activeChat?.id]);
+
+  // Auto-scroll messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [chatMessages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Start 1-on-1 Chat with peer
+  async function startDirectChatWithPeer(peer: any) {
+    if (!user) return;
+    try {
+      const res = await getOrCreatePeerConversationServerFn({
+        data: { user1Id: user.id, user2Id: peer.id },
+      });
+      await refetchConversations();
+      setActiveChat({
+        type: "peer",
+        id: res.id,
+        title: peer.full_name || `@${peer.username}`,
+        subtitle: `@${peer.username}`,
+        avatarUrl: peer.avatar_url,
+        peerId: peer.id,
+      });
+      setIsNewDirectChatOpen(false);
+      setPeerSearchQuery("");
+      toast.success(`Chat started with @${peer.username}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to start direct chat");
+    }
+  }
+
+  // Send Message in Active Chat
+  async function handleSendMessage(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!user || !activeChat || (!messageInput.trim() && !selectedMaterial)) return;
+
+    const content = messageInput.trim() || `Shared document: "${selectedMaterial?.title}"`;
+    const matId = selectedMaterial?.id;
+    const matTitle = selectedMaterial?.title;
+    const matCourse = selectedMaterial?.course;
+
+    setMessageInput("");
+    setSelectedMaterial(null);
+
+    try {
+      if (activeChat.type === "peer") {
+        const newMsg = await sendDirectMessageServerFn({
+          data: {
+            conversationId: activeChat.id,
+            senderId: user.id,
+            content,
+            materialId: matId,
+          },
+        });
+        await broadcastChatMessage(activeChat.id, newMsg);
+      } else {
+        const newMsg = await sendGroupMessageServerFn({
+          data: {
+            groupId: activeChat.id,
+            userId: user.id,
+            userName: profile?.username ? `@${profile.username}` : user.user_metadata?.full_name || "Scholar",
+            userInstitution: profile?.institution || undefined,
+            content,
+            materialId: matId,
+            materialTitle: matTitle,
+            materialCourseCode: matCourse,
+          },
+        });
+        await broadcastChatMessage(activeChat.id, newMsg);
+      }
+
+      await refetchActiveMessages();
+      await refetchConversations();
+    } catch (err: any) {
+      toast.error(err?.message || "Message delivery failed");
+    }
+  }
+
+  // Create Study Group (only name is required!)
+  async function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault();
-    if (!messageInput.trim() && !selectedMaterial) return;
-    if (!activeGroup || !profile) return;
+    if (!user || !newGroupName.trim()) {
+      toast.error("Please enter a group name");
+      return;
+    }
 
-    sendMessageMutation.mutate({
-      data: {
-        groupId: activeGroup.id,
-        userId: profile.id,
-        userName: profile.full_name || "Scholar",
-        userInstitution: profile.institution || undefined,
-        content: messageInput.trim() || `Shared material: ${selectedMaterial?.title}`,
-        materialId: selectedMaterial?.id,
-        materialTitle: selectedMaterial?.title,
-        materialCourseCode: selectedMaterial?.course_code,
-      },
-    });
-  };
+    try {
+      const created = await createStudyGroupServerFn({
+        data: {
+          name: newGroupName.trim(),
+          description: newGroupDesc.trim() || undefined,
+          course_code: newGroupCourse.trim() || undefined,
+          userId: user.id,
+        },
+      });
 
-  const currentStreak = (profile as any)?.current_streak || 1;
-  const longestStreak = (profile as any)?.longest_streak || 1;
-  const lastStreakDate = (profile as any)?.last_streak_date || "";
-  const today = new Date().toISOString().slice(0, 10);
-  const streakCompletedToday = lastStreakDate === today;
+      await refetchGroups();
+      setIsCreateGroupOpen(false);
+      setNewGroupName("");
+      setNewGroupDesc("");
+      setNewGroupCourse("");
+
+      setActiveChat({
+        type: "group",
+        id: created.id,
+        title: created.name,
+        subtitle: "1 member",
+        memberCount: 1,
+      });
+
+      toast.success(`Group "${created.name}" created!`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to create group");
+    }
+  }
+
+  // Streak check-in
+  const streakMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Sign in required");
+      return await updateStreakServerFn({ data: { userId: user.id } });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast.success(`🔥 Streak updated to ${data.currentStreak} days!`, {
+        description: "Keep reading daily to build academic momentum.",
+      });
+    },
+  });
+
+  // Handle scanned student QR Code
+  async function handleScanPeer(scannedUsername: string) {
+    setIsScannerOpen(false);
+    if (!user) {
+      toast.error("Please sign in to connect with peers.");
+      return;
+    }
+    if (scannedUsername.toLowerCase() === profile?.username?.toLowerCase()) {
+      toast.info("That's your own SyllaID QR code!");
+      return;
+    }
+
+    try {
+      const peers = await searchPeersServerFn({
+        data: { query: scannedUsername, currentUserId: user.id },
+      });
+      const peer =
+        peers.find(
+          (p: any) => p.username?.toLowerCase() === scannedUsername.toLowerCase()
+        ) || peers[0];
+
+      if (!peer) {
+        toast.error(`Student @${scannedUsername} could not be found.`);
+        return;
+      }
+
+      const conv = await getOrCreatePeerConversationServerFn({
+        data: { user1Id: user.id, user2Id: peer.id },
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ["student-conversations"] });
+
+      setActiveChat({
+        type: "peer",
+        id: conv.id,
+        title: peer.full_name,
+        subtitle: `@${peer.username}`,
+        avatarUrl: peer.avatar_url,
+        peerId: peer.id,
+      });
+      toast.success(`Connected with @${peer.username}!`);
+    } catch {
+      toast.error("Could not start conversation with scanned student.");
+    }
+  }
+
+  // Filter conversations
+  const filteredPeers = directConversations.filter((c: any) =>
+    c.peer.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.peer.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredGroups = studyGroups.filter((g: any) =>
+    g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (g.course_code && g.course_code.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* 1. TOP HEADER: STREAK & DAILY READING REMINDER */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-background to-amber-500/10 p-5 md:p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-500 shadow-inner">
-              <Flame className="size-8 animate-pulse text-amber-500" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
-                  Student Study Hub & Groups
-                </h1>
-                <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold">
-                  🔥 {currentStreak} Day Streak
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Chat with coursemates, share university materials, and keep your daily reading streak blazing.
+    <div className="flex h-[calc(100vh-80px)] w-full max-w-[1400px] mx-auto overflow-hidden rounded-3xl border border-border/80 bg-card shadow-xl font-sans">
+      {/* ========================================================================= */}
+      {/* LEFT SIDEBAR: Conversations List (WhatsApp / Telegram / iMessage Style) */}
+      {/* ========================================================================= */}
+      <div
+        className={cn(
+          "w-full md:w-80 lg:w-96 flex flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all",
+          activeChat ? "hidden md:flex" : "flex"
+        )}
+      >
+        {/* Top Header with User Info & Actions */}
+        <div className="p-3.5 border-b border-border/70 flex items-center justify-between gap-2 bg-card">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Avatar className="size-9 ring-2 ring-emerald-500/20">
+              <AvatarImage src={profile?.avatar_url || ""} />
+              <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
+                {profile?.full_name?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <h2 className="text-xs font-bold text-foreground truncate">
+                {profile?.full_name || "Scholar"}
+              </h2>
+              <p className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 truncate">
+                @{profile?.username || "student"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Action Icons */}
+          <div className="flex items-center gap-1">
             <Button
-              variant={streakCompletedToday ? "outline" : "default"}
-              size="sm"
-              onClick={() => {
-                if (profile?.id) streakMutation.mutate({ data: { userId: profile.id } });
-              }}
-              disabled={streakMutation.isPending || streakCompletedToday}
-              className={cn(
-                "rounded-xl font-medium gap-2 shadow-sm",
-                !streakCompletedToday && "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
-              )}
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsQrModalOpen(true)}
+              title="Show my SyllaID QR"
+              className="size-8 rounded-full text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
             >
-              <Flame className="size-4" />
-              {streakCompletedToday ? "Streak Kept Today!" : "Check In & Keep Streak"}
+              <QrCode className="size-4" />
             </Button>
 
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCreateOpen(true)}
-              className="rounded-xl gap-2 border-primary/30 hover:bg-primary/5"
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsScannerOpen(true)}
+              title="Scan peer QR code"
+              className="size-8 rounded-full text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
             >
-              <Plus className="size-4 text-primary" />
-              Create Group
+              <ScanLine className="size-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsNewDirectChatOpen(true)}
+              title="Start new direct chat"
+              className="size-8 rounded-full text-muted-foreground hover:text-foreground"
+            >
+              <MessageSquare className="size-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsCreateGroupOpen(true)}
+              title="Create new group"
+              className="size-8 rounded-full text-muted-foreground hover:text-foreground"
+            >
+              <Users className="size-4" />
             </Button>
           </div>
         </div>
 
-        {/* Daily Reading Reminder Alert */}
-        <div className="mt-4 flex items-center justify-between rounded-xl bg-background/80 border border-border/80 px-4 py-2.5 text-xs md:text-sm backdrop-blur-sm">
-          <div className="flex items-center gap-2.5 text-muted-foreground">
-            <Bell className="size-4 text-primary animate-bounce" />
-            <span>
-              <strong className="text-foreground">Daily Reading Goal:</strong> Read 20 minutes from any course material today to advance your academic streak (Best: {longestStreak} days).
+        {/* Daily Streak Banner Pill */}
+        <div className="px-3 py-2 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-border/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Flame className="size-4 text-amber-500 fill-amber-500" />
+            <span className="text-xs font-semibold text-foreground">
+              {profile?.current_streak || 1} Day Streak
             </span>
           </div>
-          <Link
-            to="/dashboard/library"
-            className="text-primary font-medium hover:underline flex items-center gap-1 shrink-0 ml-2"
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => streakMutation.mutate()}
+            disabled={streakMutation.isPending}
+            className="h-6 px-2 text-[11px] font-semibold text-amber-600 hover:text-amber-700 hover:bg-amber-500/15 rounded-full"
           >
-            Open Library <ChevronRight className="size-3.5" />
-          </Link>
+            Check In Today
+          </Button>
         </div>
-      </div>
 
-      {/* 2. MAIN HUB INTERFACE: SIDEBAR (GROUPS) + CHAT AREA */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: STUDY GROUPS LIST (4 cols) */}
-        <div className="lg:col-span-4 space-y-4">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-sm flex items-center gap-2">
-                <Users className="size-4 text-primary" /> Study Groups ({groups.length})
-              </h2>
-              <span className="text-xs text-muted-foreground">Active Now</span>
-            </div>
+        {/* Search Bar */}
+        <div className="p-3 border-b border-border/70 bg-card/60">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search chats, peers, or groups..."
+              className="pl-8 text-xs h-8 rounded-full bg-secondary/50 border-border/60"
+            />
+          </div>
 
-            {/* Search Filter */}
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by course code, university..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 text-xs rounded-xl h-9"
-              />
-            </div>
-
-            {/* Groups Scroll List */}
-            <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
-              {isLoadingGroups ? (
-                <div className="py-8 text-center text-xs text-muted-foreground">
-                  Loading university study groups...
-                </div>
-              ) : groups.length === 0 ? (
-                <div className="py-8 text-center text-xs text-muted-foreground">
-                  No study groups found. Be the first to create one!
-                </div>
-              ) : (
-                groups.map((group) => {
-                  const isSelected = activeGroup?.id === group.id;
-                  return (
-                    <button
-                      key={group.id}
-                      type="button"
-                      onClick={() => setSelectedGroupId(group.id)}
-                      className={cn(
-                        "w-full text-left p-3 rounded-xl transition-all border flex flex-col gap-1.5",
-                        isSelected
-                          ? "bg-primary/10 border-primary/40 shadow-sm"
-                          : "bg-secondary/20 hover:bg-secondary/50 border-transparent"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 truncate">
-                          <span
-                            className="size-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: group.avatar_color }}
-                          />
-                          <span className="font-semibold text-xs md:text-sm text-foreground truncate">
-                            {group.name}
-                          </span>
-                        </div>
-                        {group.course_code && (
-                          <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-mono shrink-0">
-                            {group.course_code}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {group.description && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-1">
-                          {group.description}
-                        </p>
-                      )}
-
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/40">
-                        <span className="truncate max-w-[170px]">{group.institution || "All Universities"}</span>
-                        <span className="flex items-center gap-1 font-medium">
-                          <Users className="size-3" /> {group.member_count} members
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })
+          {/* Segmented Filter Pills */}
+          <div className="mt-2.5 flex items-center gap-1.5">
+            <button
+              onClick={() => setChatTab("all")}
+              className={cn(
+                "px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all",
+                chatTab === "all"
+                  ? "bg-emerald-600 text-white shadow-2xs"
+                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
               )}
-            </div>
+            >
+              All
+            </button>
+            <button
+              onClick={() => setChatTab("direct")}
+              className={cn(
+                "px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all",
+                chatTab === "direct"
+                  ? "bg-emerald-600 text-white shadow-2xs"
+                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Direct ({directConversations.length})
+            </button>
+            <button
+              onClick={() => setChatTab("groups")}
+              className={cn(
+                "px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all",
+                chatTab === "groups"
+                  ? "bg-emerald-600 text-white shadow-2xs"
+                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Groups ({studyGroups.length})
+            </button>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: ACTIVE GROUP CHAT STREAM (8 cols) */}
-        <div className="lg:col-span-8">
-          <div className="rounded-2xl border border-border bg-card shadow-sm flex flex-col h-[650px] overflow-hidden">
-            {/* Group Header */}
-            {activeGroup ? (
-              <div className="p-4 border-b border-border bg-secondary/30 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="size-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm"
-                    style={{ backgroundColor: activeGroup.avatar_color }}
-                  >
-                    {activeGroup.course_code ? activeGroup.course_code.slice(0, 3) : "HUB"}
+        {/* Conversation List Stream */}
+        <div className="flex-1 overflow-y-auto divide-y divide-border/40">
+          {/* Empty State for New User */}
+          {filteredPeers.length === 0 && filteredGroups.length === 0 && (
+            <div className="p-6 text-center flex flex-col items-center">
+              <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-3">
+                <Users className="size-6" />
+              </div>
+              <h3 className="text-xs font-bold text-foreground">No chats yet</h3>
+              <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                Connect with peers by username or join study groups to start sharing materials.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 w-full">
+                <Button
+                  size="sm"
+                  onClick={() => setIsNewDirectChatOpen(true)}
+                  className="rounded-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1.5"
+                >
+                  <Search className="size-3.5" /> Find Peers
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsCreateGroupOpen(true)}
+                  className="rounded-full text-xs font-semibold gap-1.5"
+                >
+                  <Plus className="size-3.5" /> Create Group
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Direct Peer Conversations */}
+          {(chatTab === "all" || chatTab === "direct") &&
+            filteredPeers.map((conv: any) => {
+              const isSelected = activeChat?.id === conv.id && activeChat.type === "peer";
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() =>
+                    setActiveChat({
+                      type: "peer",
+                      id: conv.id,
+                      title: conv.peer.full_name,
+                      subtitle: `@${conv.peer.username}`,
+                      avatarUrl: conv.peer.avatar_url,
+                      peerId: conv.peer.id,
+                    })
+                  }
+                  className={cn(
+                    "flex w-full items-center gap-3 p-3 text-left transition-all hover:bg-secondary/50",
+                    isSelected ? "bg-emerald-500/10 border-l-4 border-emerald-600" : ""
+                  )}
+                >
+                  <Avatar className="size-10 shrink-0">
+                    <AvatarImage src={conv.peer.avatar_url || ""} />
+                    <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
+                      {conv.peer.full_name?.charAt(0) || "P"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-foreground truncate">
+                        {conv.peer.full_name}
+                      </h4>
+                      <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                        {conv.last_message_at ? new Date(conv.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {conv.last_message_text || "Started conversation"}
+                      </p>
+                      <span className="text-[10px] text-emerald-600 font-mono">
+                        @{conv.peer.username}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm md:text-base text-foreground">
-                        {activeGroup.name}
-                      </h3>
-                      {activeGroup.course_code && (
-                        <Badge variant="outline" className="text-xs font-mono">
-                          {activeGroup.course_code}
+                </button>
+              );
+            })}
+
+          {/* Study Group Channels */}
+          {(chatTab === "all" || chatTab === "groups") &&
+            filteredGroups.map((group: any) => {
+              const isSelected = activeChat?.id === group.id && activeChat.type === "group";
+              return (
+                <button
+                  key={group.id}
+                  onClick={() =>
+                    setActiveChat({
+                      type: "group",
+                      id: group.id,
+                      title: group.name,
+                      subtitle: `${group.member_count} members`,
+                      memberCount: group.member_count,
+                    })
+                  }
+                  className={cn(
+                    "flex w-full items-center gap-3 p-3 text-left transition-all hover:bg-secondary/50",
+                    isSelected ? "bg-emerald-500/10 border-l-4 border-emerald-600" : ""
+                  )}
+                >
+                  <div className="grid size-10 place-items-center rounded-full bg-emerald-600/10 text-emerald-600 shrink-0 font-bold text-xs">
+                    <Users className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold text-foreground truncate">
+                        {group.name}
+                      </h4>
+                      {group.course_code && (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 font-mono">
+                          {group.course_code}
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {activeGroup.institution || "National Curriculum"} · {activeGroup.member_count} coursemates enrolled
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      {group.description || `${group.member_count} active course peers`}
                     </p>
                   </div>
-                </div>
+                </button>
+              );
+            })}
+        </div>
+      </div>
 
-                {!activeGroup.is_member && profile && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => joinGroupMutation.mutate({ data: { groupId: activeGroup.id, userId: profile.id } })}
-                    disabled={joinGroupMutation.isPending}
-                    className="text-xs h-8 rounded-xl"
-                  >
-                    Join Discussion
-                  </Button>
-                )}
+      {/* ========================================================================= */}
+      {/* RIGHT SIDE: Active Chat Room Stream (WhatsApp / Telegram / iMessage)   */}
+      {/* ========================================================================= */}
+      <div
+        className={cn(
+          "flex-1 flex flex-col bg-background h-full overflow-hidden",
+          activeChat ? "flex" : "hidden md:flex"
+        )}
+      >
+        {activeChat ? (
+          <>
+            {/* Active Chat Header */}
+            <div className="p-3.5 border-b border-border/70 flex items-center justify-between bg-card shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Mobile Back Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setActiveChat(null)}
+                  className="size-8 rounded-full md:hidden text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="size-4" />
+                </Button>
+
+                <Avatar className="size-9 ring-1 ring-border shrink-0">
+                  <AvatarImage src={activeChat.avatarUrl || ""} />
+                  <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
+                    {activeChat.title?.charAt(0) || "C"}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0">
+                  <h3 className="text-xs sm:text-sm font-bold text-foreground truncate leading-tight">
+                    {activeChat.title}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground font-mono truncate">
+                    {activeChat.subtitle || (activeChat.type === "peer" ? "Active now" : "Course Hub")}
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="p-4 border-b text-xs text-muted-foreground">Select a group to start chatting</div>
-            )}
+
+              {/* Chat Header Actions */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAttachMaterialOpen(true)}
+                  className="rounded-full text-xs font-semibold gap-1.5 h-8 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+                >
+                  <BookOpen className="size-3.5" />
+                  <span className="hidden sm:inline">Attach Material</span>
+                </Button>
+              </div>
+            </div>
 
             {/* Chat Messages Stream */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-background/50">
-              {isLoadingMessages ? (
-                <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-                  Loading discussion messages...
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-6">
-                  <MessageSquare className="size-10 text-muted-foreground/40 mb-2" />
-                  <p className="font-semibold text-sm">No messages yet in this study group.</p>
-                  <p className="text-xs mt-1 max-w-sm">
-                    Start the conversation! Ask a question about your syllabus or share a textbook from the library.
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/60 dark:bg-zinc-950/40">
+              {chatMessages.length === 0 ? (
+                <div className="py-16 text-center flex flex-col items-center">
+                  <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-2">
+                    <MessageSquare className="size-5" />
+                  </div>
+                  <h4 className="text-xs font-semibold text-foreground">
+                    Start of conversation
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground max-w-xs mt-1">
+                    Send a message or attach a textbook, lecture note, or past question to discuss.
                   </p>
                 </div>
               ) : (
-                messages.map((msg) => {
-                  const isMe = msg.user_id === profile?.id;
-                  const isSystem = msg.user_id === "system";
-
-                  if (isSystem) {
-                    return (
-                      <div key={msg.id} className="flex justify-center my-2">
-                        <div className="rounded-full bg-secondary/80 border border-border px-4 py-1 text-[11px] text-muted-foreground flex items-center gap-1.5 shadow-sm">
-                          <Sparkles className="size-3 text-primary" />
-                          <span>{msg.content}</span>
-                        </div>
-                      </div>
-                    );
-                  }
+                chatMessages.map((msg: any) => {
+                  const isMe = msg.sender_id === user?.id || msg.user_id === user?.id;
+                  const senderDisplay = msg.sender_name || msg.user_name || "Scholar";
+                  const matId = msg.material_id;
+                  const matTitle = msg.material_title;
+                  const matCourse = msg.material_course || msg.material_course_code;
 
                   return (
                     <div
                       key={msg.id}
-                      className={cn("flex flex-col gap-1 max-w-[80%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}
+                      className={cn(
+                        "flex flex-col max-w-[85%] sm:max-w-[70%]",
+                        isMe ? "ml-auto items-end" : "mr-auto items-start"
+                      )}
                     >
-                      {/* Author Header */}
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
-                        <span className="font-medium text-foreground">{isMe ? "You" : msg.user_name}</span>
-                        {msg.user_institution && (
-                          <span>· {msg.user_institution.split(",")[0]}</span>
-                        )}
-                        <span>· {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      </div>
+                      {/* Sender Tag in Group Chat */}
+                      {!isMe && activeChat.type === "group" && (
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-0.5 px-1 font-mono">
+                          {senderDisplay}
+                        </span>
+                      )}
 
-                      {/* Message Bubble */}
+                      {/* Bubble */}
                       <div
                         className={cn(
-                          "rounded-2xl px-4 py-2.5 text-xs md:text-sm shadow-sm space-y-2",
+                          "rounded-2xl px-3.5 py-2 text-xs shadow-xs leading-relaxed space-y-2",
                           isMe
-                            ? "bg-primary text-primary-foreground rounded-tr-none"
-                            : "bg-secondary text-secondary-foreground rounded-tl-none border border-border/40"
+                            ? "bg-emerald-600 text-white rounded-br-xs"
+                            : "bg-card border border-border/80 text-foreground rounded-bl-xs"
                         )}
                       >
-                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-
-                        {/* Attached Library Material Card */}
-                        {msg.material_id && (
+                        {/* Material Card Attachment if Present */}
+                        {matId && (
                           <div
                             className={cn(
-                              "rounded-xl p-2.5 border mt-2 flex items-center justify-between gap-3 text-xs transition-colors",
+                              "rounded-xl p-2.5 flex items-center justify-between gap-2.5 transition-all",
                               isMe
-                                ? "bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"
-                                : "bg-card border-border text-foreground hover:bg-card/80"
+                                ? "bg-emerald-700/60 border border-emerald-400/30 text-white"
+                                : "bg-secondary/70 border border-border text-foreground"
                             )}
                           >
-                            <div className="flex items-center gap-2.5 truncate">
-                              <div className="p-2 rounded-lg bg-primary/20 text-primary">
-                                <BookOpen className="size-4" />
-                              </div>
-                              <div className="truncate">
-                                <div className="font-bold truncate text-xs">{msg.material_title}</div>
-                                <div className="text-[10px] opacity-80">{msg.material_course_code} · Verified Material</div>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="size-4 shrink-0 text-emerald-300" />
+                              <div className="min-w-0">
+                                <p className="font-semibold truncate text-[11px] leading-tight">
+                                  {matTitle || "Course Document"}
+                                </p>
+                                <p className="text-[10px] font-mono opacity-80 truncate">
+                                  {matCourse || "Academic Library"}
+                                </p>
                               </div>
                             </div>
-
-                            <Link
-                              to="/dashboard/preview"
-                              search={{ id: msg.material_id }}
-                              className={cn(
-                                "shrink-0 p-1.5 rounded-lg border font-medium flex items-center gap-1 text-[11px]",
-                                isMe
-                                  ? "bg-white/20 hover:bg-white/30 text-white border-white/30"
-                                  : "bg-primary text-primary-foreground hover:bg-primary/90"
-                              )}
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              asChild
+                              className="h-6 px-2 text-[10px] font-semibold rounded-full shrink-0"
                             >
-                              Open <ExternalLink className="size-3" />
-                            </Link>
+                              <Link to="/dashboard/preview" search={{ id: matId }}>
+                                Open <ExternalLink className="size-2.5 ml-1" />
+                              </Link>
+                            </Button>
                           </div>
                         )}
+
+                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+
+                        <div
+                          className={cn(
+                            "flex items-center justify-end gap-1 text-[9px] pt-0.5 opacity-75 font-mono",
+                            isMe ? "text-emerald-100" : "text-muted-foreground"
+                          )}
+                        >
+                          <span>
+                            {new Date(msg.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                          {isMe && <CheckCheck className="size-3" />}
+                        </div>
                       </div>
                     </div>
                   );
@@ -484,210 +829,276 @@ function CommunityPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Selected Attachment Preview */}
+            {/* Selected Attachment Banner in Composer */}
             {selectedMaterial && (
-              <div className="px-4 py-2 bg-primary/5 border-t border-primary/20 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 text-primary font-medium truncate">
-                  <BookOpen className="size-4 shrink-0" />
-                  <span className="truncate">Attaching: {selectedMaterial.title} ({selectedMaterial.course_code})</span>
+              <div className="px-3.5 py-2 bg-emerald-500/10 border-t border-emerald-500/20 flex items-center justify-between text-xs text-foreground">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="size-4 text-emerald-600 shrink-0" />
+                  <span className="font-semibold truncate text-xs">
+                    Attaching: {selectedMaterial.title}
+                  </span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => setSelectedMaterial(null)}
-                  className="size-6 p-0 hover:bg-primary/20 rounded-full"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="size-3.5" />
-                </Button>
+                </button>
               </div>
             )}
 
-            {/* Input Composer Form */}
-            <form onSubmit={handleSendMessage} className="p-3 border-t border-border bg-card flex items-center gap-2">
+            {/* Bottom Chat Composer (iMessage / Telegram style) */}
+            <form
+              onSubmit={handleSendMessage}
+              className="p-3 border-t border-border/70 bg-card flex items-center gap-2 shrink-0"
+            >
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="icon"
-                onClick={() => setIsShareMaterialOpen(true)}
-                title="Share study material from library"
-                className="size-10 rounded-xl shrink-0 border-border/80 hover:bg-primary/10 hover:text-primary"
+                onClick={() => setIsAttachMaterialOpen(true)}
+                title="Attach library document"
+                className="size-9 rounded-full text-muted-foreground hover:text-foreground shrink-0"
               >
                 <Paperclip className="size-4" />
               </Button>
 
               <Input
-                placeholder={
-                  activeGroup
-                    ? `Message ${activeGroup.name}...`
-                    : "Select a group to post..."
-                }
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
-                disabled={!activeGroup}
-                className="h-10 text-xs md:text-sm rounded-xl flex-1 bg-background"
+                placeholder={`Message ${activeChat.title}...`}
+                className="flex-1 rounded-full text-xs h-10 px-4 bg-secondary/50 border-border/60"
               />
 
               <Button
                 type="submit"
-                disabled={(!messageInput.trim() && !selectedMaterial) || sendMessageMutation.isPending || !activeGroup}
                 size="icon"
-                className="size-10 rounded-xl shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+                disabled={!messageInput.trim() && !selectedMaterial}
+                className="size-9 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 shadow-2xs"
               >
                 <Send className="size-4" />
               </Button>
             </form>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="size-16 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-4">
+              <MessageSquare className="size-8" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">Select a conversation</h3>
+            <p className="mt-1 text-xs text-muted-foreground max-w-sm leading-relaxed">
+              Choose a coursemate or study group from the left to start chatting, sharing documents, and collaborating.
+            </p>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* 3. DIALOG: CREATE STUDY GROUP */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-md rounded-2xl">
+      {/* ========================================================================= */}
+      {/* MODAL 1: SyllaID QR Code Card */}
+      {/* ========================================================================= */}
+      <StudentQrModal
+        open={isQrModalOpen}
+        onOpenChange={setIsQrModalOpen}
+        username={profile?.username || "scholar"}
+        fullName={profile?.full_name || "Scholar"}
+        avatarUrl={profile?.avatar_url}
+        institution={profile?.institution}
+        onOpenScanner={() => setIsScannerOpen(true)}
+      />
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: Camera QR Scanner */}
+      {/* ========================================================================= */}
+      <QrScannerModal
+        open={isScannerOpen}
+        onOpenChange={setIsScannerOpen}
+        onScanPeer={handleScanPeer}
+      />
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: New Direct Chat / Search Peers */}
+      {/* ========================================================================= */}
+      <Dialog open={isNewDirectChatOpen} onOpenChange={setIsNewDirectChatOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="size-5 text-primary" /> Create New Study Group
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
+              <UserPlus className="size-5 text-emerald-600" />
+              Find Peers & Message
             </DialogTitle>
-            <DialogDescription>
-              Create a dedicated study circle for your course, level, or department.
-            </DialogDescription>
           </DialogHeader>
+          <div className="relative mt-2">
+            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+            <Input
+              value={peerSearchQuery}
+              onChange={(e) => setPeerSearchQuery(e.target.value)}
+              placeholder="Search by username (@handle), name, course..."
+              className="pl-9 rounded-full text-xs h-9"
+              autoFocus
+            />
+          </div>
 
-          <div className="space-y-4 pt-2">
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1 block">Group Name *</label>
-              <Input
-                placeholder="e.g. GET 206 Workshop Practice Circle"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                className="rounded-xl text-xs"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">Course Code</label>
-                <Input
-                  placeholder="e.g. GET 206"
-                  value={newGroupCourse}
-                  onChange={(e) => setNewGroupCourse(e.target.value)}
-                  className="rounded-xl text-xs font-mono uppercase"
-                />
+          <div className="mt-3 max-h-64 overflow-y-auto space-y-1 pr-1">
+            {isSearchingPeers ? (
+              <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">
+                Searching students...
               </div>
-
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">Category</label>
-                <select
-                  value={newGroupCategory}
-                  onChange={(e) => setNewGroupCategory(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-input bg-background text-xs"
+            ) : searchedPeers.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                {peerSearchQuery.trim()
+                  ? "No students found matching query."
+                  : "Type a username or course to discover peers."}
+              </div>
+            ) : (
+              searchedPeers.map((peer: any) => (
+                <button
+                  key={peer.id}
+                  onClick={() => startDirectChatWithPeer(peer)}
+                  className="flex w-full items-center justify-between p-2.5 rounded-xl hover:bg-secondary/60 text-left transition-all"
                 >
-                  <option value="Engineering">Engineering</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Sciences">Sciences</option>
-                  <option value="Health & Medical">Health & Medical</option>
-                  <option value="Social Sciences">Social Sciences</option>
-                  <option value="General">General</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1 block">Target Institution</label>
-              <Input
-                placeholder="e.g. Achievers University, Owo or All Universities"
-                value={newGroupInstitution}
-                onChange={(e) => setNewGroupInstitution(e.target.value)}
-                className="rounded-xl text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1 block">Description</label>
-              <Textarea
-                placeholder="What will students discuss and learn in this study circle?"
-                value={newGroupDescription}
-                onChange={(e) => setNewGroupDescription(e.target.value)}
-                className="rounded-xl text-xs h-20"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl">
-                Cancel
-              </Button>
-              <Button
-                disabled={!newGroupName.trim() || createGroupMutation.isPending || !profile?.id}
-                onClick={() => {
-                  if (profile?.id) {
-                    createGroupMutation.mutate({
-                      data: {
-                        name: newGroupName,
-                        course_code: newGroupCourse || undefined,
-                        institution: newGroupInstitution || undefined,
-                        category: newGroupCategory,
-                        description: newGroupDescription || undefined,
-                        userId: profile.id,
-                      },
-                    });
-                  }
-                }}
-                className="rounded-xl bg-primary text-primary-foreground"
-              >
-                Create Study Circle
-              </Button>
-            </div>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Avatar className="size-9">
+                      <AvatarImage src={peer.avatar_url || ""} />
+                      <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
+                        {peer.full_name?.charAt(0) || "P"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground truncate">
+                        {peer.full_name}
+                      </p>
+                      <p className="text-[11px] font-mono text-emerald-600 truncate">
+                        @{peer.username} • {peer.institution || "Student"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs rounded-full">
+                    Chat
+                  </Button>
+                </button>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* 4. DIALOG: SHARE LIBRARY MATERIAL IN CHAT */}
-      <Dialog open={isShareMaterialOpen} onOpenChange={setIsShareMaterialOpen}>
-        <DialogContent className="max-w-lg rounded-2xl max-h-[85vh] flex flex-col">
+      {/* ========================================================================= */}
+      {/* MODAL 4: Create Group Modal (ONLY name is compulsory!)                    */}
+      {/* ========================================================================= */}
+      <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="size-5 text-primary" /> Share Material From Library
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
+              <Users className="size-5 text-emerald-600" />
+              Create Study Group
             </DialogTitle>
-            <DialogDescription>
-              Select any verified textbook, past question, or lecture note to share directly with your coursemates.
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto space-y-2.5 pt-2 pr-1">
-            {!materialsData ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">Loading verified library materials...</div>
-            ) : materialsData.length === 0 ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">No materials found in library.</div>
+          <form onSubmit={handleCreateGroup} className="space-y-3.5 mt-2">
+            <div>
+              <label className="text-xs font-semibold text-foreground">Group Name *</label>
+              <Input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="e.g. MTH 101 Study Circle, BioMed Wizards..."
+                className="mt-1 text-xs rounded-xl"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-foreground">
+                Course Code <span className="font-normal text-muted-foreground">(Optional)</span>
+              </label>
+              <Input
+                value={newGroupCourse}
+                onChange={(e) => setNewGroupCourse(e.target.value)}
+                placeholder="e.g. GET 206, MTH 101"
+                className="mt-1 text-xs rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-foreground">
+                Description <span className="font-normal text-muted-foreground">(Optional)</span>
+              </label>
+              <Textarea
+                value={newGroupDesc}
+                onChange={(e) => setNewGroupDesc(e.target.value)}
+                placeholder="Brief group goal or topics discussed..."
+                className="mt-1 text-xs rounded-xl h-20 resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCreateGroupOpen(false)}
+                className="rounded-full text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
+              >
+                Create Group
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* MODAL 5: Attach Library Material Picker                                   */}
+      {/* ========================================================================= */}
+      <Dialog open={isAttachMaterialOpen} onOpenChange={setIsAttachMaterialOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
+              <BookOpen className="size-5 text-emerald-600" />
+              Attach Academic Material
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-3 max-h-72 overflow-y-auto space-y-1.5 pr-1">
+            {availableMaterials.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                No verified materials found in library.
+              </div>
             ) : (
-              materialsData.map((m: any) => (
-                <div
-                  key={m.id}
-                  className="p-3 rounded-xl border border-border bg-card hover:border-primary/50 transition-all flex items-center justify-between gap-3"
+              availableMaterials.map((mat: any) => (
+                <button
+                  key={mat.id}
+                  onClick={() => {
+                    setSelectedMaterial({
+                      id: mat.id,
+                      title: mat.title,
+                      course: mat.course_code || mat.course,
+                    });
+                    setIsAttachMaterialOpen(false);
+                    toast.success(`Attached "${mat.title}"`);
+                  }}
+                  className="flex w-full items-center justify-between p-2.5 rounded-xl hover:bg-secondary/60 text-left transition-all border border-border/40"
                 >
-                  <div className="truncate space-y-0.5">
-                    <div className="font-semibold text-xs text-foreground truncate">{m.title}</div>
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-2">
-                      <span className="font-mono text-primary font-bold">{m.course_code || m.course}</span>
-                      <span>· {m.institution}</span>
-                      <span>· {m.page_count} pgs</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="grid size-8 place-items-center rounded-lg bg-emerald-600/10 text-emerald-600 shrink-0">
+                      <FileText className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground truncate">{mat.title}</p>
+                      <p className="text-[10px] font-mono text-muted-foreground truncate">
+                        {mat.course_code || "ACADEMIC"} • {mat.institution}
+                      </p>
                     </div>
                   </div>
-
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedMaterial({
-                        id: m.id,
-                        title: m.title,
-                        course_code: m.course_code || m.course,
-                      });
-                      setIsShareMaterialOpen(false);
-                      toast.success(`Attached "${m.title.slice(0, 35)}..." to your message!`);
-                    }}
-                    className="shrink-0 rounded-xl text-xs h-8"
-                  >
-                    Attach
+                  <Button size="sm" variant="ghost" className="h-7 text-xs rounded-full">
+                    Select
                   </Button>
-                </div>
+                </button>
               ))
             )}
           </div>

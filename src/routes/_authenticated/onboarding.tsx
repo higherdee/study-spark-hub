@@ -14,6 +14,7 @@ import { upsertProfile } from "@/integrations/turso/client";
 import { courseOptions, institutionOptions, LEVELS, REFERRAL_SOURCES } from "@/lib/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
+import { checkUsernameAvailableServerFn } from "@/lib/community.functions";
 import { cn } from "@/lib/utils";
 import { PageBreathingLoader } from "@/components/syllaboss-logo";
 import { SyllaPlusModal } from "@/components/syllaplus-modal";
@@ -45,6 +46,12 @@ function Onboarding() {
   const [saving, setSaving] = useState(false);
 
   const [fullName, setFullName] = useState(user?.user_metadata.full_name ?? "");
+  const [username, setUsername] = useState("");
+  const [usernameSuggestion, setUsernameSuggestion] = useState("");
+  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameError, setUsernameError] = useState("");
+
   const [phone, setPhone] = useState("");
   const [institution, setInstitution] = useState<SearchOption | null>(null);
   const [course, setCourse] = useState<SearchOption | null>(null);
@@ -77,6 +84,7 @@ function Onboarding() {
       setStep(Math.min(profile.onboarding_step, 2));
     }
     setFullName(profile.full_name || user?.user_metadata.full_name || "");
+    if (profile.username) setUsername(profile.username);
     setPhone(profile.phone ?? "");
     if (profile.institution) setInstitution({ label: profile.institution });
     if (profile.course) setCourse({ label: profile.course });
@@ -84,6 +92,59 @@ function Onboarding() {
     if (profile.level) setLevel(profile.level);
     setReferral(profile.referral_source ?? "");
   }, [profile, user, navigate]);
+
+  // Generate suggested username from name or email
+  useEffect(() => {
+    const raw = (fullName || user?.user_metadata.full_name || user?.email?.split("@")[0] || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 14);
+    const suggested = raw ? `${raw}_${Math.floor(10 + Math.random() * 89)}` : `student_${Math.floor(100 + Math.random() * 899)}`;
+    setUsernameSuggestion(suggested);
+    if (!username && (!profile?.username || profile.username.startsWith("student_"))) {
+      setUsername(suggested);
+    }
+  }, [fullName, user, profile]);
+
+  // Debounced check username availability
+  useEffect(() => {
+    const clean = username.trim().toLowerCase();
+    if (!clean) {
+      setIsUsernameAvailable(null);
+      setUsernameError("");
+      return;
+    }
+    if (clean.length < 3) {
+      setIsUsernameAvailable(false);
+      setUsernameError("Username must be at least 3 characters.");
+      return;
+    }
+    if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+      setIsUsernameAvailable(false);
+      setUsernameError("Only lowercase letters, numbers, and underscores allowed.");
+      return;
+    }
+
+    setUsernameChecking(true);
+    setUsernameError("");
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkUsernameAvailableServerFn({
+          data: { username: clean, excludeUserId: userId },
+        });
+        setIsUsernameAvailable(res.available);
+        if (!res.available) {
+          setUsernameError("This username is already taken. Try another!");
+        }
+      } catch {
+        // network fallback
+      } finally {
+        setUsernameChecking(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [username, userId]);
 
   const [showPlusModal, setShowPlusModal] = useState(false);
 
@@ -112,9 +173,30 @@ function Onboarding() {
 
   function next() {
     if (step === 0) {
-      if (fullName.trim().length < 2 || !institution || !course) { toast.error("Add your name, school and course"); return; }
-      if (phone && !/^\+?[0-9 ]{10,15}$/.test(phone)) { toast.error("Enter a valid phone number"); return; }
-      save({ full_name: fullName.trim(), phone: phone.trim() || null, institution: institution.label, course: course.label, department: course.label, level }, 1);
+      if (fullName.trim().length < 2 || !institution || !course) {
+        toast.error("Add your name, school and course");
+        return;
+      }
+      if (!username.trim() || isUsernameAvailable === false) {
+        toast.error(usernameError || "Please choose a valid available username.");
+        return;
+      }
+      if (phone && !/^\+?[0-9 ]{10,15}$/.test(phone)) {
+        toast.error("Enter a valid phone number");
+        return;
+      }
+      save(
+        {
+          full_name: fullName.trim(),
+          username: username.trim().toLowerCase(),
+          phone: phone.trim() || null,
+          institution: institution.label,
+          course: course.label,
+          department: course.label,
+          level,
+        },
+        1
+      );
     } else if (step === 1) {
       if (!referral) { toast.error("Pick one option"); return; }
       save({ referral_source: referral }, 2);
@@ -150,10 +232,62 @@ function Onboarding() {
                 <h1 className="font-display text-3xl font-semibold">Tell us about you</h1>
                 <p className="mt-1 text-sm text-muted-foreground">We use this to show materials for your course and school.</p>
               </div>
+
+              {/* Full Name & Phone */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2"><Label htmlFor="fn">Full name</Label><Input id="fn" value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
                 <div className="space-y-2"><Label htmlFor="ph">Phone (optional)</Label><Input id="ph" value={phone} placeholder="0803 000 0000" onChange={(e) => setPhone(e.target.value)} /></div>
               </div>
+
+              {/* Unique Username Input with Suggestion */}
+              <div className="space-y-2 rounded-xl border border-border/80 bg-secondary/30 p-3.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="un" className="font-semibold text-xs flex items-center gap-1.5">
+                    Choose Your Username
+                  </Label>
+                  {usernameSuggestion && username !== usernameSuggestion && (
+                    <button
+                      type="button"
+                      onClick={() => setUsername(usernameSuggestion)}
+                      className="text-xs text-primary hover:underline font-medium"
+                    >
+                      Use suggested: @{usernameSuggestion}
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <span className="absolute left-3.5 top-2.5 text-sm font-semibold text-muted-foreground select-none">@</span>
+                  <Input
+                    id="un"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20))}
+                    placeholder="e.g. adekunle_01"
+                    className="pl-8 font-mono text-sm bg-background"
+                  />
+                  <div className="absolute right-3 top-2.5 flex items-center">
+                    {usernameChecking && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+                    {!usernameChecking && isUsernameAvailable === true && (
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        <Check className="size-3" /> Available
+                      </span>
+                    )}
+                    {!usernameChecking && isUsernameAvailable === false && (
+                      <span className="text-xs text-destructive font-semibold bg-destructive/10 px-2 py-0.5 rounded-full border border-destructive/20">
+                        Taken
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {usernameError && (
+                  <p className="text-xs text-destructive">{usernameError}</p>
+                )}
+                <p className="text-[11px] text-muted-foreground">
+                  Your unique handle for group chats, peer messaging, and the leaderboard.
+                </p>
+              </div>
+
               <SearchSelect id="inst" label="Institution" placeholder="Search your school" options={institutionOptions} value={institution} onChange={setInstitution} />
               <SearchSelect id="course" label="Course of study" placeholder="Search your course" options={courseOptions} value={course} onChange={setCourse} />
               <div className="space-y-2">

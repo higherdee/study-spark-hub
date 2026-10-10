@@ -44,6 +44,7 @@ import {
   rateMaterialServerFn,
   getUserRatingServerFn,
 } from "@/lib/upload.functions";
+import { ForwardMaterialModal } from "@/components/forward-material-modal";
 import { cn } from "@/lib/utils";
 
 const previewSearchSchema = z.object({
@@ -126,6 +127,7 @@ function DocumentPreviewPage() {
 
   // Rating Modal state
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showForwardModal, setShowForwardModal] = useState(false);
   const [ratingVal, setRatingVal] = useState<number>(userRatingData?.rating || 5);
   const [ratingComment, setRatingComment] = useState("");
   const [submittingRating, setSubmittingRating] = useState(false);
@@ -551,6 +553,17 @@ Include:
             </Button>
 
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowForwardModal(true)}
+              className="rounded-full text-xs font-semibold h-8 gap-1.5 border-[#dce5df] bg-white hover:bg-[#edf6f0] text-[#151d1a]"
+              title="Forward to peers or study groups"
+            >
+              <Send className="size-3.5 text-[#1b7a4e]" />
+              <span className="hidden sm:inline">Forward</span>
+            </Button>
+
+            <Button
               variant="secondary"
               size="sm"
               onClick={handleDownload}
@@ -958,6 +971,17 @@ Include:
             </div>
           </div>
         </div>
+      )}
+
+      {/* Forward to Peers & Groups Modal */}
+      {material && (
+        <ForwardMaterialModal
+          open={showForwardModal}
+          onOpenChange={setShowForwardModal}
+          materialId={material.id}
+          materialTitle={material.title}
+          materialCourse={material.course_code || material.course}
+        />
       )}
     </div>
   );
