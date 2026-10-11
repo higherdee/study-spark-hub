@@ -5,32 +5,29 @@ import {
   CheckCircle2,
   Coins,
   Download,
-  FileSearch,
-  Laptop,
   ShieldCheck,
-  Smartphone,
-  Wallet,
   Sparkles,
   BookOpen,
   GraduationCap,
   Award,
-  ChevronRight,
+  ChevronDown,
   Search,
   FileText,
   Star,
   Zap,
-  Bell,
-  Home,
-  Trophy,
-  Play,
   Check,
   Flame,
   Globe,
+  Share,
+  Laptop,
+  Layers,
+  HelpCircle,
+  Clock,
+  TrendingUp,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 import { InstallButton } from "@/components/install-button";
-import { AppWelcomeGate } from "@/components/app-welcome-gate";
 import { SyllabossLogo, SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -46,26 +43,24 @@ import {
   POINTS_PER_VERIFIED_UPLOAD,
   POINTS_PER_DOWNLOAD,
   POINTS_PER_VIEW,
-  POINTS_PER_30_MIN_STUDY,
   POINTS_REGISTRATION_BONUS,
-  POINTS_INSTALL_APP_BONUS,
   formatNaira,
 } from "@/lib/constants";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Syllaboss — The Smart Campus Study & Syllabus App" },
+      { title: "Syllaboss — The Modern University Study Platform" },
       {
         name: "description",
         content:
-          "Download Syllaboss for Android (.APK), Windows (.EXE), or Apple iOS. Verified past questions, course summaries, Boss AI, and cashable student rewards.",
+          "Syllaboss is an all-in-one academic companion for iOS, Android and desktop. Verified past questions, course summaries, Boss AI LaTeX derivations, and cashable student rewards.",
       },
       { property: "og:title", content: "Syllaboss — Study With Direction" },
       {
         property: "og:description",
         content:
-          "Vetted Nigerian university lecture notes, past exams, and AI study companion. Available on all devices.",
+          "Peer-reviewed Nigerian university lecture notes, past exams, and Boss AI study companion. Available everywhere as a high-speed PWA.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://syllaboss.org" },
@@ -75,131 +70,170 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
+const SHOWCASE_TABS = [
+  {
+    id: "boss-ai",
+    title: "Boss AI Study Copilot",
+    badge: "Step-by-step LaTeX",
+    description:
+      "Ask Boss AI complex exam questions, loop-closure kinematics, chemical mechanisms, or economic formulas. Boss AI formats every equation in crisp LaTeX and compiles structured exam answers.",
+    metric: "Instant Explanations",
+    icon: Bot,
+    highlights: [
+      "Rigorous mathematical formula derivations & proofs",
+      "Instant exam essay theory marking with model answers",
+      "Interactive multiple-choice practice simulations",
+    ],
+  },
+  {
+    id: "library",
+    title: "University Library",
+    badge: "NUC CCMAS Aligned",
+    description:
+      "Search and browse verified course summaries, departmental dossiers, and laboratory manuals from 200+ accredited universities spanning 100 Level through Final Year.",
+    metric: "10,000+ Verified Notes",
+    icon: BookOpen,
+    highlights: [
+      "Filter by Faculty, Department, and Course Code",
+      "Offline-cached study documents for erratic networks",
+      "Peer-reviewed by departmental scholars & toppers",
+    ],
+  },
+  {
+    id: "past-questions",
+    title: "Exam Past Questions",
+    badge: "Authentic Papers",
+    description:
+      "Access previous semester examination papers with verified marking schemes. Practice past questions under timed conditions to identify recurring examination radar topics.",
+    metric: "98% Syllabus Match",
+    icon: FileText,
+    highlights: [
+      "Real semester examination past papers",
+      "Detailed step-by-step solution breakdowns",
+      "Exam radar predictions based on previous test patterns",
+    ],
+  },
+  {
+    id: "rewards",
+    title: "SyllaPoints Cash Rewards",
+    badge: "Direct Bank Payouts",
+    description:
+      "Earn 25 SyllaPoints every time you share verified lecture summaries or past question solutions. Convert accumulated points directly to Naira with payouts to any Nigerian bank.",
+    metric: "₦3,000 Min. Payout",
+    icon: Coins,
+    highlights: [
+      "+25 SyllaPoints per approved academic upload",
+      "Daily rewards for consistent 30-minute study streaks",
+      "Zero hidden fees — automated transfer to your bank",
+    ],
+  },
+];
+
 const FAQ = [
   [
-    "Is Syllaboss completely free to download and use?",
-    "Yes, 100% free! Downloading the app, browsing course materials, studying past questions, and chatting with Boss AI costs nothing.",
+    "How do I install Syllaboss on my phone or computer?",
+    "Syllaboss is built as a progressive web app (PWA), meaning zero downloads from app stores and zero bulky 100MB files. On iPhone/iPad: Open syllaboss.org in Safari, tap the Share icon, and select 'Add to Home Screen'. On Android: Tap 'Install Web App' or use Chrome's menu to select 'Install App'. On Windows & Mac: Click the Install icon in your browser address bar.",
   ],
   [
-    "What do I do if Android says 'App not installed'?",
-    "This usually happens when you already have an older shortcut or test version of Syllaboss on your phone. Simply delete or uninstall the old Syllaboss app icon from your home screen first, then tap 'Download for Android (.APK)' and install the new version cleanly.",
+    "Is Syllaboss free to use for university students?",
+    "Yes, 100% free! Searching the library, reading course summaries, taking practice quizzes, downloading materials, and chatting with Boss AI costs nothing.",
   ],
   [
-    "How does the direct Android APK download work?",
-    "Tapping 'Download for Android (.APK)' directly downloads the lightweight (~900 KB) Syllaboss package. Tap the downloaded file from your browser notification bar and confirm 'Install'. It will appear straight in your app drawer.",
+    "Does Syllaboss work offline when campus network is down?",
+    "Yes. Because Syllaboss is installed as a PWA, all your recently opened lecture dossiers and downloaded summaries remain cached on your device, allowing you to study even during network blackouts.",
   ],
   [
-    "How do I install Syllaboss on my Windows laptop or desktop?",
-    "Click 'Download for Windows (.MSI)'. Run the installer (Syllaboss-Setup.msi) once to install the app and generate an official executable shortcut on your Desktop.",
+    "How does Boss AI format mathematical derivations and formulas?",
+    "Boss AI is powered by an advanced academic reasoning engine configured with KaTeX. It automatically renders Greek variables, matrices, loop-closure kinematics, integrals, and physics equations in clean, publication-grade mathematical typography.",
   ],
   [
-    "How do I use Syllaboss on my iPhone or iPad?",
-    "Apple devices don't require any app store download! Simply open Syllaboss in Safari, tap the Share icon at the bottom, and select 'Add to Home Screen'. Syllaboss launches fullscreen just like any native iOS app.",
-  ],
-  [
-    "How do SyllaPoints work and how do I withdraw to my bank?",
-    `You earn +${POINTS_REGISTRATION_BONUS} points on sign-up, +${POINTS_INSTALL_APP_BONUS} points when you install the app, +${POINTS_PER_VERIFIED_UPLOAD} points per verified lecture upload, plus royalties whenever peers view or download your notes. Once your balance reaches ${formatNaira(MINIMUM_WITHDRAWAL_NAIRA)}, you can request an instant withdrawal directly to your Nigerian commercial bank account (OPay, Kuda, GTBank, Access, etc.).`,
+    "How do SyllaPoints rewards work and how do I withdraw to my bank?",
+    `Students earn +${POINTS_PER_VERIFIED_UPLOAD} SyllaPoints per verified academic upload, plus bonus points for study streaks. Every 100 points equals ₦${100 / POINTS_PER_NAIRA}. Once your balance reaches ₦${MINIMUM_WITHDRAWAL_NAIRA}, you can request an instant bank transfer to any Nigerian bank.`,
   ],
 ];
 
 function HomePage() {
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [uploadsEstimate, setUploadsEstimate] = useState(6);
-  const [readsEstimate, setReadsEstimate] = useState(150);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [activeShowcase, setActiveShowcase] = useState(0);
 
-  // Calculate estimated earnings in Naira
-  const estimatedPoints =
-    uploadsEstimate * POINTS_PER_VERIFIED_UPLOAD +
-    readsEstimate * (POINTS_PER_VIEW + POINTS_PER_DOWNLOAD);
-  const estimatedNaira = Math.round(estimatedPoints / POINTS_PER_NAIRA);
+  // Rewards calculator state
+  const [uploadsCount, setUploadsCount] = useState(15);
+  const [downloadsReceived, setDownloadsReceived] = useState(80);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  // Detect standalone installed mode OR web subdomain mode (e.g. web.syllaboss.org)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isSubdomain =
-        window.location.hostname.startsWith("web.") ||
-        window.location.hostname.startsWith("app.") ||
-        window.location.search.includes("mode=web");
-
-      const standalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        (navigator as unknown as { standalone?: boolean }).standalone === true ||
-        window.location.search.includes("mode=pwa") ||
-        isSubdomain;
-      setIsStandalone(standalone);
-
-      if (standalone && user) {
-        navigate({ to: "/dashboard" });
-      }
-    }
-  }, [user, navigate]);
-
-  if (isStandalone && !user) {
-    return <AppWelcomeGate />;
-  }
-
-  function handleTriggerDownload(target: "android" | "windows") {
-    if (target === "android") {
-      const link = document.createElement("a");
-      link.href = "/downloads/syllaboss.apk";
-      link.download = "Syllaboss.apk";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      const link = document.createElement("a");
-      link.href = "/downloads/syllaboss-setup.msi";
-      link.download = "Syllaboss-Setup.msi";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  }
+  const calculatedPoints =
+    uploadsCount * POINTS_PER_VERIFIED_UPLOAD +
+    downloadsReceived * POINTS_PER_DOWNLOAD +
+    POINTS_REGISTRATION_BONUS;
+  const calculatedNaira = Math.floor(calculatedPoints / POINTS_PER_NAIRA);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f6faf7] text-[#00110a] font-sans selection:bg-[#1b7a4e]/20 selection:text-[#0b3321]">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 border-b border-[#e1eae3] bg-[#f6faf7]/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#f7f9f8] dark:bg-[#070b09] text-slate-900 dark:text-slate-100 font-sans selection:bg-emerald-500/20 selection:text-emerald-950">
+      {/* ── Top Header (Trust Wallet Style Sticky Chrome) ──────────────── */}
+      <header className="sticky top-0 z-50 h-16 desktop:h-20 w-full transition-colors duration-300 bg-[#f7f9f8]/90 dark:bg-[#070b09]/90 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.07]">
+        <div className="mx-auto flex h-full max-w-[1360px] items-center justify-between px-4 sm:px-8">
           <SyllabossLogo />
 
-          <nav className="hidden items-center gap-7 text-xs font-semibold text-[#526359] md:flex">
-            <a href="#downloads" className="hover:text-[#00110a] transition-colors">
-              Download App
-            </a>
-            <a
-              href="https://web.syllaboss.org/dashboard"
-              className="hover:text-[#00110a] transition-colors flex items-center gap-1 text-[#155e3e]"
-            >
-              <Globe className="size-3.5" />
-              <span>Web App</span>
-            </a>
-            <a href="#features" className="hover:text-[#00110a] transition-colors">
-              Study Features
-            </a>
-            <a href="#calculator" className="hover:text-[#00110a] transition-colors">
-              Earn SyllaPoints
-            </a>
-            <a href="#faq" className="hover:text-[#00110a] transition-colors">
-              FAQ
-            </a>
+          {/* Desktop Navigation with Smooth Pill Hover */}
+          <nav aria-label="Main" className="hidden lg:block">
+            <ul className="flex items-center gap-1 text-[13px] font-medium text-slate-600 dark:text-slate-300">
+              <li>
+                <a
+                  href="#showcase"
+                  className="rounded-full px-4 py-2 transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white"
+                >
+                  Features & AI
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#bento"
+                  className="rounded-full px-4 py-2 transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white"
+                >
+                  Academic Suite
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#calculator"
+                  className="rounded-full px-4 py-2 transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white"
+                >
+                  SyllaPoints
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#pwa"
+                  className="rounded-full px-4 py-2 transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white"
+                >
+                  PWA Install
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#faq"
+                  className="rounded-full px-4 py-2 transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white"
+                >
+                  FAQ
+                </a>
+              </li>
+            </ul>
           </nav>
 
-          <div className="flex items-center gap-2.5">
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-3">
             <InstallButton
-              showDropdown
               variant="default"
               size="sm"
-              className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] text-xs h-9 px-4 font-semibold shadow-xs"
+              className="rounded-full bg-[#0d281e] text-white hover:bg-black dark:bg-emerald-500 dark:text-black dark:hover:bg-emerald-400 text-xs h-9 px-4.5 font-bold shadow-xs"
             />
             {user ? (
               <Button
                 asChild
                 size="sm"
                 variant="outline"
-                className="rounded-full text-xs h-9 border-[#d6e3db] bg-white hover:bg-[#edf6f0]"
+                className="rounded-full text-xs h-9 border-black/[0.1] dark:border-white/[0.12] bg-white dark:bg-[#111915] font-semibold"
               >
                 <Link to="/dashboard">Dashboard</Link>
               </Button>
@@ -208,10 +242,10 @@ function HomePage() {
                 asChild
                 size="sm"
                 variant="ghost"
-                className="rounded-full text-xs h-9 text-[#375a4a] hover:text-[#00110a] hover:bg-[#e7f2eb]"
+                className="rounded-full text-xs h-9 text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] font-semibold"
               >
                 <Link to="/auth" search={{ mode: "signin" }}>
-                  Log In
+                  Sign In
                 </Link>
               </Button>
             )}
@@ -219,890 +253,624 @@ function HomePage() {
         </div>
       </header>
 
-      <main>
-        {/* Hero Section */}
-        <section className="relative pt-14 pb-20 sm:pt-20 sm:pb-28 border-b border-[#e1eae3] overflow-hidden">
-          {/* Subtle Ambient Glows */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-gradient-to-b from-[#1b7a4e]/10 to-transparent blur-3xl opacity-70"
-          />
+      {/* ── Main Content Container ───────────────────────────────────── */}
+      <main className="w-full overflow-x-clip px-3 sm:px-5 pb-16 pt-3 sm:pt-4">
+        <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-16 sm:gap-24 desktop:gap-28">
 
-          <div className="relative mx-auto max-w-5xl px-4 text-center sm:px-6">
-            {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#d6e3db] shadow-2xs text-[#155e3e] text-xs font-semibold mb-6 animate-fade-in">
-              <Sparkles className="size-3.5 text-[#155e3e]" />
-              <span>Available for Android (.APK), Windows PC (.EXE) & iOS</span>
+          {/* ── HERO SECTION (Trust Wallet Signature Hero Container) ─── */}
+          <section className="relative flex w-full flex-col items-center overflow-hidden rounded-3xl sm:rounded-[36px] bg-[#edf3ef] dark:bg-[#0d1611] border border-black/[0.04] dark:border-white/[0.06] px-5 pt-12 sm:px-10 sm:pt-20 desktop:pt-24 pb-6 sm:pb-12 text-center">
+            {/* Dynamic Ambient Glow Behind Hero */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[720px] h-[400px] bg-gradient-to-b from-emerald-500/25 via-emerald-600/10 to-transparent blur-3xl opacity-80 animate-v2-glow"
+            />
+
+            {/* Social Proof Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-white/10 border border-black/[0.06] dark:border-white/10 shadow-xs text-emerald-800 dark:text-emerald-300 text-xs font-semibold mb-6 animate-v2-enter">
+              <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>The Academic Companion You Control · 200+ Nigerian Universities</span>
             </div>
 
-            {/* Main Headline */}
-            <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-[#00110a] leading-[1.08]">
-              The Pocket Study App <br />
-              <span className="font-normal text-[#155e3e] italic">
-                Built for Your Campus.
+            {/* Main Headline with Tight Tracking */}
+            <h1 className="max-w-[840px] font-display text-4xl sm:text-6xl lg:text-7xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white leading-[1.06] [text-wrap:balance] animate-v2-enter">
+              Your university syllabus. <br className="hidden sm:inline" />
+              <span className="text-emerald-700 dark:text-emerald-400 font-normal italic">
+                Unified, verified & alive.
               </span>
             </h1>
 
             {/* Sub-headline */}
-            <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg text-[#3f4d45] leading-relaxed">
-              Find verified lecture summaries, past questions, and marking guides tailored
-              to your university syllabus. Prepare effortlessly with <strong>Boss AI</strong>,
-              and earn cashable <strong>SyllaPoints</strong> every time classmates study your uploads.
+            <p className="mt-5 sm:mt-6 max-w-[620px] text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed [text-wrap:pretty] animate-v2-enter">
+              Syllaboss is an all-in-one academic study companion for iOS, Android and desktop browsers.
+              Explore peer-reviewed course dossiers, practice past examinations, and derive complex formulas
+              step-by-step with <strong>Boss AI</strong> — right on your device.
             </p>
 
             {/* Primary Action Buttons */}
-            <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto animate-v2-enter">
               <InstallButton
                 size="lg"
-                className="w-full sm:w-auto h-12.5 rounded-full bg-[#0d281e] hover:bg-[#00110a] text-white text-sm sm:text-base font-bold px-8 shadow-sm transition-all hover:scale-[1.01]"
+                className="w-full sm:w-auto h-12.5 rounded-full bg-[#0d281e] hover:bg-black dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-black text-white text-sm sm:text-base font-bold px-8 shadow-lg shadow-emerald-950/20 active:scale-[0.98] transition-all"
               />
               <Button
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto h-12.5 rounded-full border-[#d2e0d7] bg-white hover:bg-[#edf6f0] text-[#00110a] text-sm font-semibold px-6 shadow-2xs"
+                className="w-full sm:w-auto h-12.5 rounded-full border-black/[0.1] dark:border-white/[0.15] bg-white dark:bg-card/80 hover:bg-slate-100 dark:hover:bg-card text-foreground text-sm font-semibold px-7 shadow-xs active:scale-[0.98] transition-all"
               >
                 <Link to="/auth" search={{ mode: "signin" }}>
-                  Sign In to Web <ArrowRight className="size-4 ml-1.5" />
+                  <span>Launch Web App</span>
+                  <ArrowRight className="size-4 ml-1.5" />
                 </Link>
               </Button>
             </div>
 
-            {/* Micro Device Badges */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-[#526359]">
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <AndroidOutlineIcon className="size-4 text-[#1b7a4e]" />
-                Android (.APK)
-              </span>
-              <span className="text-[#c1d3c7]">•</span>
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <WindowsOutlineIcon className="size-4 text-[#1f66a8]" />
-                Windows (.EXE)
-              </span>
-              <span className="text-[#c1d3c7]">•</span>
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <AppleOutlineIcon className="size-4 text-[#202924]" />
-                Apple iOS (Safari)
-              </span>
-            </div>
-
-            {/* Ultra-Lifelike Flagship iPhone 16 Pro Showcase */}
-            <div className="mt-14 mx-auto max-w-sm sm:max-w-md relative flex justify-center">
-              {/* Vibrant Ambient Glow Backdrop */}
+            {/* ── High-Res Hero Mockup with Trust Wallet Floating Physics ── */}
+            <div className="relative mt-8 sm:mt-12 w-full flex justify-center items-center">
+              {/* Soft Ground Shadow */}
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 -top-10 bg-gradient-to-b from-[#1b7a4e]/25 via-[#155e3e]/15 to-transparent blur-3xl rounded-full scale-125"
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[320px] sm:w-[420px] h-12 bg-black/15 blur-2xl rounded-full pointer-events-none"
               />
+              <img
+                src="/hero-mockup.png"
+                alt="Syllaboss University Library on Mobile"
+                className="animate-v2-float relative z-10 w-full max-w-[340px] sm:max-w-[440px] desktop:max-w-[500px] h-auto object-contain drop-shadow-[0_20px_50px_rgba(0,17,10,0.22)] select-none pointer-events-none"
+              />
+            </div>
 
-              {/* iPhone 16 Pro Precision Titanium Chassis */}
-              <div className="relative w-[360px] sm:w-[385px] h-[780px] sm:h-[824px] rounded-[54px] sm:rounded-[58px] p-3 sm:p-3.5 bg-gradient-to-b from-[#262f29] via-[#141a16] to-[#0a0f0c] shadow-[0_30px_90px_-20px_rgba(0,17,10,0.55),0_0_0_1px_rgba(255,255,255,0.18),0_0_0_7px_#121714,0_0_0_8px_rgba(255,255,255,0.06)] border border-white/10 flex flex-col">
-                {/* Physical Hardware Controls (Left Side) */}
-                {/* Action Button */}
-                <div className="absolute -left-2 top-24 w-1 h-7 bg-[#242d27] rounded-l-md shadow-xs border-l border-white/10" />
-                {/* Volume Up */}
-                <div className="absolute -left-2 top-35 w-1 h-13 bg-[#242d27] rounded-l-md shadow-xs border-l border-white/10" />
-                {/* Volume Down */}
-                <div className="absolute -left-2 top-51 w-1 h-13 bg-[#242d27] rounded-l-md shadow-xs border-l border-white/10" />
-
-                {/* Physical Hardware Controls (Right Side) */}
-                {/* Side / Power Button */}
-                <div className="absolute -right-2 top-32 w-1 h-18 bg-[#242d27] rounded-r-md shadow-xs border-r border-white/10" />
-                {/* Camera Control Capacitive Slider */}
-                <div className="absolute -right-2 top-56 w-1 h-15 bg-[#1b221d] rounded-r-md shadow-xs border-r border-white/15" />
-
-                {/* iPhone Screen Glass Frame */}
-                <div className="relative flex-1 rounded-[44px] sm:rounded-[48px] bg-[#f7f2e6] overflow-hidden border border-black/40 shadow-inner flex flex-col text-left select-none">
-                  {/* Specular Diagonal Light Glare on Glass */}
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -inset-full bg-gradient-to-tr from-transparent via-white/[0.04] to-white/[0.14] rotate-12 z-40"
-                  />
-
-                  {/* iOS Status Bar with Dynamic Island */}
-                  <div className="relative pt-3 px-6 pb-2 flex items-center justify-between text-[11.5px] font-semibold text-[#1c2a22] z-30 shrink-0 bg-[#f7f2e6]/95 backdrop-blur-sm border-b border-[#ebdcca]/50">
-                    <span className="font-semibold tracking-tight">9:41</span>
-
-                    {/* Interactive Dynamic Island */}
-                    <div className="absolute left-1/2 -translate-x-1/2 top-2.5 h-6.5 w-29 bg-black rounded-full flex items-center justify-between px-2.5 shadow-md">
-                      {/* TrueDepth Front Camera with deep reflection */}
-                      <div className="size-2.5 rounded-full bg-[#0d1611] ring-1 ring-[#223328]/60 flex items-center justify-center">
-                        <div className="size-1 rounded-full bg-[#1b7a4e]/40" />
-                      </div>
-                      {/* Live Study Activity Micro Waveform */}
-                      <div className="flex items-center gap-0.5 opacity-90">
-                        <span className="w-0.5 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                        <span className="w-0.5 h-3 bg-emerald-400 rounded-full animate-pulse delay-75" />
-                        <span className="w-0.5 h-1.5 bg-emerald-400 rounded-full animate-pulse delay-150" />
-                      </div>
-                      {/* Ambient Light Sensor */}
-                      <div className="size-2 rounded-full bg-[#070b09]" />
-                    </div>
-
-                    {/* Status Icons: Cellular, Wi-Fi, Battery */}
-                    <div className="flex items-center gap-1.5 opacity-90">
-                      <span className="text-[10px] font-bold">5G</span>
-                      <svg className="w-3.5 h-3 fill-current" viewBox="0 0 16 12">
-                        <rect x="0" y="8" width="2.5" height="4" rx="0.5" />
-                        <rect x="4" y="5.5" width="2.5" height="6.5" rx="0.5" />
-                        <rect x="8" y="3" width="2.5" height="9" rx="0.5" />
-                        <rect x="12" y="0.5" width="2.5" height="11.5" rx="0.5" />
-                      </svg>
-                      {/* Battery Capsule with 96% Fill */}
-                      <div className="w-5.5 h-2.5 rounded-sm border border-current p-0.5 flex items-center">
-                        <div className="w-[92%] h-full bg-[#155e3e] rounded-2xs" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Top App Header */}
-                  <div className="px-4 py-2 flex items-center justify-between border-b border-[#e5ded0] bg-white/70 backdrop-blur-xs shrink-0 z-20">
-                    <div className="flex items-center gap-2">
-                      <SyllabossEmblem className="size-7" />
-                      <div>
-                        <span className="font-headline font-bold text-sm tracking-tight text-[#00110a] block leading-none">
-                          Syllaboss
-                        </span>
-                        <span className="text-[9.5px] font-medium text-[#526359] block mt-0.5">
-                          UNILAG • 300L Comp Sci
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {/* SyllaPoints Live Balance Chip */}
-                      <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 text-[11px] font-bold shadow-2xs">
-                        <Coins className="size-3 text-emerald-700" />
-                        <span>2,450 pts</span>
-                      </div>
-                      <div className="size-7 rounded-full bg-white border border-[#d8d0c0] flex items-center justify-center text-[#526359] shadow-2xs">
-                        <Bell className="size-3.5" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Scrollable Authentic App Content Body */}
-                  <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-2.5 font-sans [&::-webkit-scrollbar]:hidden">
-                    {/* Welcome Banner Card */}
-                    <div className="p-3 rounded-2xl bg-gradient-to-br from-white to-[#f0f6f2] border border-[#d9e5dc] shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-[#00110a] flex items-center gap-1.5">
-                          <span>Good morning, David</span>
-                          <span className="text-[11px]">👋</span>
-                        </h3>
-                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[9.5px] font-bold uppercase tracking-wider border border-amber-200">
-                          ✦ SyllaPlus (1.3x)
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-[#526359] mt-0.5">
-                        First Semester 2025/2026 • 6 Courses Enrolled
-                      </p>
-                    </div>
-
-                    {/* Boss AI Instant Search / Prompt Bar */}
-                    <div className="relative">
-                      <div className="h-9 w-full rounded-xl bg-white border border-[#ded5c4] shadow-2xs flex items-center px-2.5 gap-2 text-[#526359]">
-                        <Search className="size-3.5 text-[#155e3e]" />
-                        <span className="text-[10.5px] text-[#6b7d72] truncate">
-                          Search courses, past questions, or ask Boss AI...
-                        </span>
-                        <div className="ml-auto size-5 rounded-md bg-[#edf6f0] text-[#155e3e] flex items-center justify-center">
-                          <Bot className="size-3" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Active Course Card (Operating Systems) */}
-                    <div className="p-3 rounded-2xl bg-white border border-[#ded5c4] shadow-2xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] font-bold uppercase tracking-wider text-[#155e3e] flex items-center gap-1">
-                          <CheckCircle2 className="size-3 text-[#155e3e]" />
-                          Current Active Course
-                        </span>
-                        <span className="text-[10px] font-mono font-bold text-[#155e3e] bg-[#edf6f0] px-1.5 py-0.5 rounded">
-                          CSC 301
-                        </span>
-                      </div>
-                      <div>
-                        <h4 className="text-[11.5px] font-bold text-[#00110a] leading-tight">
-                          Operating Systems & Concurrency
-                        </h4>
-                        <p className="text-[9.5px] text-[#526359] mt-0.5">
-                          Lecturer: Dr. Adeyemi • 14 Summaries • 8 Past Questions
-                        </p>
-                      </div>
-                      <div className="space-y-1 pt-0.5">
-                        <div className="w-full bg-[#e8e1d3] h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-gradient-to-r from-[#155e3e] to-[#259b66] h-full w-[84%] rounded-full" />
-                        </div>
-                        <div className="flex items-center justify-between text-[9.5px] text-[#526359]">
-                          <span>Verified Syllabus Progress</span>
-                          <span className="font-bold text-[#155e3e]">84% Completed</span>
-                        </div>
-                      </div>
-                      <div className="pt-1 flex items-center justify-between border-t border-[#f0ebd9]">
-                        <span className="text-[9.5px] font-semibold text-[#00110a] flex items-center gap-1">
-                          <Flame className="size-3 text-orange-500" /> Exam in 18 Days
-                        </span>
-                        <span className="text-[9.5px] font-bold text-[#155e3e] bg-[#edf6f0] px-2 py-0.5 rounded-full">
-                          Continue Study →
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Boss AI Exam Radar Card */}
-                    <div className="p-3 rounded-2xl bg-[#f0f7f3] border border-[#cbe4d4] space-y-2 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <div className="size-5.5 rounded-lg bg-[#155e3e] text-white flex items-center justify-center">
-                            <Bot className="size-3.5" />
-                          </div>
-                          <div>
-                            <span className="text-[11px] font-bold text-[#00110a] block leading-none">
-                              Boss AI Exam Radar
-                            </span>
-                            <span className="text-[9px] text-[#155e3e] font-semibold">
-                              3 High-Yield Topics Detected
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[9px] bg-[#d7ece0] text-[#114b32] px-1.5 py-0.5 rounded font-bold">
-                          98% Match
-                        </span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-white/95 border border-[#d6e9dc] text-[10px] text-[#2c3d33] leading-snug space-y-1">
-                        <p className="font-bold text-[#00110a]">
-                          "Predicted Theory Questions (2019–2024 Analysis):"
-                        </p>
-                        <p className="text-[9px] text-[#44574c] leading-tight">
-                          1. Round-Robin vs Multi-Level Feedback Queue scheduling (4 appearances)
-                          <br />
-                          2. Banker's Algorithm for deadlock avoidance (3 appearances)
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Quick Course Grid */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2.5 rounded-xl bg-white border border-[#ded5c4] shadow-2xs space-y-1">
-                        <span className="text-[9px] font-mono font-bold text-[#155e3e] bg-[#edf6f0] px-1.5 py-0.5 rounded">
-                          GST 111
-                        </span>
-                        <h5 className="text-[10px] font-bold text-[#00110a] leading-tight">
-                          Syntax & Morphology
-                        </h5>
-                        <p className="text-[8.5px] text-[#526359]">12 Summaries • Verified</p>
-                      </div>
-
-                      <div className="p-2.5 rounded-xl bg-white border border-[#ded5c4] shadow-2xs space-y-1">
-                        <span className="text-[9px] font-mono font-bold text-[#1f66a8] bg-[#edf3f8] px-1.5 py-0.5 rounded">
-                          MTH 101
-                        </span>
-                        <h5 className="text-[10px] font-bold text-[#00110a] leading-tight">
-                          Calculus & Vectors
-                        </h5>
-                        <p className="text-[8.5px] text-[#526359]">24 Past Questions</p>
-                      </div>
-                    </div>
-
-                    {/* Earnings Micro-Card */}
-                    <div className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex items-center justify-between shadow-xs">
-                      <div className="flex items-center gap-1.5">
-                        <Coins className="size-3.5 text-amber-300" />
-                        <div>
-                          <span className="text-[9.5px] font-bold block leading-none">
-                            +150 SyllaPoints Earned Today
-                          </span>
-                          <span className="text-[8px] text-emerald-200 block mt-0.5">
-                            3 classmates downloaded your CSC 301 note
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded font-mono font-bold">
-                        Cashout ₦
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Authentic App Bottom Navigation Bar */}
-                  <div className="px-3 pt-2 pb-1.5 bg-white border-t border-[#e2d9c9] flex items-center justify-around shrink-0 z-20">
-                    <div className="flex flex-col items-center gap-0.5 text-[#155e3e]">
-                      <Home className="size-4" />
-                      <span className="text-[9px] font-bold">Home</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5 text-[#6b7d72]">
-                      <BookOpen className="size-4" />
-                      <span className="text-[9px] font-medium">Library</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5 text-[#155e3e] relative -top-1">
-                      <div className="size-7 rounded-full bg-[#155e3e] text-white flex items-center justify-center shadow-xs">
-                        <Bot className="size-4" />
-                      </div>
-                      <span className="text-[9px] font-bold text-[#155e3e]">Boss AI</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5 text-[#6b7d72]">
-                      <Trophy className="size-4" />
-                      <span className="text-[9px] font-medium">Rankings</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5 text-[#6b7d72]">
-                      <Wallet className="size-4" />
-                      <span className="text-[9px] font-medium">Wallet</span>
-                    </div>
-                  </div>
-
-                  {/* iOS Home Indicator Bar */}
-                  <div className="pb-2 pt-1 bg-white flex justify-center shrink-0">
-                    <div className="w-32 h-1 bg-black/40 rounded-full" />
-                  </div>
+            {/* Social Proof / Rating Badges */}
+            <div className="mt-6 pt-6 border-t border-black/[0.06] dark:border-white/[0.08] w-full flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-2">
+                <div className="flex text-amber-500">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="size-3.5 fill-current" />
+                  ))}
                 </div>
+                <span className="font-bold text-slate-900 dark:text-white">4.9 / 5</span>
+                <span>Student Rating</span>
+              </div>
+              <div className="flex items-center gap-1.5 font-medium">
+                <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <span>NUC CCMAS Standardized</span>
+              </div>
+              <div className="flex items-center gap-1.5 font-medium">
+                <Sparkles className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Zero APK / EXE Installers Needed</span>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Dedicated Multi-Device Download Hub */}
-        <section id="downloads" className="py-20 sm:py-24 bg-white border-b border-[#e1eae3]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto mb-14">
-              <span className="text-xs font-semibold text-[#155e3e] uppercase tracking-wider">
-                Install On Every Device
-              </span>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl font-bold text-[#00110a]">
-                Direct Downloads. Zero App Store Restrictions.
+          {/* ── BENTO GRID: "Every move you make in your studies. One app." ── */}
+          <section id="bento" className="w-full flex flex-col items-center gap-10 sm:gap-14">
+            <div className="text-center max-w-[620px] space-y-3">
+              <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white [text-wrap:balance]">
+                Every move you make in your studies. One app.
               </h2>
-              <p className="mt-3 text-sm text-[#3f4d45]">
-                Download standalone installers directly to your PC and Android phone, or run
-                fullscreen on iOS via Safari.
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                Everything required to conquer semester exams, laboratory reports, and assignments
+                organized into a unified, distraction-free environment.
               </p>
             </div>
 
-            {/* Multi-Device & Web Hub Cards */}
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto">
-              {/* Card 1: Android (.APK) */}
-              <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#155e3e] transition-all">
+            {/* Trust Wallet Style Bento Tiles */}
+            <div className="grid w-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {/* Tile 1: University Library */}
+              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="size-12 rounded-2xl bg-[#edf6f0] border border-[#d6e3db] flex items-center justify-center text-[#155e3e]">
-                      <AndroidOutlineIcon className="size-6 text-[#155e3e]" />
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
-                      Direct .APK
-                    </span>
+                  <div className="size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 mb-6">
+                    <BookOpen className="size-6" />
                   </div>
-
-                  <h3 className="font-display text-xl font-bold text-[#00110a]">
-                    Android Phone & Tablet
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    University Library
                   </h3>
-                  <p className="text-xs text-[#526359] mt-1">
-                    Samsung, Tecno, Infinix, Xiaomi, Redmi, Pixel, Oppo, Vivo.
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Peer-reviewed course summaries, syllabus outlines, and high-yield study dossiers
+                    authored across accredited faculties.
                   </p>
-
-                  <ul className="mt-5 space-y-2 text-xs text-[#3f4d45]">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
-                      <span>Lightweight ~900 KB standalone package</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
-                      <span>Instant 1-tap download & install</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
-                      <span>Works seamlessly offline for study</span>
-                    </li>
-                  </ul>
                 </div>
-
-                <div className="mt-6 pt-4 border-t border-[#e1eae3] space-y-2">
-                  <Button
-                    className="w-full h-11 rounded-2xl bg-[#155e3e] hover:bg-[#0b3321] text-white font-bold gap-2 text-sm shadow-xs"
-                    onClick={() => handleTriggerDownload("android")}
-                  >
-                    <Download className="size-4.5" />
-                    Download Syllaboss.apk
-                  </Button>
-                  <p className="text-[10px] text-center text-[#526359]">
-                    Tip: If updating, remove any older shortcut before installing.
-                  </p>
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                  <span>100L – 500L Coverage</span>
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
               </div>
 
-              {/* Card 2: Windows (.EXE) */}
-              <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#1f66a8] transition-all">
+              {/* Tile 2: Boss AI Step-by-Step Derivations */}
+              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="size-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#1f66a8]">
-                      <WindowsOutlineIcon className="size-6 text-[#1f66a8]" />
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold uppercase tracking-wider">
-                      .EXE Setup
-                    </span>
+                  <div className="size-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/50 flex items-center justify-center text-blue-700 dark:text-blue-400 mb-6">
+                    <Bot className="size-6" />
                   </div>
-
-                  <h3 className="font-display text-xl font-bold text-[#00110a]">
-                    Windows 10 & 11 PC
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    Boss AI Reasoning
                   </h3>
-                  <p className="text-xs text-[#526359] mt-1">
-                    Standalone 64-bit desktop application for laptops & PCs.
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    LaTeX formula derivations, mechanism kinematic loop equations, and exam-grade
+                    breakdowns rendered cleanly with KaTeX typography.
                   </p>
-
-                  <ul className="mt-5 space-y-2 text-xs text-[#3f4d45]">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#1f66a8] shrink-0" />
-                      <span>Generates Desktop & Start Menu shortcuts</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#1f66a8] shrink-0" />
-                      <span>Runs in a dedicated distraction-free window</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#1f66a8] shrink-0" />
-                      <span>Ultra-lightweight setup executable (~8.7 KB)</span>
-                    </li>
-                  </ul>
                 </div>
-
-                <div className="mt-6 pt-4 border-t border-[#e1eae3] space-y-2">
-                  <Button
-                    className="w-full h-11 rounded-2xl bg-[#1f66a8] hover:bg-[#154673] text-white font-bold gap-2 text-sm shadow-xs"
-                    onClick={() => handleTriggerDownload("windows")}
-                  >
-                    <Download className="size-4.5" />
-                    Download Syllaboss-Setup.msi
-                  </Button>
-                  <p className="text-[10px] text-center text-[#526359]">
-                    Compatible with Windows 10 and Windows 11.
-                  </p>
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-semibold text-blue-700 dark:text-blue-400">
+                  <span>Standard LaTeX Math</span>
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
               </div>
 
-              {/* Card 3: Apple iOS */}
-              <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#00110a] transition-all">
+              {/* Tile 3: Authentic Past Questions */}
+              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="size-12 rounded-2xl bg-[#edf1ee] border border-[#d6e0d8] flex items-center justify-center text-[#00110a]">
-                      <AppleOutlineIcon className="size-6 text-[#00110a]" />
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-neutral-200 text-neutral-800 text-[10px] font-bold uppercase tracking-wider">
-                      Safari PWA
-                    </span>
+                  <div className="size-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center text-amber-700 dark:text-amber-400 mb-6">
+                    <FileText className="size-6" />
                   </div>
-
-                  <h3 className="font-display text-xl font-bold text-[#00110a]">
-                    iPhone & iPad (iOS)
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    Solved Past Exams
                   </h3>
-                  <p className="text-xs text-[#526359] mt-1">
-                    Direct Safari Home Screen install. Zero Apple App Store needed.
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Real past examination papers from universities across Nigeria with verified model
+                    answers to master your lecturer's questioning style.
                   </p>
-
-                  <ul className="mt-5 space-y-2 text-xs text-[#3f4d45]">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#00110a] shrink-0" />
-                      <span>Opens in Safari & tap Share button</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#00110a] shrink-0" />
-                      <span>Select "Add to Home Screen"</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#00110a] shrink-0" />
-                      <span>Launches fullscreen with home icon</span>
-                    </li>
-                  </ul>
                 </div>
-
-                <div className="mt-6 pt-4 border-t border-[#e1eae3] space-y-2">
-                  <InstallButton
-                    variant="outline"
-                    className="w-full h-11 rounded-2xl border-[#00110a] text-[#00110a] hover:bg-[#edf6f0] font-bold text-sm"
-                    label="View iOS Install Guide"
-                    showDropdown={false}
-                  />
-                  <p className="text-[10px] text-center text-[#526359]">
-                    Works on all iPhones and iPads running iOS 14+.
-                  </p>
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  <span>Verified Marking Keys</span>
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
               </div>
 
-              {/* Card 4: Syllaboss Web (Browser) */}
-              <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#155e3e] transition-all">
+              {/* Tile 4: SyllaPoints Cashable Rewards */}
+              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="size-12 rounded-2xl bg-[#edf6f0] border border-[#d6e3db] flex items-center justify-center text-[#155e3e]">
-                      <Globe className="size-6 text-[#155e3e]" />
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
-                      Instant Web
-                    </span>
+                  <div className="size-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/50 flex items-center justify-center text-purple-700 dark:text-purple-400 mb-6">
+                    <Coins className="size-6" />
                   </div>
-
-                  <h3 className="font-display text-xl font-bold text-[#00110a]">
-                    Syllaboss Web
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    Cashable Rewards
                   </h3>
-                  <p className="text-xs text-[#526359] mt-1">
-                    web.syllaboss.org for all desktop, laptop & tablet browsers.
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Earn 25 SyllaPoints for every uploaded document. Withdraw cash directly to your
+                    bank account once you reach the withdrawal threshold.
                   </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-semibold text-purple-700 dark:text-purple-400">
+                  <span>Direct Bank Payouts</span>
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                </div>
+              </div>
 
-                  <ul className="mt-5 space-y-2 text-xs text-[#3f4d45]">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
-                      <span>Zero installation required</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
-                      <span>Chrome, Edge, Firefox, Safari</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
-                      <span>Instant sync across all your devices</span>
-                    </li>
-                  </ul>
+              {/* Tile 5: Offline-First PWA */}
+              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
+                <div>
+                  <div className="size-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/50 flex items-center justify-center text-teal-700 dark:text-teal-400 mb-6">
+                    <Zap className="size-6" />
+                  </div>
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    Zero Installation Hassle
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    No APK permissions, no MSI installers, and no App Store delays. Add to home screen
+                    in 2 taps and study anywhere with automated updates.
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-semibold text-teal-700 dark:text-teal-400">
+                  <span>Works Across All OS</span>
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                </div>
+              </div>
+
+              {/* Tile 6: Academic Integrity Guard */}
+              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
+                <div>
+                  <div className="size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 mb-6">
+                    <ShieldCheck className="size-6" />
+                  </div>
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    Zero Intrusive Popups
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Pure, focused reading with zero shady popunder redirects or spam. Built with care
+                    for serious exam candidates.
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                  <span>Distraction-Free Study</span>
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── INTERACTIVE SHOWCASE (Trust Wallet Style Tabbed Showcase) ─ */}
+          <section id="showcase" className="w-full flex flex-col items-center gap-10 sm:gap-14">
+            <div className="text-center max-w-[640px] space-y-3">
+              <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white [text-wrap:balance]">
+                Study, derive and conquer from one place
+              </h2>
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                Switch between study modes effortlessly. Discover how Syllaboss powers your daily
+                academic preparation.
+              </p>
+            </div>
+
+            <div className="w-full flex flex-col lg:flex-row items-stretch gap-8 lg:gap-12 rounded-3xl sm:rounded-[36px] bg-white dark:bg-[#111915] p-6 sm:p-10 border border-slate-200/80 dark:border-white/5 shadow-sm">
+              {/* Left Column: Interactive Visual Card */}
+              <div className="flex-1 rounded-2xl sm:rounded-3xl bg-[#f2f6f3] dark:bg-[#0d1611] p-6 sm:p-8 flex flex-col justify-between border border-black/[0.04] dark:border-white/[0.06] relative overflow-hidden min-h-[380px]">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold mb-4">
+                    <Sparkles className="size-3.5" />
+                    <span>{SHOWCASE_TABS[activeShowcase].badge}</span>
+                  </div>
+                  <h3 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    {SHOWCASE_TABS[activeShowcase].title}
+                  </h3>
+                  <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed max-w-[480px]">
+                    {SHOWCASE_TABS[activeShowcase].description}
+                  </p>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-[#e1eae3] space-y-2">
+                {/* Highlights List */}
+                <div className="mt-8 space-y-2.5">
+                  {SHOWCASE_TABS[activeShowcase].highlights.map((h, i) => (
+                    <div key={i} className="flex items-center gap-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200">
+                      <div className="size-5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Check className="size-3 stroke-[2.5]" />
+                      </div>
+                      <span>{h}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-8 pt-4 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
+                    {SHOWCASE_TABS[activeShowcase].metric}
+                  </span>
                   <Button
                     asChild
-                    className="w-full h-11 rounded-2xl bg-[#0d281e] hover:bg-[#00110a] text-white font-bold gap-2 text-sm shadow-xs"
+                    size="sm"
+                    className="rounded-full bg-[#0d281e] text-white hover:bg-black dark:bg-emerald-500 dark:text-black font-semibold text-xs px-4"
                   >
-                    <a href="https://web.syllaboss.org/dashboard">
-                      Launch Web App →
-                    </a>
+                    <Link to="/dashboard">Try in App &rarr;</Link>
                   </Button>
-                  <p className="text-[10px] text-center text-[#526359]">
-                    Access directly at web.syllaboss.org
-                  </p>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
 
-        {/* Feature Grid: The 3 Pillars */}
-        <section id="features" className="py-20 sm:py-24 border-b border-[#e1eae3]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto mb-14">
-              <span className="text-xs font-semibold text-[#155e3e] uppercase tracking-wider">
-                Why Students Excel With Syllaboss
-              </span>
-              <h2 className="mt-2 font-display text-3xl sm:text-4xl font-bold text-[#00110a]">
-                Everything You Need to Pass Your Semester
+              {/* Right Column: Interactive Switcher List */}
+              <div className="lg:w-[420px] flex flex-col justify-center space-y-2">
+                {SHOWCASE_TABS.map((tab, idx) => {
+                  const Icon = tab.icon;
+                  const isActive = activeShowcase === idx;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveShowcase(idx)}
+                      className={`w-full text-left p-5 rounded-2xl transition-all duration-300 flex items-start gap-4 border ${
+                        isActive
+                          ? "bg-[#edf3ef] dark:bg-[#16221c] border-emerald-500/30 shadow-xs"
+                          : "border-transparent hover:bg-slate-50 dark:hover:bg-white/[0.03] opacity-75 hover:opacity-100"
+                      }`}
+                    >
+                      <div
+                        className={`size-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                          isActive
+                            ? "bg-[#0d281e] text-white dark:bg-emerald-500 dark:text-black"
+                            : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400"
+                        }`}
+                      >
+                        <Icon className="size-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-display font-bold text-base text-slate-900 dark:text-white">
+                            {tab.title}
+                          </h4>
+                          {isActive && (
+                            <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                          {tab.description}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* ── CLEAN PWA CROSS-DEVICE SECTION ─────────────────────────── */}
+          <section id="pwa" className="w-full flex flex-col items-center gap-10 sm:gap-14">
+            <div className="text-center max-w-[620px] space-y-3">
+              <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white [text-wrap:balance]">
+                Available on iOS, Android & Desktop. One seamless PWA.
               </h2>
-              <p className="mt-3 text-sm text-[#3f4d45]">
-                No more frantic searches across WhatsApp groups the night before an examination.
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                Enjoy instant startup, automated background syncing, and full offline caching without
+                app store restrictions.
               </p>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                [
-                  FileSearch,
-                  "Verified Course Notes & Past Questions",
-                  "Vetted lecture notes, solved past examination questions, and marking schemes organized cleanly by university, department, and course code.",
-                ],
-                [
-                  Bot,
-                  "Boss AI Examination Companion",
-                  "Chat directly with lengthy PDF slides, generate chapter summaries, quiz yourself with active recall cards, and solve calculation steps.",
-                ],
-                [
-                  Coins,
-                  "Cashable Student SyllaPoints",
-                  "Earn points on sign up, reading notes, and every time classmates study materials you upload. Cash out straight to your Nigerian bank account.",
-                ],
-                [
-                  ShieldCheck,
-                  "Automated Quality Verification",
-                  "Every uploaded document is automatically audited against your course curriculum to guarantee clear text, correct chapters, and zero spam.",
-                ],
-                [
-                  Wallet,
-                  "Instant Direct Bank Transfers",
-                  `Withdraw your earned royalties anytime your balance hits ${formatNaira(MINIMUM_WITHDRAWAL_NAIRA)}. Instant payouts to Kuda, OPay, GTB, Zenith, and all Nigerian banks.`,
-                ],
-                [
-                  GraduationCap,
-                  "Campus Syllabus Alignment",
-                  "Track topic-by-topic syllabus coverage before examination week so you know exactly what topics have been taught and what will be tested.",
-                ],
-              ].map(([Icon, title, desc]) => {
-                const I = Icon as typeof FileSearch;
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-[1100px]">
+              {/* PWA Card 1: Mobile (iOS & Android) */}
+              <div className="flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-8 sm:p-10 border border-slate-200/80 dark:border-white/5 shadow-xs">
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="size-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center text-amber-600">
+                      <AppleOutlineIcon className="size-6" />
+                    </div>
+                    <div className="size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center text-emerald-600">
+                      <AndroidOutlineIcon className="size-6" />
+                    </div>
+                  </div>
+
+                  <h3 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
+                    iPhone, iPad & Android Phones
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Install in two taps without downloading heavy app store packages. Runs fullscreen
+                    with fluid gestures and zero battery drain.
+                  </p>
+
+                  <ul className="mt-6 space-y-2.5 text-xs text-slate-700 dark:text-slate-300">
+                    <li className="flex items-center gap-2">
+                      <Check className="size-3.5 text-emerald-600 shrink-0" />
+                      <span>Safari on iOS: Tap Share &rarr; "Add to Home Screen"</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="size-3.5 text-emerald-600 shrink-0" />
+                      <span>Chrome on Android: 1-tap "Install App" prompt</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="size-3.5 text-emerald-600 shrink-0" />
+                      <span>Instant offline study mode for erratic campus Wi-Fi</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-white/5">
+                  <InstallButton
+                    className="w-full h-11 rounded-full bg-[#0d281e] text-white hover:bg-black dark:bg-emerald-500 dark:text-black font-semibold text-xs"
+                    label="Install on Mobile Now"
+                  />
+                </div>
+              </div>
+
+              {/* PWA Card 2: Desktop (Windows, Mac & Linux) */}
+              <div className="flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-8 sm:p-10 border border-slate-200/80 dark:border-white/5 shadow-xs">
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="size-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/50 flex items-center justify-center text-blue-600">
+                      <WindowsOutlineIcon className="size-6" />
+                    </div>
+                    <div className="size-12 rounded-2xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300">
+                      <Laptop className="size-6" />
+                    </div>
+                  </div>
+
+                  <h3 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
+                    Windows, Mac & Laptop Browsers
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Operates in a dedicated, distraction-free desktop window with keyboard shortcuts,
+                    instant split-screen PDF preview, and automated sync.
+                  </p>
+
+                  <ul className="mt-6 space-y-2.5 text-xs text-slate-700 dark:text-slate-300">
+                    <li className="flex items-center gap-2">
+                      <Check className="size-3.5 text-emerald-600 shrink-0" />
+                      <span>Works seamlessly in Chrome, Edge, Safari, and Brave</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="size-3.5 text-emerald-600 shrink-0" />
+                      <span>Dedicated desktop taskbar / dock icon</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="size-3.5 text-emerald-600 shrink-0" />
+                      <span>Zero setup installer files or administrator privileges needed</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-white/5">
+                  <Button
+                    asChild
+                    className="w-full h-11 rounded-full bg-slate-900 hover:bg-black text-white dark:bg-white dark:text-black dark:hover:bg-slate-200 font-semibold text-xs"
+                  >
+                    <Link to="/dashboard">
+                      <span>Launch in Browser</span>
+                      <ArrowRight className="size-3.5 ml-1.5" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── SYLLAPOINTS EARNINGS CALCULATOR ─────────────────────────── */}
+          <section id="calculator" className="w-full rounded-3xl sm:rounded-[36px] bg-[#edf3ef] dark:bg-[#0d1611] p-8 sm:p-14 border border-black/[0.04] dark:border-white/[0.06] text-center">
+            <div className="max-w-[600px] mx-auto space-y-3">
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                Peer Study Economy
+              </span>
+              <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white [text-wrap:balance]">
+                Calculate your semester study earnings
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Share your handwritten summaries or solved examination questions. Turn study effort
+                into real bank withdrawals.
+              </p>
+            </div>
+
+            <div className="mt-10 max-w-2xl mx-auto rounded-3xl bg-white dark:bg-[#111915] p-6 sm:p-8 border border-slate-200/80 dark:border-white/5 shadow-sm text-left space-y-6">
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold mb-2">
+                  <span className="text-slate-700 dark:text-slate-200">
+                    Verified Course Materials Shared:
+                  </span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                    {uploadsCount} Uploads
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  value={uploadsCount}
+                  onChange={(e) => setUploadsCount(Number(e.target.value))}
+                  className="w-full accent-emerald-600 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold mb-2">
+                  <span className="text-slate-700 dark:text-slate-200">
+                    Peer Downloads & Studies Received:
+                  </span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                    {downloadsReceived} Classmates
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="10"
+                  max="500"
+                  step="10"
+                  value={downloadsReceived}
+                  onChange={(e) => setDownloadsReceived(Number(e.target.value))}
+                  className="w-full accent-emerald-600 cursor-pointer"
+                />
+              </div>
+
+              {/* Earnings Result Banner */}
+              <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                    Estimated Semester Reward:
+                  </span>
+                  <div className="font-display text-3xl font-bold text-emerald-800 dark:text-emerald-300">
+                    {formatNaira(calculatedNaira)}
+                  </div>
+                  <span className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 font-mono">
+                    ({calculatedPoints.toLocaleString()} SyllaPoints)
+                  </span>
+                </div>
+                <Button
+                  asChild
+                  className="rounded-full bg-[#0d281e] text-white hover:bg-black dark:bg-emerald-500 dark:text-black font-bold text-xs h-10 px-6 shadow-sm"
+                >
+                  <Link to="/auth" search={{ mode: "signin" }}>
+                    Start Earning &rarr;
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          {/* ── FREQUENTLY ASKED QUESTIONS (Accordion) ────────────────── */}
+          <section id="faq" className="w-full flex flex-col items-center gap-10 sm:gap-14">
+            <div className="text-center max-w-[620px] space-y-3">
+              <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white [text-wrap:balance]">
+                Frequently Asked Questions
+              </h2>
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
+                Everything you need to know about using Syllaboss, Boss AI derivations, and progressive web app installation.
+              </p>
+            </div>
+
+            <div className="w-full max-w-3xl space-y-3">
+              {FAQ.map(([q, a], idx) => {
+                const isOpen = openFaq === idx;
                 return (
                   <div
-                    key={String(title)}
-                    className="p-6 rounded-3xl bg-white border border-[#d2e0d7] shadow-2xs hover:border-[#155e3e] transition-all flex flex-col justify-between"
+                    key={idx}
+                    className="rounded-2xl bg-white dark:bg-[#111915] border border-slate-200/80 dark:border-white/5 overflow-hidden transition-all shadow-xs"
                   >
-                    <div>
-                      <div className="size-11 rounded-2xl bg-[#edf6f0] flex items-center justify-center text-[#155e3e] mb-4">
-                        <I className="size-5.5" />
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : idx)}
+                      className="w-full p-5 sm:p-6 text-left flex items-center justify-between gap-4 font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white"
+                    >
+                      <span>{q}</span>
+                      <ChevronDown
+                        className={`size-5 text-slate-500 transition-transform duration-300 shrink-0 ${
+                          isOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 sm:px-6 pb-5 sm:pb-6 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed border-t border-slate-100 dark:border-white/5 pt-3 animate-fade-in">
+                        {a}
                       </div>
-                      <h3 className="font-display text-lg font-bold text-[#00110a]">
-                        {String(title)}
-                      </h3>
-                      <p className="mt-2 text-xs text-[#526359] leading-relaxed">
-                        {String(desc)}
-                      </p>
-                    </div>
+                    )}
                   </div>
                 );
               })}
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* Interactive Earnings Simulator */}
-        <section id="calculator" className="py-20 sm:py-24 bg-white border-b border-[#e1eae3]">
-          <div className="mx-auto max-w-5xl px-4 sm:px-6">
-            <div className="grid gap-10 lg:grid-cols-12 lg:items-center">
-              <div className="lg:col-span-6 space-y-4">
-                <span className="text-xs font-semibold text-[#155e3e] uppercase tracking-wider">
-                  The Student Earning Economy
-                </span>
-                <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#00110a] leading-tight">
-                  Get Paid for Helping Coursemates Learn
-                </h2>
-                <p className="text-sm text-[#3f4d45] leading-relaxed">
-                  Turn your tidy lecture summaries and past exam solutions into passive income.
-                  Every verified upload pays an instant base bonus, plus recurring royalties each time
-                  a student reads or downloads it.
-                </p>
-
-                <div className="pt-2">
-                  <InstallButton
-                    size="default"
-                    label="Install App to Start Earning"
-                    className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a]"
-                  />
-                </div>
-              </div>
-
-              {/* Interactive Calculator Card */}
-              <div className="lg:col-span-6 p-6 sm:p-7 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] shadow-xs space-y-6">
-                <div className="flex items-center justify-between pb-3 border-b border-[#e1eae3]">
-                  <h3 className="font-display text-base font-bold text-[#00110a]">
-                    Projected Monthly Royalty
-                  </h3>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                    Instant Bank Transfer
-                  </span>
-                </div>
-
-                {/* Slider 1: Uploads */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-[#3f4d45]">Course Summaries Uploaded</span>
-                    <span className="font-mono text-[#155e3e]">{uploadsEstimate} materials</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="20"
-                    value={uploadsEstimate}
-                    onChange={(e) => setUploadsEstimate(parseInt(e.target.value, 10))}
-                    className="w-full accent-[#155e3e] cursor-pointer"
-                  />
-                </div>
-
-                {/* Slider 2: Monthly Reads */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-[#3f4d45]">Estimated Monthly Student Reads</span>
-                    <span className="font-mono text-[#155e3e]">{readsEstimate} reads</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="20"
-                    max="1000"
-                    step="10"
-                    value={readsEstimate}
-                    onChange={(e) => setReadsEstimate(parseInt(e.target.value, 10))}
-                    className="w-full accent-[#155e3e] cursor-pointer"
-                  />
-                </div>
-
-                {/* Result Display */}
-                <div className="p-4 rounded-2xl bg-white border border-[#d6e3db] flex items-center justify-between">
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#526359]">
-                      Estimated Payout
-                    </span>
-                    <div className="font-display text-2xl sm:text-3xl font-extrabold text-[#155e3e]">
-                      {formatNaira(estimatedNaira)}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-[#526359] block">Total Points</span>
-                    <span className="font-mono font-bold text-xs text-[#00110a]">
-                      +{estimatedPoints.toLocaleString()} {POINTS_NAME}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ Section */}
-        <section id="faq" className="py-20 sm:py-24 border-b border-[#e1eae3]">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
-            <div className="text-center mb-12">
-              <span className="text-xs font-semibold text-[#155e3e] uppercase tracking-wider">
-                Got Questions?
-              </span>
-              <h2 className="mt-2 font-display text-3xl font-bold text-[#00110a]">
-                Frequently Asked Questions
-              </h2>
-            </div>
-
-            <div className="divide-y divide-[#e1eae3] rounded-3xl border border-[#d2e0d7] bg-white overflow-hidden shadow-xs">
-              {FAQ.map(([q, a]) => (
-                <details key={q} className="group p-5">
-                  <summary className="cursor-pointer list-none font-semibold text-xs sm:text-sm text-[#00110a] flex items-center justify-between">
-                    <span>{q}</span>
-                    <span className="text-[#155e3e] font-bold text-base transition-transform group-open:rotate-45">
-                      +
-                    </span>
-                  </summary>
-                  <p className="mt-2.5 text-xs text-[#526359] leading-relaxed">{a}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Bottom Banner */}
-        <section className="bg-[#0d281e] text-white py-20 relative overflow-hidden">
-          <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 flex flex-col items-center">
-            <div className="p-3.5 rounded-2xl bg-white shadow-xl mb-5 flex items-center justify-center">
-              <SyllabossEmblem className="size-12" />
-            </div>
-            <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-tight">
-              Ready to Study With Direction?
+          {/* ── TRUST-WALLET STYLE FINAL CALL TO ACTION ──────────────── */}
+          <section className="relative w-full rounded-3xl sm:rounded-[36px] bg-[#0d281e] text-white p-8 sm:p-16 flex flex-col items-center text-center overflow-hidden">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-emerald-500/20 blur-3xl rounded-full"
+            />
+            <SyllabossEmblem className="size-16 mb-6" />
+            <h2 className="max-w-[700px] font-display text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight">
+              Ready to master your syllabus with complete clarity?
             </h2>
-            <p className="mt-3.5 text-sm sm:text-base text-[#cbe2d4] max-w-lg leading-relaxed">
-              Download the Syllaboss app to your phone or laptop now and access verified lecture
-              summaries and past exam solutions.
+            <p className="mt-4 max-w-[540px] text-sm sm:text-base text-emerald-100/80 leading-relaxed">
+              Join thousands of Nigerian undergraduates preparing for first-class academic honors with
+              Syllaboss and Boss AI.
             </p>
-            <div className="mt-9 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div className="mt-8 flex flex-col sm:flex-row items-center gap-3">
               <InstallButton
                 size="lg"
-                className="w-full sm:w-auto rounded-full bg-[#cbe2d4] text-[#0d281e] hover:bg-white text-sm font-bold px-8 h-12.5 shadow-md"
+                className="w-full sm:w-auto h-12 rounded-full bg-white text-[#0d281e] hover:bg-emerald-50 font-bold px-8 shadow-md"
+                label="Install Web App (PWA)"
               />
               <Button
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto rounded-full border-white/20 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-6 h-12.5"
+                className="w-full sm:w-auto h-12 rounded-full border-white/20 bg-transparent hover:bg-white/10 text-white font-semibold px-7"
               >
                 <Link to="/auth" search={{ mode: "signin" }}>
-                  Sign In to Web
+                  <span>Open in Browser</span>
+                  <ArrowRight className="size-4 ml-1.5" />
                 </Link>
               </Button>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[#e1eae3] bg-white py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 grid-cols-2 md:grid-cols-4 mb-12">
-            <div className="col-span-2 md:col-span-1 space-y-3">
-              <SyllabossLogo />
-              <p className="text-xs text-[#526359] leading-relaxed">
-                The premier verified study and courseware repository for Nigerian university students, benchmarked against NUC CCMAS academic standards.
-              </p>
-            </div>
-
-            <div className="space-y-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#00110a]">Academics</span>
-              <ul className="space-y-2 text-xs text-[#526359]">
-                <li>
-                  <Link to="/curriculum" className="hover:text-[#00110a] transition-colors">
-                    NUC CCMAS Curriculum
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/materials" className="hover:text-[#00110a] transition-colors">
-                    Lecture Notes & Past Questions
-                  </Link>
-                </li>
-                <li>
-                  <a href="#calculator" className="hover:text-[#00110a] transition-colors">
-                    SyllaPoints Rewards
-                  </a>
-                </li>
-                <li>
-                  <a href="#downloads" className="hover:text-[#00110a] transition-colors">
-                    Multi-Platform Downloads
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div className="space-y-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#00110a]">Platform</span>
-              <ul className="space-y-2 text-xs text-[#526359]">
-                <li>
-                  <Link to="/about" className="hover:text-[#00110a] transition-colors">
-                    About Syllaboss
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/contact" className="hover:text-[#00110a] transition-colors">
-                    Contact Us & Support
-                  </Link>
-                </li>
-                <li>
-                  <a href="#faq" className="hover:text-[#00110a] transition-colors">
-                    Frequently Asked Questions
-                  </a>
-                </li>
-                <li>
-                  <a href="https://web.syllaboss.org/dashboard" className="hover:text-[#00110a] transition-colors font-semibold text-[#155e3e]">
-                    Syllaboss Web App
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div className="space-y-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#00110a]">Legal & Compliance</span>
-              <ul className="space-y-2 text-xs text-[#526359]">
-                <li>
-                  <Link to="/privacy" className="hover:text-[#00110a] transition-colors font-medium">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/terms" className="hover:text-[#00110a] transition-colors font-medium">
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/privacy" className="hover:text-[#00110a] transition-colors">
-                    Cookie & AdSense Disclosures
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/terms" className="hover:text-[#00110a] transition-colors">
-                    Academic Integrity Guidelines
-                  </Link>
-                </li>
-              </ul>
-            </div>
+      {/* ── CLEAN FOOTER ────────────────────────────────────────────── */}
+      <footer className="w-full border-t border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#070b09] py-12 px-4 sm:px-8 mt-16">
+        <div className="mx-auto max-w-[1360px] flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-3">
+            <SyllabossLogo />
+            <span className="text-slate-300 dark:text-slate-700">|</span>
+            <span>The Academic Study Companion</span>
           </div>
 
-          <div className="pt-8 border-t border-[#e1eae3] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#526359]">
-            <p>© 2026 Syllaboss Technologies Ltd. All rights reserved. Study with direction.</p>
-            <div className="flex gap-4">
-              <Link to="/privacy" className="hover:text-[#00110a]">Privacy</Link>
-              <span>·</span>
-              <Link to="/terms" className="hover:text-[#00110a]">Terms</Link>
-              <span>·</span>
-              <Link to="/contact" className="hover:text-[#00110a]">Contact</Link>
-            </div>
+          <div className="flex flex-wrap items-center gap-6">
+            <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <Link to="/terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+              Terms of Service
+            </Link>
+            <a href="mailto:support@syllaboss.org" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+              Contact Support
+            </a>
+          </div>
+
+          <div>
+            &copy; {new Date().getFullYear()} Syllaboss Inc. All rights reserved.
           </div>
         </div>
       </footer>
     </div>
   );
 }
+

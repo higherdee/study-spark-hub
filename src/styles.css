@@ -261,5 +261,50 @@
   }
 }
 
+/* Trust Wallet signature physics float & reveal transitions */
+@keyframes v2Float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(0.4deg);
+  }
+}
+
+@keyframes v2GlowPulse {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes v2Enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-v2-float {
+  animation: v2Float 6.5s ease-in-out infinite;
+}
+
+.animate-v2-glow {
+  animation: v2GlowPulse 5s ease-in-out infinite;
+}
+
+.animate-v2-enter {
+  animation: v2Enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
 
 
