@@ -142,10 +142,6 @@ function RootShell({ children }: { children: ReactNode }) {
             `,
           }}
         />
-        {/* Adsterra Global Popunder */}
-        <script src="https://pl31765393.profitableratecpmnetwork.com/42/91/76/429176159e717cb765d70bc7a6385d24.js" />
-        {/* Adsterra Global SocialBar */}
-        <script src="https://pl31765395.profitableratecpmnetwork.com/89/f0/b6/89f0b61bb99a240e575724b1c748ae33.js" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

@@ -25,16 +25,12 @@ import {
   Play,
   Check,
   Flame,
+  Globe,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 import { InstallButton } from "@/components/install-button";
 import { AppWelcomeGate } from "@/components/app-welcome-gate";
-import {
-  AdsterraBanner,
-  AdsterraNativeBanner,
-  AdsterraAutoClicker,
-} from "@/components/adsterra";
 import { SyllabossLogo, SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -119,13 +115,19 @@ function HomePage() {
     readsEstimate * (POINTS_PER_VIEW + POINTS_PER_DOWNLOAD);
   const estimatedNaira = Math.round(estimatedPoints / POINTS_PER_NAIRA);
 
-  // Detect standalone installed mode
+  // Detect standalone installed mode OR web subdomain mode (e.g. web.syllaboss.org)
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const isSubdomain =
+        window.location.hostname.startsWith("web.") ||
+        window.location.hostname.startsWith("app.") ||
+        window.location.search.includes("mode=web");
+
       const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
         (navigator as unknown as { standalone?: boolean }).standalone === true ||
-        window.location.search.includes("mode=pwa");
+        window.location.search.includes("mode=pwa") ||
+        isSubdomain;
       setIsStandalone(standalone);
 
       if (standalone && user) {
@@ -158,12 +160,6 @@ function HomePage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f6faf7] text-[#00110a] font-sans selection:bg-[#1b7a4e]/20 selection:text-[#0b3321]">
-      <AdsterraAutoClicker />
-      {/* Top Sponsored Adsterra Leaderboard */}
-      <div className="w-full bg-[#eef5f1] border-b border-[#e1eae3] py-1.5 flex justify-center items-center">
-        <AdsterraBanner format="728x90" className="hidden sm:flex my-0" />
-        <AdsterraBanner format="320x50" className="flex sm:hidden my-0" />
-      </div>
       {/* Top Header */}
       <header className="sticky top-0 z-40 border-b border-[#e1eae3] bg-[#f6faf7]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
@@ -172,6 +168,13 @@ function HomePage() {
           <nav className="hidden items-center gap-7 text-xs font-semibold text-[#526359] md:flex">
             <a href="#downloads" className="hover:text-[#00110a] transition-colors">
               Download App
+            </a>
+            <a
+              href="https://web.syllaboss.org/dashboard"
+              className="hover:text-[#00110a] transition-colors flex items-center gap-1 text-[#155e3e]"
+            >
+              <Globe className="size-3.5" />
+              <span>Web App</span>
             </a>
             <a href="#features" className="hover:text-[#00110a] transition-colors">
               Study Features
@@ -556,14 +559,6 @@ function HomePage() {
           </div>
         </section>
 
-        {/* Adsterra Content Banner 300x250 */}
-        <div className="py-6 flex flex-col items-center justify-center bg-[#f0f6f2] border-b border-[#e1eae3]">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#526359] mb-1">
-            Sponsored
-          </span>
-          <AdsterraBanner format="300x250" className="my-0" />
-        </div>
-
         {/* Dedicated Multi-Device Download Hub */}
         <section id="downloads" className="py-20 sm:py-24 bg-white border-b border-[#e1eae3]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -580,8 +575,8 @@ function HomePage() {
               </p>
             </div>
 
-            {/* 3-Column Hero Device Cards */}
-            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+            {/* Multi-Device & Web Hub Cards */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto">
               {/* Card 1: Android (.APK) */}
               <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#155e3e] transition-all">
                 <div>
@@ -724,6 +719,56 @@ function HomePage() {
                   />
                   <p className="text-[10px] text-center text-[#526359]">
                     Works on all iPhones and iPads running iOS 14+.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 4: Syllaboss Web (Browser) */}
+              <div className="p-6 rounded-3xl bg-[#f6faf7] border border-[#d2e0d7] flex flex-col justify-between shadow-xs hover:border-[#155e3e] transition-all">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="size-12 rounded-2xl bg-[#edf6f0] border border-[#d6e3db] flex items-center justify-center text-[#155e3e]">
+                      <Globe className="size-6 text-[#155e3e]" />
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                      Instant Web
+                    </span>
+                  </div>
+
+                  <h3 className="font-display text-xl font-bold text-[#00110a]">
+                    Syllaboss Web
+                  </h3>
+                  <p className="text-xs text-[#526359] mt-1">
+                    web.syllaboss.org for all desktop, laptop & tablet browsers.
+                  </p>
+
+                  <ul className="mt-5 space-y-2 text-xs text-[#3f4d45]">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
+                      <span>Zero installation required</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
+                      <span>Chrome, Edge, Firefox, Safari</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="size-4 text-[#155e3e] shrink-0" />
+                      <span>Instant sync across all your devices</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-[#e1eae3] space-y-2">
+                  <Button
+                    asChild
+                    className="w-full h-11 rounded-2xl bg-[#0d281e] hover:bg-[#00110a] text-white font-bold gap-2 text-sm shadow-xs"
+                  >
+                    <a href="https://web.syllaboss.org/dashboard">
+                      Launch Web App →
+                    </a>
+                  </Button>
+                  <p className="text-[10px] text-center text-[#526359]">
+                    Access directly at web.syllaboss.org
                   </p>
                 </div>
               </div>
@@ -895,16 +940,6 @@ function HomePage() {
           </div>
         </section>
 
-        {/* Adsterra Native Recommendation Banner */}
-        <section className="py-6 px-4 max-w-5xl mx-auto">
-          <div className="flex flex-col items-center justify-center">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#526359] mb-2">
-              Sponsored Recommendations
-            </span>
-            <AdsterraNativeBanner className="max-w-4xl" />
-          </div>
-        </section>
-
         {/* FAQ Section */}
         <section id="faq" className="py-20 sm:py-24 border-b border-[#e1eae3]">
           <div className="mx-auto max-w-3xl px-4 sm:px-6">
@@ -932,12 +967,6 @@ function HomePage() {
             </div>
           </div>
         </section>
-
-        {/* Adsterra Bottom Display Banner */}
-        <div className="w-full bg-[#f0f6f2] py-4 flex justify-center items-center border-b border-[#e1eae3]">
-          <AdsterraBanner format="728x90" className="hidden sm:flex my-0" />
-          <AdsterraBanner format="320x50" className="flex sm:hidden my-0" />
-        </div>
 
         {/* Bottom Banner */}
         <section className="bg-[#0d281e] text-white py-20 relative overflow-hidden">

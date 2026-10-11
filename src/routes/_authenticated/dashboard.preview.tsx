@@ -45,7 +45,6 @@ import {
   getUserRatingServerFn,
 } from "@/lib/upload.functions";
 import { ForwardMaterialModal } from "@/components/forward-material-modal";
-import { AdsterraBanner } from "@/components/adsterra";
 import { cn } from "@/lib/utils";
 
 const previewSearchSchema = z.object({
@@ -589,12 +588,6 @@ Include:
             </Button>
           </div>
         </div>
-      </div>
-
-      {/* Adsterra Sponsored Banner */}
-      <div className="shrink-0 flex items-center justify-center bg-[#edf6f0]/40 border-b border-[#dce5df]/60 py-1 px-2">
-        <AdsterraBanner format="728x90" className="hidden sm:flex my-0 py-0 border-0 bg-transparent shadow-none" />
-        <AdsterraBanner format="320x50" className="flex sm:hidden my-0 py-0 border-0 bg-transparent shadow-none" />
       </div>
 
       {/* Main Workspace (Resizable Split Container) */}
