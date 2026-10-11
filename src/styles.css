@@ -184,6 +184,21 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     overflow-x: hidden;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, a, input, textarea, select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
   }
 
   h1, h2, h3, .font-display, .font-headline {
@@ -240,6 +255,17 @@
 
 .animate-page-zoom-in {
   animation: pageZoomIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Shared mobile ergonomics */
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: max(16px, 1em);
+  }
+
+  [data-chat-active="true"] {
+    border-radius: 1.25rem;
+  }
 }
 
 /* Mobile Keyboard & Chat Focus: Prevent Navigation Dock from covering typing area */

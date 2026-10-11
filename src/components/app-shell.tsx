@@ -187,9 +187,9 @@ export function AppShell({
       {/* Main Content Area */}
       <main
         className={cn(
-          "mx-auto w-full max-w-7xl px-0 sm:px-6 lg:px-8",
+          "mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8",
           isFullScreenAppPage
-            ? "flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-1 sm:pb-2"
+            ? "flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-20 sm:pb-2"
             : "py-5 pb-28 sm:py-8 sm:pb-32"
         )}
       >
@@ -213,12 +213,11 @@ export function AppShell({
         id="main-navigation-dock"
         aria-label="Navigation dock"
         className={cn(
-          "fixed bottom-3 sm:bottom-6 inset-x-0 z-30 mx-auto w-fit max-w-[98vw] pointer-events-none px-2 transition-all duration-200",
-          showSideNav && "hidden pointer-events-none opacity-0",
-          isFullScreenAppPage && "hidden md:block"
+          "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:bottom-6 inset-x-0 z-30 mx-auto w-fit max-w-[calc(100vw-1rem)] pointer-events-none px-1 transition-all duration-200",
+          showSideNav && "hidden pointer-events-none opacity-0"
         )}
       >
-        <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-3xl bg-card/95 border border-border/90 shadow-[0_20px_60px_rgba(0,0,0,0.16),inset_0_1px_2px_rgba(255,255,255,0.85)] transition-all duration-300">
+        <div className="pointer-events-auto flex items-center justify-center gap-0.5 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-3xl bg-card/95 border border-border/90 shadow-[0_20px_60px_rgba(0,0,0,0.16),inset_0_1px_2px_rgba(255,255,255,0.85)] transition-all duration-300">
           {nav.map((item) => {
             const active = item.exact
               ? path === item.to

@@ -605,7 +605,7 @@ Choose an action below or ask me any question directly:`,
   }
 
   return (
-    <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
       {/* Left Sidebar: Recent Chats & Actions */}
       <aside className="hidden flex-col justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-sm lg:flex min-h-0 overflow-hidden">
         <div className="space-y-4 flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -705,9 +705,9 @@ Choose an action below or ask me any question directly:`,
       </aside>
 
       {/* Main Chat & Interactive Study Center */}
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-sm">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-card shadow-sm">
         {/* Chat Header with Active Context and Quick Tool Launchers */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 bg-secondary/20">
+        <div className="flex flex-col items-stretch gap-3 border-b border-border/60 bg-secondary/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="flex items-center gap-2.5">
             <div className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary">
               <Bot className="size-4" />
@@ -726,7 +726,7 @@ Choose an action below or ask me any question directly:`,
           </div>
 
           {/* Quick Action Badges */}
-          <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+          <div className="flex min-w-0 max-w-full items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] sm:flex-wrap">
             {/* Mobile Past Chats Drawer Launcher */}
             <Button
               size="sm"
@@ -1152,13 +1152,13 @@ Choose an action below or ask me any question directly:`,
         )}
 
         {/* Input Bar */}
-        <div className="border-t border-border/60 p-3 bg-card">
+        <div className="border-t border-border/60 bg-card p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-3">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSend();
             }}
-            className="flex items-end gap-2"
+            className="flex items-end gap-1.5 sm:gap-2"
           >
             <input
               type="file"
@@ -1204,7 +1204,7 @@ Choose an action below or ask me any question directly:`,
                 }
               }}
               placeholder={activeDocContext ? `Ask about "${activeDocContext.title}" or ask to quiz/summarize…` : "Ask Boss AI about any topic, course, assignment, or past question…"}
-              className="min-h-11 max-h-32 resize-none rounded-2xl text-xs py-3 bg-secondary/30"
+              className="min-h-11 max-h-32 resize-none rounded-2xl bg-secondary/30 py-3 text-xs"
               rows={1}
             />
 

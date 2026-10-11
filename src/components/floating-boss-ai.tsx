@@ -34,7 +34,7 @@ export function FloatingBossAi() {
     } catch {}
 
     // Default: Top right side
-    const defX = Math.max(12, window.innerWidth - 150);
+    const defX = Math.max(12, window.innerWidth - (window.innerWidth < 640 ? 132 : 150));
     const defY = 88;
     setPosition({ x: defX, y: defY });
   }, []);
@@ -115,7 +115,7 @@ export function FloatingBossAi() {
     >
       <div
         className={cn(
-          "flex items-center gap-2 rounded-full py-1.5 pl-2 pr-3 shadow-xl border backdrop-blur-xl transition-all duration-150",
+          "flex items-center gap-2 rounded-full py-1.5 pl-2 pr-2.5 shadow-xl border backdrop-blur-xl transition-all duration-150 max-w-[calc(100vw-1.5rem)]",
           "bg-[#0d281e] text-white border-[#446557]/60 hover:border-[#1b7a4e] hover:shadow-[0_10px_25px_rgba(13,40,30,0.35)]",
           isDragging ? "ring-2 ring-emerald-400/50 shadow-2xl" : "shadow-lg"
         )}
@@ -130,7 +130,7 @@ export function FloatingBossAi() {
         {/* Label */}
         <div className="flex flex-col text-left leading-tight pointer-events-none">
           <div className="flex items-center gap-1">
-            <span className="text-xs font-bold tracking-tight text-white font-sans">
+            <span className="text-xs font-bold tracking-tight text-white font-sans truncate">
               Boss AI
             </span>
             <Sparkles className="size-3 text-[#f3e8c9]" />
