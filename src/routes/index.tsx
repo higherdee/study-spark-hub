@@ -1002,12 +1002,105 @@ function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#e1eae3] bg-[#f6faf7] py-9">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <SyllabossLogo />
-          <p className="text-xs text-[#526359]">
-            © 2026 Syllaboss Technologies. Study with direction.
-          </p>
+      <footer className="border-t border-[#e1eae3] bg-white py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-8 grid-cols-2 md:grid-cols-4 mb-12">
+            <div className="col-span-2 md:col-span-1 space-y-3">
+              <SyllabossLogo />
+              <p className="text-xs text-[#526359] leading-relaxed">
+                The premier verified study and courseware repository for Nigerian university students, benchmarked against NUC CCMAS academic standards.
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#00110a]">Academics</span>
+              <ul className="space-y-2 text-xs text-[#526359]">
+                <li>
+                  <Link to="/curriculum" className="hover:text-[#00110a] transition-colors">
+                    NUC CCMAS Curriculum
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/materials" className="hover:text-[#00110a] transition-colors">
+                    Lecture Notes & Past Questions
+                  </Link>
+                </li>
+                <li>
+                  <a href="#calculator" className="hover:text-[#00110a] transition-colors">
+                    SyllaPoints Rewards
+                  </a>
+                </li>
+                <li>
+                  <a href="#downloads" className="hover:text-[#00110a] transition-colors">
+                    Multi-Platform Downloads
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-2.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#00110a]">Platform</span>
+              <ul className="space-y-2 text-xs text-[#526359]">
+                <li>
+                  <Link to="/about" className="hover:text-[#00110a] transition-colors">
+                    About Syllaboss
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/contact" className="hover:text-[#00110a] transition-colors">
+                    Contact Us & Support
+                  </Link>
+                </li>
+                <li>
+                  <a href="#faq" className="hover:text-[#00110a] transition-colors">
+                    Frequently Asked Questions
+                  </a>
+                </li>
+                <li>
+                  <a href="https://web.syllaboss.org/dashboard" className="hover:text-[#00110a] transition-colors font-semibold text-[#155e3e]">
+                    Syllaboss Web App
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-2.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#00110a]">Legal & Compliance</span>
+              <ul className="space-y-2 text-xs text-[#526359]">
+                <li>
+                  <Link to="/privacy" className="hover:text-[#00110a] transition-colors font-medium">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="hover:text-[#00110a] transition-colors font-medium">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/privacy" className="hover:text-[#00110a] transition-colors">
+                    Cookie & AdSense Disclosures
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="hover:text-[#00110a] transition-colors">
+                    Academic Integrity Guidelines
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-[#e1eae3] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#526359]">
+            <p>© 2026 Syllaboss Technologies Ltd. All rights reserved. Study with direction.</p>
+            <div className="flex gap-4">
+              <Link to="/privacy" className="hover:text-[#00110a]">Privacy</Link>
+              <span>·</span>
+              <Link to="/terms" className="hover:text-[#00110a]">Terms</Link>
+              <span>·</span>
+              <Link to="/contact" className="hover:text-[#00110a]">Contact</Link>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

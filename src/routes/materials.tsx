@@ -203,7 +203,53 @@ function MaterialsPage() {
 
           ))}
         </div>
+
+        {!isLoading && data.length === 0 && (
+          <div className="mt-8 rounded-3xl border border-dashed border-border bg-card p-10 text-center space-y-4">
+            <BookOpen className="size-10 text-muted-foreground/60 mx-auto" />
+            <h3 className="font-display text-lg font-bold text-foreground">
+              {q ? `No materials found matching "${q}"` : "Explore Verified Academic Courses"}
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              Looking for standardized lecture summaries and syllabus breakdowns? Explore our National Curriculum directory or try a common course code.
+            </p>
+            <div className="pt-2 flex flex-wrap justify-center gap-2">
+              <Button asChild size="sm" className="rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                <Link to="/curriculum">
+                  <span>Browse NUC CCMAS Curriculum</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-semibold">
+                <Link to="/materials" search={{ q: "GST", type: "", level: "" }}>
+                  <span>General Studies (GST)</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-semibold">
+                <Link to="/materials" search={{ q: "MTH", type: "", level: "" }}>
+                  <span>Mathematics (MTH)</span>
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-semibold">
+                <Link to="/materials" search={{ q: "CSC", type: "", level: "" }}>
+                  <span>Computer Science (CSC)</span>
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border/80 bg-card py-10 mt-16 text-center text-xs text-muted-foreground">
+        <div className="mx-auto max-w-5xl px-4 flex flex-wrap justify-center gap-6 mb-3">
+          <Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-foreground">Terms of Service</Link>
+          <Link to="/about" className="hover:text-foreground">About Us</Link>
+          <Link to="/contact" className="hover:text-foreground">Contact Us</Link>
+          <Link to="/curriculum" className="hover:text-foreground">Academic Curriculum</Link>
+        </div>
+        <p>© 2026 Syllaboss Technologies. All rights reserved.</p>
+      </footer>
 
       {/* iOS Liquid Glass Material Preview Drawer / Modal */}
       {previewMaterial && (
