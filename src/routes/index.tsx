@@ -222,31 +222,31 @@ function HomePage() {
           </nav>
 
           {/* Header Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <InstallButton
               variant="default"
               size="sm"
-              className="rounded-full bg-[#0d281e] text-white hover:bg-black dark:bg-emerald-500 dark:text-black dark:hover:bg-emerald-400 text-xs h-9 px-4.5 font-bold shadow-xs"
+              className="rounded-full bg-[#0d281e] text-white hover:bg-black dark:bg-emerald-500 dark:text-black dark:hover:bg-emerald-400 text-xs h-9 px-4 font-bold shadow-xs shrink-0"
             />
             {user ? (
               <Button
                 asChild
                 size="sm"
                 variant="outline"
-                className="rounded-full text-xs h-9 border-black/[0.1] dark:border-white/[0.12] bg-white dark:bg-[#111915] font-semibold"
+                className="hidden md:inline-flex rounded-full text-xs h-9 border-black/[0.1] dark:border-white/[0.12] bg-white dark:bg-[#111915] font-semibold"
               >
-                <Link to="/dashboard">Dashboard</Link>
+                <a href="https://web.syllaboss.org/dashboard">Dashboard</a>
               </Button>
             ) : (
               <Button
                 asChild
                 size="sm"
                 variant="ghost"
-                className="rounded-full text-xs h-9 text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] font-semibold"
+                className="hidden md:inline-flex rounded-full text-xs h-9 text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] font-semibold"
               >
-                <Link to="/auth" search={{ mode: "signin" }}>
-                  Sign In
-                </Link>
+                <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer">
+                  Launch App
+                </a>
               </Button>
             )}
           </div>
@@ -298,10 +298,10 @@ function HomePage() {
                 size="lg"
                 className="w-full sm:w-auto h-12.5 rounded-full border-black/[0.1] dark:border-white/[0.15] bg-white dark:bg-card/80 hover:bg-slate-100 dark:hover:bg-card text-foreground text-sm font-semibold px-7 shadow-xs active:scale-[0.98] transition-all"
               >
-                <Link to="/auth" search={{ mode: "signin" }}>
+                <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer">
                   <span>Launch Web App</span>
                   <ArrowRight className="size-4 ml-1.5" />
-                </Link>
+                </a>
               </Button>
             </div>
 
@@ -356,7 +356,10 @@ function HomePage() {
             {/* Trust Wallet Style Bento Tiles */}
             <div className="grid w-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Tile 1: University Library */}
-              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
+              <Link
+                to="/materials"
+                className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)] block text-left"
+              >
                 <div>
                   <div className="size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 mb-6">
                     <BookOpen className="size-6" />
@@ -373,10 +376,15 @@ function HomePage() {
                   <span>100L – 500L Coverage</span>
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-              </div>
+              </Link>
 
               {/* Tile 2: Boss AI Step-by-Step Derivations */}
-              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
+              <a
+                href="https://web.syllaboss.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)] block text-left"
+              >
                 <div>
                   <div className="size-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/50 flex items-center justify-center text-blue-700 dark:text-blue-400 mb-6">
                     <Bot className="size-6" />
@@ -393,10 +401,13 @@ function HomePage() {
                   <span>Standard LaTeX Math</span>
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-              </div>
+              </a>
 
               {/* Tile 3: Authentic Past Questions */}
-              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
+              <Link
+                to="/materials"
+                className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)] block text-left"
+              >
                 <div>
                   <div className="size-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center text-amber-700 dark:text-amber-400 mb-6">
                     <FileText className="size-6" />
@@ -413,10 +424,13 @@ function HomePage() {
                   <span>Verified Marking Keys</span>
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-              </div>
+              </Link>
 
               {/* Tile 4: SyllaPoints Cashable Rewards */}
-              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
+              <a
+                href="#calculator"
+                className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)] block text-left"
+              >
                 <div>
                   <div className="size-12 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/50 flex items-center justify-center text-purple-700 dark:text-purple-400 mb-6">
                     <Coins className="size-6" />
@@ -433,10 +447,13 @@ function HomePage() {
                   <span>Direct Bank Payouts</span>
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-              </div>
+              </a>
 
               {/* Tile 5: Offline-First PWA */}
-              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
+              <a
+                href="#pwa"
+                className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)] block text-left"
+              >
                 <div>
                   <div className="size-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800/50 flex items-center justify-center text-teal-700 dark:text-teal-400 mb-6">
                     <Zap className="size-6" />
@@ -453,10 +470,13 @@ function HomePage() {
                   <span>Works Across All OS</span>
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-              </div>
+              </a>
 
               {/* Tile 6: Academic Integrity Guard */}
-              <div className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)]">
+              <Link
+                to="/about"
+                className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)] block text-left"
+              >
                 <div>
                   <div className="size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center text-emerald-700 dark:text-emerald-400 mb-6">
                     <ShieldCheck className="size-6" />
@@ -473,7 +493,7 @@ function HomePage() {
                   <span>Distraction-Free Study</span>
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-              </div>
+              </Link>
             </div>
           </section>
 
@@ -526,7 +546,9 @@ function HomePage() {
                     size="sm"
                     className="rounded-full bg-[#0d281e] text-white hover:bg-black dark:bg-emerald-500 dark:text-black font-semibold text-xs px-4"
                   >
-                    <Link to="/dashboard">Try in App &rarr;</Link>
+                    <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer">
+                      <span>Try in App &rarr;</span>
+                    </a>
                   </Button>
                 </div>
               </div>
@@ -834,39 +856,176 @@ function HomePage() {
                 size="lg"
                 className="w-full sm:w-auto h-12 rounded-full border-white/20 bg-transparent hover:bg-white/10 text-white font-semibold px-7"
               >
-                <Link to="/auth" search={{ mode: "signin" }}>
+                <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer">
                   <span>Open in Browser</span>
                   <ArrowRight className="size-4 ml-1.5" />
-                </Link>
+                </a>
               </Button>
             </div>
           </section>
         </div>
       </main>
 
-      {/* ── CLEAN FOOTER ────────────────────────────────────────────── */}
-      <footer className="w-full border-t border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#070b09] py-12 px-4 sm:px-8 mt-16">
-        <div className="mx-auto max-w-[1360px] flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-500 dark:text-slate-400">
-          <div className="flex items-center gap-3">
-            <SyllabossLogo />
-            <span className="text-slate-300 dark:text-slate-700">|</span>
-            <span>The Academic Study Companion</span>
+      {/* ── RICH TRUST-WALLET STYLE MULTI-COLUMN FOOTER ───────────── */}
+      <footer className="w-full border-t border-slate-200/80 dark:border-white/5 bg-white dark:bg-[#070b09] pt-14 pb-12 px-4 sm:px-8 mt-16 transition-colors">
+        <div className="mx-auto max-w-[1360px]">
+          {/* Main 5-Column Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 lg:gap-12 mb-12">
+            {/* Col 1 & 2 on mobile: Brand Info */}
+            <div className="col-span-2 space-y-4">
+              <SyllabossLogo />
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
+                The premier verified study and courseware companion for Nigerian university students,
+                benchmarked against NUC CCMAS academic standards. Instant offline PWA, zero installers.
+              </p>
+              <div className="flex items-center gap-2 pt-1 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>System status: All academic nodes operational</span>
+              </div>
+            </div>
+
+            {/* Col 2: Academics */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Academic Resources
+              </h3>
+              <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
+                <li>
+                  <Link to="/curriculum" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    NUC CCMAS Curriculum
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/materials" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Lecture Notes & Past Questions
+                  </Link>
+                </li>
+                <li>
+                  <a href="#calculator" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    SyllaPoints Rewards
+                  </a>
+                </li>
+                <li>
+                  <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Boss AI Step-by-Step Solver
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: Platform */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Platform & PWA
+              </h3>
+              <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
+                <li>
+                  <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-semibold text-emerald-700 dark:text-emerald-400">
+                    Launch Web App &rarr;
+                  </a>
+                </li>
+                <li>
+                  <a href="#pwa" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Mobile PWA Guide
+                  </a>
+                </li>
+                <li>
+                  <a href="#showcase" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Interactive Feature Tour
+                  </a>
+                </li>
+                <li>
+                  <a href="#faq" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Frequently Asked Questions
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 4: Support & Company */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Community & Help
+              </h3>
+              <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
+                <li>
+                  <Link to="/about" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    About Syllaboss
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/contact" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Contact Us & Student Support
+                  </Link>
+                </li>
+                <li>
+                  <a href="mailto:support@syllaboss.org" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Direct Email Support
+                  </a>
+                </li>
+                <li>
+                  <Link to="/contact" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Campus Ambassador Program
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 5: Legal & Trust */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Legal & Privacy
+              </h3>
+              <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
+                <li>
+                  <Link to="/privacy" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/privacy" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    AdSense & Cookie Disclosures
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                    Academic Integrity Rules
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-6">
-            <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">
-              Privacy Policy
-            </Link>
-            <Link to="/terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">
-              Terms of Service
-            </Link>
-            <a href="mailto:support@syllaboss.org" className="hover:text-slate-900 dark:hover:text-white transition-colors">
-              Contact Support
-            </a>
-          </div>
-
-          <div>
-            &copy; {new Date().getFullYear()} Syllaboss Inc. All rights reserved.
+          {/* Bottom Row */}
+          <div className="pt-8 border-t border-slate-200/80 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <p>
+              &copy; {new Date().getFullYear()} Syllaboss Technologies Ltd. All rights reserved. Built for Nigerian tertiary excellence.
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                Privacy
+              </Link>
+              <span>·</span>
+              <Link to="/terms" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                Terms
+              </Link>
+              <span>·</span>
+              <Link to="/contact" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                Support
+              </Link>
+              <span>·</span>
+              <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 dark:hover:text-emerald-400 font-medium">
+                web.syllaboss.org
+              </a>
+            </div>
           </div>
         </div>
       </footer>

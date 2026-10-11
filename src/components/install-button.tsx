@@ -102,7 +102,14 @@ export function InstallButton({
         ) : (
           <Download className="size-4.5 shrink-0" />
         )}
-        <span>{displayLabel}</span>
+        {label ? (
+          <span>{label}</span>
+        ) : (
+          <>
+            <span className="sm:hidden">{installed ? "Open App" : "Install App"}</span>
+            <span className="hidden sm:inline">{displayLabel}</span>
+          </>
+        )}
       </Button>
 
       {modalOpen && (
@@ -241,7 +248,7 @@ export function InstallButton({
                       if (canPrompt) {
                         install();
                       } else {
-                        navigate({ to: "/dashboard" });
+                        window.location.href = "https://web.syllaboss.org";
                       }
                       setModalOpen(false);
                     }}
@@ -287,7 +294,7 @@ export function InstallButton({
                   <Button
                     className="w-full h-11 rounded-xl bg-neutral-900 hover:bg-black text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
-                      navigate({ to: "/dashboard" });
+                      window.location.href = "https://web.syllaboss.org";
                       setModalOpen(false);
                     }}
                   >
@@ -332,7 +339,7 @@ export function InstallButton({
                       if (canPrompt) {
                         install();
                       } else {
-                        navigate({ to: "/dashboard" });
+                        window.location.href = "https://web.syllaboss.org";
                       }
                       setModalOpen(false);
                     }}
@@ -375,7 +382,7 @@ export function InstallButton({
                   <Button
                     className="w-full h-11 rounded-xl bg-stone-800 hover:bg-black text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
-                      navigate({ to: "/dashboard" });
+                      window.location.href = "https://web.syllaboss.org";
                       setModalOpen(false);
                     }}
                   >
@@ -388,16 +395,15 @@ export function InstallButton({
 
             <div className="mt-4 flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/60">
               <span>Zero downloads or installers required</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setModalOpen(false);
-                  navigate({ to: "/dashboard" });
-                }}
+              <a
+                href="https://web.syllaboss.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setModalOpen(false)}
                 className="font-bold text-primary hover:underline"
               >
                 Continue in browser &rarr;
-              </button>
+              </a>
             </div>
           </div>
         </div>
