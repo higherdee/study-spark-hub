@@ -142,6 +142,13 @@ function RootShell({ children }: { children: ReactNode }) {
             `,
           }}
         />
+        {/* Google AdSense Verification & Auto Ads */}
+        <meta name="google-adsense-account" content="ca-pub-3521407661073190" />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3521407661073190"
+          crossOrigin="anonymous"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
