@@ -26,6 +26,7 @@ import {
   Clock,
   MoreVertical,
   Upload,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -428,19 +429,19 @@ function CommunityPage() {
   return (
     <div
       data-chat-active={Boolean(activeChat)}
-      className="flex min-h-0 h-full w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-xl font-sans sm:min-h-[min(760px,calc(100dvh-7rem))]"
+      className="flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans"
     >
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: Conversations List (WhatsApp / Telegram / iMessage Style) */}
       {/* ========================================================================= */}
       <div
         className={cn(
-          "w-full md:w-[22rem] lg:w-[25rem] flex flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all",
+          "w-full md:w-[22rem] lg:w-[25rem] flex flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden",
           activeChat ? "hidden md:flex" : "flex"
         )}
       >
         {/* Top Header with User Info & Actions */}
-        <div className="p-3.5 border-b border-border/70 flex items-center justify-between gap-2 bg-card">
+        <div className="p-3.5 border-b border-border/70 flex items-center justify-between gap-2 bg-card shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <Avatar className="size-9 ring-2 ring-emerald-500/20">
               <AvatarImage src={profile?.avatar_url || ""} />
@@ -504,7 +505,7 @@ function CommunityPage() {
 
 
         {/* Search Bar */}
-        <div className="p-3 border-b border-border/70 bg-card/60">
+        <div className="p-3 border-b border-border/70 bg-card/60 shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
             <Input
@@ -554,7 +555,37 @@ function CommunityPage() {
         </div>
 
         {/* Conversation List Stream */}
-        <div className="flex-1 overflow-y-auto divide-y divide-border/40">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-border/40 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]">
+          {/* PINNED: Boss AI Assistant */}
+          <Link
+            to="/dashboard/assistant"
+            search={{ view: "history" }}
+            className="flex w-full items-center gap-3 p-3 text-left transition-all bg-emerald-500/10 hover:bg-emerald-500/15 border-b border-emerald-500/20 group select-none"
+          >
+            <div className="relative size-10 shrink-0 rounded-full bg-linear-to-br from-emerald-600 to-teal-700 grid place-items-center shadow-xs text-white">
+              <Bot className="size-5 transition-transform group-hover:scale-110" />
+              <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-500 border-2 border-card grid place-items-center">
+                <Sparkles className="size-2 text-white" />
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <h4 className="text-xs font-bold text-foreground truncate">Boss AI</h4>
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[9px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-none shrink-0 uppercase tracking-wider">
+                    Pinned
+                  </Badge>
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+                  AI Study Hub
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                Previous study chats, quizzes & start new chat →
+              </p>
+            </div>
+            <ChevronRight className="size-4 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 shrink-0" />
+          </Link>
           {/* Empty State for New User */}
           {filteredPeers.length === 0 && filteredGroups.length === 0 && (
             <div className="p-6 text-center flex flex-col items-center">
@@ -787,32 +818,39 @@ function CommunityPage() {
                             : "bg-card border border-border/80 text-foreground rounded-bl-xs"
                         )}
                       >
-                        {/* Material Card Attachment if Present */}
+                        {/* Material Card Attachment if Present (Compact File Chip) */}
                         {matId && (
                           <div
                             className={cn(
-                              "rounded-xl p-2.5 flex items-center justify-between gap-2.5 transition-all",
+                              "rounded-xl p-2 flex items-center justify-between gap-2.5 transition-all max-w-full sm:max-w-md",
                               isMe
-                                ? "bg-emerald-700/60 border border-emerald-400/30 text-white"
-                                : "bg-secondary/70 border border-border text-foreground"
+                                ? "bg-emerald-700/70 border border-emerald-400/30 text-white"
+                                : "bg-secondary/80 border border-border/80 text-foreground"
                             )}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="size-4 shrink-0 text-emerald-300" />
+                              <div
+                                className={cn(
+                                  "size-7 rounded-lg grid place-items-center shrink-0",
+                                  isMe ? "bg-emerald-600 text-emerald-100" : "bg-emerald-500/10 text-emerald-600"
+                                )}
+                              >
+                                <FileText className="size-3.5" />
+                              </div>
                               <div className="min-w-0">
                                 <p className="font-semibold truncate text-[11px] leading-tight">
                                   {matTitle || "Course Document"}
                                 </p>
-                                <p className="text-[10px] font-sans opacity-80 truncate">
+                                <p className="text-[10px] opacity-75 truncate">
                                   {matCourse || "Academic Library"}
                                 </p>
                               </div>
                             </div>
                             <Button
                               size="sm"
-                              variant="secondary"
+                              variant={isMe ? "secondary" : "outline"}
                               asChild
-                              className="h-6 px-2 text-[10px] font-semibold rounded-full shrink-0"
+                              className="h-6 px-2.5 text-[10px] font-semibold rounded-full shrink-0 shadow-none"
                             >
                               <Link to="/dashboard/preview" search={{ id: matId }}>
                                 Open <ExternalLink className="size-2.5 ml-1" />

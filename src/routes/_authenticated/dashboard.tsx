@@ -76,7 +76,7 @@ function DashboardLayout() {
       }
     >
       {profile.suspended && <div className="mb-6 rounded-lg border border-destructive bg-destructive/5 p-4 text-sm text-destructive">Your account is suspended. You can't upload or cash out until an admin restores it.</div>}
-      <div className="animate-page-zoom-in">
+      <div className="animate-page-zoom-in h-full flex-1 min-h-0 flex flex-col overflow-hidden">
         <Outlet />
       </div>
     </AppShell>

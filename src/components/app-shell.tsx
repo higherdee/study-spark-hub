@@ -189,7 +189,7 @@ export function AppShell({
         className={cn(
           "mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8",
           isFullScreenAppPage
-            ? "flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-20 sm:pb-2"
+            ? "flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-[5.25rem]"
             : "py-5 pb-28 sm:py-8 sm:pb-32"
         )}
       >

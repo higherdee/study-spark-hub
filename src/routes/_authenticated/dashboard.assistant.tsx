@@ -66,6 +66,7 @@ import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
   materialId: z.string().optional(),
+  view: z.string().optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/dashboard/assistant")({
@@ -98,7 +99,7 @@ interface ChatMessage {
 }
 
 function AssistantPage() {
-  const { materialId } = Route.useSearch();
+  const { materialId, view } = Route.useSearch();
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
@@ -260,6 +261,13 @@ function AssistantPage() {
       });
     }
   }, [materialId]);
+
+  // Open previous chats history modal if requested via URL
+  useEffect(() => {
+    if (view === "history") {
+      setShowMobileHistory(true);
+    }
+  }, [view]);
 
   // Set default active thread or create one
   useEffect(() => {
@@ -605,9 +613,9 @@ Choose an action below or ask me any question directly:`,
   }
 
   return (
-    <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
+    <div className="flex flex-1 min-h-0 h-full max-h-full w-full overflow-hidden flex-col gap-3 lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
       {/* Left Sidebar: Recent Chats & Actions */}
-      <aside className="hidden flex-col justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-sm lg:flex min-h-0 overflow-hidden">
+      <aside className="hidden flex-col justify-between rounded-3xl border border-border/80 bg-card p-4 shadow-sm lg:flex min-h-0 h-full max-h-full overflow-hidden">
         <div className="space-y-4 flex-1 min-h-0 flex flex-col overflow-hidden">
           <Button
             onClick={createNewChat}
@@ -650,7 +658,7 @@ Choose an action below or ask me any question directly:`,
             <p className="px-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">
               Recent Chats
             </p>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-1 pr-1 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]">
               {threads.length === 0 ? (
                 <p className="px-2 py-4 text-xs text-muted-foreground">No recent conversations.</p>
               ) : (
@@ -705,9 +713,9 @@ Choose an action below or ask me any question directly:`,
       </aside>
 
       {/* Main Chat & Interactive Study Center */}
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-card shadow-sm">
+      <section className="flex min-h-0 h-full max-h-full flex-1 flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-card shadow-sm">
         {/* Chat Header with Active Context and Quick Tool Launchers */}
-        <div className="flex flex-col items-stretch gap-3 border-b border-border/60 bg-secondary/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <div className="shrink-0 flex flex-col items-stretch gap-3 border-b border-border/60 bg-secondary/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="flex items-center gap-2.5">
             <div className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary">
               <Bot className="size-4" />
@@ -1152,7 +1160,7 @@ Choose an action below or ask me any question directly:`,
         )}
 
         {/* Input Bar */}
-        <div className="border-t border-border/60 bg-card p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-3">
+        <div className="shrink-0 border-t border-border/60 bg-card p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-3">
           <form
             onSubmit={(e) => {
               e.preventDefault();
