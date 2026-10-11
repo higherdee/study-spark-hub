@@ -19,7 +19,6 @@ import { SyllabossLogo } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { NotificationsDrawer } from "@/components/notifications-drawer";
 import { SideNavSheet } from "@/components/side-nav-sheet";
-import { FloatingBossAi } from "@/components/floating-boss-ai";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useIsAdmin } from "@/lib/profile";
 import { useStudyTimer } from "@/hooks/use-study-timer";
@@ -249,9 +248,6 @@ export function AppShell({
           })}
         </div>
       </aside>
-
-      {/* Floating & Movable Boss AI Widget (upper side with auto-hide peek tab) */}
-      <FloatingBossAi />
     </div>
   );
 }
