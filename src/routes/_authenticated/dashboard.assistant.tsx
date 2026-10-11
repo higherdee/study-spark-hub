@@ -35,6 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AiMessageRenderer } from "@/components/ai-message-renderer";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import { askGeminiAI } from "@/lib/gemini";
@@ -1082,15 +1083,15 @@ Choose an action below or ask me any question directly:`,
 
                 <div
                   className={cn(
-                    "max-w-[88%] rounded-2xl px-4 py-3 text-xs leading-relaxed transition-all shadow-xs",
+                    "rounded-2xl px-4 py-3 text-xs leading-relaxed transition-all shadow-xs",
                     m.role === "user"
-                      ? "bg-primary text-primary-foreground font-medium rounded-br-xs"
-                      : "bg-secondary/60 text-foreground border border-border/60 rounded-bl-xs"
+                      ? "max-w-[88%] bg-primary text-primary-foreground font-medium rounded-br-xs"
+                      : "w-full max-w-[96%] md:max-w-[92%] bg-card text-foreground border border-border/70 rounded-bl-xs shadow-xs"
                   )}
                 >
                   {/* If an uploaded document was attached to message, render auto-registration banner */}
                   {m.attachedMaterial && (
-                    <div className="mb-2 rounded-xl bg-card border border-border/80 p-3 text-foreground shadow-xs">
+                    <div className="mb-2 rounded-xl bg-muted/50 border border-border/80 p-3 text-foreground shadow-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-xs flex items-center gap-1.5 text-primary">
                           <CheckCircle2 className="size-3.5 text-emerald-600" />
@@ -1114,7 +1115,11 @@ Choose an action below or ask me any question directly:`,
                     </div>
                   )}
 
-                  <div className="whitespace-pre-wrap">{m.content}</div>
+                  {m.role === "assistant" ? (
+                    <AiMessageRenderer content={m.content} />
+                  ) : (
+                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  )}
                 </div>
               </div>
             ))

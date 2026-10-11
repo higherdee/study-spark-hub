@@ -38,6 +38,7 @@ import { SyllabossEmblem, SyllabossLogo } from "@/components/syllaboss-logo";
 import { useAuth } from "@/hooks/use-auth";
 import { getMaterialById, type Material } from "@/integrations/turso/client";
 import { askGeminiAI } from "@/lib/gemini";
+import { AiMessageRenderer } from "@/components/ai-message-renderer";
 import {
   getDownloadUrlServerFn,
   recordMaterialViewServerFn,
@@ -253,7 +254,10 @@ Institution: "${material?.institution || "National Curriculum (NUC CCMAS)"}"
 Level: "${material?.level || "Undergraduate"}"
 Syllabus / Scope: "${material?.description || ""}"
 
-Answer concisely with clear headings, bullet points, theoretical derivations, and exam revision pointers.`;
+Formatting Guidelines:
+- Mathematical Expressions: Always format mathematical and scientific expressions using standard LaTeX notation ($...$ for inline math, $$...$$ on their own lines for standalone block formulas and derivations).
+- Tables: Always format tables, symbols, and comparative data using clean standard GitHub-flavored Markdown tables with headers.
+- Structure: Answer concisely with clear headings (##, ###), bullet points, and exam revision pointers.`;
 
       const aiResponse = await askGeminiAI(prompt, systemPrompt);
 
@@ -718,8 +722,8 @@ Include:
                 <div
                   key={m.id}
                   className={cn(
-                    "flex flex-col max-w-[88%] text-xs leading-relaxed",
-                    m.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
+                    "flex flex-col text-xs leading-relaxed",
+                    m.role === "user" ? "ml-auto items-end max-w-[88%]" : "mr-auto items-start w-full max-w-[96%]"
                   )}
                 >
                   <div
@@ -727,7 +731,7 @@ Include:
                       "p-3.5 rounded-2xl shadow-xs",
                       m.role === "user"
                         ? "bg-[#0d281e] text-white rounded-br-xs"
-                        : "bg-white border border-[#dce5df] text-[#151d1a] rounded-bl-xs"
+                        : "bg-white dark:bg-card border border-[#dce5df] dark:border-border text-foreground rounded-bl-xs w-full"
                     )}
                   >
                     {m.audioUrl && (
@@ -736,9 +740,13 @@ Include:
                         <audio src={m.audioUrl} controls className="h-7 w-48" />
                       </div>
                     )}
-                    <div className="prose prose-xs max-w-none whitespace-pre-wrap font-sans">
-                      {m.content}
-                    </div>
+                    {m.role === "assistant" ? (
+                      <AiMessageRenderer content={m.content} />
+                    ) : (
+                      <div className="whitespace-pre-wrap font-sans">
+                        {m.content}
+                      </div>
+                    )}
                   </div>
                   <span className="text-[10px] text-[#5a6660] mt-1 px-1">{m.timestamp}</span>
                 </div>
