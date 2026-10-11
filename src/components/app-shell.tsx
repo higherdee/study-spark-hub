@@ -213,7 +213,7 @@ export function AppShell({
         id="main-navigation-dock"
         aria-label="Navigation dock"
         className={cn(
-          "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:bottom-6 inset-x-0 z-30 mx-auto w-fit max-w-[calc(100vw-1rem)] pointer-events-none px-1 transition-all duration-200",
+          "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:bottom-6 inset-x-0 z-40 mx-auto w-fit max-w-[calc(100vw-1rem)] pointer-events-none px-1 transition-all duration-200",
           showSideNav && "hidden pointer-events-none opacity-0"
         )}
       >

@@ -182,18 +182,7 @@ function CommunityPage() {
   const fileUploadInputRef = useRef<HTMLInputElement>(null);
   const hasInitializedDesktopChatRef = useRef(false);
 
-  // Auto-hide bottom navigation dock on mobile when active chat is open
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (activeChat && window.innerWidth < 768) {
-      document.body.classList.add("hide-bottom-dock");
-    } else {
-      document.body.classList.remove("hide-bottom-dock");
-    }
-    return () => {
-      document.body.classList.remove("hide-bottom-dock");
-    };
-  }, [activeChat]);
+
 
   // Default selection on desktop ONLY (never auto-reopen on mobile when user presses back)
   useEffect(() => {
@@ -732,9 +721,6 @@ function CommunityPage() {
                   onClick={() => {
                     setActiveChat(null);
                     hasInitializedDesktopChatRef.current = true;
-                    if (typeof window !== "undefined") {
-                      document.body.classList.remove("hide-bottom-dock");
-                    }
                   }}
                   className="size-8 rounded-full md:hidden text-muted-foreground hover:text-foreground"
                 >
