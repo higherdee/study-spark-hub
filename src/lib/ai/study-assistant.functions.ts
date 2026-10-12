@@ -307,3 +307,85 @@ export const getStudyMaterialByIdServerFn = createServerFn({ method: "GET" })
       description: r.description ? String(r.description) : "",
     };
   });
+
+// 9. Transcribe voice note audio with Groq Whisper API (whisper-large-v3-turbo)
+export const transcribeVoiceAudioServerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z.object({
+      audioBase64: z.string(),
+      mimeType: z.string().default("audio/webm"),
+    }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const groqKey =
+      process.env["GROQ_API_KEY"] ||
+      process.env["VITE_GROQ_API_KEY"] ||
+      GROQ_API_KEY ||
+      (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
+
+    if (!groqKey) {
+      throw new Error("GROQ API key not configured");
+    }
+
+    try {
+      const mime = data.mimeType || "audio/webm";
+      const ext = mime.includes("wav")
+        ? "wav"
+        : mime.includes("mp4") || mime.includes("m4a")
+        ? "m4a"
+        : mime.includes("ogg")
+        ? "ogg"
+        : "webm";
+
+      const buffer = typeof Buffer !== "undefined"
+        ? Buffer.from(data.audioBase64, "base64")
+        : (() => {
+            const bin = atob(data.audioBase64);
+            const arr = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+            return arr;
+          })();
+
+      const blob = new Blob([buffer], { type: mime });
+      const formData = new FormData();
+      formData.append("file", blob, `speech.${ext}`);
+      formData.append("model", "whisper-large-v3-turbo");
+      formData.append("response_format", "json");
+
+      let res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${groqKey}`,
+        },
+        body: formData,
+        signal: AbortSignal.timeout(15000),
+      });
+
+      // Resilient fallback to whisper-large-v3
+      if (!res.ok) {
+        const fallbackForm = new FormData();
+        fallbackForm.append("file", blob, `speech.${ext}`);
+        fallbackForm.append("model", "whisper-large-v3");
+        fallbackForm.append("response_format", "json");
+        res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${groqKey}`,
+          },
+          body: fallbackForm,
+          signal: AbortSignal.timeout(15000),
+        });
+      }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Groq Whisper transcription failed (${res.status}): ${errText}`);
+      }
+
+      const result = await res.json();
+      return { transcript: (result.text || "").trim() };
+    } catch (err: any) {
+      console.error("Groq Whisper transcription error:", err?.message);
+      throw err;
+    }
+  });

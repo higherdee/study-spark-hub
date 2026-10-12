@@ -57,6 +57,7 @@ import {
   saveStudyMessageServerFn,
   updateStudyThreadTitleServerFn,
   getStudyMaterialByIdServerFn,
+  transcribeVoiceAudioServerFn,
 } from "@/lib/ai/study-assistant.functions";
 import {
   categorizeDocumentAutonomously,
@@ -431,15 +432,14 @@ function AssistantPage() {
 
         mediaRecorderRef.current?.stream.getTracks().forEach((t) => t.stop());
 
-        const studentQuery =
-          input.trim() ||
-          `[Voice Note (${duration}s)]: Student Audio Inquiry. Please explain the core academic topic thoroughly.`;
+        const initialStudentQuery = input.trim();
         setInput("");
 
+        const voiceUserMsgId = crypto.randomUUID();
         const voiceUserMsg: ChatMessage = {
-          id: crypto.randomUUID(),
+          id: voiceUserMsgId,
           role: "user",
-          content: studentQuery,
+          content: initialStudentQuery || "Transcribing audio with Groq Whisper...",
           audioUrl,
           timestamp: new Date().toISOString(),
         };
@@ -447,34 +447,67 @@ function AssistantPage() {
         setMessages((prev) => [...prev, voiceUserMsg]);
         setThinking(true);
 
-        try {
-          const result = await askBossAiServerFn({
-            data: {
-              userId: user!.id,
-              threadId: targetThreadId,
-              query: studentQuery,
-              taskType: "general",
-              docContext: activeDocContext ?? undefined,
-            },
-          });
+        // Convert audio Blob to base64 for Groq Whisper (whisper-large-v3-turbo)
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          let transcribedQuery = initialStudentQuery;
+          try {
+            const base64Data = (reader.result as string)?.split(",")[1];
+            if (base64Data) {
+              const whisperResult = await transcribeVoiceAudioServerFn({
+                data: {
+                  audioBase64: base64Data,
+                  mimeType,
+                },
+              });
+              if (whisperResult?.transcript) {
+                transcribedQuery = whisperResult.transcript;
+              }
+            }
+          } catch (err: any) {
+            console.warn("Groq Whisper transcription fallback:", err?.message);
+          }
 
-          const aiMsg: ChatMessage = {
-            id: result.assistantMessageId,
-            role: "assistant",
-            content: result.response,
-            timestamp: new Date().toISOString(),
-          };
+          const finalQuestion =
+            transcribedQuery.trim() ||
+            `[Voice Note (${duration}s)]: Student Audio Inquiry. Please explain the core academic topic thoroughly.`;
 
-          setMessages((prev) => [...prev, aiMsg]);
-          refetchThreads();
+          // Update user message balloon with transcribed question text
+          setMessages((prev) =>
+            prev.map((m) => (m.id === voiceUserMsgId ? { ...m, content: finalQuestion } : m))
+          );
 
-          // Auto speak response aloud
-          speakAiResponse(result.response, result.assistantMessageId);
-        } catch {
-          toast.error("Boss AI could not process your voice inquiry.");
-        } finally {
-          setThinking(false);
-        }
+          try {
+            // Solve problem & format math using LLaMA 3.1 8B Instant (Groq)
+            const result = await askBossAiServerFn({
+              data: {
+                userId: user!.id,
+                threadId: targetThreadId,
+                query: finalQuestion,
+                taskType: "general",
+                docContext: activeDocContext ?? undefined,
+              },
+            });
+
+            const aiMsg: ChatMessage = {
+              id: result.assistantMessageId,
+              role: "assistant",
+              content: result.response,
+              timestamp: new Date().toISOString(),
+            };
+
+            setMessages((prev) => [...prev, aiMsg]);
+            refetchThreads();
+
+            // Auto speak response aloud
+            speakAiResponse(result.response, result.assistantMessageId);
+          } catch {
+            toast.error("Boss AI could not process your voice inquiry.");
+          } finally {
+            setThinking(false);
+          }
+        };
       };
       mediaRecorderRef.current.stop();
     } else {
@@ -1458,7 +1491,7 @@ function AssistantPage() {
           {thinking && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse p-2">
               <Bot className="size-4 text-primary animate-bounce" />
-              <span>Boss AI is composing your response...</span>
+              <span>Boss AI is solving and formatting math with KaTeX...</span>
             </div>
           )}
 
