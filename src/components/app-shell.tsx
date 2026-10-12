@@ -237,6 +237,7 @@ export function AppShell({
           </div>
         </div>
       </header>
+      )}
 
       {/* Main Content Area */}
       <main
