@@ -20,7 +20,12 @@ function normalizeMathDelimiters(raw: string): string {
     // Convert \[ or \\[ display math to $$ ... $$
     .replace(/(?:\\\\|\\)\[([\s\S]*?)(?:\\\\|\\)\]/g, (_, math) => `\n$$\n${math.trim()}\n$$\n`)
     // Convert \( or \\( inline math to $ ... $
-    .replace(/(?:\\\\|\\)\(([\s\S]*?)(?:\\\\|\\)\)/g, (_, math) => `$${math.trim()}$`);
+    .replace(/(?:\\\\|\\)\(([\s\S]*?)(?:\\\\|\\)\)/g, (_, math) => `$${math.trim()}$`)
+    // Wrap unwrapped LaTeX environments in $$
+    .replace(
+      /(?<!\$)\s*(\\begin\{(?:matrix|pmatrix|bmatrix|vmatrix|align|aligned|equation|cases)\*?\}[\s\S]*?\\end\{(?:matrix|pmatrix|bmatrix|vmatrix|align|aligned|equation|cases)\*?\})\s*(?!\$)/g,
+      (_, math) => `\n$$\n${math.trim()}\n$$\n`
+    );
 }
 
 export function AiMessageRenderer({ content, className = "" }: AiMessageRendererProps) {

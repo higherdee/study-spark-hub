@@ -3,7 +3,6 @@ import {
   Layers,
   RotateCcw,
   CheckCircle2,
-  XCircle,
   Check,
   X,
   ChevronRight,
@@ -16,6 +15,10 @@ import {
   Award,
   Sparkles,
   Volume2,
+  VolumeX,
+  Shuffle,
+  ThumbsUp,
+  RotateCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -31,20 +34,12 @@ import {
   gradeTheoryAnswerServerFn,
   transcribeVoiceAudioServerFn,
 } from "@/lib/ai/study-assistant.functions";
-
-// 3D Flashcard Gradients (Sketch 1)
-const FLASHCARD_GRADIENTS = [
-  "from-emerald-500/15 via-teal-500/10 to-emerald-500/5 border-emerald-500/40 text-emerald-950 dark:text-emerald-100",
-  "from-indigo-500/15 via-purple-500/10 to-indigo-500/5 border-indigo-500/40 text-indigo-950 dark:text-indigo-100",
-  "from-amber-500/15 via-orange-500/10 to-amber-500/5 border-amber-500/40 text-amber-950 dark:text-amber-100",
-  "from-sky-500/15 via-blue-500/10 to-sky-500/5 border-sky-500/40 text-sky-950 dark:text-sky-100",
-  "from-rose-500/15 via-pink-500/10 to-rose-500/5 border-rose-500/40 text-rose-950 dark:text-rose-100",
-];
+import { AiMessageRenderer } from "@/components/ai-message-renderer";
 
 const QUESTION_COUNTS = [5, 10, 15, 20, 25, 30, 40, 50];
 
 // ============================================================================
-// 1. IN-CHAT FLASHCARDS WIDGET (Sketch 1)
+// 1. IN-CHAT PHYSICAL 3D FLASHCARDS WIDGET (Authentic Index Card Physics + KaTeX)
 // ============================================================================
 export interface InChatFlashcardsWidgetProps {
   data: {
@@ -57,56 +52,242 @@ export interface InChatFlashcardsWidgetProps {
 }
 
 export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcardsWidgetProps) {
+  const [cards, setCards] = useState<Flashcard[]>(data.cards || []);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [confidenceMap, setConfidenceMap] = useState<Record<number, "again" | "good" | "mastered">>({});
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
 
-  const cards = data.cards || [];
+  useEffect(() => {
+    setCards(data.cards || []);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+  }, [data.cards]);
+
   const currentCard = cards[currentIndex] || cards[0];
   const total = cards.length;
 
   if (total === 0) return null;
 
+  // Text-to-Speech audio reader
+  function handleSpeak(text: string) {
+    if (!("speechSynthesis" in window)) {
+      toast.error("Text-to-speech not supported in this browser.");
+      return;
+    }
+
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      setSpeakingIndex(null);
+      return;
+    }
+
+    const cleanText = text
+      .replace(/[\$\#\*\_\[\]\(\)]/g, " ")
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 over $2")
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 0.95;
+    utterance.onend = () => setSpeakingIndex(null);
+    utterance.onerror = () => setSpeakingIndex(null);
+    setSpeakingIndex(currentIndex);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // Shuffle flashcard deck
+  function handleShuffle() {
+    const shuffled = [...cards].sort(() => Math.random() - 0.5);
+    setCards(shuffled);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    toast.success("Deck shuffled!");
+  }
+
+  // Spaced-repetition rating & auto advance
+  function markConfidence(level: "again" | "good" | "mastered") {
+    setConfidenceMap((prev) => ({ ...prev, [currentIndex]: level }));
+    if (level === "mastered") {
+      toast.success("Card marked as Mastered!");
+    }
+    // Auto advance to next card after a brief moment if not at end
+    if (currentIndex < total - 1) {
+      setTimeout(() => {
+        setIsFlipped(false);
+        setCurrentIndex((i) => i + 1);
+      }, 350);
+    }
+  }
+
+  const masteredCount = Object.values(confidenceMap).filter((v) => v === "mastered").length;
+
   return (
-    <div className="w-full mt-3 rounded-2xl border border-border/80 bg-secondary/20 p-3 sm:p-4 select-none shadow-xs space-y-3 font-sans">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-1 border-b border-border/50">
-        <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-          <Layers className="size-3.5" />
-          Flashcard {currentIndex + 1} of {total}
-        </span>
-        <span className="text-[11px] font-semibold text-muted-foreground truncate max-w-[180px]">
-          {data.topic}
-        </span>
+    <div className="w-full mt-3 rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xs p-3.5 sm:p-5 select-none shadow-xs space-y-4 font-sans">
+      {/* Deck Header */}
+      <div className="flex items-center justify-between pb-2 border-b border-border/60">
+        <div className="flex items-center gap-2">
+          <span className="size-6 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+            <Layers className="size-3.5" />
+          </span>
+          <div>
+            <span className="text-xs font-bold tracking-tight text-foreground block">
+              {data.topic || "Academic Revision"}
+            </span>
+            <span className="text-[10px] text-muted-foreground font-semibold">
+              Card {currentIndex + 1} of {total} {masteredCount > 0 && `· ${masteredCount} Mastered`}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleShuffle}
+            className="h-7 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground gap-1"
+            title="Shuffle deck"
+          >
+            <Shuffle className="size-3" />
+            <span className="hidden sm:inline">Shuffle</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => handleSpeak(isFlipped ? currentCard?.back : currentCard?.front)}
+            className="h-7 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground gap-1"
+            title="Read card aloud"
+          >
+            {speakingIndex === currentIndex ? (
+              <VolumeX className="size-3 text-red-500 animate-pulse" />
+            ) : (
+              <Volume2 className="size-3" />
+            )}
+            <span className="hidden sm:inline">Listen</span>
+          </Button>
+        </div>
       </div>
 
       {/* Progress track */}
-      <div className="w-full h-1 rounded-full bg-border/60 overflow-hidden">
+      <div className="w-full h-1.5 rounded-full bg-border/60 overflow-hidden">
         <div
-          className="h-full bg-primary transition-all duration-300"
+          className="h-full bg-linear-to-r from-primary to-emerald-500 transition-all duration-300 rounded-full"
           style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
         />
       </div>
 
-      {/* 3D Gradient Flashcard */}
+      {/* ========================================================================= */}
+      {/* REAL PHYSICAL 3D FLIP INDEX CARD (Perspective & KaTeX Math Rendering)   */}
+      {/* ========================================================================= */}
       <div
+        className="w-full relative [perspective:1200px] cursor-pointer group"
         onClick={() => setIsFlipped((prev) => !prev)}
-        className={cn(
-          "min-h-40 sm:min-h-44 cursor-pointer rounded-2xl border p-5 shadow-sm flex flex-col justify-center items-center text-center transition-all bg-linear-to-br hover:shadow-md active:scale-98 select-none",
-          FLASHCARD_GRADIENTS[currentIndex % FLASHCARD_GRADIENTS.length]
-        )}
       >
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2 px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10">
-          {isFlipped ? "Answer / Definition" : "Question / Concept"}
-        </span>
-        <p className="font-display text-sm sm:text-base font-bold leading-relaxed px-2">
-          {isFlipped ? currentCard?.back : currentCard?.front}
-        </p>
-        <span className="mt-3 text-[10px] opacity-75 font-medium flex items-center gap-1">
-          <RotateCcw className="size-2.5" /> Tap card to flip
-        </span>
+        <div
+          className={cn(
+            "relative w-full min-h-[220px] sm:min-h-[250px] rounded-2xl transition-transform duration-500 [transform-style:preserve-3d]",
+            isFlipped && "[transform:rotateY(180deg)]"
+          )}
+        >
+          {/* FRONT FACE (Question / Concept) */}
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-2xl border border-border/80 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-zinc-900/95">
+            {/* Index card header margin tab */}
+            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10">
+                <Sparkles className="size-3" /> Concept / Question
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground font-semibold">
+                {String(currentIndex + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+              </span>
+            </div>
+
+            {/* Question Body with KaTeX Math Rendering */}
+            <div className="my-auto py-3 text-center flex flex-col items-center justify-center">
+              <AiMessageRenderer
+                content={currentCard?.front || ""}
+                className="text-center font-bold text-sm sm:text-base leading-relaxed text-foreground [&_p]:text-center [&_p]:font-bold [&_p]:text-sm sm:[&_p]:text-base [&_p]:mb-0"
+              />
+            </div>
+
+            {/* Flip hint footer */}
+            <div className="flex items-center justify-center gap-1.5 pt-2 border-t border-border/40 text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+              <RotateCcw className="size-3 transition-transform group-hover:rotate-180 duration-500" />
+              <span>Tap card to reveal answer</span>
+            </div>
+          </div>
+
+          {/* BACK FACE (Answer / Solution / Formula) */}
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl border border-emerald-500/40 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-zinc-900/95 bg-linear-to-b from-emerald-500/5 to-transparent">
+            {/* Index card header margin tab */}
+            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10">
+                <CheckCircle2 className="size-3" /> Solution &amp; Definition
+              </span>
+              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                Answer {String(currentIndex + 1).padStart(2, "0")}
+              </span>
+            </div>
+
+            {/* Answer Body with KaTeX Math Rendering */}
+            <div className="my-auto py-2 overflow-y-auto max-h-[140px] pr-1">
+              <AiMessageRenderer
+                content={currentCard?.back || ""}
+                className="text-xs sm:text-sm leading-relaxed text-foreground [&_p]:mb-1 last:[&_p]:mb-0"
+              />
+            </div>
+
+            {/* Spaced Repetition Confidence Buttons */}
+            <div
+              className="pt-2 border-t border-border/40 flex items-center justify-between gap-1.5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="text-[10px] font-semibold text-muted-foreground hidden sm:inline">
+                Rate recall:
+              </span>
+              <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => markConfidence("again")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all",
+                    confidenceMap[currentIndex] === "again"
+                      ? "bg-amber-500/20 text-amber-600 border-amber-500/50"
+                      : "border-border/70 text-muted-foreground hover:text-amber-600"
+                  )}
+                >
+                  Needs Review
+                </button>
+                <button
+                  type="button"
+                  onClick={() => markConfidence("good")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all",
+                    confidenceMap[currentIndex] === "good"
+                      ? "bg-sky-500/20 text-sky-600 border-sky-500/50"
+                      : "border-border/70 text-muted-foreground hover:text-sky-600"
+                  )}
+                >
+                  Good
+                </button>
+                <button
+                  type="button"
+                  onClick={() => markConfidence("mastered")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all",
+                    confidenceMap[currentIndex] === "mastered"
+                      ? "bg-emerald-500/20 text-emerald-600 border-emerald-500/50"
+                      : "border-border/70 text-muted-foreground hover:text-emerald-600"
+                  )}
+                >
+                  Mastered
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Navigation & Flip button */}
+      {/* Navigation Controls */}
       <div className="flex items-center justify-between pt-1">
         <Button
           size="sm"
@@ -125,9 +306,9 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
           size="sm"
           variant="outline"
           onClick={() => setIsFlipped((f) => !f)}
-          className="h-8 rounded-xl text-xs font-semibold gap-1.5 border-border/80"
+          className="h-8 rounded-xl text-xs font-semibold gap-1.5 border-border/80 shadow-2xs"
         >
-          <RotateCcw className="size-3" /> Flip
+          <RotateCcw className="size-3" /> Flip Card
         </Button>
 
         <Button
@@ -144,7 +325,7 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
         </Button>
       </div>
 
-      {/* Count Pills (Drawing 1 requirement) */}
+      {/* Count Pills */}
       <div className="pt-2 border-t border-border/50">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -157,7 +338,7 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
                 type="button"
                 onClick={() => onSelectCount?.(num)}
                 className={cn(
-                  "px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all",
+                  "px-2.5 py-0.5 rounded-md text-[10px] font-bold border transition-all",
                   total === num
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-border/80 text-muted-foreground hover:text-foreground hover:bg-secondary/60"
@@ -174,7 +355,7 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
 }
 
 // ============================================================================
-// 2. IN-CHAT MCQ QUIZ WIDGET (Sketch 2 & 3)
+// 2. IN-CHAT MCQ QUIZ WIDGET (KaTeX Math in Questions & Options)
 // ============================================================================
 export interface InChatMcqQuizWidgetProps {
   data: {
@@ -234,29 +415,29 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
   }
 
   return (
-    <div className="w-full mt-3 rounded-2xl border border-border/80 bg-secondary/20 p-3 sm:p-4 select-none shadow-xs space-y-3 font-sans">
+    <div className="w-full mt-3 rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xs p-3.5 sm:p-5 select-none shadow-xs space-y-3.5 font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between pb-1 border-b border-border/50">
+      <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
         <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
           <CheckCircle2 className="size-3.5" />
           Question {currentIndex + 1} of {total}
         </span>
-        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-foreground">
+        <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-secondary text-foreground">
           {isAsYouGo ? "Instant Marking" : isSubmitted ? "Exam Result" : "Exam Mode"}
         </span>
       </div>
 
       {/* Score Banner when submitted */}
       {isSubmitted && (
-        <div className="p-3 rounded-xl border border-primary/30 bg-primary/10 flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl border border-primary/30 bg-primary/10 flex items-center justify-between">
           <div>
             <p className="font-bold text-xs text-primary flex items-center gap-1.5">
               <Award className="size-4" /> Score: {score} / {total} ({Math.round((score / total) * 100)}%)
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               {score / total >= 0.7
-                ? "Excellent mastery of examination material!"
-                : "Good attempt! Review the questions below for revision."}
+                ? "Excellent performance on university examination material!"
+                : "Good attempt! Review the questions and detailed explanations below."}
             </p>
           </div>
           <Button
@@ -267,19 +448,19 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
               setIsSubmitted(false);
               setCurrentIndex(0);
             }}
-            className="h-7 text-xs font-bold rounded-lg"
+            className="h-7 text-xs font-bold rounded-xl"
           >
             Retake
           </Button>
         </div>
       )}
 
-      {/* Question Text */}
-      <p className="font-semibold text-xs sm:text-sm text-foreground leading-relaxed">
-        {currentQ?.question}
-      </p>
+      {/* Question Text with KaTeX Math Rendering */}
+      <div className="font-semibold text-xs sm:text-sm text-foreground leading-relaxed">
+        <AiMessageRenderer content={currentQ?.question || ""} className="text-xs sm:text-sm font-semibold [&_p]:mb-1" />
+      </div>
 
-      {/* Options A, B, C, D */}
+      {/* Options A, B, C, D with KaTeX Math Rendering */}
       <div className="grid gap-2">
         {currentQ?.options?.map((opt, optIdx) => {
           const letter = String.fromCharCode(65 + optIdx);
@@ -308,14 +489,14 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
                 setSelectedAnswers((prev) => ({ ...prev, [currentIndex]: optIdx }));
               }}
               className={cn(
-                "w-full text-left p-2.5 rounded-xl border text-xs transition-all flex items-center justify-between gap-2.5",
+                "w-full text-left p-3 rounded-xl border text-xs transition-all flex items-center justify-between gap-2.5",
                 optionStyle
               )}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <span
                   className={cn(
-                    "size-5 rounded-full grid place-items-center text-[10px] font-bold shrink-0 border",
+                    "size-5.5 rounded-full grid place-items-center text-[10px] font-bold shrink-0 border",
                     isSelected
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-secondary text-muted-foreground border-border"
@@ -323,7 +504,9 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
                 >
                   {letter}
                 </span>
-                <span className="leading-snug">{opt}</span>
+                <div className="min-w-0 flex-1 leading-snug [&_p]:mb-0 [&_p]:inline [&_p]:text-inherit">
+                  <AiMessageRenderer content={opt} className="text-xs [&_p]:mb-0 [&_p]:inline [&_p]:text-inherit" />
+                </div>
               </div>
               {showAnswerFeedback && isCorrect && <Check className="size-4 text-emerald-600 shrink-0" />}
               {showAnswerFeedback && isSelected && !isCorrect && (
@@ -334,11 +517,11 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
         })}
       </div>
 
-      {/* Explanation Box (As You Go or Submitted) */}
+      {/* Explanation Box with KaTeX Math Rendering */}
       {(isSubmitted || (isAsYouGo && selectedAnswers[currentIndex] !== undefined)) && currentQ?.explanation && (
-        <div className="p-2.5 rounded-xl border border-border/80 bg-muted/40 text-xs space-y-1">
-          <p className="font-bold text-[11px] text-primary">Explanation:</p>
-          <p className="text-muted-foreground leading-relaxed">{currentQ.explanation}</p>
+        <div className="p-3 rounded-xl border border-border/80 bg-muted/30 text-xs space-y-1">
+          <p className="font-bold text-[11px] text-primary">Explanation &amp; Exam Criteria:</p>
+          <AiMessageRenderer content={currentQ.explanation} className="text-xs text-muted-foreground leading-relaxed" />
         </div>
       )}
 
@@ -354,7 +537,6 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
           <ChevronLeft className="size-3.5 mr-1" /> Previous
         </Button>
 
-        {/* Question progress pills */}
         <span className="text-[11px] text-muted-foreground font-semibold">
           {currentIndex + 1} / {total}
         </span>
@@ -381,7 +563,7 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
         )}
       </div>
 
-      {/* Count Pills (Drawing 2 & 3 requirement) */}
+      {/* Count Pills */}
       <div className="pt-2 border-t border-border/50">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -394,7 +576,7 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
                 type="button"
                 onClick={() => onSelectCount?.(num)}
                 className={cn(
-                  "px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all",
+                  "px-2.5 py-0.5 rounded-md text-[10px] font-bold border transition-all",
                   total === num
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-border/80 text-muted-foreground hover:text-foreground hover:bg-secondary/60"
@@ -407,7 +589,7 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
         </div>
       </div>
 
-      {/* Unanswered Questions Modal (Drawing 3 requirement) */}
+      {/* Unanswered Questions Modal */}
       <Dialog open={showUnansweredModal} onOpenChange={setShowUnansweredModal}>
         <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
@@ -453,7 +635,7 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
 }
 
 // ============================================================================
-// 3. IN-CHAT THEORY TEST WIDGET (Sketch 4)
+// 3. IN-CHAT THEORY TEST WIDGET (KaTeX Math in Question, Model Answer & Rubric)
 // ============================================================================
 export interface InChatTheoryWidgetProps {
   data: {
@@ -582,9 +764,9 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
   }
 
   return (
-    <div className="w-full mt-3 rounded-2xl border border-border/80 bg-secondary/20 p-3 sm:p-4 select-none shadow-xs space-y-3 font-sans">
+    <div className="w-full mt-3 rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xs p-3.5 sm:p-5 select-none shadow-xs space-y-3.5 font-sans">
       {/* Header */}
-      <div className="flex items-center justify-between pb-1 border-b border-border/50">
+      <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
         <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
           <FileText className="size-3.5" />
           Question {currentIndex + 1} of {total} ({currentQ.marks || 5} Marks)
@@ -594,13 +776,13 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
         </span>
       </div>
 
-      {/* Question Prompt */}
-      <p className="font-semibold text-xs sm:text-sm text-foreground leading-relaxed">
-        {currentQ?.question}
-      </p>
+      {/* Question Prompt with KaTeX Math Rendering */}
+      <div className="font-semibold text-xs sm:text-sm text-foreground leading-relaxed">
+        <AiMessageRenderer content={currentQ?.question || ""} className="text-xs sm:text-sm font-semibold [&_p]:mb-1" />
+      </div>
 
-      {/* Answer Box (Sketch 4 requirement: Text + Snap + Record Audio + Grade) */}
-      <div className="rounded-xl border border-border/80 bg-card p-2.5 space-y-2">
+      {/* Answer Box */}
+      <div className="rounded-xl border border-border/80 bg-card p-3 space-y-2">
         <textarea
           value={currentAnswer}
           onChange={(e) =>
@@ -613,7 +795,6 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
 
         <div className="flex items-center justify-between pt-2 border-t border-border/50">
           <div className="flex items-center gap-1.5">
-            {/* Hidden file input for Snap button */}
             <input
               ref={snapInputRef}
               type="file"
@@ -622,7 +803,6 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
               onChange={handleSnapUpload}
               className="hidden"
             />
-            {/* Snap button (Sketch 4) */}
             <Button
               type="button"
               size="sm"
@@ -634,7 +814,6 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
               <Camera className="size-3 text-primary" /> Snap
             </Button>
 
-            {/* Record Audio button (Sketch 4) */}
             <Button
               type="button"
               size="sm"
@@ -648,7 +827,6 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
             </Button>
           </div>
 
-          {/* Grade Answer button (Sketch 4) */}
           <Button
             type="button"
             size="sm"
@@ -662,9 +840,9 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
         </div>
       </div>
 
-      {/* Graded Rubric Feedback Display (Sketch 4) */}
+      {/* Graded Rubric Feedback Display with KaTeX Math Rendering */}
       {currentFeedback && (
-        <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs space-y-2">
+        <div className="p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
               <Award className="size-3.5" /> Mark: {currentFeedback.score} / 10 ({currentFeedback.verdict})
@@ -678,7 +856,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
             </button>
           </div>
 
-          <p className="text-muted-foreground leading-relaxed">{currentFeedback.feedback}</p>
+          <AiMessageRenderer content={currentFeedback.feedback} className="text-xs text-muted-foreground leading-relaxed" />
 
           {currentFeedback.strengths && currentFeedback.strengths.length > 0 && (
             <div className="space-y-0.5 pt-1">
@@ -705,7 +883,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
           {showModelAnswer && (
             <div className="pt-2 border-t border-emerald-500/20 text-xs space-y-1">
               <p className="font-bold text-[11px] text-primary">Expected Model Answer:</p>
-              <p className="text-muted-foreground leading-relaxed">{currentQ.modelAnswer}</p>
+              <AiMessageRenderer content={currentQ.modelAnswer} className="text-xs text-muted-foreground leading-relaxed" />
             </div>
           )}
         </div>
@@ -738,7 +916,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
         </Button>
       </div>
 
-      {/* Count Pills (Drawing 4 requirement) */}
+      {/* Count Pills */}
       <div className="pt-2 border-t border-border/50">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -751,7 +929,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
                 type="button"
                 onClick={() => onSelectCount?.(num)}
                 className={cn(
-                  "px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all",
+                  "px-2.5 py-0.5 rounded-md text-[10px] font-bold border transition-all",
                   total === num
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-border/80 text-muted-foreground hover:text-foreground hover:bg-secondary/60"

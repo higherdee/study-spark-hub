@@ -29,6 +29,8 @@ import {
   AlertCircle,
   X,
   Upload,
+  Search,
+  MessageSquare,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -277,6 +279,14 @@ function AssistantPage() {
     },
   });
 
+  const [threadSearch, setThreadSearch] = useState("");
+  const filteredThreads = useMemo(() => {
+    if (!threadSearch.trim()) return threads;
+    return threads.filter((t: any) =>
+      t.title.toLowerCase().includes(threadSearch.toLowerCase())
+    );
+  }, [threads, threadSearch]);
+
   // Query Campus Library Materials
   const { data: libraryMaterials = [], isLoading: isLoadingLibrary } = useQuery({
     queryKey: ["campus-library-materials"],
@@ -332,45 +342,49 @@ function AssistantPage() {
 
   // Sync loaded thread messages
   useEffect(() => {
-    if (threadMessages.length > 0) {
-      const formatted: ChatMessage[] = threadMessages.map((msg: any) => {
-        let contentText = msg.content || "";
-        let audioUrl: string | undefined = msg.audioUrl || undefined;
-        let attachedMaterial: any = msg.attachedMaterial || undefined;
-        let flashcardsData: any = msg.flashcardsData || undefined;
-        let quizData: any = msg.quizData || undefined;
+    if (activeThreadId) {
+      if (threadMessages && threadMessages.length > 0) {
+        const formatted: ChatMessage[] = threadMessages.map((msg: any) => {
+          let contentText = msg.content || "";
+          let audioUrl: string | undefined = msg.audioUrl || undefined;
+          let attachedMaterial: any = msg.attachedMaterial || undefined;
+          let flashcardsData: any = msg.flashcardsData || undefined;
+          let quizData: any = msg.quizData || undefined;
 
-        if (msg.parts) {
-          try {
-            const parsed = typeof msg.parts === "string" ? JSON.parse(msg.parts) : msg.parts;
-            if (Array.isArray(parsed)) {
-              contentText = parsed.map((p) => p.text || "").join("\n");
-            } else if (typeof parsed === "object") {
-              contentText = parsed.text || contentText;
-              audioUrl = parsed.audioUrl || audioUrl;
-              attachedMaterial = parsed.attachedMaterial || attachedMaterial;
-              flashcardsData = parsed.flashcardsData || flashcardsData;
-              quizData = parsed.quizData || quizData;
+          if (msg.parts) {
+            try {
+              const parsed = typeof msg.parts === "string" ? JSON.parse(msg.parts) : msg.parts;
+              if (Array.isArray(parsed)) {
+                contentText = parsed.map((p) => p.text || "").join("\n");
+              } else if (typeof parsed === "object") {
+                contentText = parsed.text || contentText;
+                audioUrl = parsed.audioUrl || audioUrl;
+                attachedMaterial = parsed.attachedMaterial || attachedMaterial;
+                flashcardsData = parsed.flashcardsData || flashcardsData;
+                quizData = parsed.quizData || quizData;
+              }
+            } catch {
+              contentText = String(msg.parts || "");
             }
-          } catch {
-            contentText = String(msg.parts || "");
           }
-        }
 
-        return {
-          id: msg.id,
-          role: msg.role,
-          content: contentText,
-          audioUrl,
-          timestamp: msg.timestamp || msg.created_at,
-          attachedMaterial,
-          flashcardsData,
-          quizData,
-        };
-      });
-      setMessages(formatted);
+          return {
+            id: msg.id,
+            role: msg.role,
+            content: contentText,
+            audioUrl,
+            timestamp: msg.timestamp || msg.created_at,
+            attachedMaterial,
+            flashcardsData,
+            quizData,
+          };
+        });
+        setMessages(formatted);
+      } else {
+        setMessages([]);
+      }
     }
-  }, [threadMessages]);
+  }, [threadMessages, activeThreadId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -740,30 +754,102 @@ function AssistantPage() {
     }
   }
 
+  const [isAssignmentMode, setIsAssignmentMode] = useState(false);
+
+  // Prefill typing bar with customizable prompt template when clicking study action buttons
+  function prepareStudyPrompt(mode: "mcq" | "theory" | "flashcards" | "summary" | "assignment") {
+    setShowDropUpMenu(false);
+    setShowMenuDrawer(false);
+    const docTitle = activeDocContext?.title;
+
+    let template = "";
+    if (mode === "mcq") {
+      template = docTitle
+        ? `Generate 20 MCQ questions on "${docTitle}": `
+        : "Generate 20 MCQ questions on: ";
+    } else if (mode === "theory") {
+      template = docTitle
+        ? `Generate 10 theory exam questions on "${docTitle}": `
+        : "Generate 10 theory exam questions on: ";
+    } else if (mode === "flashcards") {
+      template = docTitle
+        ? `Generate 20 study flashcards on "${docTitle}": `
+        : "Generate 20 study flashcards on: ";
+    } else if (mode === "summary") {
+      template = docTitle
+        ? `Write a detailed, high-yield exam summary for "${docTitle}": `
+        : "Write a detailed, high-yield exam summary on: ";
+    } else if (mode === "assignment") {
+      setIsAssignmentMode(true);
+      template = "[Assignment Help] ";
+    }
+
+    setInput(template);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(template.length, template.length);
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 84)}px`;
+      }
+    }, 50);
+  }
+
   // Study Intent Detector (Automatically route "give me 20 questions", "give me 30 flashcards", etc.)
   function detectStudyIntent(text: string) {
     const lower = text.toLowerCase();
+
+    // Check if Assignment Mode or prefixed with [Assignment Help]
+    if (isAssignmentMode || lower.startsWith("[assignment help]")) {
+      return { type: "assignment" as const, prompt: text.replace(/^\[assignment help\]\s*/i, "").trim() };
+    }
 
     // Match numbers: 50, 40, 30, 25, 20, 15, 10, 5, or any digits
     const numMatch = lower.match(/\b(50|40|30|25|20|15|10|5|\d{1,2})\b/);
     const count = numMatch ? Math.min(50, Math.max(1, parseInt(numMatch[1], 10))) : undefined;
 
-    // Extract topic if specified after "on", "about", "for", "regarding", "in"
+    // Extract user-typed topic
     let topic: string | undefined = undefined;
-    const topicMatch = text.match(/(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._-]{3,40})/i);
-    if (topicMatch && topicMatch[1]) {
-      const candidate = topicMatch[1].trim().replace(/\s+(please|now|thanks).*$/i, "");
-      if (candidate.length > 2) topic = candidate;
+
+    // 1. If there is a colon (e.g. "Generate 20 MCQ questions on: Photosynthesis" or "... on [topic]: Kinematics")
+    const colonIdx = text.indexOf(":");
+    if (colonIdx !== -1 && colonIdx < text.length - 1) {
+      const candidate = text.slice(colonIdx + 1).trim();
+      if (candidate.length > 1) {
+        topic = candidate.replace(/^\[.*?\]\s*/, "").replace(/[\.\?!]+$/, "").trim();
+      }
+    }
+
+    // 2. If there are quotes (e.g. on "Fluid Mechanics")
+    if (!topic) {
+      const quoteMatch = text.match(/["']([^"']{2,80})["']/);
+      if (quoteMatch && quoteMatch[1]) {
+        topic = quoteMatch[1].trim();
+      }
+    }
+
+    // 3. Fallback topic match using "on", "about", "for", "regarding", "in"
+    if (!topic) {
+      const topicMatch = text.match(/(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._\-\(\)]{3,60})/i);
+      if (topicMatch && topicMatch[1]) {
+        const candidate = topicMatch[1].trim().replace(/\s+(please|now|thanks).*$/i, "").replace(/[\.\?!]+$/, "");
+        if (candidate.length > 1) topic = candidate;
+      }
     }
 
     // Flashcards intent
     if (/\b(flashcards?|flash\s*cards?|study\s*cards?)\b/i.test(lower)) {
-      return { type: "flashcards" as const, count: count || 5, topic };
+      return { type: "flashcards" as const, count: count || 20, topic };
     }
 
     // Theory intent
     if (/\b(theory|essay|written\s*exam|theory\s*test|theory\s*questions?)\b/i.test(lower)) {
-      return { type: "theory" as const, count: count || 5, topic };
+      return { type: "theory" as const, count: count || 10, topic };
+    }
+
+    // Summary intent (e.g. "Write a detailed summary on: ...")
+    if (/\b(summarize|summary|high-yield\s*notes|revision\s*notes)\b/i.test(lower)) {
+      return { type: "summary" as const, topic };
     }
 
     // MCQ / Quiz / Practice Questions
@@ -773,11 +859,51 @@ function AssistantPage() {
         /\b(give|generate|make|create|prepare|test|quiz|drill|ask|practice)\b/i.test(lower) ||
         /\b(mcqs?|quiz)\b/i.test(lower)
       ) {
-        return { type: "mcq" as const, count: count || 5, topic };
+        return { type: "mcq" as const, count: count || 20, topic };
       }
     }
 
     return null;
+  }
+
+  // Execute standard AI query through Groq with formatting
+  async function executeStandardAiQuery(queryText: string, targetThreadId: string) {
+    setThinking(true);
+    try {
+      const result = await askBossAiServerFn({
+        data: {
+          userId: user!.id,
+          threadId: targetThreadId,
+          query: queryText,
+          taskType: "general",
+          docContext: activeDocContext ?? undefined,
+        },
+      });
+
+      const aiMsg: ChatMessage = {
+        id: result.assistantMessageId,
+        role: "assistant",
+        content: result.response,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, aiMsg]);
+      refetchThreads();
+
+      if (messages.length === 0) {
+        const smartTitle = queryText.slice(0, 32).replace(/\n/g, " ");
+        updateStudyThreadTitleServerFn({
+          data: {
+            threadId: targetThreadId,
+            title: smartTitle.length > 30 ? `${smartTitle}...` : smartTitle,
+          },
+        }).then(() => refetchThreads());
+      }
+    } catch {
+      toast.error("Boss AI was unable to generate a response. Please retry.");
+    } finally {
+      setThinking(false);
+    }
   }
 
   // Send Message
@@ -813,46 +939,18 @@ function AssistantPage() {
       if (intent.type === "mcq") {
         return startMcqQuiz(intent.count, undefined, intent.topic, textToSend);
       }
-    }
-
-    setThinking(true);
-
-    try {
-      const result = await askBossAiServerFn({
-        data: {
-          userId: user.id,
-          threadId: targetThreadId,
-          query: textToSend,
-          taskType: "general",
-          docContext: activeDocContext ?? undefined,
-        },
-      });
-
-      const aiMsg: ChatMessage = {
-        id: result.assistantMessageId,
-        role: "assistant",
-        content: result.response,
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, aiMsg]);
-      refetchThreads();
-
-      // Auto title thread if it was the first message
-      if (messages.length === 0) {
-        const smartTitle = textToSend.slice(0, 32).replace(/\n/g, " ");
-        updateStudyThreadTitleServerFn({
-          data: {
-            threadId: targetThreadId,
-            title: smartTitle.length > 30 ? `${smartTitle}...` : smartTitle,
-          },
-        }).then(() => refetchThreads());
+      if (intent.type === "assignment") {
+        setIsAssignmentMode(false);
+        const assignmentQuery = `[Assignment Helper - ACADEMIC BREAKDOWN]\nProblem: ${intent.prompt || textToSend}\nPlease provide a comprehensive, step-by-step academic solution with full derivations, formulas, methodology, and citations.`;
+        return executeStandardAiQuery(assignmentQuery, targetThreadId);
       }
-    } catch {
-      toast.error("Boss AI was unable to generate a response. Please retry.");
-    } finally {
-      setThinking(false);
+      if (intent.type === "summary") {
+        const summaryQuery = `[High-Yield Exam Summary]\nTopic / Context: ${intent.topic || textToSend}\nPlease synthesize the core definitions, high-yield formulas, key theorems, and common examination pitfalls into structured revision notes.`;
+        return executeStandardAiQuery(summaryQuery, targetThreadId);
+      }
     }
+
+    return executeStandardAiQuery(textToSend, targetThreadId);
   }
 
   // MCQ Practice Quiz Generation (Up to 50 questions) - rendered inside AI chat reply container!
@@ -877,7 +975,7 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = topicOverride || activeDocContext?.title || profile?.course || "University Studies";
+      const title = topicOverride || activeDocContext?.title || "University Examination Material";
       const sample = activeDocContext?.text || `Curriculum topics and past exam questions on ${title}.`;
 
       const res = await generateStudyQuizServerFn({
@@ -934,7 +1032,7 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = topicOverride || activeDocContext?.title || profile?.course || "General Coursework";
+      const title = topicOverride || activeDocContext?.title || "University Examination Material";
       const sample = activeDocContext?.text || `University semester exam preparation concepts on ${title}.`;
 
       const res = await generateStudyQuizServerFn({
@@ -991,7 +1089,7 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = topicOverride || activeDocContext?.title || profile?.course || "Academic Revision";
+      const title = topicOverride || activeDocContext?.title || "University Examination Material";
       const sample = activeDocContext?.text || `Key definitions, core theorems, and mnemonics for ${title}.`;
 
       const res = await generateStudyFlashcardsServerFn({
@@ -1123,81 +1221,133 @@ function AssistantPage() {
         </div>
 
         {/* Study Tools Quick Triggers */}
-        <div className="p-3 border-b border-border/70 space-y-1">
+        <div className="p-3 border-b border-border/70 space-y-1.5 bg-secondary/10">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-            Study Modes & Tools
+            Study Modes &amp; Tools
           </span>
           <button
             type="button"
-            onClick={() => setIsMcqConfigOpen(true)}
-            className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all"
+            onClick={() => prepareStudyPrompt("mcq")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all group"
           >
-            <CheckCircle2 className="size-4 text-primary" />
-            <span>MCQ Practice Quiz</span>
+            <span className="size-6 rounded-lg bg-primary/10 text-primary grid place-items-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
+              <CheckCircle2 className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">MCQ Practice Quiz</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">Customizable questions on your topic</p>
+            </div>
           </button>
           <button
             type="button"
-            onClick={() => setIsTheoryConfigOpen(true)}
-            className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all"
+            onClick={() => prepareStudyPrompt("theory")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-emerald-500/10 hover:text-emerald-600 transition-all group"
           >
-            <FileText className="size-4 text-emerald-600" />
-            <span>Theory Test & Marking</span>
+            <span className="size-6 rounded-lg bg-emerald-500/10 text-emerald-600 grid place-items-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
+              <FileText className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">Theory Test &amp; Marking</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">Exam questions &amp; rubric marking</p>
+            </div>
           </button>
           <button
             type="button"
-            onClick={() => setIsFlashcardConfigOpen(true)}
-            className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all"
+            onClick={() => prepareStudyPrompt("flashcards")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-indigo-500/10 hover:text-indigo-600 transition-all group"
           >
-            <Layers className="size-4 text-indigo-500" />
-            <span>3D Flashcards</span>
+            <span className="size-6 rounded-lg bg-indigo-500/10 text-indigo-500 grid place-items-center group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+              <Layers className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">3D Flashcards</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">Physical flip cards with KaTeX</p>
+            </div>
           </button>
           <button
             type="button"
-            onClick={() => setIsAssignmentModalOpen(true)}
-            className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all"
+            onClick={() => prepareStudyPrompt("assignment")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-amber-500/10 hover:text-amber-600 transition-all group"
           >
-            <BookOpen className="size-4 text-amber-500" />
-            <span>Assignment Helper</span>
+            <span className="size-6 rounded-lg bg-amber-500/10 text-amber-500 grid place-items-center group-hover:bg-amber-600 group-hover:text-white transition-colors shrink-0">
+              <GraduationCap className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">Assignment Helper</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">Step-by-step academic breakdown</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => prepareStudyPrompt("summary")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-rose-500/10 hover:text-rose-600 transition-all group"
+          >
+            <span className="size-6 rounded-lg bg-rose-500/10 text-rose-500 grid place-items-center group-hover:bg-rose-600 group-hover:text-white transition-colors shrink-0">
+              <Sparkles className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">Summarize Material</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">High-yield revision notes</p>
+            </div>
           </button>
         </div>
 
         {/* Recent Chats list */}
-        <div className="p-3 flex-1 min-h-0 flex flex-col space-y-1 overflow-hidden">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-            Recent Conversations
-          </span>
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
-            {threads.length === 0 ? (
-              <p className="py-4 text-xs text-muted-foreground text-center">No chats yet.</p>
+        <div className="p-3 flex-1 min-h-0 flex flex-col space-y-2 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Recent Conversations ({threads.length})
+            </span>
+          </div>
+
+          {threads.length > 4 && (
+            <div className="relative">
+              <input
+                type="text"
+                value={threadSearch}
+                onChange={(e) => setThreadSearch(e.target.value)}
+                placeholder="Search chats..."
+                className="w-full h-7 rounded-lg border border-border/70 bg-secondary/30 px-2 pl-6 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary"
+              />
+              <Search className="size-3 text-muted-foreground absolute left-1.5 top-2" />
+            </div>
+          )}
+
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1 [scrollbar-width:thin]">
+            {filteredThreads.length === 0 ? (
+              <p className="py-4 text-xs text-muted-foreground text-center">
+                {threadSearch ? "No matching conversations." : "No chats yet."}
+              </p>
             ) : (
-              threads.map((t) => (
+              filteredThreads.map((t: any) => (
                 <div
                   key={t.id}
                   className={cn(
-                    "group flex items-center justify-between gap-1 rounded-xl px-2.5 py-2 text-xs transition-colors",
+                    "group flex items-center justify-between gap-1.5 rounded-xl px-2.5 py-2 text-xs transition-all cursor-pointer border",
                     activeThreadId === t.id
-                      ? "bg-secondary font-semibold text-foreground"
-                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                      ? "bg-primary/10 border-primary/40 font-semibold text-primary shadow-2xs"
+                      : "border-transparent text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                   )}
-                >
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 truncate text-left"
-                    onClick={() => {
+                  onClick={() => {
+                    if (activeThreadId !== t.id) {
                       setActiveThreadId(t.id);
+                      setMessages([]);
                       setQuizQuestions(null);
                       setFlashcards(null);
-                    }}
-                  >
-                    {t.title}
-                  </button>
+                    }
+                  }}
+                >
+                  <div className="min-w-0 flex-1 truncate text-left">
+                    <p className="truncate text-xs leading-tight">{t.title}</p>
+                  </div>
                   <button
                     type="button"
+                    aria-label="Delete chat"
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteChat(t.id);
                     }}
-                    className="p-1 hover:text-destructive text-muted-foreground"
+                    className="p-1 opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-opacity"
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -1212,30 +1362,78 @@ function AssistantPage() {
       {/* MAIN CHAT & INTERACTIVE WORKSPACE */}
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
-        {/* Mobile floating top-right triple dots button */}
-        <div className="md:hidden absolute top-3 right-3 z-30">
+        {/* Mobile Modern Top Header Bar */}
+        <div className="md:hidden flex items-center justify-between px-3 py-2 border-b border-border/60 bg-card/90 backdrop-blur-md z-30 shrink-0">
           <button
             type="button"
             onClick={() => setShowMenuDrawer(true)}
-            title="Conversation options & previous chats"
-            className="size-9 rounded-full grid place-items-center bg-card/90 text-foreground hover:bg-secondary active:scale-90 transition-all border border-border/70 shadow-xs backdrop-blur-xs"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-secondary/80 border border-border/70 text-foreground text-xs font-semibold hover:bg-secondary active:scale-95 transition-all shadow-xs"
           >
-            <MoreVertical className="size-4.5" />
+            <History className="size-3.5 text-primary" />
+            <span>Recent Chats</span>
+            {threads.length > 0 && (
+              <span className="size-4 rounded-full bg-primary/20 text-primary text-[10px] grid place-items-center font-bold">
+                {threads.length}
+              </span>
+            )}
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-bold text-foreground truncate max-w-[140px]">
+              {activeDocContext ? activeDocContext.title : "Boss AI"}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => createNewChat()}
+            className="size-8 rounded-full grid place-items-center bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all shadow-xs"
+            title="Start New Conversation"
+          >
+            <Plus className="size-4" />
           </button>
         </div>
 
         {/* Desktop Chat Header */}
-        <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-card shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center">
-              <Bot className="size-4" />
+        <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-card/70 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 rounded-xl bg-primary/10 text-primary grid place-items-center">
+              <Bot className="size-4.5" />
             </div>
             <div>
-              <h2 className="text-xs font-bold text-foreground">Boss AI Copilot</h2>
+              <h2 className="text-xs font-bold text-foreground">
+                {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI Study Copilot"}
+              </h2>
               <p className="text-[10px] text-muted-foreground">
-                {activeDocContext ? activeDocContext.title : "Active Study Session"}
+                {activeDocContext ? activeDocContext.title : "Active University Session · Groq LLaMA 3.1 & Whisper"}
               </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {activeThreadId && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => deleteChat(activeThreadId)}
+                className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive gap-1"
+                title="Delete this conversation"
+              >
+                <Trash2 className="size-3" />
+                <span>Delete Chat</span>
+              </Button>
+            )}
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={createNewChat}
+              className="h-7 px-2.5 text-xs font-semibold rounded-lg gap-1 border-border/80 hover:bg-primary/10 hover:text-primary"
+            >
+              <Plus className="size-3.5" />
+              <span>New Chat</span>
+            </Button>
           </div>
         </div>
 
@@ -1270,23 +1468,19 @@ function AssistantPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setMcqCount(5);
-                      setIsMcqConfigOpen(true);
-                    }}
-                    className="rounded-xl border border-border/80 bg-card p-2.5 text-xs font-medium hover:border-primary transition-all"
+                    onClick={() => prepareStudyPrompt("mcq")}
+                    className="rounded-xl border border-border/80 bg-card p-2.5 text-xs font-medium hover:border-primary transition-all flex items-center justify-between"
                   >
-                    5 Practice Multiple Choice Questions
+                    <span>20 Practice MCQ Questions</span>
+                    <CheckCircle2 className="size-3.5 text-primary" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setFlashcardCount(10);
-                      setIsFlashcardConfigOpen(true);
-                    }}
-                    className="rounded-xl border border-border/80 bg-card p-2.5 text-xs font-medium hover:border-primary transition-all"
+                    onClick={() => prepareStudyPrompt("flashcards")}
+                    className="rounded-xl border border-border/80 bg-card p-2.5 text-xs font-medium hover:border-primary transition-all flex items-center justify-between"
                   >
-                    Generate 10 Study Flashcards
+                    <span>20 Study Flashcards</span>
+                    <Layers className="size-3.5 text-indigo-500" />
                   </button>
                   <button
                     type="button"
@@ -1519,25 +1713,19 @@ function AssistantPage() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowDropUpMenu(false);
-                    setIsMcqConfigOpen(true);
-                  }}
+                  onClick={() => prepareStudyPrompt("mcq")}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
                   <CheckCircle2 className="size-4 text-primary" />
                   <div>
                     <p className="leading-tight">MCQ Quiz</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">5 to 50 practice questions</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">Generate practice questions on any topic</p>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowDropUpMenu(false);
-                    setIsTheoryConfigOpen(true);
-                  }}
+                  onClick={() => prepareStudyPrompt("theory")}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
                   <FileText className="size-4 text-emerald-600" />
@@ -1549,37 +1737,31 @@ function AssistantPage() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowDropUpMenu(false);
-                    setIsFlashcardConfigOpen(true);
-                  }}
+                  onClick={() => prepareStudyPrompt("flashcards")}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
                   <Layers className="size-4 text-indigo-500" />
                   <div>
-                    <p className="leading-tight">Flashcards</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Colorful 3D cards</p>
+                    <p className="leading-tight">3D Flashcards</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">Physical flip cards with KaTeX math</p>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowDropUpMenu(false);
-                    setIsAssignmentModalOpen(true);
-                  }}
+                  onClick={() => prepareStudyPrompt("assignment")}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
                   <GraduationCap className="size-4 text-amber-500" />
                   <div>
                     <p className="leading-tight">Assignment Helper</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Detailed or short breakdown</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">Step-by-step academic solution</p>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={triggerSummarize}
+                  onClick={() => prepareStudyPrompt("summary")}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
                   <Sparkles className="size-4 text-rose-500" />
@@ -1591,6 +1773,23 @@ function AssistantPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Assignment Mode indicator banner */}
+          {isAssignmentMode && (
+            <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-semibold animate-in fade-in slide-in-from-bottom-1">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="size-3.5" />
+                <span>Assignment Mode: Academic breakdown with derivations &amp; steps</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAssignmentMode(false)}
+                className="text-muted-foreground hover:text-foreground text-[11px] underline"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
 
           {/* Autogrowing Typing Capsule */}
           <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-secondary/30 dark:bg-zinc-900/50 p-2 sm:p-2.5 shadow-xs transition-all focus-within:border-primary/50 focus-within:bg-card">
@@ -1616,7 +1815,9 @@ function AssistantPage() {
               }}
               inputMode={isMobile ? "none" : "text"}
               placeholder={
-                activeDocContext
+                isAssignmentMode
+                  ? "Type your assignment problem or question here for a step-by-step academic solution..."
+                  : activeDocContext
                   ? `Ask Boss AI about ${activeDocContext.title}...`
                   : "Ask Boss AI anything or tap + for study modes..."
               }
