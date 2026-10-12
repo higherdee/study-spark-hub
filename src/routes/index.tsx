@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import {
   ArrowRight,
   Bot,
@@ -48,6 +48,9 @@ import {
 } from "@/lib/constants";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
   head: () => ({
     meta: [
       { title: "Syllaboss — The Modern University Study Platform" },
@@ -57,44 +60,11 @@ export const Route = createFileRoute("/")({
           "Syllaboss is an all-in-one academic companion for iOS, Android and desktop. Verified past questions, course summaries, Boss AI LaTeX derivations, and cashable student rewards.",
       },
       { property: "og:title", content: "Syllaboss — Study With Direction" },
-      {
-        property: "og:description",
-        content:
-          "Peer-reviewed Nigerian university lecture notes, past exams, and Boss AI study companion. Available everywhere as a high-speed PWA.",
-      },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://syllaboss.org" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: IndexRouteComponent,
+  component: () => null,
 });
-
-function IndexRouteComponent() {
-  const { user } = useAuth();
-
-  // App-first entry:
-  // When a student enters web.syllaboss.com, launches the installed PWA, or is logged in,
-  // take them DIRECTLY into the application dashboard (/dashboard), NOT the marketing landing page.
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname.toLowerCase();
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
-      document.referrer.includes("android-app://");
-
-    const isMarketingApex =
-      (hostname === "syllaboss.org" || hostname === "syllaboss.com") &&
-      !isStandalone &&
-      !user;
-
-    if (!isMarketingApex) {
-      return <Navigate to="/dashboard" replace />;
-    }
-  }
-
-  return <HomePage />;
-}
 
 const SHOWCASE_TABS = [
   {
