@@ -912,7 +912,8 @@ export function CommunityPage() {
                     </p>
                   </div>
                 </div>
-              ))}
+              );
+            })}
         </div>
       </div>
 
