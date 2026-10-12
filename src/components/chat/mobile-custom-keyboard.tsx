@@ -308,6 +308,22 @@ export function MobileCustomKeyboard({
     };
   }, [isShift, isCapsLock]);
 
+  // Broadcast keyboard open/closed state so bottom navigation dock collapses
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("syllaboss-keyboard-state", { detail: { isOpen } })
+      );
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("syllaboss-keyboard-state", { detail: { isOpen: false } })
+        );
+      }
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -316,7 +332,7 @@ export function MobileCustomKeyboard({
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0 }}
       transition={{ type: "spring", damping: 28, stiffness: 320 }}
-      className="w-full shrink-0 border-t border-border/80 bg-card/95 backdrop-blur-2xl shadow-[0_-12px_40px_rgba(0,0,0,0.15)] flex flex-col z-30 select-none touch-manipulation pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+      className="fixed bottom-0 left-0 right-0 w-full z-50 border-t border-border/80 bg-card/98 shadow-[0_-16px_48px_rgba(0,0,0,0.3)] flex flex-col select-none touch-manipulation pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
       {/* Top Header / Mode Switcher & Live Suggestions Bar */}
       <div className="flex flex-col border-b border-border/60 bg-muted/40">

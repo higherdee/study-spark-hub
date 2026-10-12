@@ -29,7 +29,7 @@ const nav: NavItem[] = [
   { to: "/dashboard", label: "Home", icon: Home, exact: true },
   { to: "/dashboard/library", label: "Library", icon: BookOpen },
   { to: "/dashboard/assistant", label: "Boss AI", icon: Bot },
-  { to: "/dashboard/community", label: "Study Hub", icon: Users },
+  { to: "/dashboard/community", label: "Peers", icon: Users },
   { to: "/dashboard/upload", label: "Upload", icon: Upload },
   { to: "/dashboard/leaderboard", label: "Rankings", icon: Trophy, hideOnMobile: true },
   { to: "/dashboard/wallet", label: "Wallet", icon: Wallet },

@@ -570,3 +570,111 @@ export async function sendDirectMessage(data: {
   };
 }
 
+/**
+ * Edit a direct message if sent within 10 minutes
+ */
+export async function editDirectMessage(data: {
+  messageId: string;
+  userId: string;
+  newContent: string;
+}): Promise<boolean> {
+  const rs = await turso.execute({
+    sql: `SELECT sender_id, created_at FROM direct_messages WHERE id = ? LIMIT 1`,
+    args: [data.messageId],
+  });
+  if (rs.rows.length === 0) return false;
+  const msg = rs.rows[0] as any;
+  if (msg.sender_id !== data.userId) return false;
+
+  const createdAt = new Date(String(msg.created_at)).getTime();
+  const diffMinutes = (Date.now() - createdAt) / (1000 * 60);
+  if (diffMinutes > 10) {
+    throw new Error("Messages can only be edited within 10 minutes of sending.");
+  }
+
+  await turso.execute({
+    sql: `UPDATE direct_messages SET content = ? WHERE id = ? AND sender_id = ?`,
+    args: [data.newContent.trim(), data.messageId, data.userId],
+  });
+  return true;
+}
+
+/**
+ * Delete a direct message
+ */
+export async function deleteDirectMessage(data: {
+  messageId: string;
+  userId: string;
+}): Promise<boolean> {
+  await turso.execute({
+    sql: `DELETE FROM direct_messages WHERE id = ? AND sender_id = ?`,
+    args: [data.messageId, data.userId],
+  });
+  return true;
+}
+
+/**
+ * Edit a group message if sent within 10 minutes
+ */
+export async function editGroupMessage(data: {
+  messageId: string;
+  userId: string;
+  newContent: string;
+}): Promise<boolean> {
+  const rs = await turso.execute({
+    sql: `SELECT user_id, created_at FROM group_messages WHERE id = ? LIMIT 1`,
+    args: [data.messageId],
+  });
+  if (rs.rows.length === 0) return false;
+  const msg = rs.rows[0] as any;
+  if (msg.user_id !== data.userId) return false;
+
+  const createdAt = new Date(String(msg.created_at)).getTime();
+  const diffMinutes = (Date.now() - createdAt) / (1000 * 60);
+  if (diffMinutes > 10) {
+    throw new Error("Messages can only be edited within 10 minutes of sending.");
+  }
+
+  await turso.execute({
+    sql: `UPDATE group_messages SET content = ? WHERE id = ? AND user_id = ?`,
+    args: [data.newContent.trim(), data.messageId, data.userId],
+  });
+  return true;
+}
+
+/**
+ * Delete a group message
+ */
+export async function deleteGroupMessage(data: {
+  messageId: string;
+  userId: string;
+}): Promise<boolean> {
+  await turso.execute({
+    sql: `DELETE FROM group_messages WHERE id = ? AND user_id = ?`,
+    args: [data.messageId, data.userId],
+  });
+  return true;
+}
+
+/**
+ * Add a peer to a study group
+ */
+export async function addMemberToStudyGroup(data: {
+  groupId: string;
+  memberUserId: string;
+}): Promise<boolean> {
+  await turso.batch([
+    {
+      sql: `INSERT OR IGNORE INTO study_group_members (id, group_id, user_id, role, joined_at)
+            VALUES (?, ?, ?, 'member', datetime('now'))`,
+      args: [crypto.randomUUID(), data.groupId, data.memberUserId],
+    },
+    {
+      sql: `UPDATE study_groups SET member_count = member_count + 1 WHERE id = ?`,
+      args: [data.groupId],
+    },
+  ]);
+  return true;
+}
+
+

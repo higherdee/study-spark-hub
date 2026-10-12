@@ -122,12 +122,22 @@ export function AppShell({
   const timerSecs = remainingSecs % 60;
   const timerDisplay = `${String(timerMins).padStart(2, "0")}:${String(timerSecs).padStart(2, "0")}`;
 
+  const isAssistantPage = path.startsWith("/dashboard/assistant");
   const isFullScreenAppPage =
-    path.startsWith("/dashboard/assistant") ||
+    isAssistantPage ||
     path.startsWith("/dashboard/community") ||
     path.startsWith("/dashboard/preview");
 
   const isScrolledDown = useMobileScrollHide();
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      setIsKeyboardOpen(Boolean(e.detail?.isOpen));
+    };
+    window.addEventListener("syllaboss-keyboard-state", handler);
+    return () => window.removeEventListener("syllaboss-keyboard-state", handler);
+  }, []);
 
   return (
     <div
@@ -138,25 +148,26 @@ export function AppShell({
           : "min-h-screen"
       )}
     >
-      {/* Top Bar matching Screenshot 2: Hamburger on left, widgets on right */}
-      <header
-        className={cn(
-          "px-3 transition-all duration-300 ease-out sm:px-6 lg:px-8",
-          isFullScreenAppPage ? "shrink-0 py-2" : "sticky top-0 z-40 py-2.5",
-          isScrolledDown && "-translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
-        )}
-      >
-        <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 rounded-[1.35rem] border border-border/70 bg-card/90 px-3 py-2 shadow-[0_12px_32px_-18px_rgba(13,40,30,0.35)] backdrop-blur-2xl transition-all sm:px-4">
-          {/* Left: Hamburger menu icon opening side drop menu */}
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => setShowSideNav(true)}
-              aria-label="Open navigation menu"
-              className="grid size-9 place-items-center rounded-full hover:bg-secondary text-foreground transition-all active:scale-90"
-            >
-              <Menu className="size-5" />
-            </button>
+      {/* Top Bar (Hidden on Boss AI page per user requirements) */}
+      {!isAssistantPage && (
+        <header
+          className={cn(
+            "px-3 transition-all duration-300 ease-out sm:px-6 lg:px-8",
+            isFullScreenAppPage ? "shrink-0 py-2" : "sticky top-0 z-40 py-2.5",
+            isScrolledDown && "-translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
+          )}
+        >
+          <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 rounded-[1.35rem] border border-border/70 bg-card/90 px-3 py-2 shadow-[0_12px_32px_-18px_rgba(13,40,30,0.35)] backdrop-blur-md transition-all sm:px-4">
+            {/* Left: Hamburger menu icon opening side drop menu */}
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowSideNav(true)}
+                aria-label="Open navigation menu"
+                className="grid size-9 place-items-center rounded-full hover:bg-secondary text-foreground transition-all active:scale-90"
+              >
+                <Menu className="size-5" />
+              </button>
 
             <Link to="/dashboard" className="hidden sm:inline-flex items-center">
               <SyllabossLogo asDiv showPlusBadge={isPlus} />
@@ -230,10 +241,17 @@ export function AppShell({
       {/* Main Content Area */}
       <main
         className={cn(
-          "mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8",
-          isFullScreenAppPage
-            ? "flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-[5.25rem]"
-            : "py-5 pb-28 sm:py-8 sm:pb-32"
+          "w-full transition-all duration-300",
+          isAssistantPage
+            ? "flex-1 min-h-0 h-full max-h-full overflow-hidden flex flex-col p-0 max-w-none"
+            : isFullScreenAppPage
+            ? cn(
+                "mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 flex-1 min-h-0 overflow-hidden flex flex-col py-0",
+                isKeyboardOpen || isScrolledDown
+                  ? "pb-0"
+                  : "pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-[5.25rem]"
+              )
+            : "mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 pb-28 sm:py-8 sm:pb-32"
         )}
       >
         {children}
@@ -251,17 +269,17 @@ export function AppShell({
         onClose={() => setShowSideNav(false)}
       />
 
-      {/* Bottom Floating Navigation Dock (Significantly enlarged, native mobile app feel) */}
+      {/* Bottom Floating Navigation Dock (Collapses immediately on keyboard open or scroll) */}
       <aside
         id="main-navigation-dock"
         aria-label="Navigation dock"
         className={cn(
           "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:bottom-6 inset-x-0 z-40 mx-auto w-fit max-w-[calc(100vw-1rem)] pointer-events-none px-1 transition-all duration-300 ease-out",
           showSideNav && "hidden pointer-events-none opacity-0",
-          isScrolledDown && "translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
+          (isScrolledDown || isKeyboardOpen) && "translate-y-36 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
         )}
       >
-        <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-3xl bg-card/95 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.7)] transition-all duration-300">
+        <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-md bg-card/95 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.18)] transition-all duration-300">
           {nav.map((item) => {
             const active = item.exact
               ? path === item.to

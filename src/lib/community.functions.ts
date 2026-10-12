@@ -161,3 +161,39 @@ export const forwardMaterialToChatServerFn = createServerFn({ method: "POST" })
     }
   });
 
+export const editDirectMessageServerFn = createServerFn({ method: "POST" })
+  .validator((d: { messageId: string; userId: string; newContent: string }) => d)
+  .handler(async ({ data }) => {
+    const { editDirectMessage } = await import("@/integrations/turso/community");
+    return await editDirectMessage(data);
+  });
+
+export const deleteDirectMessageServerFn = createServerFn({ method: "POST" })
+  .validator((d: { messageId: string; userId: string }) => d)
+  .handler(async ({ data }) => {
+    const { deleteDirectMessage } = await import("@/integrations/turso/community");
+    return await deleteDirectMessage(data);
+  });
+
+export const editGroupMessageServerFn = createServerFn({ method: "POST" })
+  .validator((d: { messageId: string; userId: string; newContent: string }) => d)
+  .handler(async ({ data }) => {
+    const { editGroupMessage } = await import("@/integrations/turso/community");
+    return await editGroupMessage(data);
+  });
+
+export const deleteGroupMessageServerFn = createServerFn({ method: "POST" })
+  .validator((d: { messageId: string; userId: string }) => d)
+  .handler(async ({ data }) => {
+    const { deleteGroupMessage } = await import("@/integrations/turso/community");
+    return await deleteGroupMessage(data);
+  });
+
+export const addMemberToStudyGroupServerFn = createServerFn({ method: "POST" })
+  .validator((d: { groupId: string; memberUserId: string }) => d)
+  .handler(async ({ data }) => {
+    const { addMemberToStudyGroup } = await import("@/integrations/turso/community");
+    return await addMemberToStudyGroup(data);
+  });
+
+

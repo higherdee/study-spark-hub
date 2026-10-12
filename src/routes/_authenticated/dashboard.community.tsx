@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -27,12 +27,22 @@ import {
   MoreVertical,
   Upload,
   Bot,
+  Copy,
+  Trash2,
+  Edit2,
+  CornerUpLeft,
+  Pin,
+  Archive,
+  VolumeX,
+  Volume2,
+  Ban,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AnimatePresence, motion } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -55,22 +65,29 @@ import {
   getOrCreatePeerConversationServerFn,
   getMaterialsForChatServerFn,
   updateStreakServerFn,
+  editDirectMessageServerFn,
+  deleteDirectMessageServerFn,
+  editGroupMessageServerFn,
+  deleteGroupMessageServerFn,
+  addMemberToStudyGroupServerFn,
 } from "@/lib/community.functions";
+import { askBossAiServerFn } from "@/lib/ai/study-assistant.functions";
 import {
   subscribeToChatChannel,
   broadcastChatMessage,
 } from "@/lib/supabase-realtime";
 import { StudentQrModal } from "@/components/student-qr-modal";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
+import { MobileCustomKeyboard } from "@/components/chat/mobile-custom-keyboard";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard/community")({
   head: () => ({
     meta: [
-      { title: "Student Study Chats & Groups — Syllaboss" },
+      { title: "Peers & Student Study Chats — Syllaboss" },
       {
         name: "description",
-        content: "Chat with peers, create study groups, and share verified academic materials in real-time.",
+        content: "Chat with peers, create study groups, mention Boss AI, and share academic materials.",
       },
     ],
   }),
@@ -89,11 +106,12 @@ interface ActiveChat {
   memberCount?: number;
 }
 
-function CommunityPage() {
+export function CommunityPage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Navigation & View States
   const [activeChat, setActiveChat] = useState<ActiveChat | null>(null);
@@ -101,12 +119,62 @@ function CommunityPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [messageInput, setMessageInput] = useState("");
 
+  // Custom Tactile Keyboard State (Edge-to-edge, suppresses native keyboard)
+  const [showCustomKeyboard, setShowCustomKeyboard] = useState(false);
+
+  // Telegram Features: Reply & Edit States
+  const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null);
+  const [editingMessage, setEditingMessage] = useState<any | null>(null);
+  const [selectedMessageForMenu, setSelectedMessageForMenu] = useState<any | null>(null);
+
+  // Telegram Features: Pinned, Archived, Muted, Blocked Lists
+  const [pinnedChatIds, setPinnedChatIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("syllaboss_pinned_chats") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const [archivedChatIds, setArchivedChatIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("syllaboss_archived_chats") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const [blockedPeerIds, setBlockedPeerIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("syllaboss_blocked_peers") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const [mutedChatIds, setMutedChatIds] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("syllaboss_muted_chats") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  // Long-pressed chat in sidebar for Telegram options
+  const [chatForContextMenu, setChatForContextMenu] = useState<any | null>(null);
+
   // Modals
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [isNewDirectChatOpen, setIsNewDirectChatOpen] = useState(false);
   const [isAttachMaterialOpen, setIsAttachMaterialOpen] = useState(false);
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [addMemberSearch, setAddMemberSearch] = useState("");
   const [selectedMaterial, setSelectedMaterial] = useState<{
     id: string;
     title: string;
@@ -121,6 +189,28 @@ function CommunityPage() {
   // Direct Peer Search
   const [peerSearchQuery, setPeerSearchQuery] = useState("");
 
+  // Swipe-to-reply gesture tracking
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Save pinned, archived, blocked to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("syllaboss_pinned_chats", JSON.stringify(pinnedChatIds));
+    } catch {}
+  }, [pinnedChatIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("syllaboss_archived_chats", JSON.stringify(archivedChatIds));
+    } catch {}
+  }, [archivedChatIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("syllaboss_blocked_peers", JSON.stringify(blockedPeerIds));
+    } catch {}
+  }, [blockedPeerIds]);
+
   // 1. Fetch 1-on-1 Direct Conversations
   const { data: directConversations = [], refetch: refetchConversations } = useQuery({
     queryKey: ["direct-conversations", user?.id],
@@ -132,8 +222,8 @@ function CommunityPage() {
     refetchInterval: 12000,
   });
 
-  // 2. Fetch Study Groups
-  const { data: studyGroups = [], refetch: refetchGroups } = useQuery({
+  // 2. Fetch Study Groups (Exclude any dummy placeholder groups per requirement)
+  const { data: rawStudyGroups = [], refetch: refetchGroups } = useQuery({
     queryKey: ["study-groups", user?.id],
     enabled: Boolean(user?.id),
     queryFn: async () => {
@@ -142,6 +232,18 @@ function CommunityPage() {
     refetchInterval: 15000,
   });
 
+  // Requirement: Remove dummy groups that were previously there
+  const studyGroups = useMemo(() => {
+    return rawStudyGroups.filter((g: any) => {
+      const name = (g.name || "").toLowerCase();
+      // Filter out test/dummy names
+      if (name.includes("dummy") || name.includes("placeholder") || name === "test group") {
+        return false;
+      }
+      return true;
+    });
+  }, [rawStudyGroups]);
+
   // 3. Search Peers for New Direct Chat
   const { data: searchedPeers = [], isFetching: isSearchingPeers } = useQuery({
     queryKey: ["search-peers", peerSearchQuery, user?.id],
@@ -149,6 +251,17 @@ function CommunityPage() {
     queryFn: async () => {
       return await searchPeersServerFn({
         data: { query: peerSearchQuery.trim(), currentUserId: user?.id },
+      });
+    },
+  });
+
+  // Search Peers for Add-Member-to-Group Modal
+  const { data: addMemberCandidates = [], isFetching: isSearchingAddMembers } = useQuery({
+    queryKey: ["search-add-members", addMemberSearch, user?.id],
+    enabled: Boolean(user?.id && addMemberSearch.trim().length >= 1),
+    queryFn: async () => {
+      return await searchPeersServerFn({
+        data: { query: addMemberSearch.trim(), currentUserId: user?.id },
       });
     },
   });
@@ -177,14 +290,9 @@ function CommunityPage() {
     },
   });
 
-  // Attach Material Search & Device Upload
-  const [materialSearchQuery, setMaterialSearchQuery] = useState("");
-  const fileUploadInputRef = useRef<HTMLInputElement>(null);
   const hasInitializedDesktopChatRef = useRef(false);
 
-
-
-  // Default selection on desktop ONLY (never auto-reopen on mobile when user presses back)
+  // Default selection on desktop ONLY
   useEffect(() => {
     if (typeof window === "undefined") return;
     const isDesktop = window.innerWidth >= 768;
@@ -220,7 +328,7 @@ function CommunityPage() {
   useEffect(() => {
     if (!activeChat?.id) return;
 
-    const channel = subscribeToChatChannel(activeChat.id, (payload) => {
+    const channel = subscribeToChatChannel(activeChat.id, () => {
       refetchActiveMessages();
       refetchConversations();
     });
@@ -259,18 +367,120 @@ function CommunityPage() {
     }
   }
 
-  // Send Message in Active Chat
+  // Telegram Feature: Copy Message
+  function handleCopyMessage(content: string) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(content);
+      toast.success("Message copied to clipboard");
+    }
+    setSelectedMessageForMenu(null);
+  }
+
+  // Telegram Feature: Delete Message
+  async function handleDeleteMessage(msgId: string) {
+    if (!user || !activeChat) return;
+    try {
+      if (activeChat.type === "peer") {
+        await deleteDirectMessageServerFn({ data: { messageId: msgId, userId: user.id } });
+      } else {
+        await deleteGroupMessageServerFn({ data: { messageId: msgId, userId: user.id } });
+      }
+      refetchActiveMessages();
+      toast.success("Message deleted");
+    } catch {
+      toast.error("Failed to delete message");
+    } finally {
+      setSelectedMessageForMenu(null);
+    }
+  }
+
+  // Telegram Feature: Edit Message within 10 Minutes
+  function handleStartEditMessage(msg: any) {
+    const createdAt = new Date(msg.created_at).getTime();
+    const diffMins = (Date.now() - createdAt) / (1000 * 60);
+
+    if (diffMins > 10) {
+      toast.error("Messages can only be edited within 10 minutes of being sent.");
+      setSelectedMessageForMenu(null);
+      return;
+    }
+
+    setEditingMessage(msg);
+    setMessageInput(msg.content);
+    setSelectedMessageForMenu(null);
+    setShowCustomKeyboard(true);
+    if (composerTextareaRef.current) {
+      composerTextareaRef.current.focus();
+    }
+  }
+
+  // Telegram Feature: Add Member to Study Group
+  async function handleAddMemberToGroup(peerId: string) {
+    if (!activeChat || activeChat.type !== "group") return;
+    try {
+      await addMemberToStudyGroupServerFn({
+        data: { groupId: activeChat.id, memberUserId: peerId },
+      });
+      await refetchGroups();
+      setIsAddMemberOpen(false);
+      setAddMemberSearch("");
+      toast.success("Member added to study group!");
+    } catch {
+      toast.error("Failed to add member");
+    }
+  }
+
+  // Send or Edit Message in Active Chat
   async function handleSendMessage(e?: React.FormEvent) {
     e?.preventDefault();
     if (!user || !activeChat || (!messageInput.trim() && !selectedMaterial)) return;
 
-    const content = messageInput.trim() || `Shared document: "${selectedMaterial?.title}"`;
+    // Handle Editing existing message
+    if (editingMessage) {
+      const newText = messageInput.trim();
+      setEditingMessage(null);
+      setMessageInput("");
+
+      try {
+        if (activeChat.type === "peer") {
+          await editDirectMessageServerFn({
+            data: { messageId: editingMessage.id, userId: user.id, newContent: newText },
+          });
+        } else {
+          await editGroupMessageServerFn({
+            data: { messageId: editingMessage.id, userId: user.id, newContent: newText },
+          });
+        }
+        await refetchActiveMessages();
+        toast.success("Message updated");
+      } catch (err: any) {
+        toast.error(err?.message || "Edit failed");
+      }
+      return;
+    }
+
+    // Handle Sending new message (with optional Telegram-style reply quote)
+    let content = messageInput.trim();
+    if (replyingToMessage) {
+      const sender = replyingToMessage.sender_name || replyingToMessage.user_name || "Scholar";
+      const quoteSnippet = replyingToMessage.content.slice(0, 60);
+      content = `↩️ Replying to ${sender}: "${quoteSnippet}"\n${content}`;
+      setReplyingToMessage(null);
+    }
+
+    if (!content && selectedMaterial) {
+      content = `Shared document: "${selectedMaterial.title}"`;
+    }
+
     const matId = selectedMaterial?.id;
     const matTitle = selectedMaterial?.title;
     const matCourse = selectedMaterial?.course;
 
     setMessageInput("");
     setSelectedMaterial(null);
+    if (composerTextareaRef.current) {
+      composerTextareaRef.current.style.height = "auto";
+    }
 
     try {
       if (activeChat.type === "peer") {
@@ -301,12 +511,58 @@ function CommunityPage() {
 
       await refetchActiveMessages();
       await refetchConversations();
+
+      // Requirement: When Boss AI is tagged/mentioned in a message, it should reply!
+      const isAiMentioned = /@(bossai|boss|ai)\b/i.test(content);
+      if (isAiMentioned) {
+        const aiPrompt = content.replace(/@(bossai|boss|ai)\b/gi, "").trim() || content;
+        toast.loading("Boss AI is formulating an answer...", { id: "ai-peer-reply" });
+
+        askBossAiServerFn({
+          data: {
+            userId: user.id,
+            query: `A student in a peer study discussion tagged @BossAI: "${aiPrompt}". Please provide a helpful, concise academic answer.`,
+            taskType: "general",
+          },
+        })
+          .then(async (aiRes) => {
+            const aiFormattedText = `🤖 **Boss AI**:\n${aiRes.response}`;
+
+            if (activeChat.type === "peer") {
+              const aiMsg = await sendDirectMessageServerFn({
+                data: {
+                  conversationId: activeChat.id,
+                  senderId: user.id,
+                  content: aiFormattedText,
+                },
+              });
+              await broadcastChatMessage(activeChat.id, aiMsg);
+            } else {
+              const aiMsg = await sendGroupMessageServerFn({
+                data: {
+                  groupId: activeChat.id,
+                  userId: "system",
+                  userName: "Boss AI ⚡",
+                  userInstitution: "Campus AI Intelligence",
+                  content: aiFormattedText,
+                },
+              });
+              await broadcastChatMessage(activeChat.id, aiMsg);
+            }
+
+            await refetchActiveMessages();
+            toast.success("Boss AI replied to the discussion!", { id: "ai-peer-reply" });
+          })
+          .catch(() => {
+            toast.error("Boss AI could not reply at this time.", { id: "ai-peer-reply" });
+          });
+      }
     } catch (err: any) {
       toast.error(err?.message || "Message delivery failed");
     }
   }
 
-  // Create Study Group (only name is required!)
+  // Create Study Group
   async function handleCreateGroup(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !newGroupName.trim()) {
@@ -343,20 +599,6 @@ function CommunityPage() {
       toast.error(err?.message || "Failed to create group");
     }
   }
-
-  // Streak check-in
-  const streakMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Sign in required");
-      return await updateStreakServerFn({ data: { userId: user.id } });
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success(`🔥 Streak updated to ${data.currentStreak} days!`, {
-        description: "Keep reading daily to build academic momentum.",
-      });
-    },
-  });
 
   // Handle scanned student QR Code
   async function handleScanPeer(scannedUsername: string) {
@@ -404,24 +646,79 @@ function CommunityPage() {
     }
   }
 
-  // Filter conversations
-  const filteredPeers = directConversations.filter((c: any) =>
-    c.peer.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.peer.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter conversations & study groups based on search & tabs
+  const filteredPeers = useMemo(() => {
+    return directConversations
+      .filter((c: any) => {
+        if (blockedPeerIds.includes(c.peer.id)) return false;
+        const matchesSearch =
+          c.peer.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.peer.username.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch;
+      })
+      .sort((a: any, b: any) => {
+        const aPinned = pinnedChatIds.includes(a.id);
+        const bPinned = pinnedChatIds.includes(b.id);
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+        return 0;
+      });
+  }, [directConversations, searchQuery, blockedPeerIds, pinnedChatIds]);
 
-  const filteredGroups = studyGroups.filter((g: any) =>
-    g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (g.course_code && g.course_code.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredGroups = useMemo(() => {
+    return studyGroups
+      .filter((g: any) => {
+        const matchesSearch =
+          g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (g.course_code && g.course_code.toLowerCase().includes(searchQuery.toLowerCase()));
+        return matchesSearch;
+      })
+      .sort((a: any, b: any) => {
+        const aPinned = pinnedChatIds.includes(a.id);
+        const bPinned = pinnedChatIds.includes(b.id);
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+        return 0;
+      });
+  }, [studyGroups, searchQuery, pinnedChatIds]);
+
+  // Touch Swipe Handlers for Swipe-to-Reply
+  function handleTouchStart(e: React.TouchEvent) {
+    const touch = e.touches[0];
+    if (touch) {
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent, msg: any) {
+    if (!touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    if (touch) {
+      const deltaX = touch.clientX - touchStartRef.current.x;
+      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+
+      // Horizontal swipe > 40px and not a vertical scroll
+      if (Math.abs(deltaX) > 40 && deltaY < 30) {
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate(12);
+        }
+        setReplyingToMessage(msg);
+        setShowCustomKeyboard(true);
+        if (composerTextareaRef.current) {
+          composerTextareaRef.current.focus();
+        }
+      }
+    }
+    touchStartRef.current = null;
+  }
 
   return (
     <div
       data-chat-active={Boolean(activeChat)}
-      className="flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans"
+      className="flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans relative"
     >
       {/* ========================================================================= */}
-      {/* LEFT SIDEBAR: Conversations List (WhatsApp / Telegram / iMessage Style) */}
+      {/* LEFT SIDEBAR: Conversations List (Telegram Style) */}
       {/* ========================================================================= */}
       <div
         className={cn(
@@ -429,7 +726,7 @@ function CommunityPage() {
           activeChat ? "hidden md:flex" : "flex"
         )}
       >
-        {/* Top Header with User Info & Actions */}
+        {/* Top Header */}
         <div className="p-3.5 border-b border-border/70 flex items-center justify-between gap-2 bg-card shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <Avatar className="size-9 ring-2 ring-emerald-500/20">
@@ -439,9 +736,7 @@ function CommunityPage() {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <h2 className="text-xs font-bold text-foreground truncate">
-                {profile?.full_name || "Scholar"}
-              </h2>
+              <h2 className="text-xs font-bold text-foreground truncate">Peers & Groups</h2>
               <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
                 @{profile?.username || "student"}
               </p>
@@ -474,7 +769,7 @@ function CommunityPage() {
               variant="ghost"
               size="icon"
               onClick={() => setIsNewDirectChatOpen(true)}
-              title="Start new direct chat"
+              title="Start new direct peer chat"
               className="size-8 rounded-full text-muted-foreground hover:text-foreground"
             >
               <MessageSquare className="size-4" />
@@ -492,265 +787,194 @@ function CommunityPage() {
           </div>
         </div>
 
-
-        {/* Search Bar */}
-        <div className="p-3 border-b border-border/70 bg-card/60 shrink-0">
+        {/* Search Bar (Searches peers and groups) */}
+        <div className="p-2.5 border-b border-border/70 bg-card/60 shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search chats, peers, or groups..."
-              className="pl-8 text-xs h-8 rounded-full bg-secondary/50 border-border/60"
+              placeholder="Search peers and groups..."
+              className="pl-8 text-xs h-8.5 rounded-full bg-secondary/50 border-border/60"
             />
           </div>
 
-          {/* Segmented Filter Pills */}
-          <div className="mt-2.5 flex items-center gap-1.5">
-            <button
-              onClick={() => setChatTab("all")}
-              className={cn(
-                "px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all",
-                chatTab === "all"
-                  ? "bg-emerald-600 text-white shadow-2xs"
-                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
-              )}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setChatTab("direct")}
-              className={cn(
-                "px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all",
-                chatTab === "direct"
-                  ? "bg-emerald-600 text-white shadow-2xs"
-                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Direct ({directConversations.length})
-            </button>
-            <button
-              onClick={() => setChatTab("groups")}
-              className={cn(
-                "px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all",
-                chatTab === "groups"
-                  ? "bg-emerald-600 text-white shadow-2xs"
-                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Groups ({studyGroups.length})
-            </button>
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1 mt-2">
+            {(["all", "direct", "groups"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setChatTab(tab)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[11px] font-bold capitalize transition-all",
+                  chatTab === tab
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+              >
+                {tab === "direct" ? "Peers" : tab}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Conversation List Stream */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-border/40 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]">
-          {/* PINNED: Boss AI Assistant */}
-          <Link
-            to="/dashboard/assistant"
-            search={{ view: "history" }}
-            className="flex w-full items-center gap-3 p-3 text-left transition-all bg-emerald-500/10 hover:bg-emerald-500/15 border-b border-emerald-500/20 group select-none"
-          >
-            <div className="relative size-10 shrink-0 rounded-full bg-linear-to-br from-emerald-600 to-teal-700 grid place-items-center shadow-xs text-white">
-              <Bot className="size-5 transition-transform group-hover:scale-110" />
-              <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-500 border-2 border-card grid place-items-center">
-                <Sparkles className="size-2 text-white" />
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <h4 className="text-xs font-bold text-foreground truncate">Boss AI</h4>
-                  <Badge variant="secondary" className="h-4 px-1.5 text-[9px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-none shrink-0 uppercase tracking-wider">
-                    Pinned
-                  </Badge>
-                </div>
-                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
-                  AI Study Hub
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                Previous study chats, quizzes & start new chat →
-              </p>
-            </div>
-            <ChevronRight className="size-4 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5 shrink-0" />
-          </Link>
-          {/* Empty State for New User */}
-          {filteredPeers.length === 0 && filteredGroups.length === 0 && (
-            <div className="p-6 text-center flex flex-col items-center">
-              <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-3">
-                <Users className="size-6" />
-              </div>
-              <h3 className="text-xs font-bold text-foreground">No chats yet</h3>
-              <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                Connect with peers by username or join study groups to start sharing materials.
-              </p>
-              <div className="mt-4 flex flex-col gap-2 w-full">
-                <Button
-                  size="sm"
-                  onClick={() => setIsNewDirectChatOpen(true)}
-                  className="rounded-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1.5"
-                >
-                  <Search className="size-3.5" /> Find Peers
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsCreateGroupOpen(true)}
-                  className="rounded-full text-xs font-semibold gap-1.5"
-                >
-                  <Plus className="size-3.5" /> Create Group
-                </Button>
-              </div>
-            </div>
-          )}
-
+        {/* Conversations List with Long-press Menu */}
+        <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-border/40 [scrollbar-width:thin]">
           {/* Direct Peer Conversations */}
           {(chatTab === "all" || chatTab === "direct") &&
-            filteredPeers.map((conv: any) => {
-              const isSelected = activeChat?.id === conv.id && activeChat.type === "peer";
+            filteredPeers.map((c: any) => {
+              const isSelected = activeChat?.id === c.id;
+              const isPinned = pinnedChatIds.includes(c.id);
+
               return (
-                <button
-                  key={conv.id}
-                  onClick={() =>
+                <div
+                  key={c.id}
+                  onClick={() => {
                     setActiveChat({
                       type: "peer",
-                      id: conv.id,
-                      title: conv.peer.full_name,
-                      subtitle: `@${conv.peer.username}`,
-                      avatarUrl: conv.peer.avatar_url,
-                      peerId: conv.peer.id,
-                    })
-                  }
+                      id: c.id,
+                      title: c.peer.full_name,
+                      subtitle: `@${c.peer.username}`,
+                      avatarUrl: c.peer.avatar_url,
+                      peerId: c.peer.id,
+                    });
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setChatForContextMenu({ ...c, type: "peer" });
+                  }}
                   className={cn(
-                    "flex w-full items-center gap-3 p-3 text-left transition-all hover:bg-secondary/50",
-                    isSelected ? "bg-emerald-500/10 border-l-4 border-emerald-600" : ""
+                    "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors relative hover:bg-secondary/40",
+                    isSelected && "bg-secondary/70 font-semibold"
                   )}
                 >
                   <Avatar className="size-10 shrink-0">
-                    <AvatarImage src={conv.peer.avatar_url || ""} />
-                    <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
-                      {conv.peer.full_name?.charAt(0) || "P"}
+                    <AvatarImage src={c.peer.avatar_url || ""} />
+                    <AvatarFallback className="bg-emerald-600 text-white font-bold text-xs">
+                      {c.peer.full_name?.charAt(0) || "P"}
                     </AvatarFallback>
                   </Avatar>
+
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-semibold text-foreground truncate">
-                        {conv.peer.full_name}
-                      </h4>
-                      <span className="text-[10px] text-muted-foreground shrink-0 font-medium">
-                        {conv.last_message_at ? new Date(conv.last_message_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-xs text-foreground truncate">
+                        {c.peer.full_name}
                       </span>
+                      {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
                     </div>
-                    <div className="flex items-center justify-between mt-0.5">
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {conv.last_message_text || "Started conversation"}
-                      </p>
-                      <span className="text-[10px] text-emerald-600 font-medium">
-                        @{conv.peer.username}
-                      </span>
-                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      {c.last_message_text || `@${c.peer.username}`}
+                    </p>
                   </div>
-                </button>
+                </div>
               );
             })}
 
-          {/* Study Group Channels */}
+          {/* Study Groups */}
           {(chatTab === "all" || chatTab === "groups") &&
-            filteredGroups.map((group: any) => {
-              const isSelected = activeChat?.id === group.id && activeChat.type === "group";
+            filteredGroups.map((g: any) => {
+              const isSelected = activeChat?.id === g.id;
+              const isPinned = pinnedChatIds.includes(g.id);
+
               return (
-                <button
-                  key={group.id}
-                  onClick={() =>
+                <div
+                  key={g.id}
+                  onClick={() => {
                     setActiveChat({
                       type: "group",
-                      id: group.id,
-                      title: group.name,
-                      subtitle: `${group.member_count} members`,
-                      memberCount: group.member_count,
-                    })
-                  }
+                      id: g.id,
+                      title: g.name,
+                      subtitle: `${g.member_count} members`,
+                      memberCount: g.member_count,
+                    });
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setChatForContextMenu({ ...g, type: "group" });
+                  }}
                   className={cn(
-                    "flex w-full items-center gap-3 p-3 text-left transition-all hover:bg-secondary/50",
-                    isSelected ? "bg-emerald-500/10 border-l-4 border-emerald-600" : ""
+                    "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors relative hover:bg-secondary/40",
+                    isSelected && "bg-secondary/70 font-semibold"
                   )}
                 >
-                  <div className="grid size-10 place-items-center rounded-full bg-emerald-600/10 text-emerald-600 shrink-0 font-bold text-xs">
+                  <div className="size-10 rounded-full bg-indigo-600/10 text-indigo-600 grid place-items-center font-bold text-xs shrink-0">
                     <Users className="size-5" />
                   </div>
+
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-semibold text-foreground truncate">
-                        {group.name}
-                      </h4>
-                      {group.course_code && (
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-medium">
-                          {group.course_code}
-                        </Badge>
-                      )}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-xs text-foreground truncate">{g.name}</span>
+                      {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                      {group.description || `${group.member_count} active course peers`}
+                      {g.member_count} members {g.course_code ? `· ${g.course_code}` : ""}
                     </p>
                   </div>
-                </button>
-              );
-            })}
+                </div>
+              ))}
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* RIGHT SIDE: Active Chat Room Stream (WhatsApp / Telegram / iMessage)   */}
+      {/* RIGHT SIDE: Active Conversation View (Telegram Style) */}
       {/* ========================================================================= */}
       <div
         className={cn(
-          "flex-1 min-h-0 flex flex-col bg-background h-full overflow-hidden",
-          activeChat ? "flex" : "hidden md:flex"
+          "flex-1 flex flex-col min-h-0 h-full max-h-full bg-background overflow-hidden relative",
+          !activeChat ? "hidden md:flex" : "flex"
         )}
       >
         {activeChat ? (
           <>
             {/* Active Chat Header */}
-            <div className="p-3.5 border-b border-border/70 flex items-center justify-between bg-card shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                {/* Mobile Back Button */}
+            <div className="p-3 border-b border-border/70 flex items-center justify-between gap-2 bg-card shrink-0 z-20">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => {
-                    setActiveChat(null);
-                    hasInitializedDesktopChatRef.current = true;
-                  }}
-                  className="size-8 rounded-full md:hidden text-muted-foreground hover:text-foreground"
+                  onClick={() => setActiveChat(null)}
+                  className="size-8 rounded-full md:hidden text-muted-foreground"
                 >
                   <ArrowLeft className="size-4" />
                 </Button>
 
-                <Avatar className="size-9 ring-1 ring-border shrink-0">
-                  <AvatarImage src={activeChat.avatarUrl || ""} />
-                  <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
-                    {activeChat.title?.charAt(0) || "C"}
-                  </AvatarFallback>
-                </Avatar>
-
                 <div className="min-w-0">
-                  <h3 className="text-xs sm:text-sm font-bold text-foreground truncate leading-tight">
-                    {activeChat.title}
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground font-medium truncate">
-                    {activeChat.subtitle || (activeChat.type === "peer" ? "Active now" : "Course Hub")}
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-xs sm:text-sm text-foreground truncate">
+                      {activeChat.title}
+                    </h3>
+                    {activeChat.type === "group" && (
+                      <span className="rounded-full bg-indigo-500/10 text-indigo-600 text-[10px] font-bold px-2 py-0.2">
+                        Group
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {activeChat.subtitle || "Active peer"}
                   </p>
                 </div>
               </div>
 
-              {/* Chat Header Actions */}
-              <div className="flex items-center gap-1">
+              {/* Header Actions */}
+              <div className="flex items-center gap-1.5">
+                {activeChat.type === "group" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsAddMemberOpen(true)}
+                    className="h-8 rounded-full text-xs font-semibold gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <UserPlus className="size-3.5" />
+                    <span>Add Member</span>
+                  </Button>
+                )}
+
                 <Button
-                  variant="outline"
                   size="sm"
+                  variant="outline"
                   onClick={() => setIsAttachMaterialOpen(true)}
-                  className="rounded-full text-xs font-semibold gap-1.5 h-8 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+                  className="h-8 rounded-full text-xs font-semibold gap-1"
                 >
                   <BookOpen className="size-3.5" />
                   <span className="hidden sm:inline">Attach Material</span>
@@ -759,87 +983,77 @@ function CommunityPage() {
             </div>
 
             {/* Chat Messages Stream */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 pb-6 sm:p-5 sm:pb-8 space-y-3.5 bg-slate-50/60 dark:bg-zinc-950/40 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]">
               {chatMessages.length === 0 ? (
                 <div className="py-16 text-center flex flex-col items-center">
                   <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-2">
                     <MessageSquare className="size-5" />
                   </div>
-                  <h4 className="text-xs font-semibold text-foreground">
-                    Start of conversation
-                  </h4>
+                  <h4 className="text-xs font-semibold text-foreground">Start of conversation</h4>
                   <p className="text-[11px] text-muted-foreground max-w-xs mt-1">
-                    Send a message or attach a textbook, lecture note, or past question to discuss.
+                    Send a message, attach documents, or tag <strong>@BossAI</strong> to get answers!
                   </p>
                 </div>
               ) : (
                 chatMessages.map((msg: any) => {
                   const isMe = msg.sender_id === user?.id || msg.user_id === user?.id;
                   const senderDisplay = msg.sender_name || msg.user_name || "Scholar";
-                  const matId = msg.material_id;
-                  const matTitle = msg.material_title;
-                  const matCourse = msg.material_course || msg.material_course_code;
+                  const isBossAi =
+                    senderDisplay.includes("Boss AI") || msg.user_id === "system";
 
                   return (
                     <div
                       key={msg.id}
+                      onTouchStart={handleTouchStart}
+                      onTouchEnd={(e) => handleTouchEnd(e, msg)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setSelectedMessageForMenu(msg);
+                      }}
                       className={cn(
-                        "flex flex-col max-w-[85%] sm:max-w-[70%]",
+                        "flex flex-col max-w-[85%] sm:max-w-[72%] transition-all",
                         isMe ? "ml-auto items-end" : "mr-auto items-start"
                       )}
                     >
-                      {/* Sender Tag in Group Chat */}
-                      {!isMe && activeChat.type === "group" && (
-                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mb-0.5 px-1 font-sans">
+                      {/* Sender Tag */}
+                      {!isMe && (
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold mb-0.5 px-1",
+                            isBossAi ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"
+                          )}
+                        >
                           {senderDisplay}
                         </span>
                       )}
 
-                      {/* Bubble */}
+                      {/* Message Bubble with Long-press & Swipe options */}
                       <div
+                        onClick={() => setSelectedMessageForMenu(msg)}
                         className={cn(
-                          "rounded-2xl px-3.5 py-2 text-xs shadow-xs leading-relaxed space-y-2",
+                          "rounded-2xl px-3.5 py-2 text-xs shadow-xs leading-relaxed space-y-1.5 cursor-pointer relative",
                           isMe
-                            ? "bg-emerald-600 text-white rounded-br-xs"
+                            ? "bg-primary text-primary-foreground rounded-br-xs"
+                            : isBossAi
+                            ? "bg-amber-500/10 border border-amber-500/30 text-foreground rounded-bl-xs"
                             : "bg-card border border-border/80 text-foreground rounded-bl-xs"
                         )}
                       >
-                        {/* Material Card Attachment if Present (Compact File Chip) */}
-                        {matId && (
-                          <div
-                            className={cn(
-                              "rounded-xl p-2 flex items-center justify-between gap-2.5 transition-all max-w-full sm:max-w-md",
-                              isMe
-                                ? "bg-emerald-700/70 border border-emerald-400/30 text-white"
-                                : "bg-secondary/80 border border-border/80 text-foreground"
-                            )}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div
-                                className={cn(
-                                  "size-7 rounded-lg grid place-items-center shrink-0",
-                                  isMe ? "bg-emerald-600 text-emerald-100" : "bg-emerald-500/10 text-emerald-600"
-                                )}
-                              >
-                                <FileText className="size-3.5" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-semibold truncate text-[11px] leading-tight">
-                                  {matTitle || "Course Document"}
-                                </p>
-                                <p className="text-[10px] opacity-75 truncate">
-                                  {matCourse || "Academic Library"}
-                                </p>
-                              </div>
+                        {msg.material_id && (
+                          <div className="rounded-xl p-2 bg-black/10 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-bold text-[11px] truncate">
+                                {msg.material_title || "Course Material"}
+                              </p>
                             </div>
                             <Button
                               size="sm"
-                              variant={isMe ? "secondary" : "outline"}
+                              variant="secondary"
                               asChild
-                              className="h-6 px-2.5 text-[10px] font-semibold rounded-full shrink-0 shadow-none"
+                              className="h-5 px-2 text-[10px] rounded-full"
                             >
-                              <Link to="/dashboard/preview" search={{ id: matId }}>
-                                Open <ExternalLink className="size-2.5 ml-1" />
+                              <Link to="/dashboard/preview" search={{ id: msg.material_id }}>
+                                Open
                               </Link>
                             </Button>
                           </div>
@@ -849,8 +1063,8 @@ function CommunityPage() {
 
                         <div
                           className={cn(
-                            "flex items-center justify-end gap-1 text-[9px] pt-0.5 opacity-75 font-sans font-medium",
-                            isMe ? "text-emerald-100" : "text-muted-foreground"
+                            "flex items-center justify-end gap-1 text-[9px] pt-0.5 opacity-70",
+                            isMe ? "text-primary-foreground" : "text-muted-foreground"
                           )}
                         >
                           <span>
@@ -869,18 +1083,23 @@ function CommunityPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Selected Attachment Banner in Composer */}
-            {selectedMaterial && (
-              <div className="px-3.5 py-2 bg-emerald-500/10 border-t border-emerald-500/20 flex items-center justify-between text-xs text-foreground">
+            {/* Telegram Feature: Replying Quote Banner */}
+            {replyingToMessage && (
+              <div className="px-3 py-1.5 bg-secondary/80 border-t border-border flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="size-4 text-emerald-600 shrink-0" />
-                  <span className="font-semibold truncate text-xs">
-                    Attaching: {selectedMaterial.title}
-                  </span>
+                  <CornerUpLeft className="size-3.5 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-bold text-[10px] text-primary truncate">
+                      Replying to {replyingToMessage.sender_name || "Scholar"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {replyingToMessage.content}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedMaterial(null)}
+                  onClick={() => setReplyingToMessage(null)}
                   className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="size-3.5" />
@@ -888,54 +1107,295 @@ function CommunityPage() {
               </div>
             )}
 
-            {/* Bottom Chat Composer (iMessage / Telegram style) */}
-            <form
-              onSubmit={handleSendMessage}
-              className="p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-3 border-t border-border/70 bg-card flex items-center gap-2 shrink-0"
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsAttachMaterialOpen(true)}
-                title="Attach library document"
-                className="size-9 rounded-full text-muted-foreground hover:text-foreground shrink-0"
-              >
-                <Paperclip className="size-4" />
-              </Button>
+            {/* Telegram Feature: Editing Message Banner */}
+            {editingMessage && (
+              <div className="px-3 py-1.5 bg-amber-500/10 border-t border-amber-500/30 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Edit2 className="size-3.5 text-amber-600 shrink-0" />
+                  <span className="font-bold text-[11px] text-amber-700 dark:text-amber-400">
+                    Editing message (within 10-minute window)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingMessage(null);
+                    setMessageInput("");
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            )}
 
-              <Input
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                placeholder={`Message ${activeChat.title}...`}
-                className="flex-1 rounded-full text-xs h-10 px-4 bg-secondary/50 border-border/60"
-              />
+            {/* Bottom Composer Capsule (Autogrowing, Tactile Keyboard, inputMode="none") */}
+            <div className="p-2.5 border-t border-border/70 bg-card shrink-0">
+              <div className="rounded-2xl border border-border/80 bg-secondary/30 p-2 shadow-xs flex flex-col gap-1 focus-within:border-primary/50 focus-within:bg-card">
+                <textarea
+                  ref={composerTextareaRef}
+                  value={messageInput}
+                  onChange={(e) => {
+                    setMessageInput(e.target.value);
+                    e.target.style.height = "auto";
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 84)}px`;
+                  }}
+                  onFocus={() => setShowCustomKeyboard(true)}
+                  onClick={() => setShowCustomKeyboard(true)}
+                  inputMode="none"
+                  placeholder={`Message ${activeChat.title} (tag @BossAI to ask AI)...`}
+                  rows={1}
+                  className="w-full resize-none bg-transparent text-xs text-foreground focus:outline-hidden min-h-[26px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
+                />
 
-              <Button
-                type="submit"
-                size="icon"
-                disabled={!messageInput.trim() && !selectedMaterial}
-                className="size-9 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 shadow-2xs"
-              >
-                <Send className="size-4" />
-              </Button>
-            </form>
+                <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsAttachMaterialOpen(true)}
+                      title="Attach academic material"
+                      className="size-7.5 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    >
+                      <Paperclip className="size-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={!messageInput.trim() && !selectedMaterial}
+                      onClick={() => handleSendMessage()}
+                      className={cn(
+                        "size-7.5 rounded-full grid place-items-center transition-all",
+                        messageInput.trim() || selectedMaterial
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                          : "text-muted-foreground opacity-40 cursor-not-allowed"
+                      )}
+                    >
+                      <Send className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Fixed Full-Width Custom Tactile Keyboard */}
+            <AnimatePresence>
+              {showCustomKeyboard && (
+                <MobileCustomKeyboard
+                  value={messageInput}
+                  onChange={(val) => {
+                    setMessageInput(val);
+                    if (composerTextareaRef.current) {
+                      composerTextareaRef.current.style.height = "auto";
+                      composerTextareaRef.current.style.height = `${Math.min(composerTextareaRef.current.scrollHeight, 84)}px`;
+                    }
+                  }}
+                  onSend={() => handleSendMessage()}
+                  isOpen={showCustomKeyboard}
+                  onClose={() => setShowCustomKeyboard(false)}
+                  inputRef={composerTextareaRef}
+                />
+              )}
+            </AnimatePresence>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="size-16 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-4">
+            <div className="size-16 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-3">
               <MessageSquare className="size-8" />
             </div>
-            <h3 className="text-base font-bold text-foreground">Select a conversation</h3>
+            <h3 className="text-base font-bold text-foreground">Select a peer or study group</h3>
             <p className="mt-1 text-xs text-muted-foreground max-w-sm leading-relaxed">
-              Choose a coursemate or study group from the left to start chatting, sharing documents, and collaborating.
+              Connect with coursemates, join study groups, share documents, or tag <strong>@BossAI</strong> for instant answers.
             </p>
           </div>
         )}
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL 1: SyllaID QR Code Card */}
+      {/* MODAL: Telegram Message Actions (Copy, Edit, Delete, Reply) */}
+      {/* ========================================================================= */}
+      <Dialog
+        open={Boolean(selectedMessageForMenu)}
+        onOpenChange={() => setSelectedMessageForMenu(null)}
+      >
+        <DialogContent className="max-w-xs rounded-3xl p-4 border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold">Message Options</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-1.5 mt-2 text-xs">
+            <button
+              type="button"
+              onClick={() => handleCopyMessage(selectedMessageForMenu?.content || "")}
+              className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
+            >
+              <Copy className="size-4 text-primary" /> Copy Text
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setReplyingToMessage(selectedMessageForMenu);
+                setSelectedMessageForMenu(null);
+                setShowCustomKeyboard(true);
+              }}
+              className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
+            >
+              <CornerUpLeft className="size-4 text-emerald-600" /> Reply to Message
+            </button>
+
+            {selectedMessageForMenu?.sender_id === user?.id && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleStartEditMessage(selectedMessageForMenu)}
+                  className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
+                >
+                  <Edit2 className="size-4 text-amber-500" /> Edit Message (within 10m)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteMessage(selectedMessageForMenu.id)}
+                  className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-destructive/10 text-destructive font-semibold"
+                >
+                  <Trash2 className="size-4" /> Delete Message
+                </button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* MODAL: Long-Press Conversation Options (Pin, Archive, Mute, Block) */}
+      {/* ========================================================================= */}
+      <Dialog
+        open={Boolean(chatForContextMenu)}
+        onOpenChange={() => setChatForContextMenu(null)}
+      >
+        <DialogContent className="max-w-xs rounded-3xl p-4 border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold">
+              {chatForContextMenu?.title || chatForContextMenu?.name || "Chat"} Options
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-1.5 mt-2 text-xs">
+            {/* Pin / Unpin */}
+            <button
+              type="button"
+              onClick={() => {
+                const id = chatForContextMenu.id;
+                setPinnedChatIds((prev) =>
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                );
+                setChatForContextMenu(null);
+                toast.success(pinnedChatIds.includes(id) ? "Chat unpinned" : "Chat pinned to top");
+              }}
+              className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
+            >
+              <Pin className="size-4 text-primary" />
+              {pinnedChatIds.includes(chatForContextMenu?.id) ? "Unpin Chat" : "Pin to Top"}
+            </button>
+
+            {/* Mute / Unmute */}
+            <button
+              type="button"
+              onClick={() => {
+                const id = chatForContextMenu.id;
+                setMutedChatIds((prev) =>
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                );
+                setChatForContextMenu(null);
+                toast.success(mutedChatIds.includes(id) ? "Chat unmuted" : "Chat muted");
+              }}
+              className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
+            >
+              <VolumeX className="size-4 text-muted-foreground" />
+              {mutedChatIds.includes(chatForContextMenu?.id) ? "Unmute Notifications" : "Mute Notifications"}
+            </button>
+
+            {/* Block User (for direct peer chats) */}
+            {chatForContextMenu?.type === "peer" && (
+              <button
+                type="button"
+                onClick={() => {
+                  const peerId = chatForContextMenu.peer?.id || chatForContextMenu.peerId;
+                  if (peerId) {
+                    setBlockedPeerIds((prev) => [...prev, peerId]);
+                    setActiveChat(null);
+                    setChatForContextMenu(null);
+                    toast.success("User blocked");
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-destructive/10 text-destructive font-semibold"
+              >
+                <Ban className="size-4" /> Block User
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* MODAL: Add Member to Group */}
+      {/* ========================================================================= */}
+      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-5 border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <UserPlus className="size-4 text-primary" /> Add Members to {activeChat?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 mt-2 text-xs">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+              <Input
+                value={addMemberSearch}
+                onChange={(e) => setAddMemberSearch(e.target.value)}
+                placeholder="Search peers by name or @username..."
+                className="pl-8 text-xs h-8.5 rounded-full"
+                autoFocus
+              />
+            </div>
+
+            <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
+              {isSearchingAddMembers ? (
+                <div className="py-6 text-center text-muted-foreground">Searching peers...</div>
+              ) : addMemberCandidates.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  {addMemberSearch.trim() ? "No peers found." : "Type a student name to add."}
+                </div>
+              ) : (
+                addMemberCandidates.map((peer: any) => (
+                  <div
+                    key={peer.id}
+                    className="flex items-center justify-between p-2 rounded-xl hover:bg-secondary"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs truncate">{peer.full_name}</p>
+                      <p className="text-[10px] text-muted-foreground">@{peer.username}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleAddMemberToGroup(peer.id)}
+                      className="h-7 text-xs font-bold rounded-lg"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* MODALS: QR Code & Scanner */}
       {/* ========================================================================= */}
       <StudentQrModal
         open={isQrModalOpen}
@@ -947,265 +1407,143 @@ function CommunityPage() {
         onOpenScanner={() => setIsScannerOpen(true)}
       />
 
-      {/* ========================================================================= */}
-      {/* MODAL 2: Camera QR Scanner */}
-      {/* ========================================================================= */}
       <QrScannerModal
         open={isScannerOpen}
         onOpenChange={setIsScannerOpen}
         onScanPeer={handleScanPeer}
       />
 
-      {/* ========================================================================= */}
-      {/* MODAL 3: New Direct Chat / Search Peers */}
-      {/* ========================================================================= */}
+      {/* MODAL: New Direct Chat */}
       <Dialog open={isNewDirectChatOpen} onOpenChange={setIsNewDirectChatOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogContent className="max-w-md rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
-              <UserPlus className="size-5 text-emerald-600" />
-              Find Peers & Message
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <UserPlus className="size-4 text-emerald-600" /> Start Direct Peer Chat
             </DialogTitle>
           </DialogHeader>
-          <div className="relative mt-2">
-            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <Input
-              value={peerSearchQuery}
-              onChange={(e) => setPeerSearchQuery(e.target.value)}
-              placeholder="Search by username (@handle), name, course..."
-              className="pl-9 rounded-full text-xs h-9"
-              autoFocus
-            />
-          </div>
 
-          <div className="mt-3 max-h-64 overflow-y-auto space-y-1 pr-1">
-            {isSearchingPeers ? (
-              <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">
-                Searching students...
-              </div>
-            ) : searchedPeers.length === 0 ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">
-                {peerSearchQuery.trim()
-                  ? "No students found matching query."
-                  : "Type a username or course to discover peers."}
-              </div>
-            ) : (
-              searchedPeers.map((peer: any) => (
-                <button
-                  key={peer.id}
-                  onClick={() => startDirectChatWithPeer(peer)}
-                  className="flex w-full items-center justify-between p-2.5 rounded-xl hover:bg-secondary/60 text-left transition-all"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar className="size-9">
-                      <AvatarImage src={peer.avatar_url || ""} />
-                      <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
-                        {peer.full_name?.charAt(0) || "P"}
-                      </AvatarFallback>
-                    </Avatar>
+          <div className="space-y-3 mt-2 text-xs">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+              <Input
+                value={peerSearchQuery}
+                onChange={(e) => setPeerSearchQuery(e.target.value)}
+                placeholder="Search by username or name..."
+                className="pl-8 text-xs h-8.5 rounded-full"
+                autoFocus
+              />
+            </div>
+
+            <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
+              {isSearchingPeers ? (
+                <div className="py-6 text-center text-muted-foreground">Searching peers...</div>
+              ) : searchedPeers.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  {peerSearchQuery.trim() ? "No students found." : "Type to find coursemates."}
+                </div>
+              ) : (
+                searchedPeers.map((peer: any) => (
+                  <button
+                    key={peer.id}
+                    type="button"
+                    onClick={() => startDirectChatWithPeer(peer)}
+                    className="w-full flex items-center justify-between p-2 rounded-xl text-left hover:bg-secondary"
+                  >
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-foreground truncate">
-                        {peer.full_name}
-                      </p>
-                      <p className="text-[11px] font-mono text-emerald-600 truncate">
-                        @{peer.username} • {peer.institution || "Student"}
-                      </p>
+                      <p className="font-bold text-xs truncate">{peer.full_name}</p>
+                      <p className="text-[10px] text-muted-foreground">@{peer.username}</p>
                     </div>
-                  </div>
-                  <Button size="sm" variant="outline" className="h-7 text-xs rounded-full">
-                    Chat
-                  </Button>
-                </button>
-              ))
-            )}
+                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg">
+                      Message
+                    </Button>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* ========================================================================= */}
-      {/* MODAL 4: Create Group Modal (ONLY name is compulsory!)                    */}
-      {/* ========================================================================= */}
+      {/* MODAL: Create Study Group */}
       <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
-              <Users className="size-5 text-emerald-600" />
-              Create Study Group
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Users className="size-4 text-primary" /> Create Study Group
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleCreateGroup} className="space-y-3.5 mt-2">
+          <form onSubmit={handleCreateGroup} className="space-y-3 mt-2 text-xs">
             <div>
-              <label className="text-xs font-semibold text-foreground">Group Name *</label>
+              <label className="font-semibold text-muted-foreground block mb-1">Group Name *</label>
               <Input
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="e.g. MTH 101 Study Circle, BioMed Wizards..."
-                className="mt-1 text-xs rounded-xl"
+                placeholder="e.g. Thermodynamics Exam Prep"
+                className="h-8.5 text-xs rounded-xl"
                 required
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-foreground">
-                Course Code <span className="font-normal text-muted-foreground">(Optional)</span>
-              </label>
+              <label className="font-semibold text-muted-foreground block mb-1">Course Code (Optional)</label>
               <Input
                 value={newGroupCourse}
                 onChange={(e) => setNewGroupCourse(e.target.value)}
-                placeholder="e.g. GET 206, MTH 101"
-                className="mt-1 text-xs rounded-xl"
+                placeholder="e.g. MEE 201"
+                className="h-8.5 text-xs rounded-xl"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-foreground">
-                Description <span className="font-normal text-muted-foreground">(Optional)</span>
-              </label>
-              <Textarea
+              <label className="font-semibold text-muted-foreground block mb-1">Description</label>
+              <Input
                 value={newGroupDesc}
                 onChange={(e) => setNewGroupDesc(e.target.value)}
-                placeholder="Brief group goal or topics discussed..."
-                className="mt-1 text-xs rounded-xl h-20 resize-none"
+                placeholder="What is this group studying?"
+                className="h-8.5 text-xs rounded-xl"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsCreateGroupOpen(false)}
-                className="rounded-full text-xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
-              >
-                Create Group
-              </Button>
-            </div>
+            <Button type="submit" className="w-full rounded-xl font-bold h-9 text-xs">
+              Create Study Group
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* ========================================================================= */}
-      {/* MODAL 5: Attach Library Material Picker                                   */}
-      {/* ========================================================================= */}
+      {/* MODAL: Attach Material */}
       <Dialog open={isAttachMaterialOpen} onOpenChange={setIsAttachMaterialOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
+        <DialogContent className="max-w-md rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
-              <BookOpen className="size-5 text-emerald-600" />
-              Attach Academic Material
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <BookOpen className="size-4 text-primary" /> Share Material in Chat
             </DialogTitle>
           </DialogHeader>
 
-          {/* Search bar for materials */}
-          <div className="relative mt-2">
-            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <Input
-              value={materialSearchQuery}
-              onChange={(e) => setMaterialSearchQuery(e.target.value)}
-              placeholder="Search library materials, courses..."
-              className="pl-9 rounded-full text-xs h-9 bg-secondary/50"
-            />
-          </div>
-
-          {/* Upload from device option */}
-          <div className="pt-2">
-            <input
-              type="file"
-              ref={fileUploadInputRef}
-              className="hidden"
-              accept=".pdf,.doc,.docx,.txt"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const fileName = file.name.replace(/\.[^/.]+$/, "");
-                setSelectedMaterial({
-                  id: `device-${Date.now()}`,
-                  title: fileName,
-                  course: "Device Upload",
-                });
-                setIsAttachMaterialOpen(false);
-                toast.success(`Attached "${file.name}" from your device`);
-                if (fileUploadInputRef.current) fileUploadInputRef.current.value = "";
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => fileUploadInputRef.current?.click()}
-              className="w-full rounded-2xl gap-2 text-xs font-semibold border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
-            >
-              <Upload className="size-3.5" />
-              Upload from your device
-            </Button>
-          </div>
-
-          {/* Materials List */}
-          <div className="mt-2 max-h-64 overflow-y-auto space-y-1.5 pr-1">
-            {availableMaterials.filter((mat: any) => {
-              if (!materialSearchQuery.trim()) return true;
-              const q = materialSearchQuery.toLowerCase();
-              return (
-                mat.title?.toLowerCase().includes(q) ||
-                mat.course?.toLowerCase().includes(q) ||
-                mat.course_code?.toLowerCase().includes(q) ||
-                mat.institution?.toLowerCase().includes(q)
-              );
-            }).length === 0 ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">
-                {materialSearchQuery.trim()
-                  ? "No matching materials found."
-                  : "No verified materials found in library."}
-              </div>
+          <div className="max-h-60 overflow-y-auto space-y-1.5 mt-2 pr-1 text-xs">
+            {availableMaterials.length === 0 ? (
+              <p className="py-6 text-center text-muted-foreground">No library documents found.</p>
             ) : (
-              availableMaterials
-                .filter((mat: any) => {
-                  if (!materialSearchQuery.trim()) return true;
-                  const q = materialSearchQuery.toLowerCase();
-                  return (
-                    mat.title?.toLowerCase().includes(q) ||
-                    mat.course?.toLowerCase().includes(q) ||
-                    mat.course_code?.toLowerCase().includes(q) ||
-                    mat.institution?.toLowerCase().includes(q)
-                  );
-                })
-                .map((mat: any) => (
-                  <button
-                    key={mat.id}
-                    onClick={() => {
-                      setSelectedMaterial({
-                        id: mat.id,
-                        title: mat.title,
-                        course: mat.course_code || mat.course,
-                      });
-                      setIsAttachMaterialOpen(false);
-                      toast.success(`Attached "${mat.title}"`);
-                    }}
-                    className="flex w-full items-center justify-between p-2.5 rounded-xl hover:bg-secondary/60 text-left transition-all border border-border/40"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="grid size-8 place-items-center rounded-lg bg-emerald-600/10 text-emerald-600 shrink-0">
-                        <FileText className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">{mat.title}</p>
-                        <p className="text-[10px] font-sans text-muted-foreground truncate">
-                          {mat.course_code || "ACADEMIC"} • {mat.institution}
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="ghost" className="h-7 text-xs rounded-full">
-                      Select
-                    </Button>
-                  </button>
-                ))
+              availableMaterials.map((mat: any) => (
+                <div
+                  key={mat.id}
+                  onClick={() => {
+                    setSelectedMaterial({ id: mat.id, title: mat.title, course: mat.course });
+                    setIsAttachMaterialOpen(false);
+                    toast.success(`Attached "${mat.title}"`);
+                  }}
+                  className="p-2.5 rounded-xl border border-border hover:border-primary cursor-pointer transition-all flex items-center justify-between"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-xs truncate">{mat.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{mat.course}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-6 text-[10px] rounded-full">
+                    Select
+                  </Button>
+                </div>
+              ))
             )}
           </div>
         </DialogContent>
@@ -1213,3 +1551,5 @@ function CommunityPage() {
     </div>
   );
 }
+
+export default CommunityPage;
