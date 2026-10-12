@@ -740,6 +740,46 @@ function AssistantPage() {
     }
   }
 
+  // Study Intent Detector (Automatically route "give me 20 questions", "give me 30 flashcards", etc.)
+  function detectStudyIntent(text: string) {
+    const lower = text.toLowerCase();
+
+    // Match numbers: 50, 40, 30, 25, 20, 15, 10, 5, or any digits
+    const numMatch = lower.match(/\b(50|40|30|25|20|15|10|5|\d{1,2})\b/);
+    const count = numMatch ? Math.min(50, Math.max(1, parseInt(numMatch[1], 10))) : undefined;
+
+    // Extract topic if specified after "on", "about", "for", "regarding", "in"
+    let topic: string | undefined = undefined;
+    const topicMatch = text.match(/(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._-]{3,40})/i);
+    if (topicMatch && topicMatch[1]) {
+      const candidate = topicMatch[1].trim().replace(/\s+(please|now|thanks).*$/i, "");
+      if (candidate.length > 2) topic = candidate;
+    }
+
+    // Flashcards intent
+    if (/\b(flashcards?|flash\s*cards?|study\s*cards?)\b/i.test(lower)) {
+      return { type: "flashcards" as const, count: count || 5, topic };
+    }
+
+    // Theory intent
+    if (/\b(theory|essay|written\s*exam|theory\s*test|theory\s*questions?)\b/i.test(lower)) {
+      return { type: "theory" as const, count: count || 5, topic };
+    }
+
+    // MCQ / Quiz / Practice Questions
+    if (/\b(mcqs?|quiz|practice\s*questions?|exam\s*questions?|test\s*questions?|questions?)\b/i.test(lower)) {
+      if (
+        count !== undefined ||
+        /\b(give|generate|make|create|prepare|test|quiz|drill|ask|practice)\b/i.test(lower) ||
+        /\b(mcqs?|quiz)\b/i.test(lower)
+      ) {
+        return { type: "mcq" as const, count: count || 5, topic };
+      }
+    }
+
+    return null;
+  }
+
   // Send Message
   async function handleSend(manualPrompt?: string) {
     const textToSend = manualPrompt || input.trim();
@@ -760,6 +800,21 @@ function AssistantPage() {
 
     setMessages((prev) => [...prev, userMsg]);
     if (!manualPrompt) setInput("");
+
+    // Auto-detect if user requested practice questions, quiz, theory test, or flashcards
+    const intent = detectStudyIntent(textToSend);
+    if (intent) {
+      if (intent.type === "flashcards") {
+        return startFlashcards(intent.count, undefined, intent.topic, textToSend);
+      }
+      if (intent.type === "theory") {
+        return startTheoryQuiz(intent.count, undefined, intent.topic, textToSend);
+      }
+      if (intent.type === "mcq") {
+        return startMcqQuiz(intent.count, undefined, intent.topic, textToSend);
+      }
+    }
+
     setThinking(true);
 
     try {
@@ -801,7 +856,12 @@ function AssistantPage() {
   }
 
   // MCQ Practice Quiz Generation (Up to 50 questions) - rendered inside AI chat reply container!
-  async function startMcqQuiz(countOverride?: number, modeOverride?: "as_you_go" | "at_the_end") {
+  async function startMcqQuiz(
+    countOverride?: number,
+    modeOverride?: "as_you_go" | "at_the_end",
+    topicOverride?: string,
+    userPrompt?: string
+  ) {
     setIsMcqConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
@@ -817,8 +877,8 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = activeDocContext?.title || profile?.course || "University Studies";
-      const sample = activeDocContext?.text || "General university examination curriculum.";
+      const title = topicOverride || activeDocContext?.title || profile?.course || "University Studies";
+      const sample = activeDocContext?.text || `Curriculum topics and past exam questions on ${title}.`;
 
       const res = await generateStudyQuizServerFn({
         data: {
@@ -829,6 +889,7 @@ function AssistantPage() {
           mode: "objective",
           count: countToUse,
           markingMode: modeToUse,
+          userPrompt,
         },
       });
 
@@ -852,7 +913,12 @@ function AssistantPage() {
   }
 
   // Theory Test Generation (Up to 50 questions) - rendered inside AI chat reply container!
-  async function startTheoryQuiz(countOverride?: number, modeOverride?: "as_you_go" | "at_the_end") {
+  async function startTheoryQuiz(
+    countOverride?: number,
+    modeOverride?: "as_you_go" | "at_the_end",
+    topicOverride?: string,
+    userPrompt?: string
+  ) {
     setIsTheoryConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
@@ -868,8 +934,8 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = activeDocContext?.title || profile?.course || "General Coursework";
-      const sample = activeDocContext?.text || "University semester exam preparation concepts.";
+      const title = topicOverride || activeDocContext?.title || profile?.course || "General Coursework";
+      const sample = activeDocContext?.text || `University semester exam preparation concepts on ${title}.`;
 
       const res = await generateStudyQuizServerFn({
         data: {
@@ -880,6 +946,7 @@ function AssistantPage() {
           mode: "theory",
           count: countToUse,
           markingMode: modeToUse,
+          userPrompt,
         },
       });
 
@@ -903,7 +970,12 @@ function AssistantPage() {
   }
 
   // 3D Flashcards Generation (Up to 50 cards) - rendered inside AI chat reply container!
-  async function startFlashcards(countOverride?: number, typeOverride?: "qa" | "fill_blank") {
+  async function startFlashcards(
+    countOverride?: number,
+    typeOverride?: "qa" | "fill_blank",
+    topicOverride?: string,
+    userPrompt?: string
+  ) {
     setIsFlashcardConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
@@ -919,8 +991,8 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = activeDocContext?.title || profile?.course || "Academic Revision";
-      const sample = activeDocContext?.text || "Key definitions, core theorems, and mnemonics.";
+      const title = topicOverride || activeDocContext?.title || profile?.course || "Academic Revision";
+      const sample = activeDocContext?.text || `Key definitions, core theorems, and mnemonics for ${title}.`;
 
       const res = await generateStudyFlashcardsServerFn({
         data: {
@@ -930,6 +1002,7 @@ function AssistantPage() {
           context: sample,
           type: typeToUse,
           count: countToUse,
+          userPrompt,
         },
       });
 
@@ -1295,19 +1368,19 @@ function AssistantPage() {
                         {m.flashcardsData && (
                           <InChatFlashcardsWidget
                             data={m.flashcardsData}
-                            onSelectCount={(c) => startFlashcards(c)}
+                            onSelectCount={(c) => startFlashcards(c, undefined, m.flashcardsData?.topic)}
                           />
                         )}
                         {m.quizData && m.quizData.mode === "objective" && (
                           <InChatMcqQuizWidget
                             data={m.quizData as any}
-                            onSelectCount={(c) => startMcqQuiz(c)}
+                            onSelectCount={(c) => startMcqQuiz(c, undefined, m.quizData?.topic)}
                           />
                         )}
                         {m.quizData && m.quizData.mode === "theory" && (
                           <InChatTheoryWidget
                             data={m.quizData as any}
-                            onSelectCount={(c) => startTheoryQuiz(c)}
+                            onSelectCount={(c) => startTheoryQuiz(c, undefined, m.quizData?.topic)}
                           />
                         )}
                       </div>

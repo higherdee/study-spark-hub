@@ -418,9 +418,24 @@ export const generateStudyQuizServerFn = createServerFn({ method: "POST" })
       mode: z.enum(["objective", "theory"]).default("objective"),
       count: z.number().min(1).max(50).default(5),
       markingMode: z.enum(["as_you_go", "at_the_end"]).default("as_you_go"),
+      userPrompt: z.string().optional(),
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    // Save user prompt if provided
+    if (data.userPrompt) {
+      const userMsgId = crypto.randomUUID();
+      try {
+        await turso.execute({
+          sql: `INSERT INTO chat_messages (id, thread_id, user_id, role, parts, message_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+          args: [userMsgId, data.threadId, data.userId, "user", JSON.stringify([{ type: "text", text: data.userPrompt }]), userMsgId],
+        });
+      } catch (e) {
+        console.warn("Failed to persist user quiz prompt:", e);
+      }
+    }
+
     const groqKey =
       process.env["GROQ_API_KEY"] ||
       process.env["VITE_GROQ_API_KEY"] ||
@@ -641,9 +656,24 @@ export const generateStudyFlashcardsServerFn = createServerFn({ method: "POST" }
       context: z.string().default(""),
       type: z.enum(["qa", "fill_blank"]).default("qa"),
       count: z.number().min(1).max(50).default(5),
+      userPrompt: z.string().optional(),
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    // Save user prompt if provided
+    if (data.userPrompt) {
+      const userMsgId = crypto.randomUUID();
+      try {
+        await turso.execute({
+          sql: `INSERT INTO chat_messages (id, thread_id, user_id, role, parts, message_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+          args: [userMsgId, data.threadId, data.userId, "user", JSON.stringify([{ type: "text", text: data.userPrompt }]), userMsgId],
+        });
+      } catch (e) {
+        console.warn("Failed to persist user flashcards prompt:", e);
+      }
+    }
+
     const groqKey =
       process.env["GROQ_API_KEY"] ||
       process.env["VITE_GROQ_API_KEY"] ||
