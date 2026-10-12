@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -23,7 +23,13 @@ import {
   Volume2,
   Square,
   History,
+  Keyboard,
 } from "lucide-react";
+import { AnimatePresence } from "motion/react";
+import {
+  MobileCustomKeyboard,
+  getPredictiveSuggestions,
+} from "@/components/chat/mobile-custom-keyboard";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -109,11 +115,13 @@ function AssistantPage() {
   const [showMobileHistory, setShowMobileHistory] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [showCustomKeyboard, setShowCustomKeyboard] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Active Interactive Tools State
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[] | null>(null);
@@ -142,6 +150,11 @@ function AssistantPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Live Predictive Academic Suggestions
+  const predictiveSuggestions = useMemo(() => {
+    return getPredictiveSuggestions(input, activeDocContext?.title);
+  }, [input, activeDocContext?.title]);
 
   async function startRecording() {
     try {
@@ -1165,7 +1178,30 @@ Choose an action below or ask me any question directly:`,
         )}
 
         {/* Input Bar */}
-        <div className="shrink-0 border-t border-border/60 bg-card p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-3">
+        <div className="shrink-0 border-t border-border/60 bg-card p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-3 transition-all">
+          {/* Live Predictive Suggestions Bar (available when typing or empty) */}
+          {!showCustomKeyboard && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 px-0.5 [scrollbar-width:none]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70 shrink-0 flex items-center gap-1">
+                <Sparkles className="size-2.5 text-amber-500 animate-pulse" />
+                Suggestions:
+              </span>
+              {predictiveSuggestions.map((s, idx) => (
+                <button
+                  key={`${idx}-${s.slice(0, 10)}`}
+                  type="button"
+                  onClick={() => {
+                    setInput(s);
+                    textareaRef.current?.focus();
+                  }}
+                  className="group flex shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-muted/60 px-2.5 py-1 text-[11px] font-medium text-foreground shadow-2xs transition-all hover:border-primary/50 hover:bg-card active:scale-95"
+                >
+                  <span className="truncate max-w-[200px]">{s}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1207,7 +1243,23 @@ Choose an action below or ask me any question directly:`,
               <Mic className="size-4" />
             </Button>
 
+            {/* Custom Keyboard Toggle Button for Mobile / Tactile Typing */}
+            <Button
+              type="button"
+              variant={showCustomKeyboard ? "default" : "outline"}
+              size="icon"
+              onClick={() => setShowCustomKeyboard((prev) => !prev)}
+              title={showCustomKeyboard ? "Close Custom Keyboard" : "Open Custom Student Keyboard"}
+              className={cn(
+                "h-11 w-11 rounded-2xl shrink-0 transition-all",
+                showCustomKeyboard && "bg-primary text-primary-foreground shadow-xs border-primary"
+              )}
+            >
+              <Keyboard className="size-4" />
+            </Button>
+
             <Textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -1231,6 +1283,22 @@ Choose an action below or ask me any question directly:`,
             </Button>
           </form>
         </div>
+
+        {/* Mobile Custom Tactile Keyboard Drawer */}
+        <AnimatePresence>
+          {showCustomKeyboard && (
+            <MobileCustomKeyboard
+              value={input}
+              onChange={setInput}
+              onSend={handleSend}
+              isOpen={showCustomKeyboard}
+              onClose={() => setShowCustomKeyboard(false)}
+              inputRef={textareaRef}
+              disabled={thinking}
+              activeDocTitle={activeDocContext?.title}
+            />
+          )}
+        </AnimatePresence>
       </section>
 
       {/* Mobile Previous Chats Modal */}

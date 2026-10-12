@@ -12,7 +12,7 @@ import {
   HelpCircle,
   Bot,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { SyllabossLogo } from "@/components/syllaboss-logo";
@@ -25,6 +25,47 @@ import { useStudyTimer } from "@/hooks/use-study-timer";
 import { POINTS_NAME } from "@/lib/constants";
 import { getUserNotifications } from "@/integrations/turso/client";
 import { cn } from "@/lib/utils";
+
+/**
+ * High-performance mobile scroll listener to auto-hide header & dock on downward scroll
+ */
+function useMobileScrollHide() {
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
+
+  useEffect(() => {
+    let lastY = typeof window !== "undefined" ? window.scrollY : 0;
+    let ticking = false;
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY;
+          const delta = currentY - lastY;
+
+          // Stay visible near the top of the viewport
+          if (currentY < 45) {
+            setIsScrolledDown(false);
+          } else if (delta > 14) {
+            // Scrolling DOWN -> hide island and dock
+            setIsScrolledDown(true);
+          } else if (delta < -14) {
+            // Scrolling UP -> reveal smoothly
+            setIsScrolledDown(false);
+          }
+
+          lastY = currentY;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return isScrolledDown;
+}
 
 export type NavItem = {
   to: string;
@@ -86,6 +127,8 @@ export function AppShell({
     path.startsWith("/dashboard/community") ||
     path.startsWith("/dashboard/preview");
 
+  const isScrolledDown = useMobileScrollHide();
+
   return (
     <div
       className={cn(
@@ -98,8 +141,9 @@ export function AppShell({
       {/* Top Bar matching Screenshot 2: Hamburger on left, widgets on right */}
       <header
         className={cn(
-          "px-3 transition-all sm:px-6 lg:px-8",
-          isFullScreenAppPage ? "shrink-0 py-2" : "sticky top-0 z-40 py-2.5"
+          "px-3 transition-all duration-300 ease-out sm:px-6 lg:px-8",
+          isFullScreenAppPage ? "shrink-0 py-2" : "sticky top-0 z-40 py-2.5",
+          isScrolledDown && "-translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
         )}
       >
         <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 rounded-[1.35rem] border border-border/70 bg-card/90 px-3 py-2 shadow-[0_12px_32px_-18px_rgba(13,40,30,0.35)] backdrop-blur-2xl transition-all sm:px-4">
@@ -212,11 +256,12 @@ export function AppShell({
         id="main-navigation-dock"
         aria-label="Navigation dock"
         className={cn(
-          "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:bottom-6 inset-x-0 z-40 mx-auto w-fit max-w-[calc(100vw-1rem)] pointer-events-none px-1 transition-all duration-200",
-          showSideNav && "hidden pointer-events-none opacity-0"
+          "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:bottom-6 inset-x-0 z-40 mx-auto w-fit max-w-[calc(100vw-1rem)] pointer-events-none px-1 transition-all duration-300 ease-out",
+          showSideNav && "hidden pointer-events-none opacity-0",
+          isScrolledDown && "translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
         )}
       >
-        <div className="pointer-events-auto flex items-center justify-center gap-0.5 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-3xl bg-card/95 border border-border/90 shadow-[0_20px_60px_rgba(0,0,0,0.16),inset_0_1px_2px_rgba(255,255,255,0.85)] transition-all duration-300">
+        <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-3xl bg-card/95 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.7)] transition-all duration-300">
           {nav.map((item) => {
             const active = item.exact
               ? path === item.to
@@ -227,17 +272,17 @@ export function AppShell({
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "relative flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors select-none",
+                  "relative flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all select-none active:scale-95",
                   item.hideOnMobile && "hidden md:flex",
                   active
-                    ? "bg-slate-100 text-slate-900 font-semibold"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-primary/10 text-primary font-bold shadow-xs border border-primary/25"
+                    : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
                 )}
               >
-                <item.icon className="size-4.5 sm:size-5 shrink-0 text-slate-500" />
+                <item.icon className={cn("size-4.5 sm:size-5 shrink-0 transition-transform", active ? "text-primary scale-110" : "text-muted-foreground")} />
                 <span
                   className={cn(
-                    "transition-all font-medium",
+                    "transition-all font-semibold",
                     active ? "inline" : "hidden md:inline"
                   )}
                 >

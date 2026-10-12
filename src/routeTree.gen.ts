@@ -15,6 +15,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CurriculumRouteImport } from './routes/curriculum'
+import { Route as LandingRouteImport } from './routes/landing'
 import { Route as MaterialsRouteImport } from './routes/materials'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -71,6 +72,11 @@ const ContactRoute = ContactRouteImport.update({
 const CurriculumRoute = CurriculumRouteImport.update({
   id: '/curriculum',
   path: '/curriculum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LandingRoute = LandingRouteImport.update({
+  id: '/landing',
+  path: '/landing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MaterialsRoute = MaterialsRouteImport.update({
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/curriculum': typeof CurriculumRoute
+  '/landing': typeof LandingRoute
   '/materials': typeof MaterialsRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -270,6 +277,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/curriculum': typeof CurriculumRoute
+  '/landing': typeof LandingRoute
   '/materials': typeof MaterialsRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/curriculum': typeof CurriculumRoute
+  '/landing': typeof LandingRoute
   '/materials': typeof MaterialsRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/curriculum'
+    | '/landing'
     | '/materials'
     | '/privacy'
     | '/terms'
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/curriculum'
+    | '/landing'
     | '/materials'
     | '/privacy'
     | '/terms'
@@ -411,6 +422,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/contact'
     | '/curriculum'
+    | '/landing'
     | '/materials'
     | '/privacy'
     | '/terms'
@@ -448,6 +460,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
   CurriculumRoute: typeof CurriculumRoute
+  LandingRoute: typeof LandingRoute
   MaterialsRoute: typeof MaterialsRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
@@ -500,6 +513,13 @@ declare module '@tanstack/react-router' {
       path: '/curriculum'
       fullPath: '/curriculum'
       preLoaderRoute: typeof CurriculumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/landing': {
+      id: '/landing'
+      path: '/landing'
+      fullPath: '/landing'
+      preLoaderRoute: typeof LandingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/materials': {
@@ -779,6 +799,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
   CurriculumRoute: CurriculumRoute,
+  LandingRoute: LandingRoute,
   MaterialsRoute: MaterialsRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,

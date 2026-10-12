@@ -1,6 +1,20 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Coins, Loader2, Wallet, CheckCircle2, AlertCircle, Building2, Sparkles } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  Coins,
+  Loader2,
+  Wallet,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Clock,
+  Upload,
+  Zap,
+  TrendingUp,
+} from "lucide-react";
 import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -51,6 +65,7 @@ function WalletPage() {
   const [isVerified, setIsVerified] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [activityTab, setActivityTab] = useState<"all" | "withdrawals" | "earnings">("all");
 
   // Filtered Nigerian banks for autocomplete
   const filteredBanks = NIGERIAN_BANKS.filter((b) =>
@@ -176,40 +191,121 @@ function WalletPage() {
     .reduce((a, w) => a + w.amount_naira, 0);
 
   return (
-    <div>
-      <PageHeader
-        eyebrow={`Rate: 1 Naira = ${POINTS_PER_NAIRA} ${POINTS_NAME}`}
-        title={`${POINTS_NAME} & Cash Out`}
-      >
-        {!isPlus && (
-          <Button
-            onClick={() => setShowPlusModal(true)}
-            className="rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm text-xs font-semibold"
-          >
-            <Sparkles className="size-3.5 mr-1.5" />
-            Upgrade to SyllaPlus (1.3x)
-          </Button>
-        )}
-      </PageHeader>
+    <div className="space-y-6">
+      {/* Trust Wallet-Inspired Hero Balance Card */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-[#061e14] via-[#0b2b1d] to-[#04140d] p-6 sm:p-8 text-white shadow-[0_24px_50px_-15px_rgba(4,20,13,0.5)]">
+        {/* Ambient Glow Orbs */}
+        <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-emerald-500/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 size-64 rounded-full bg-teal-500/10 blur-3xl" />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label={`${POINTS_NAME} Balance`}
-          value={`${points.toLocaleString()} pts`}
-          hint="Eligible for bank withdrawal"
-          icon={Coins}
-        />
-        <StatCard label="Cashed out" value={formatNaira(paid)} icon={Wallet} />
-        <StatCard
-          label="Pending requests"
-          value={(withdrawals.data ?? []).filter((w) => w.status === "pending").length}
-          hint="Under review & processing"
-          icon={Loader2}
-        />
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+                <Coins className="size-3 text-emerald-400" />
+                SyllaPoints Wallet
+              </span>
+              {isPlus && (
+                <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300">
+                  ⚡ 1.3x SyllaPlus Active
+                </span>
+              )}
+            </div>
+
+            <span className="text-xs font-medium text-emerald-200/70">
+              1 Naira = {POINTS_PER_NAIRA} {POINTS_NAME}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-wider text-emerald-300/80 font-bold">
+              Total Cash Value
+            </p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-3">
+              <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
+                {formatNaira(pointsToNaira(points))}
+              </h1>
+              <span className="text-sm sm:text-base font-semibold text-emerald-200/90 font-mono">
+                ≈ {points.toLocaleString()} pts
+              </span>
+            </div>
+          </div>
+
+          {/* Quick Action Pills (Trust Wallet action bar) */}
+          <div className="flex flex-wrap items-center gap-2.5 pt-2">
+            <Button
+              asChild
+              className="h-10 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs gap-1.5 shadow-md active:scale-95 transition-all"
+            >
+              <a href="#withdraw-form">
+                <ArrowUpRight className="size-4 stroke-[2.5]" />
+                Withdraw to Bank
+              </a>
+            </Button>
+
+            {!isPlus && (
+              <Button
+                onClick={() => setShowPlusModal(true)}
+                className="h-10 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs gap-1.5 shadow-md active:scale-95 transition-all"
+              >
+                <Zap className="size-4 stroke-[2.5] text-black" />
+                Upgrade to SyllaPlus (1.3x)
+              </Button>
+            )}
+
+            <Button
+              asChild
+              variant="outline"
+              className="h-10 rounded-2xl border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold text-xs gap-1.5 active:scale-95 transition-all"
+            >
+              <Link to="/dashboard/upload">
+                <Upload className="size-3.5" />
+                Upload & Earn
+              </Link>
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-2">
-        <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-border/60 bg-card p-6 shadow-xs">
+      {/* Metric Cards Row */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+          <div className="grid size-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+            <ArrowUpRight className="size-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Total Cashed Out
+            </p>
+            <p className="font-display text-2xl font-bold text-foreground mt-0.5">
+              {formatNaira(paid)}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Directly deposited to your Nigerian bank
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+          <div className="grid size-12 place-items-center rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400">
+            <Clock className="size-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Pending Payouts
+            </p>
+            <p className="font-display text-2xl font-bold text-foreground mt-0.5">
+              {(withdrawals.data ?? []).filter((w) => w.status === "pending").length} requests
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Processed every weekday via automated payout
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div id="withdraw-form" className="mt-8 grid gap-6 xl:grid-cols-2">
+        <form onSubmit={onSubmit} className="space-y-4 rounded-3xl border border-border/80 bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold">Withdraw to bank</h2>
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
@@ -341,49 +437,127 @@ function WalletPage() {
           </Button>
         </form>
 
-        <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-display text-xl font-semibold">Withdrawals</h2>
-          <ul className="mt-3 divide-y divide-border">
-            {(withdrawals.data ?? []).length === 0 && (
-              <li className="py-6 text-center text-sm text-muted-foreground">No withdrawals yet.</li>
-            )}
-            {(withdrawals.data ?? []).map((w) => (
-              <li key={w.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                <div>
-                  <p className="font-medium">
-                    {formatNaira(w.amount_naira)} · {w.points} pts
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {w.bank_name} ••{w.account_number.slice(-4)} · {new Date(w.created_at).toLocaleDateString()}
-                    {w.admin_note ? ` · ${w.admin_note}` : ""}
-                  </p>
+        {/* Recent Transactions & Activity Stream */}
+        <section className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs flex flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-border/60">
+            <h2 className="font-display text-lg font-bold">Activity Ledger</h2>
+            <div className="flex items-center gap-1 rounded-xl bg-secondary/40 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setActivityTab("all")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 font-semibold transition-all text-[11px]",
+                  activityTab === "all"
+                    ? "bg-card text-foreground shadow-2xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivityTab("withdrawals")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 font-semibold transition-all text-[11px]",
+                  activityTab === "withdrawals"
+                    ? "bg-card text-foreground shadow-2xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Cash Outs
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivityTab("earnings")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 font-semibold transition-all text-[11px]",
+                  activityTab === "earnings"
+                    ? "bg-card text-foreground shadow-2xs font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Earnings
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex-1 overflow-y-auto max-h-[440px] pr-1 space-y-2">
+            {/* Withdrawals items */}
+            {(activityTab === "all" || activityTab === "withdrawals") &&
+              (withdrawals.data ?? []).map((w) => (
+                <div
+                  key={`w-${w.id}`}
+                  className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-border/60 bg-secondary/15 hover:bg-secondary/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="grid size-9 place-items-center rounded-xl bg-red-500/10 text-red-600 shrink-0">
+                      <ArrowUpRight className="size-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs text-foreground">
+                        Withdrawal: {formatNaira(w.amount_naira)}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {w.bank_name} ••{w.account_number.slice(-4)} · {new Date(w.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-1">
+                    <span className="font-mono text-xs font-bold text-red-600">
+                      -{w.points.toLocaleString()} pts
+                    </span>
+                    <StatusBadge status={w.status} />
+                  </div>
                 </div>
-                <StatusBadge status={w.status} />
-              </li>
-            ))}
-          </ul>
+              ))}
+
+            {/* Earnings items */}
+            {(activityTab === "all" || activityTab === "earnings") &&
+              (ledger.data ?? []).map((l) => (
+                <div
+                  key={`l-${l.id}`}
+                  className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-border/60 bg-secondary/15 hover:bg-secondary/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "grid size-9 place-items-center rounded-xl shrink-0",
+                      l.amount > 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"
+                    )}>
+                      {l.amount > 0 ? (
+                        <ArrowDownLeft className="size-4" />
+                      ) : (
+                        <ArrowUpRight className="size-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-foreground truncate max-w-[180px] sm:max-w-xs">
+                        {l.reason}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {new Date(l.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={cn(
+                    "font-mono text-xs font-bold shrink-0",
+                    l.amount > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                  )}>
+                    {l.amount > 0 ? `+${l.amount.toLocaleString()}` : l.amount.toLocaleString()} pts
+                  </span>
+                </div>
+              ))}
+
+            {/* Empty state */}
+            {((activityTab === "withdrawals" && (withdrawals.data ?? []).length === 0) ||
+              (activityTab === "earnings" && (ledger.data ?? []).length === 0) ||
+              (activityTab === "all" && (withdrawals.data ?? []).length === 0 && (ledger.data ?? []).length === 0)) && (
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                No transaction activity found.
+              </div>
+            )}
+          </div>
         </section>
       </div>
-
-      <section className="mt-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-display text-xl font-semibold">Points history</h2>
-        <ul className="mt-3 divide-y divide-border">
-          {(ledger.data ?? []).length === 0 && (
-            <li className="py-6 text-center text-sm text-muted-foreground">No activity yet.</li>
-          )}
-          {(ledger.data ?? []).map((l) => (
-            <li key={l.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-              <div>
-                <p className="font-medium">{l.reason}</p>
-                <p className="text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString()}</p>
-              </div>
-              <span className={`font-semibold ${l.amount > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                {l.amount > 0 ? `+${l.amount}` : l.amount}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       {/* SyllaPlus Modal */}
       <SyllaPlusModal
