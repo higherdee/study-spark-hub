@@ -840,36 +840,36 @@ Include:
           onClick={() => setShowSummarySheet(false)}
         >
           <div
-            className="relative w-full max-w-2xl max-h-[85vh] rounded-3xl bg-white p-6 shadow-2xl border border-[#dce5df] flex flex-col"
+            className="relative w-full max-w-3xl lg:max-w-4xl max-h-[88vh] rounded-3xl bg-white dark:bg-[#111915] p-6 shadow-2xl border border-[#dce5df] dark:border-white/10 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#e7f0eb]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#e7f0eb] dark:border-white/10">
               <div className="flex items-center gap-2">
                 <Sparkles className="size-4 text-[#a87c12]" />
-                <h3 className="font-display text-base font-bold text-[#00110a]">
+                <h3 className="font-display text-base font-bold text-[#00110a] dark:text-white">
                   Executive Exam Summary
                 </h3>
               </div>
               <button
                 onClick={() => setShowSummarySheet(false)}
-                className="grid size-7 place-items-center rounded-full bg-[#edf6f0] text-[#5a6660] hover:text-[#00110a]"
+                className="grid size-7 place-items-center rounded-full bg-[#edf6f0] dark:bg-white/5 text-[#5a6660] dark:text-slate-400 hover:text-[#00110a] dark:hover:text-white"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 text-xs leading-relaxed text-[#151d1a]">
+            <div className="flex-1 overflow-y-auto py-4 text-xs leading-relaxed text-[#151d1a] dark:text-slate-100">
               {generatingSummary ? (
                 <div className="py-20 flex flex-col items-center justify-center gap-3">
                   <div className="animate-breathe-zoom">
                     <SyllabossEmblem className="size-14" />
                   </div>
-                  <p className="font-semibold text-xs text-[#1b7a4e] animate-pulse">
+                  <p className="font-semibold text-xs text-[#1b7a4e] dark:text-emerald-400 animate-pulse">
                     Boss AI is formulating core derivations and definitions...
                   </p>
                 </div>
               ) : summaryText ? (
-                <div className="relative rounded-2xl bg-[#edf6f0]/50 border border-[#dce5df] p-5">
+                <div className="relative rounded-2xl bg-[#edf6f0]/50 dark:bg-white/[0.03] border border-[#dce5df] dark:border-white/10 p-5">
                   <button
                     type="button"
                     onClick={() => {
@@ -878,19 +878,19 @@ Include:
                       toast.success("Summary copied to clipboard!");
                       setTimeout(() => setCopiedSummary(false), 2000);
                     }}
-                    className="absolute top-3 right-3 flex items-center gap-1 rounded-lg border border-[#dce5df] bg-white px-2.5 py-1 text-[11px] font-medium text-[#151d1a] shadow-xs hover:bg-[#edf6f0]"
+                    className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-[#dce5df] dark:border-white/10 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-[#151d1a] dark:text-slate-200 shadow-xs hover:bg-[#edf6f0] dark:hover:bg-slate-700 transition-colors"
                   >
                     {copiedSummary ? <Check className="size-3 text-[#1b7a4e]" /> : <Copy className="size-3" />}
                     {copiedSummary ? "Copied" : "Copy"}
                   </button>
-                  <div className="prose prose-xs max-w-none whitespace-pre-wrap font-sans">
-                    {summaryText}
+                  <div className="pt-6 pr-2">
+                    <AiMessageRenderer content={summaryText} />
                   </div>
                 </div>
               ) : null}
             </div>
 
-            <div className="pt-3 border-t border-[#e7f0eb] flex justify-end">
+            <div className="pt-3 border-t border-[#e7f0eb] dark:border-white/10 flex justify-end">
               <Button
                 variant="outline"
                 size="sm"

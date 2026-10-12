@@ -32,6 +32,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, getTotalMaterialsCount, type Material } from "@/integrations/turso/client";
 import { LEVELS, MATERIAL_TYPES, POINTS_NAME } from "@/lib/constants";
 import { getDownloadUrlServerFn, recordMaterialViewServerFn } from "@/lib/upload.functions";
+import { AiMessageRenderer } from "@/components/ai-message-renderer";
 
 const librarySearchSchema = z.object({
   q: z.string().catch("").default(""),
@@ -602,8 +603,8 @@ This verified material provides high-yield coverage of fundamental principles, s
                         {copiedSummary ? <Check className="size-3 text-[#1b7a4e]" /> : <Copy className="size-3" />}
                         {copiedSummary ? "Copied" : "Copy"}
                       </button>
-                      <div className="prose prose-xs max-w-none whitespace-pre-wrap">
-                        {summary}
+                      <div className="pt-6 pr-2">
+                        <AiMessageRenderer content={summary} />
                       </div>
                     </div>
                   ) : null}

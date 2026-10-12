@@ -305,6 +305,13 @@
   animation: v2Enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* KaTeX math display scrolling & responsiveness */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
 
 
 

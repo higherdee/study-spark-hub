@@ -10,17 +10,17 @@ interface AiMessageRendererProps {
 }
 
 /**
- * Preprocess content to ensure all LaTeX delimiters (\( \), \[ \])
- * are normalized to standard MathJax / KaTeX math syntax ($ $, $$ $$).
+ * Preprocess content to ensure all LaTeX delimiters (\( \), \[ \], \\( \\), \\[ \\])
+ * are normalized to standard KaTeX math syntax ($ $, $$ $$).
  */
 function normalizeMathDelimiters(raw: string): string {
   if (!raw) return "";
 
   return raw
-    // Convert \[ ... \] display math to $$ ... $$
-    .replace(/\\\[([\s\S]*?)\\\]/g, (_, math) => `\n$$\n${math.trim()}\n$$\n`)
-    // Convert \( ... \) inline math to $ ... $
-    .replace(/\\\(([\s\S]*?)\\\)/g, (_, math) => `$${math.trim()}$`);
+    // Convert \[ or \\[ display math to $$ ... $$
+    .replace(/(?:\\\\|\\)\[([\s\S]*?)(?:\\\\|\\)\]/g, (_, math) => `\n$$\n${math.trim()}\n$$\n`)
+    // Convert \( or \\( inline math to $ ... $
+    .replace(/(?:\\\\|\\)\(([\s\S]*?)(?:\\\\|\\)\)/g, (_, math) => `$${math.trim()}$`);
 }
 
 export function AiMessageRenderer({ content, className = "" }: AiMessageRendererProps) {
