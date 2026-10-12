@@ -308,11 +308,22 @@ export function MobileCustomKeyboard({
     };
   }, [isShift, isCapsLock]);
 
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      setIsMobile(typeof window !== "undefined" && window.innerWidth < 768);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   // Broadcast keyboard open/closed state so bottom navigation dock collapses
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.dispatchEvent(
-        new CustomEvent("syllaboss-keyboard-state", { detail: { isOpen } })
+        new CustomEvent("syllaboss-keyboard-state", { detail: { isOpen: Boolean(isOpen && isMobile) } })
       );
     }
     return () => {
@@ -322,17 +333,17 @@ export function MobileCustomKeyboard({
         );
       }
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMobile) return null;
 
   return (
     <motion.div
-      initial={{ y: "100%", opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: "100%", opacity: 0 }}
-      transition={{ type: "spring", damping: 28, stiffness: 320 }}
-      className="fixed bottom-0 left-0 right-0 w-full z-50 border-t border-border/80 bg-card/98 shadow-[0_-16px_48px_rgba(0,0,0,0.3)] flex flex-col select-none touch-manipulation pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+      className="w-full shrink-0 z-40 border-t border-border/80 bg-card/98 shadow-[0_-8px_32px_rgba(0,0,0,0.18)] flex flex-col select-none touch-manipulation pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden"
     >
       {/* Top Header / Mode Switcher & Live Suggestions Bar */}
       <div className="flex flex-col border-b border-border/60 bg-muted/40">

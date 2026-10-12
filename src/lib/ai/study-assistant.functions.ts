@@ -135,6 +135,8 @@ export const askBossAiServerFn = createServerFn({ method: "POST" })
     const systemInstruction = `You are Boss AI, the elite academic study copilot on Syllaboss for university students.
 Provide clear, rigorous, and insightful explanations. Include worked examples, key formulas, exam strategies, and mnemonic memory aids.
 
+STRICT CONSTRAINT: DO NOT USE ANY EMOJIS WHATSOEVER in your responses. Never output emojis under any circumstances (no smileys, no reaction symbols, no robot emojis). Format purely with standard text, bold headings, bullet lists, and standard LaTeX formulas.
+
 Formatting Guidelines:
 - Mathematical Expressions: Always format mathematical, physical, engineering, and scientific expressions using standard LaTeX notation:
   * Use single dollar signs $expression$ for inline math (e.g. $L_1$, $\\theta(t)$, $\\phi$, $\\vec{AB}$, $A(x_A, y_A)$).
@@ -211,6 +213,9 @@ ${
     if (!aiResponseText) {
       aiResponseText = `### Syllaboss Study Assistant (Boss AI)\n\nI have analyzed your query: **"${data.query.slice(0, 80)}"**\n\n**Key Concept Summary:**\n1. **Core Principle:** In university study, foundational clarity and systematic derivation are essential.\n2. **Practical Step:** Review the textbook definitions and test yourself against past examination problems.\n3. **Pro Tip:** Ask me to generate a practice quiz or summary from your course notes anytime!`;
     }
+
+    // Strict Emoji filter: Strip any Unicode emojis completely
+    aiResponseText = aiResponseText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "");
 
     // 3. Save Assistant message to Turso
     const assistantMsgId = crypto.randomUUID();

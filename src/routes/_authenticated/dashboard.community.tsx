@@ -189,6 +189,44 @@ export function CommunityPage() {
   // Direct Peer Search
   const [peerSearchQuery, setPeerSearchQuery] = useState("");
 
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      setIsMobile(typeof window !== "undefined" && window.innerWidth < 768);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Internal chat scroll detection for drawer auto-collapse
+  const [isChatScrolledDown, setIsChatScrolledDown] = useState(false);
+  const lastScrollTopRef = useRef(0);
+
+  const handleCommunityScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const st = el.scrollTop;
+    const delta = st - lastScrollTopRef.current;
+
+    if (st < 40) {
+      setIsChatScrolledDown(false);
+    } else if (delta > 15) {
+      setIsChatScrolledDown(true);
+    } else if (delta < -15) {
+      setIsChatScrolledDown(false);
+    }
+    lastScrollTopRef.current = st;
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("syllaboss-scroll-direction", { detail: { isScrolledDown: isChatScrolledDown } })
+      );
+    }
+  }, [isChatScrolledDown]);
+
   // Swipe-to-reply gesture tracking
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -464,7 +502,7 @@ export function CommunityPage() {
     if (replyingToMessage) {
       const sender = replyingToMessage.sender_name || replyingToMessage.user_name || "Scholar";
       const quoteSnippet = replyingToMessage.content.slice(0, 60);
-      content = `↩️ Replying to ${sender}: "${quoteSnippet}"\n${content}`;
+      content = `[Replying to ${sender}: "${quoteSnippet}"]\n${content}`;
       setReplyingToMessage(null);
     }
 
@@ -521,12 +559,13 @@ export function CommunityPage() {
         askBossAiServerFn({
           data: {
             userId: user.id,
-            query: `A student in a peer study discussion tagged @BossAI: "${aiPrompt}". Please provide a helpful, concise academic answer.`,
+            query: `A student in a peer study discussion tagged @BossAI: "${aiPrompt}". Please provide a helpful, concise academic answer. Do NOT use any emojis.`,
             taskType: "general",
           },
         })
           .then(async (aiRes) => {
-            const aiFormattedText = `🤖 **Boss AI**:\n${aiRes.response}`;
+            const cleanAiResponse = aiRes.response.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "");
+            const aiFormattedText = `**Boss AI**:\n${cleanAiResponse}`;
 
             if (activeChat.type === "peer") {
               const aiMsg = await sendDirectMessageServerFn({
@@ -542,7 +581,7 @@ export function CommunityPage() {
                 data: {
                   groupId: activeChat.id,
                   userId: "system",
-                  userName: "Boss AI ⚡",
+                  userName: "Boss AI",
                   userInstitution: "Campus AI Intelligence",
                   content: aiFormattedText,
                 },
@@ -984,7 +1023,10 @@ export function CommunityPage() {
             </div>
 
             {/* Chat Messages Stream */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]">
+            <div
+              onScroll={handleCommunityScroll}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]"
+            >
               {chatMessages.length === 0 ? (
                 <div className="py-16 text-center flex flex-col items-center">
                   <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-2">
@@ -1130,8 +1172,15 @@ export function CommunityPage() {
               </div>
             )}
 
-            {/* Bottom Composer Capsule (Autogrowing, Tactile Keyboard, inputMode="none") */}
-            <div className="p-2.5 border-t border-border/70 bg-card shrink-0">
+            {/* Bottom Composer Capsule */}
+            <div
+              className={cn(
+                "p-2.5 border-t border-border/70 bg-card shrink-0 transition-all duration-300 ease-out",
+                !isChatScrolledDown && !showCustomKeyboard
+                  ? "mb-[calc(4.5rem+env(safe-area-inset-bottom))] md:mb-0"
+                  : "mb-0"
+              )}
+            >
               <div className="rounded-2xl border border-border/80 bg-secondary/30 p-2 shadow-xs flex flex-col gap-1 focus-within:border-primary/50 focus-within:bg-card">
                 <textarea
                   ref={composerTextareaRef}
@@ -1141,12 +1190,22 @@ export function CommunityPage() {
                     e.target.style.height = "auto";
                     e.target.style.height = `${Math.min(e.target.scrollHeight, 84)}px`;
                   }}
-                  onFocus={() => setShowCustomKeyboard(true)}
-                  onClick={() => setShowCustomKeyboard(true)}
-                  inputMode="none"
+                  onKeyDown={(e) => {
+                    if (!isMobile && e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  onFocus={() => {
+                    if (isMobile) setShowCustomKeyboard(true);
+                  }}
+                  onClick={() => {
+                    if (isMobile) setShowCustomKeyboard(true);
+                  }}
+                  inputMode={isMobile ? "none" : "text"}
                   placeholder={`Message ${activeChat.title} (tag @BossAI to ask AI)...`}
                   rows={1}
-                  className="w-full resize-none bg-transparent text-xs text-foreground focus:outline-hidden min-h-[26px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
+                  className="w-full resize-none bg-transparent text-xs sm:text-sm text-foreground focus:outline-hidden min-h-[26px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
                 />
 
                 <div className="flex items-center justify-between pt-1 border-t border-border/40">
@@ -1154,7 +1213,7 @@ export function CommunityPage() {
                     <button
                       type="button"
                       onClick={() => setIsAttachMaterialOpen(true)}
-                      title="Attach academic material"
+                      title="Attach academic material from library"
                       className="size-7.5 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-secondary"
                     >
                       <Paperclip className="size-4" />
@@ -1180,9 +1239,9 @@ export function CommunityPage() {
               </div>
             </div>
 
-            {/* Fixed Full-Width Custom Tactile Keyboard */}
+            {/* Custom Tactile Keyboard (In-flow directly beneath composer on mobile) */}
             <AnimatePresence>
-              {showCustomKeyboard && (
+              {showCustomKeyboard && isMobile && (
                 <MobileCustomKeyboard
                   value={messageInput}
                   onChange={(val) => {

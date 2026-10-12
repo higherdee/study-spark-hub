@@ -72,6 +72,7 @@ import {
   autoVerifyMaterialServerFn,
   getPresignedUploadUrlServerFn,
 } from "@/lib/upload.functions";
+import { getMaterialsForChatServerFn } from "@/lib/community.functions";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
@@ -126,6 +127,17 @@ function AssistantPage() {
   const { data: profile } = useProfile();
   const qc = useQueryClient();
 
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      setIsMobile(typeof window !== "undefined" && window.innerWidth < 768);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -151,7 +163,12 @@ function AssistantPage() {
   const [assignmentInput, setAssignmentInput] = useState("");
   const [assignmentMode, setAssignmentMode] = useState<"detailed" | "short">("detailed");
 
-  // MCQ Configuration & Execution State
+  // Campus Library Picker Modal
+  const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryFilter, setLibraryFilter] = useState<string>("all");
+
+  // MCQ Configuration & Execution State (Up to 50 questions per sketch & prompt)
   const [mcqMode, setMcqMode] = useState<"as_you_go" | "at_the_end">("as_you_go");
   const [mcqCount, setMcqCount] = useState<number>(5);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[] | null>(null);
@@ -161,7 +178,7 @@ function AssistantPage() {
   const [isMcqSubmittedAtEnd, setIsMcqSubmittedAtEnd] = useState(false);
   const [unansweredWarningQuestions, setUnansweredWarningQuestions] = useState<number[] | null>(null);
 
-  // Theory Configuration & Execution State
+  // Theory Configuration & Execution State (Up to 50 questions with marks per sketch 4)
   const [theoryMode, setTheoryMode] = useState<"as_you_go" | "at_the_end">("as_you_go");
   const [theoryCount, setTheoryCount] = useState<number>(5);
   const [theoryAnswerInput, setTheoryAnswerInput] = useState("");
@@ -169,7 +186,7 @@ function AssistantPage() {
   const [theoryFeedbackMap, setTheoryFeedbackMap] = useState<Record<number, any>>({});
   const [gradingTheory, setGradingTheory] = useState(false);
 
-  // Flashcards Configuration & State
+  // Flashcards Configuration & State (Up to 50 cards)
   const [flashcardCount, setFlashcardCount] = useState<number>(10);
   const [flashcardType, setFlashcardType] = useState<"qa" | "fill_blank">("qa");
   const [flashcards, setFlashcards] = useState<Flashcard[] | null>(null);
@@ -178,6 +195,7 @@ function AssistantPage() {
 
   // Active Attached Document Context
   const [activeDocContext, setActiveDocContext] = useState<{
+    id?: string;
     title: string;
     course: string;
     text: string;
@@ -197,130 +215,236 @@ function AssistantPage() {
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Live Predictive Suggestions
-  const predictiveSuggestions = useMemo(() => {
-    return getPredictiveSuggestions(input, activeDocContext?.title);
-  }, [input, activeDocContext?.title]);
+  // Scroll direction detection for drawer collapse / prompt bar docking
+  const [isChatScrolledDown, setIsChatScrolledDown] = useState(false);
+  const lastScrollTopRef = useRef(0);
 
-  // Voice note speech recognition (Listening to voice note)
-  function toggleVoiceNoteInput() {
-    if (isRecording) {
-      stopAndSendVoiceNote();
-      return;
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const st = el.scrollTop;
+    const delta = st - lastScrollTopRef.current;
+
+    if (st < 40) {
+      setIsChatScrolledDown(false);
+    } else if (delta > 15) {
+      setIsChatScrolledDown(true);
+    } else if (delta < -15) {
+      setIsChatScrolledDown(false);
     }
+    lastScrollTopRef.current = st;
 
-    // Try Speech Recognition for direct live transcription
-    const SpeechRec =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+    const isUp = el.scrollHeight - st - el.clientHeight > 140;
+    setShowScrollBottom(isUp);
+  };
 
-    if (SpeechRec) {
-      try {
-        const recognition = new SpeechRec();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = "en-US";
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("syllaboss-scroll-direction", { detail: { isScrolledDown: isChatScrolledDown } })
+      );
+    }
+  }, [isChatScrolledDown]);
 
-        recognition.onstart = () => {
-          setIsRecording(true);
-          setRecordingSeconds(0);
-          recordingTimerRef.current = setInterval(() => {
-            setRecordingSeconds((s) => s + 1);
-          }, 1000);
-          toast.info("Listening to your voice note...");
-        };
+  // Query Recent Chat Threads
+  const { data: threads = [], refetch: refetchThreads } = useQuery({
+    queryKey: ["chat-threads", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      if (!user) return [];
+      return await getStudyThreadsServerFn({ data: { userId: user.id } });
+    },
+  });
 
-        recognition.onresult = (e: any) => {
-          const transcript = Array.from(e.results)
-            .map((res: any) => res[0].transcript)
-            .join("");
-          setInput(transcript);
-          // Auto adjust textarea height
-          if (textareaRef.current) {
-            textareaRef.current.style.height = "auto";
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 84)}px`;
+  // Query Campus Library Materials
+  const { data: libraryMaterials = [], isLoading: isLoadingLibrary } = useQuery({
+    queryKey: ["campus-library-materials"],
+    queryFn: async () => {
+      return await getMaterialsForChatServerFn({ data: { limit: 60 } });
+    },
+  });
+
+  const filteredLibraryMaterials = useMemo(() => {
+    return libraryMaterials.filter((m: any) => {
+      const matchesSearch =
+        m.title.toLowerCase().includes(librarySearch.toLowerCase()) ||
+        m.course.toLowerCase().includes(librarySearch.toLowerCase()) ||
+        (m.course_code && m.course_code.toLowerCase().includes(librarySearch.toLowerCase()));
+      if (!matchesSearch) return false;
+      if (libraryFilter === "all") return true;
+      return m.material_type === libraryFilter;
+    });
+  }, [libraryMaterials, librarySearch, libraryFilter]);
+
+  // Load Material context if passed via search params
+  useEffect(() => {
+    if (materialId) {
+      getStudyMaterialByIdServerFn({ data: { materialId } }).then((m) => {
+        if (m) {
+          setActiveDocContext({
+            id: m.id,
+            title: m.title,
+            course: m.course,
+            text: m.description || m.title,
+          });
+          const welcomeMsg: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `Loaded document: **${m.title}** (${m.course} · ${m.institution}).\n\nAsk me any question about this material, or choose an option from the menu to start studying!`,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages([welcomeMsg]);
+        }
+      });
+    }
+  }, [materialId]);
+
+  // Fetch active thread messages
+  const { data: threadMessages = [] } = useQuery({
+    queryKey: ["chat-messages", activeThreadId],
+    enabled: Boolean(activeThreadId),
+    queryFn: async () => {
+      if (!activeThreadId) return [];
+      return await getStudyMessagesServerFn({ data: { threadId: activeThreadId } });
+    },
+  });
+
+  // Sync loaded thread messages
+  useEffect(() => {
+    if (threadMessages.length > 0) {
+      const formatted: ChatMessage[] = threadMessages.map((msg: any) => {
+        let contentText = "";
+        let audioUrl: string | undefined = undefined;
+        let attachedMaterial: any = undefined;
+
+        try {
+          const parsed = JSON.parse(msg.parts);
+          if (Array.isArray(parsed)) {
+            contentText = parsed.map((p) => p.text || "").join("\n");
+          } else if (typeof parsed === "object") {
+            contentText = parsed.text || "";
+            audioUrl = parsed.audioUrl;
+            attachedMaterial = parsed.attachedMaterial;
           }
-        };
+        } catch {
+          contentText = msg.parts;
+        }
 
-        recognition.onend = () => {
-          setIsRecording(false);
-          if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+        return {
+          id: msg.id,
+          role: msg.role,
+          content: contentText,
+          audioUrl,
+          timestamp: msg.created_at,
+          attachedMaterial,
         };
-
-        recognition.onerror = () => {
-          setIsRecording(false);
-          if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-          startMediaRecordingFallback();
-        };
-
-        recognitionRef.current = recognition;
-        recognition.start();
-        return;
-      } catch {
-        startMediaRecordingFallback();
-      }
-    } else {
-      startMediaRecordingFallback();
+      });
+      setMessages(formatted);
     }
-  }
+  }, [threadMessages]);
 
-  async function startMediaRecordingFallback() {
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, thinking]);
+
+  // Voice Note Recording (SpeechRecognition + MediaRecorder fallback)
+  async function startVoiceRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "audio/webm";
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(250);
       setIsRecording(true);
       setRecordingSeconds(0);
 
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = setInterval(() => {
-        setRecordingSeconds((sec) => sec + 1);
+        setRecordingSeconds((s) => s + 1);
       }, 1000);
-      toast.info("Recording voice note...");
+
+      // Start SpeechRecognition in parallel if available
+      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRec) {
+        try {
+          const rec = new SpeechRec();
+          rec.continuous = true;
+          rec.interimResults = true;
+          rec.lang = "en-US";
+          rec.onresult = (evt: any) => {
+            const transcript = Array.from(evt.results)
+              .map((res: any) => res[0].transcript)
+              .join("");
+            if (transcript) {
+              setInput(transcript);
+              if (textareaRef.current) {
+                textareaRef.current.style.height = "auto";
+                textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 84)}px`;
+              }
+            }
+          };
+          rec.onerror = () => {};
+          rec.start();
+          recognitionRef.current = rec;
+        } catch {}
+      }
+      toast.info("Listening... Speak your study question.");
     } catch {
-      toast.error("Microphone access unavailable or denied on this device.");
+      toast.error("Microphone access unavailable or denied. Please check permissions.");
     }
   }
 
   async function stopAndSendVoiceNote() {
+    if (!isRecording) return;
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
+      recognitionRef.current = null;
     }
 
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    const duration = recordingSeconds;
+    setIsRecording(false);
+    setRecordingSeconds(0);
 
-    if (mediaRecorderRef.current && isRecording) {
+    let targetThreadId = activeThreadId;
+    if (!targetThreadId) {
+      targetThreadId = await createNewChat();
+      if (!targetThreadId) return;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const mimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const audioUrl = URL.createObjectURL(audioBlob);
-        const duration = recordingSeconds;
-        setIsRecording(false);
-        setRecordingSeconds(0);
 
-        let targetThreadId = activeThreadId;
-        if (!targetThreadId) {
-          targetThreadId = await createNewChat();
-          if (!targetThreadId) return;
-        }
+        mediaRecorderRef.current?.stream.getTracks().forEach((t) => t.stop());
+
+        const studentQuery =
+          input.trim() ||
+          `[Voice Note (${duration}s)]: Student Audio Inquiry. Please explain the core academic topic thoroughly.`;
+        setInput("");
 
         const voiceUserMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: "user",
-          content: input.trim() || `[Voice Note (${duration}s)] Student Audio Inquiry`,
+          content: studentQuery,
           audioUrl,
           timestamp: new Date().toISOString(),
         };
 
         setMessages((prev) => [...prev, voiceUserMsg]);
-        setInput("");
         setThinking(true);
 
         try {
@@ -328,7 +452,7 @@ function AssistantPage() {
             data: {
               userId: user!.id,
               threadId: targetThreadId,
-              query: voiceUserMsg.content,
+              query: studentQuery,
               taskType: "general",
               docContext: activeDocContext ?? undefined,
             },
@@ -343,20 +467,30 @@ function AssistantPage() {
 
           setMessages((prev) => [...prev, aiMsg]);
           refetchThreads();
+
+          // Auto speak response aloud
+          speakAiResponse(result.response, result.assistantMessageId);
         } catch {
-          toast.error("Failed to process voice note with Boss AI.");
+          toast.error("Boss AI could not process your voice inquiry.");
         } finally {
           setThinking(false);
         }
       };
-
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
     } else {
-      setIsRecording(false);
-      if (input.trim()) {
-        handleSend();
+      const studentQuery = input.trim();
+      if (studentQuery) {
+        setInput("");
+        handleSend(studentQuery);
       }
+    }
+  }
+
+  function toggleVoiceNoteInput() {
+    if (isRecording) {
+      stopAndSendVoiceNote();
+    } else {
+      startVoiceRecording();
     }
   }
 
@@ -377,253 +511,166 @@ function AssistantPage() {
     }
   }
 
-  // Voice Note Response Playback (Text to Speech)
-  function toggleSpeechPlayback(msgId: string, text: string) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      toast.error("Text-to-speech audio not supported on this device.");
-      return;
-    }
-
+  // Speak AI response aloud (SpeechSynthesis)
+  function speakAiResponse(text: string, msgId: string) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
     if (speakingMessageId === msgId) {
-      window.speechSynthesis.cancel();
       setSpeakingMessageId(null);
       return;
     }
-
-    window.speechSynthesis.cancel();
     const cleanText = text
-      .replace(/[*#_`>]/g, "")
-      .replace(/\[.*?\]/g, "")
-      .slice(0, 500);
-
+      .replace(/[*#_`$]/g, "")
+      .replace(/\[.*?\]\(.*?\)/g, "")
+      .replace(/\{.*?\}/g, "");
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     utterance.onend = () => setSpeakingMessageId(null);
     utterance.onerror = () => setSpeakingMessageId(null);
-
     setSpeakingMessageId(msgId);
     window.speechSynthesis.speak(utterance);
-    toast.info("Playing Boss AI voice note response...");
   }
 
-  // Scroll position listener for floating arrow button
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    const isUp = el.scrollHeight - el.scrollTop - el.clientHeight > 140;
-    setShowScrollBottom(isUp);
-  };
-
-  // Query Recent Chat Threads
-  const { data: threads = [], refetch: refetchThreads } = useQuery({
-    queryKey: ["chat-threads", user?.id],
-    enabled: Boolean(user?.id),
-    queryFn: async () => {
-      if (!user) return [];
-      return await getStudyThreadsServerFn({ data: { userId: user.id } });
-    },
-  });
-
-  // Load Material context if passed via search params
-  useEffect(() => {
-    if (materialId) {
-      getStudyMaterialByIdServerFn({ data: { materialId } }).then((m) => {
-        if (m) {
-          setActiveDocContext({
-            title: m.title,
-            course: m.course,
-            text: m.description || `Study material for ${m.course} (${m.institution})`,
-          });
-          toast.success(`Loaded context for "${m.title}".`);
-        }
-      });
-    }
-  }, [materialId]);
-
-  useEffect(() => {
-    if (view === "history") {
-      setShowMenuDrawer(true);
-    }
-  }, [view]);
-
-  // Set default active thread or create one
-  useEffect(() => {
-    if (!activeThreadId && threads.length > 0) {
-      setActiveThreadId(threads[0]?.id ?? null);
-    }
-  }, [threads, activeThreadId]);
-
-  // Load Messages for active thread
-  useEffect(() => {
-    if (!activeThreadId) {
-      setMessages([]);
-      return;
-    }
-
-    async function loadThread() {
-      try {
-        const loaded = await getStudyMessagesServerFn({ data: { threadId: activeThreadId! } });
-        setMessages(loaded as ChatMessage[]);
-      } catch (err) {
-        console.error("Failed to load thread messages:", err);
-      }
-    }
-
-    loadThread();
-  }, [activeThreadId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, thinking, quizQuestions, flashcards]);
-
-  // Create New Chat Thread
+  // Create New Thread
   async function createNewChat() {
     if (!user) return null;
     try {
-      const created = await createStudyThreadServerFn({
-        data: { userId: user.id, title: "New Study Session" },
+      const newThread = await createStudyThreadServerFn({
+        data: {
+          userId: user.id,
+          title: "New Study Conversation",
+        },
       });
-      await refetchThreads();
-      setActiveThreadId(created.id);
+      setActiveThreadId(newThread.id);
       setMessages([]);
       setQuizQuestions(null);
       setFlashcards(null);
-      setActiveDocContext(null);
-      toast.success("New conversation started.");
-      return created.id;
-    } catch (err) {
-      console.error("Create chat error:", err);
-      toast.error("Could not create chat");
+      refetchThreads();
+      return newThread.id;
+    } catch {
+      toast.error("Failed to start new conversation");
       return null;
     }
   }
 
-  // Delete Chat Thread
+  // Delete Thread
   async function deleteChat(id: string) {
+    if (!user) return;
     try {
       await deleteStudyThreadServerFn({ data: { threadId: id } });
+      toast.success("Conversation deleted");
       if (activeThreadId === id) {
         setActiveThreadId(null);
         setMessages([]);
       }
       refetchThreads();
-      toast.success("Chat deleted.");
     } catch {
-      toast.error("Failed to delete chat.");
+      toast.error("Failed to delete conversation");
     }
   }
 
-  // Handle Document Upload in Chat (Autonomous Library Registration)
+  // Select Library Material
+  function selectLibraryMaterial(mat: any) {
+    setActiveDocContext({
+      id: mat.id,
+      title: mat.title,
+      course: mat.course_code ? `${mat.course_code} - ${mat.course}` : mat.course,
+      text: mat.description || `Campus study material for ${mat.course} at ${mat.institution}.`,
+    });
+    setIsLibraryModalOpen(false);
+
+    const welcomeMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: `Active study material set to **${mat.title}** (${mat.course_code ? `${mat.course_code} · ` : ""}${mat.course} · ${mat.institution}).\n\nWhat would you like me to do with this material?\n- Generate an **MCQ Practice Quiz**\n- Take a **Theory Practice Test**\n- Create **3D Flashcards**\n- Request **Assignment Assistance**\n- Or ask me any question directly!`,
+      timestamp: new Date().toISOString(),
+      attachedMaterial: mat,
+    };
+    setMessages((prev) => [...prev, welcomeMsg]);
+    toast.success(`Attached "${mat.title}" from library!`);
+  }
+
+  // Upload Document Directly in Chat
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (file.size > 25 * 1024 * 1024) {
-      toast.error("File exceeds 25 MB limit.");
-      return;
-    }
-
     setUploadingDoc(true);
-    toast.loading("Analyzing document with Boss AI...", { id: "doc-proc" });
+    toast.loading("Analyzing document with autonomous AI...", { id: "doc-proc" });
 
     try {
-      let extractedSample = "";
-      if (file.type.includes("text") || file.name.endsWith(".txt")) {
-        extractedSample = await file.text();
-      } else {
-        extractedSample = `${file.name} - Academic Course Material for ${profile?.institution || "University"}`;
-      }
-
-      const cat = await categorizeDocumentAutonomously(file.name, extractedSample, profile);
-      const { uploadUrl, key } = await getPresignedUploadUrlServerFn({
+      const presigned = await getPresignedUploadUrlServerFn({
         data: {
-          userId: user.id,
-          fileName: file.name,
+          filename: file.name,
           contentType: file.type || "application/pdf",
+          userId: user.id,
         },
       });
 
-      await fetch(uploadUrl, {
+      await fetch(presigned.uploadUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type || "application/pdf" },
         body: file,
       });
+
+      const extractedSample = `Document: ${file.name}\nSize: ${(file.size / (1024 * 1024)).toFixed(2)} MB\nUploaded for semester revision.`;
+      const cat = await categorizeDocumentAutonomously(file.name, extractedSample, profile);
+      const audit = await auditUploadAutonomous(file.name, file.size, file.type, extractedSample);
 
       const createdMat = await createMaterialServerFn({
         data: {
           userId: user.id,
           title: cat.title,
           course: cat.course,
-          courseCode: cat.course_code,
+          courseCode: cat.course_code ?? undefined,
           institution: cat.institution,
+          department: cat.department,
           level: cat.level,
           materialType: cat.material_type,
           description: cat.description,
-          filePath: key,
-          fileName: file.name,
-          mimeType: file.type || "application/pdf",
-          fileSize: file.size,
+          r2Key: presigned.key,
+          pageCount: 1,
         },
       });
-
-      const audit = await auditUploadAutonomous(
-        cat.title,
-        cat.course,
-        file.size,
-        file.type,
-        extractedSample
-      );
 
       await autoVerifyMaterialServerFn({
         data: {
           materialId: createdMat.id,
           score: audit.score,
-          notes: audit.notes,
         },
       });
 
-      await qc.invalidateQueries({ queryKey: ["my-materials"] });
-      await qc.invalidateQueries({ queryKey: ["library-materials"] });
-      await qc.invalidateQueries({ queryKey: ["profile"] });
+      await qc.invalidateQueries({ queryKey: ["campus-library-materials"] });
 
       setActiveDocContext({
+        id: createdMat.id,
         title: cat.title,
         course: cat.course,
-        text: extractedSample.slice(0, 3000),
+        text: extractedSample,
       });
 
-      let targetThreadId = activeThreadId;
-      if (!targetThreadId) {
-        targetThreadId = await createNewChat();
-      }
+      toast.success(`Attached "${cat.title}"! Added to campus library.`, { id: "doc-proc" });
 
-      if (targetThreadId) {
-        await saveStudyMessageServerFn({
-          data: {
-            threadId: targetThreadId,
-            userId: user.id,
-            role: "assistant",
-            content: `I've registered and indexed "${cat.title}" (${cat.course}). What would you like to study or test?`,
-            attachedMaterial: {
-              id: createdMat.id,
-              title: cat.title,
-              course: cat.course,
-              courseCode: cat.course_code,
-              institution: cat.institution,
-              department: profile?.department || "Department",
-              level: cat.level,
-              status: "verified",
-            },
-          },
-        });
+      const aiWelcomeMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Ingested **${cat.title}** (${cat.course} · ${cat.institution})!\n\nReady for exam practice! Pick an action or ask any question:`,
+        timestamp: new Date().toISOString(),
+        attachedMaterial: {
+          id: createdMat.id,
+          title: cat.title,
+          course: cat.course,
+          courseCode: cat.course_code,
+          institution: cat.institution,
+          department: cat.department,
+          level: cat.level,
+          status: "verified",
+        },
+      };
 
-        const loaded = await getStudyMessagesServerFn({ data: { threadId: targetThreadId } });
-        setMessages(loaded as ChatMessage[]);
-      }
-
-      toast.success(`Attached "${cat.title}"!`, { id: "doc-proc" });
-    } catch (err) {
-      console.error("Document ingestion error:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to process document", { id: "doc-proc" });
+      setMessages((prev) => [...prev, aiWelcomeMsg]);
+    } catch {
+      toast.error("Failed to upload document", { id: "doc-proc" });
     } finally {
       setUploadingDoc(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -631,14 +678,12 @@ function AssistantPage() {
     }
   }
 
-  // Send Chat Prompt to Boss AI with Autonomous Conversation Naming
-  async function handleSend(textToSend?: string) {
-    const query = (textToSend || input).trim();
-    if (!query || thinking || !user) return;
+  // Send Message
+  async function handleSend(manualPrompt?: string) {
+    const textToSend = manualPrompt || input.trim();
+    if (!textToSend || !user || thinking) return;
 
     let targetThreadId = activeThreadId;
-    const isBrandNewSession = !targetThreadId || messages.length === 0;
-
     if (!targetThreadId) {
       targetThreadId = await createNewChat();
       if (!targetThreadId) return;
@@ -647,15 +692,12 @@ function AssistantPage() {
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      content: query,
+      content: textToSend,
       timestamp: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    if (!manualPrompt) setInput("");
     setThinking(true);
 
     try {
@@ -663,7 +705,7 @@ function AssistantPage() {
         data: {
           userId: user.id,
           threadId: targetThreadId,
-          query,
+          query: textToSend,
           taskType: "general",
           docContext: activeDocContext ?? undefined,
         },
@@ -677,43 +719,35 @@ function AssistantPage() {
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+      refetchThreads();
 
-      // Requirement: Every new conversation should be named by the AI!
-      if (isBrandNewSession) {
-        const cleanPrompt = query.replace(/^(what is|how to|explain|summarize|give me|quiz me on)\s+/i, "");
-        const words = cleanPrompt.split(/\s+/).slice(0, 4).join(" ");
-        const autoName = words ? words.charAt(0).toUpperCase() + words.slice(1) : "Study Session";
+      // Auto title thread if it was the first message
+      if (messages.length === 0) {
+        const smartTitle = textToSend.slice(0, 32).replace(/\n/g, " ");
         updateStudyThreadTitleServerFn({
-          data: { threadId: targetThreadId, title: autoName },
-        }).then(() => refetchThreads()).catch(() => {});
-      } else {
-        refetchThreads();
+          data: {
+            threadId: targetThreadId,
+            title: smartTitle.length > 30 ? `${smartTitle}...` : smartTitle,
+          },
+        }).then(() => refetchThreads());
       }
-    } catch (err) {
-      console.error("AI inference error:", err);
-      toast.error("Failed to generate response. Please try again.");
+    } catch {
+      toast.error("Boss AI was unable to generate a response. Please retry.");
     } finally {
       setThinking(false);
     }
   }
 
-  // Quick Action: Summarize Document
-  async function triggerSummarize() {
-    setShowDropUpMenu(false);
-    const title = activeDocContext?.title || "your uploaded document";
-    handleSend(`Please provide a high-yield executive summary of ${title}, highlighting the core definitions, formulas, and most likely exam questions.`);
-  }
-
-  // Quick Action: MCQ Quiz Generation (from Sketch 2 & 3)
+  // MCQ Practice Quiz Generation (Up to 50 questions)
   async function startMcqQuiz() {
     setIsMcqConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
-    toast.loading(`Generating ${mcqCount} MCQ questions...`, { id: "quiz-gen" });
+    toast.loading(`Preparing ${mcqCount} practice questions...`, { id: "mcq-gen" });
 
     try {
-      const title = activeDocContext?.title || profile?.course || "General Coursework";
-      const sample = activeDocContext?.text || "University semester exam preparation concepts.";
+      const title = activeDocContext?.title || profile?.course || "University Studies";
+      const sample = activeDocContext?.text || "General university examination curriculum.";
       const questions = await generatePracticeQuestions(title, sample, "objective", mcqCount);
 
       setQuizQuestions(questions);
@@ -723,15 +757,14 @@ function AssistantPage() {
       setIsMcqSubmittedAtEnd(false);
       setUnansweredWarningQuestions(null);
 
-      toast.success(`${questions.length} MCQ Questions Ready!`, { id: "quiz-gen" });
+      toast.success(`${questions.length} Practice Questions Ready!`, { id: "mcq-gen" });
     } catch {
-      toast.error("Failed to generate quiz", { id: "quiz-gen" });
+      toast.error("Failed to generate quiz questions", { id: "mcq-gen" });
     } finally {
       setThinking(false);
     }
   }
 
-  // MCQ Submission with Unanswered Questions Check (Sketch 2 requirement)
   function handleMcqSubmitAtEnd() {
     if (!quizQuestions) return;
     const unanswered: number[] = [];
@@ -767,12 +800,12 @@ function AssistantPage() {
     toast.success(`Exam submitted! Scored ${totalCorrect}/${quizQuestions.length}`);
   }
 
-  // Quick Action: Theory Test Generation (from Sketch 2 & 4)
+  // Theory Test Generation (Up to 50 questions)
   async function startTheoryQuiz() {
     setIsTheoryConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
-    toast.loading(`Preparing ${theoryCount} theory questions with marking scheme...`, { id: "theory-gen" });
+    toast.loading(`Preparing ${theoryCount} theory questions with exam marking...`, { id: "theory-gen" });
 
     try {
       const title = activeDocContext?.title || profile?.course || "General Coursework";
@@ -793,36 +826,36 @@ function AssistantPage() {
     }
   }
 
-  // Grade Theory Answer (Teacher-Style Marking)
   async function handleGradeCurrentTheory() {
     if (!quizQuestions || !theoryAnswerInput.trim()) return;
     const q = quizQuestions[currentQuizIndex];
     if (!q) return;
 
     setGradingTheory(true);
+    toast.loading("Grading theory answer...", { id: "grade-th" });
+
     try {
-      const result = await gradeTheoryAnswer(q.question, q.modelAnswer, theoryAnswerInput);
-      setTheoryFeedbackMap((prev) => ({ ...prev, [currentQuizIndex]: result }));
+      const feedback = await gradeTheoryAnswer(q.question, q.modelAnswer, theoryAnswerInput);
+      setTheoryFeedbackMap((prev) => ({ ...prev, [currentQuizIndex]: feedback }));
       setTheoryAnswersMap((prev) => ({ ...prev, [currentQuizIndex]: theoryAnswerInput }));
-      setQuizScores((prev) => ({ ...prev, [currentQuizIndex]: result.score }));
-      toast.success(`Marked: Scored ${result.score}/10!`);
+      toast.success(`Marked: ${feedback.score}/10 (${feedback.verdict})`, { id: "grade-th" });
     } catch {
-      toast.error("Grading failed. Please try again.");
+      toast.error("Failed to grade theory answer", { id: "grade-th" });
     } finally {
       setGradingTheory(false);
     }
   }
 
-  // Quick Action: Flashcards (from Sketch 1 & 2)
+  // 3D Flashcards Generation (Up to 50 cards)
   async function startFlashcards() {
     setIsFlashcardConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
-    toast.loading(`Generating ${flashcardCount} colorful study flashcards...`, { id: "fc-gen" });
+    toast.loading(`Generating ${flashcardCount} 3D flashcards...`, { id: "fc-gen" });
 
     try {
       const title = activeDocContext?.title || profile?.course || "Academic Revision";
-      const sample = activeDocContext?.text || "Course definitions and formulas.";
+      const sample = activeDocContext?.text || "Key definitions, core theorems, and mnemonics.";
       const cards = await generateFlashcards(title, sample, flashcardCount);
 
       setFlashcards(cards);
@@ -841,44 +874,215 @@ function AssistantPage() {
     if (!assignmentInput.trim()) return;
     setIsAssignmentModalOpen(false);
     setShowDropUpMenu(false);
-    const prompt = `[Assignment Helper - ${assignmentMode.toUpperCase()}]\n${assignmentInput.trim()}\nPlease provide a ${assignmentMode === "detailed" ? "comprehensive, well-structured academic breakdown with citations and step-by-step working" : "concise, direct summary and key bullet points to solve this assignment"}.`;
+    const prompt = `[Assignment Helper - ${assignmentMode.toUpperCase()}]\n${assignmentInput.trim()}\nPlease provide a ${
+      assignmentMode === "detailed"
+        ? "comprehensive, well-structured academic breakdown with citations and step-by-step working"
+        : "concise, direct summary and key bullet points to solve this assignment"
+    }.`;
     handleSend(prompt);
     setAssignmentInput("");
   }
 
+  function triggerSummarize() {
+    setShowDropUpMenu(false);
+    handleSend("Please summarize the active course material into high-yield exam revision bullet points, formulas, and definitions.");
+  }
+
   return (
-    <div className="flex flex-1 min-h-0 h-full max-h-full w-full overflow-hidden flex-col bg-background relative font-sans">
+    <div className="flex flex-1 min-h-0 h-full max-h-full w-full overflow-hidden bg-background relative font-sans">
+      {/* Hidden File Inputs */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        className="hidden"
+        accept=".pdf,.doc,.docx,.txt,image/*"
+      />
+      <input
+        type="file"
+        ref={menuFileInputRef}
+        onChange={handleFileUpload}
+        className="hidden"
+        accept=".pdf,.doc,.docx,.txt,image/*"
+      />
+
       {/* ========================================================================= */}
-      {/* MINIMAL TOP BAR: Only Vertical Triple Dots at Top Right Corner per User */}
+      {/* DESKTOP SIDEBAR: Conversations, Attached Document, & Study Tools */}
       {/* ========================================================================= */}
-      <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-border/50 bg-card/95 z-20">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="size-8 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
-            <Bot className="size-4.5" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-sm font-bold text-foreground truncate">Boss AI</h1>
-            <p className="text-[10px] text-muted-foreground truncate">
-              {activeDocContext ? activeDocContext.title : "Academic Assistant"}
-            </p>
-          </div>
+      <aside className="hidden md:flex w-72 lg:w-80 flex-col border-r border-border/70 bg-card/40 shrink-0 overflow-hidden">
+        {/* New Chat Button */}
+        <div className="p-3 border-b border-border/70">
+          <Button
+            onClick={createNewChat}
+            className="w-full justify-start gap-2 rounded-xl font-bold text-xs h-9 shadow-xs"
+          >
+            <MessageSquarePlus className="size-4" /> Start New Conversation
+          </Button>
         </div>
 
-        {/* Top Right Corner: Vertical Triple Dots Menu Trigger */}
-        <button
-          type="button"
-          onClick={() => setShowMenuDrawer(true)}
-          title="Conversation options & previous chats"
-          className="size-9 rounded-full grid place-items-center text-foreground hover:bg-secondary active:scale-90 transition-all border border-border/60"
-        >
-          <MoreVertical className="size-4.5" />
-        </button>
-      </div>
+        {/* Active Study Document Section */}
+        <div className="p-3 border-b border-border/70 space-y-2 bg-secondary/15">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Study Document
+            </span>
+            {activeDocContext && (
+              <button
+                type="button"
+                onClick={() => setActiveDocContext(null)}
+                className="text-[10px] font-semibold text-destructive hover:underline"
+              >
+                Detach
+              </button>
+            )}
+          </div>
+
+          {activeDocContext ? (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-xs space-y-0.5">
+              <p className="font-bold text-primary truncate">{activeDocContext.title}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{activeDocContext.course}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLibraryModalOpen(true)}
+                className="rounded-xl text-[11px] font-semibold h-8 border-border/80 hover:bg-primary/10 hover:text-primary"
+              >
+                <BookOpen className="size-3.5 mr-1 text-primary" /> Library
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-xl text-[11px] font-semibold h-8 border-border/80 hover:bg-primary/10 hover:text-primary"
+              >
+                <Upload className="size-3.5 mr-1 text-primary" /> Upload
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Study Tools Quick Triggers */}
+        <div className="p-3 border-b border-border/70 space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+            Study Modes & Tools
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsMcqConfigOpen(true)}
+            className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all"
+          >
+            <CheckCircle2 className="size-4 text-primary" />
+            <span>MCQ Practice Quiz</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsTheoryConfigOpen(true)}
+            className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all"
+          >
+            <FileText className="size-4 text-emerald-600" />
+            <span>Theory Test & Marking</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsFlashcardConfigOpen(true)}
+            className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all"
+          >
+            <Layers className="size-4 text-indigo-500" />
+            <span>3D Flashcards</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAssignmentModalOpen(true)}
+            className="w-full flex items-center gap-2 p-2 rounded-xl text-left text-xs font-semibold hover:bg-primary/10 hover:text-primary transition-all"
+          >
+            <BookOpen className="size-4 text-amber-500" />
+            <span>Assignment Helper</span>
+          </button>
+        </div>
+
+        {/* Recent Chats list */}
+        <div className="p-3 flex-1 min-h-0 flex flex-col space-y-1 overflow-hidden">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+            Recent Conversations
+          </span>
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
+            {threads.length === 0 ? (
+              <p className="py-4 text-xs text-muted-foreground text-center">No chats yet.</p>
+            ) : (
+              threads.map((t) => (
+                <div
+                  key={t.id}
+                  className={cn(
+                    "group flex items-center justify-between gap-1 rounded-xl px-2.5 py-2 text-xs transition-colors",
+                    activeThreadId === t.id
+                      ? "bg-secondary font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                  )}
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 truncate text-left"
+                    onClick={() => {
+                      setActiveThreadId(t.id);
+                      setQuizQuestions(null);
+                      setFlashcards(null);
+                    }}
+                  >
+                    {t.title}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteChat(t.id);
+                    }}
+                    className="p-1 hover:text-destructive text-muted-foreground"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </aside>
 
       {/* ========================================================================= */}
       {/* MAIN CHAT & INTERACTIVE WORKSPACE */}
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+        {/* Mobile floating top-right triple dots button */}
+        <div className="md:hidden absolute top-3 right-3 z-30">
+          <button
+            type="button"
+            onClick={() => setShowMenuDrawer(true)}
+            title="Conversation options & previous chats"
+            className="size-9 rounded-full grid place-items-center bg-card/90 text-foreground hover:bg-secondary active:scale-90 transition-all border border-border/70 shadow-xs backdrop-blur-xs"
+          >
+            <MoreVertical className="size-4.5" />
+          </button>
+        </div>
+
+        {/* Desktop Chat Header */}
+        <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-card shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center">
+              <Bot className="size-4" />
+            </div>
+            <div>
+              <h2 className="text-xs font-bold text-foreground">Boss AI Copilot</h2>
+              <p className="text-[10px] text-muted-foreground">
+                {activeDocContext ? activeDocContext.title : "Active Study Session"}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Interactive Mode 1: Flashcards Mode (Sketch 1 & 2) */}
         {flashcards && flashcards.length > 0 && (
           <div className="border-b border-border/80 bg-secondary/30 p-3 sm:p-4 shrink-0 transition-all">
@@ -896,7 +1100,6 @@ function AssistantPage() {
               </button>
             </div>
 
-            {/* 3D Colorful Flashcard (from Sketch 1: "Colorful cards, Flip, < Prev, Next >") */}
             <div
               onClick={() => setCardFlipped((f) => !f)}
               className={cn(
@@ -915,7 +1118,6 @@ function AssistantPage() {
               </span>
             </div>
 
-            {/* Flashcard Controls */}
             <div className="mt-3 flex items-center justify-between">
               <Button
                 size="sm"
@@ -929,25 +1131,18 @@ function AssistantPage() {
               >
                 &lt; Prev
               </Button>
-
+              <span className="text-xs text-muted-foreground font-semibold">
+                {currentCardIndex + 1} / {flashcards.length}
+              </span>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setCardFlipped((f) => !f)}
-                className="h-8 rounded-xl text-xs gap-1 font-semibold"
-              >
-                <RotateCcw className="size-3" /> Flip
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={currentCardIndex >= flashcards.length - 1}
+                disabled={currentCardIndex === flashcards.length - 1}
                 onClick={() => {
                   setCurrentCardIndex((i) => i + 1);
                   setCardFlipped(false);
                 }}
-                className="h-8 rounded-xl text-xs gap-1 font-semibold"
+                className="h-8 rounded-xl text-xs font-semibold"
               >
                 Next &gt;
               </Button>
@@ -957,14 +1152,11 @@ function AssistantPage() {
 
         {/* Interactive Mode 2: MCQ Quiz (Sketch 2 & 3) */}
         {quizQuestions && quizQuestions[0]?.type === "objective" && (
-          <div className="border-b border-border/80 bg-primary/5 p-3 sm:p-4 shrink-0 transition-all max-h-[48vh] overflow-y-auto">
+          <div className="border-b border-border/80 bg-secondary/30 p-3 sm:p-4 shrink-0 transition-all">
             <div className="flex items-center justify-between pb-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                <HelpCircle className="size-3.5" />
+                <CheckCircle2 className="size-3.5" />
                 MCQ Question {currentQuizIndex + 1} of {quizQuestions.length}
-                <span className="text-[10px] font-normal lowercase text-muted-foreground">
-                  ({mcqMode === "as_you_go" ? "instant marking" : "mark at end"})
-                </span>
               </span>
               <button
                 type="button"
@@ -975,67 +1167,47 @@ function AssistantPage() {
               </button>
             </div>
 
-            <p className="font-semibold text-xs sm:text-sm text-foreground mt-1">
+            <p className="font-semibold text-xs sm:text-sm text-foreground my-2">
               {quizQuestions[currentQuizIndex]?.question}
             </p>
 
-            {/* Radio Choices A, B, C, D */}
-            <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
-              {quizQuestions[currentQuizIndex]?.options?.map((opt, i) => {
-                const userChoice = selectedObjectiveAnswers[currentQuizIndex];
-                const isSelected = userChoice === i;
-                const isCorrect = i === quizQuestions[currentQuizIndex]?.correctOptionIndex;
-                const showFeedback =
-                  mcqMode === "as_you_go"
-                    ? userChoice !== undefined
-                    : isMcqSubmittedAtEnd;
+            <div className="grid gap-1.5 my-2">
+              {quizQuestions[currentQuizIndex]?.options?.map((opt, optIdx) => {
+                const isSelected = selectedObjectiveAnswers[currentQuizIndex] === optIdx;
+                const isSubmitted = isMcqSubmittedAtEnd || mcqMode === "as_you_go";
+                const isCorrect = quizQuestions[currentQuizIndex]?.correctOptionIndex === optIdx;
+
+                let stateClass = "border-border/80 bg-card hover:bg-secondary/60 text-foreground";
+                if (isSubmitted) {
+                  if (isCorrect) {
+                    stateClass = "border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold";
+                  } else if (isSelected && !isCorrect) {
+                    stateClass = "border-red-500 bg-red-500/10 text-red-800 dark:text-red-300";
+                  }
+                } else if (isSelected) {
+                  stateClass = "border-primary bg-primary/10 text-primary font-bold";
+                }
 
                 return (
                   <button
-                    key={i}
+                    key={optIdx}
                     type="button"
-                    disabled={showFeedback && mcqMode === "as_you_go"}
                     onClick={() => {
-                      setSelectedObjectiveAnswers((prev) => ({ ...prev, [currentQuizIndex]: i }));
-                      if (mcqMode === "as_you_go") {
-                        if (isCorrect) {
-                          setQuizScores((prev) => ({ ...prev, [currentQuizIndex]: 1 }));
-                          toast.success("Correct answer!");
-                        } else {
-                          toast.error("Incorrect. See explanation.");
-                        }
-                      }
+                      if (mcqMode === "as_you_go" && selectedObjectiveAnswers[currentQuizIndex] !== undefined) return;
+                      setSelectedObjectiveAnswers((prev) => ({ ...prev, [currentQuizIndex]: optIdx }));
                     }}
                     className={cn(
-                      "rounded-xl border p-2.5 text-left text-xs font-medium transition-all",
-                      !showFeedback
-                        ? isSelected
-                          ? "border-primary bg-primary/10 text-primary font-bold"
-                          : "border-border bg-card hover:border-primary/50"
-                        : isCorrect
-                        ? "border-emerald-500 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-bold"
-                        : isSelected
-                        ? "border-destructive bg-destructive/15 text-destructive font-bold"
-                        : "border-border/60 opacity-60"
+                      "w-full text-left p-2.5 rounded-xl border text-xs transition-all flex items-center justify-between",
+                      stateClass
                     )}
                   >
-                    <span className="font-mono mr-2">{String.fromCharCode(65 + i)}.</span>
-                    {opt}
+                    <span>{opt}</span>
+                    {isSubmitted && isCorrect && <Check className="size-3.5 text-emerald-600" />}
                   </button>
                 );
               })}
             </div>
 
-            {/* Explanation when marked */}
-            {((mcqMode === "as_you_go" && selectedObjectiveAnswers[currentQuizIndex] !== undefined) ||
-              isMcqSubmittedAtEnd) && (
-              <div className="mt-2.5 rounded-xl bg-card p-2.5 text-[11px] border border-border/70">
-                <p className="font-bold text-foreground">Explanation:</p>
-                <p className="text-muted-foreground mt-0.5">{quizQuestions[currentQuizIndex]?.explanation}</p>
-              </div>
-            )}
-
-            {/* MCQ Controls */}
             <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2">
               <Button
                 size="sm"
@@ -1046,40 +1218,35 @@ function AssistantPage() {
               >
                 Previous
               </Button>
-
-              {mcqMode === "at_the_end" && !isMcqSubmittedAtEnd && (
+              {currentQuizIndex < quizQuestions.length - 1 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCurrentQuizIndex((i) => i + 1)}
+                  className="h-7 text-xs font-semibold gap-1"
+                >
+                  Next <ChevronRight className="size-3" />
+                </Button>
+              ) : (
                 <Button
                   size="sm"
                   onClick={handleMcqSubmitAtEnd}
                   className="h-7 text-xs font-bold bg-primary text-primary-foreground"
                 >
-                  Submit Quiz
+                  Submit Exam
                 </Button>
               )}
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={currentQuizIndex >= quizQuestions.length - 1}
-                onClick={() => setCurrentQuizIndex((i) => i + 1)}
-                className="h-7 text-xs font-semibold gap-1"
-              >
-                Next <ChevronRight className="size-3" />
-              </Button>
             </div>
           </div>
         )}
 
-        {/* Interactive Mode 3: Theory Quiz (Sketch 2 & 4) */}
+        {/* Interactive Mode 3: Theory Test Mode (Sketch 2 & 4) */}
         {quizQuestions && quizQuestions[0]?.type === "theory" && (
-          <div className="border-b border-border/80 bg-primary/5 p-3 sm:p-4 shrink-0 transition-all max-h-[50vh] overflow-y-auto">
+          <div className="border-b border-border/80 bg-secondary/30 p-3 sm:p-4 shrink-0 transition-all">
             <div className="flex items-center justify-between pb-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
                 <FileText className="size-3.5" />
-                Theory Question {currentQuizIndex + 1} of {quizQuestions.length}
-                <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-bold">
-                  (5 Marks)
-                </span>
+                Theory Question {currentQuizIndex + 1} of {quizQuestions.length} (5 Marks)
               </span>
               <button
                 type="button"
@@ -1090,55 +1257,43 @@ function AssistantPage() {
               </button>
             </div>
 
-            <p className="font-semibold text-xs sm:text-sm text-foreground mt-1">
+            <p className="font-semibold text-xs sm:text-sm text-foreground my-2">
               {quizQuestions[currentQuizIndex]?.question}
             </p>
 
-            {/* Theory Answer Field with Tactile Keyboard Integration */}
-            <div className="mt-2.5 space-y-2">
+            <div className="rounded-xl border border-border/80 bg-card p-2 space-y-2">
               <textarea
                 value={theoryAnswerInput}
                 onChange={(e) => setTheoryAnswerInput(e.target.value)}
-                onFocus={() => setShowCustomKeyboard(true)}
-                onClick={() => setShowCustomKeyboard(true)}
-                inputMode="none"
-                placeholder="Type your structured examination answer using Syllaboss keyboard..."
-                className="w-full min-h-20 rounded-xl border border-border bg-card p-2.5 text-xs text-foreground resize-none focus:outline-hidden"
+                placeholder="Type your structured answer here..."
+                rows={3}
+                className="w-full resize-none bg-transparent text-xs text-foreground focus:outline-hidden"
               />
-
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
-                  Marked against academic rubrics
-                </span>
+              <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                <span className="text-[10px] text-muted-foreground">Standard examination rubric</span>
                 <Button
                   size="sm"
                   disabled={gradingTheory || !theoryAnswerInput.trim()}
                   onClick={handleGradeCurrentTheory}
-                  className="h-7 text-xs font-bold gap-1"
+                  className="h-7 text-xs font-bold"
                 >
-                  {gradingTheory ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-                  Submit for Marking
+                  {gradingTheory ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
+                  Grade Answer
                 </Button>
               </div>
-
-              {/* Theory Feedback from Teacher */}
-              {theoryFeedbackMap[currentQuizIndex] && (
-                <div className="rounded-xl border border-primary/40 bg-card p-3 text-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-foreground">Score Awarded:</span>
-                    <span className="rounded-full bg-primary text-primary-foreground font-bold px-2.5 py-0.5 text-xs">
-                      {theoryFeedbackMap[currentQuizIndex].score} / 10 Marks
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground">{theoryFeedbackMap[currentQuizIndex].feedback}</p>
-                  <p className="text-[10px] text-muted-foreground border-t border-border/50 pt-1">
-                    <strong>Model Answer:</strong> {quizQuestions[currentQuizIndex]?.modelAnswer}
-                  </p>
-                </div>
-              )}
             </div>
 
-            {/* Controls */}
+            {theoryFeedbackMap[currentQuizIndex] && (
+              <div className="mt-2 p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs space-y-1">
+                <p className="font-bold text-emerald-800 dark:text-emerald-300">
+                  Mark: {theoryFeedbackMap[currentQuizIndex].score} / 10 ({theoryFeedbackMap[currentQuizIndex].verdict})
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  {theoryFeedbackMap[currentQuizIndex].feedback}
+                </p>
+              </div>
+            )}
+
             <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2">
               <Button
                 size="sm"
@@ -1181,10 +1336,10 @@ function AssistantPage() {
                   <Bot className="size-6" />
                 </div>
                 <h3 className="font-display text-lg font-bold text-foreground">
-                  Boss AI Assistant
+                  Boss AI Study Copilot
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Ask any question, attach your lecture notes, or tap <strong>+</strong> in the typing bar to take an MCQ Quiz, Theory Test, or create Flashcards.
+                  Ask any academic question, attach your course notes, or tap <strong>+</strong> in the typing bar to take an MCQ Quiz, Theory Test, or create Flashcards.
                 </p>
 
                 <div className="grid gap-2 pt-2 sm:grid-cols-2 text-left">
@@ -1217,10 +1372,11 @@ function AssistantPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="rounded-xl border border-dashed border-primary/50 bg-primary/5 p-2.5 text-xs font-medium text-primary hover:bg-primary/10 transition-all"
+                    onClick={() => setIsLibraryModalOpen(true)}
+                    className="rounded-xl border border-dashed border-primary/50 bg-primary/5 p-2.5 text-xs font-medium text-primary hover:bg-primary/10 transition-all flex items-center justify-between"
                   >
-                    Attach note / past question
+                    <span>Choose from Campus Library</span>
+                    <BookOpen className="size-3.5" />
                   </button>
                 </div>
               </div>
@@ -1241,7 +1397,7 @@ function AssistantPage() {
                     {isAssistant && (
                       <button
                         type="button"
-                        onClick={() => toggleSpeechPlayback(m.id, m.content)}
+                        onClick={() => speakAiResponse(m.content, m.id)}
                         title={speakingMessageId === m.id ? "Stop voice note" : "Play voice note response"}
                         className="ml-1 text-primary hover:text-primary/80 transition-colors"
                       >
@@ -1309,7 +1465,7 @@ function AssistantPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Floating Scroll to Bottom Arrow Button (per prompt requirement) */}
+        {/* Floating Scroll to Bottom Arrow Button */}
         {showScrollBottom && (
           <button
             type="button"
@@ -1330,11 +1486,11 @@ function AssistantPage() {
                 Listening / Recording Voice Note ({recordingSeconds}s)...
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={cancelRecording}
-                className="text-xs text-muted-foreground hover:text-red-600 font-medium px-2 py-1"
+                className="text-xs text-muted-foreground hover:text-foreground p-1"
               >
                 Cancel
               </button>
@@ -1350,11 +1506,35 @@ function AssistantPage() {
           </div>
         )}
 
+        {/* Attached Document Context Banner */}
+        {activeDocContext && (
+          <div className="mx-3 my-1 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <BookOpen className="size-3.5 text-primary shrink-0" />
+              <span className="text-xs font-semibold text-primary truncate">{activeDocContext.title}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveDocContext(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* ========================================================================= */}
         {/* MODERN GEMINI / CHATGPT AUTOGROWING TYPING BAR */}
         {/* ========================================================================= */}
-        <div className="shrink-0 border-t border-border/60 bg-card p-2 sm:p-3 relative z-20">
-          {/* Drop-up Menu for MCQ, Theory, Flashcards, Assignments */}
+        <div
+          className={cn(
+            "shrink-0 border-t border-border/60 bg-card p-2 sm:p-3 relative z-30 transition-all duration-300 ease-out",
+            !isChatScrolledDown && !showCustomKeyboard
+              ? "mb-[calc(4.5rem+env(safe-area-inset-bottom))] md:mb-0"
+              : "mb-0"
+          )}
+        >
+          {/* Drop-up Menu for MCQ, Theory, Flashcards, Library, Assignments */}
           <AnimatePresence>
             {showDropUpMenu && (
               <motion.div
@@ -1364,8 +1544,40 @@ function AssistantPage() {
                 className="absolute bottom-full left-3 mb-2 w-64 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl z-40 space-y-1 font-sans"
               >
                 <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Study Modes & Tools
+                  Study Modes & Materials
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDropUpMenu(false);
+                    setIsLibraryModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                >
+                  <BookOpen className="size-4 text-primary" />
+                  <div>
+                    <p className="leading-tight">Choose from Library</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">Attach campus notes & past questions</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDropUpMenu(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                >
+                  <Upload className="size-4 text-primary" />
+                  <div>
+                    <p className="leading-tight">Upload from Device</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">Upload PDF or image notes</p>
+                  </div>
+                </button>
+
+                <div className="my-1 border-t border-border/60" />
 
                 <button
                   type="button"
@@ -1378,7 +1590,7 @@ function AssistantPage() {
                   <CheckCircle2 className="size-4 text-primary" />
                   <div>
                     <p className="leading-tight">MCQ Quiz</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">5 to 30 practice questions</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">5 to 50 practice questions</p>
                   </div>
                 </button>
 
@@ -1420,7 +1632,7 @@ function AssistantPage() {
                   }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
-                  <BookOpen className="size-4 text-amber-500" />
+                  <GraduationCap className="size-4 text-amber-500" />
                   <div>
                     <p className="leading-tight">Assignment Helper</p>
                     <p className="text-[10px] text-muted-foreground font-normal">Detailed or short breakdown</p>
@@ -1444,57 +1656,70 @@ function AssistantPage() {
 
           {/* Autogrowing Typing Capsule */}
           <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-secondary/30 dark:bg-zinc-900/50 p-2 sm:p-2.5 shadow-xs transition-all focus-within:border-primary/50 focus-within:bg-card">
-            {/* Native keyboard completely suppressed: inputMode="none" */}
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
-                // 1 line default, lifts smoothly to line 2 & 3, scrolls at line 4+
                 e.target.style.height = "auto";
                 e.target.style.height = `${Math.min(e.target.scrollHeight, 84)}px`;
               }}
-              onFocus={() => setShowCustomKeyboard(true)}
-              onClick={() => setShowCustomKeyboard(true)}
-              inputMode="none"
+              onKeyDown={(e) => {
+                if (!isMobile && e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              onFocus={() => {
+                if (isMobile) setShowCustomKeyboard(true);
+              }}
+              onClick={() => {
+                if (isMobile) setShowCustomKeyboard(true);
+              }}
+              inputMode={isMobile ? "none" : "text"}
               placeholder={
                 activeDocContext
-                  ? `Ask about "${activeDocContext.title}"...`
-                  : "Type prompt or tap + for study modes..."
+                  ? `Ask Boss AI about ${activeDocContext.title}...`
+                  : "Ask Boss AI anything or tap + for study modes..."
               }
               rows={1}
-              className="w-full resize-none bg-transparent text-xs sm:text-sm text-foreground focus:outline-hidden min-h-[26px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
+              className="w-full resize-none bg-transparent text-xs sm:text-sm text-foreground focus:outline-hidden min-h-[28px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
             />
 
-            {/* Inner Actions Row: + Drop-up, Upload, Voice Note, Send ALL INSIDE typing bar */}
+            {/* Embedded Action Bar */}
             <div className="flex items-center justify-between pt-1 border-t border-border/40 mt-1">
               <div className="flex items-center gap-1">
-                {/* + Drop-up Menu Trigger */}
+                {/* Drop-up Study Modes & Materials Button */}
                 <button
                   type="button"
                   onClick={() => setShowDropUpMenu((prev) => !prev)}
-                  title="Study modes: MCQ, Theory, Flashcards, Assignments"
+                  title="Study modes & documents"
                   className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all text-foreground hover:bg-secondary",
-                    showDropUpMenu && "bg-primary text-primary-foreground"
+                    "size-8 rounded-full grid place-items-center transition-all",
+                    showDropUpMenu
+                      ? "bg-primary text-primary-foreground rotate-45"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   )}
                 >
                   <Plus className="size-4" />
                 </button>
 
-                {/* Upload Button Inside Typing Bar */}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  accept=".pdf,.doc,.docx,.txt,image/*"
-                />
+                {/* Library attachment shortcut */}
+                <button
+                  type="button"
+                  onClick={() => setIsLibraryModalOpen(true)}
+                  title="Choose from Campus Library"
+                  className="size-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                >
+                  <BookOpen className="size-4" />
+                </button>
+
+                {/* File Upload Shortcut */}
                 <button
                   type="button"
                   disabled={uploadingDoc}
                   onClick={() => fileInputRef.current?.click()}
-                  title="Attach file to library & study"
+                  title="Upload PDF or notes from device"
                   className="size-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
                 >
                   {uploadingDoc ? (
@@ -1506,7 +1731,7 @@ function AssistantPage() {
               </div>
 
               <div className="flex items-center gap-1">
-                {/* Voice Note Button Inside Typing Bar */}
+                {/* Voice Note Button */}
                 <button
                   type="button"
                   onClick={toggleVoiceNoteInput}
@@ -1521,7 +1746,7 @@ function AssistantPage() {
                   <Mic className="size-4" />
                 </button>
 
-                {/* Send Button Inside Typing Bar */}
+                {/* Send Button */}
                 <button
                   type="button"
                   disabled={thinking || !input.trim()}
@@ -1542,10 +1767,10 @@ function AssistantPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* CUSTOM KEYBOARD: Rendered fixed edge-to-edge full width of phone */}
+        {/* CUSTOM KEYBOARD: Rendered in-flow below typing bar on mobile */}
         {/* ========================================================================= */}
         <AnimatePresence>
-          {showCustomKeyboard && (
+          {showCustomKeyboard && isMobile && (
             <MobileCustomKeyboard
               value={input}
               onChange={(val) => {
@@ -1567,7 +1792,7 @@ function AssistantPage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* TOP RIGHT VERTICAL TRIPLE DOTS MENU (Previous Chats + New Chat) */}
+      {/* MOBILE TOP RIGHT MENU DRAWER (Previous Chats + New Chat) */}
       {/* ========================================================================= */}
       <Dialog open={showMenuDrawer} onOpenChange={setShowMenuDrawer}>
         <DialogContent className="max-w-md rounded-3xl p-5 border-border/80 bg-card text-card-foreground shadow-2xl">
@@ -1589,28 +1814,30 @@ function AssistantPage() {
               <MessageSquarePlus className="size-4" /> Start New Conversation
             </Button>
 
-            {/* Document upload in menu */}
-            <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-2.5 text-center">
-              <input
-                type="file"
-                ref={menuFileInputRef}
-                onChange={(e) => {
-                  handleFileUpload(e);
-                  setShowMenuDrawer(false);
-                }}
-                className="hidden"
-                accept=".pdf,.doc,.docx,.txt,image/*"
-              />
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={uploadingDoc}
-                onClick={() => menuFileInputRef.current?.click()}
-                className="w-full gap-2 rounded-lg text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 h-8"
+                onClick={() => {
+                  setShowMenuDrawer(false);
+                  setIsLibraryModalOpen(true);
+                }}
+                className="rounded-xl text-xs font-semibold h-8 border-border"
               >
-                <Paperclip className="size-3.5" />
-                {uploadingDoc ? "Processing..." : "Add Document to Session"}
+                <BookOpen className="size-3.5 mr-1" /> Campus Library
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowMenuDrawer(false);
+                  menuFileInputRef.current?.click();
+                }}
+                className="rounded-xl text-xs font-semibold h-8 border-border"
+              >
+                <Upload className="size-3.5 mr-1" /> Upload File
               </Button>
             </div>
 
@@ -1668,7 +1895,98 @@ function AssistantPage() {
       </Dialog>
 
       {/* ========================================================================= */}
-      {/* MODAL: MCQ CONFIGURATION (Sketch 2: Mark as you go vs at the end; 5-30) */}
+      {/* MODAL: CHOOSE FROM CAMPUS LIBRARY */}
+      {/* ========================================================================= */}
+      <Dialog open={isLibraryModalOpen} onOpenChange={setIsLibraryModalOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-5 border-border bg-card max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <BookOpen className="size-4.5 text-primary" />
+              Choose from Campus Library
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="relative mt-2">
+            <input
+              type="text"
+              value={librarySearch}
+              onChange={(e) => setLibrarySearch(e.target.value)}
+              placeholder="Search course code, title, or textbook..."
+              className="w-full h-9 rounded-xl border border-border/80 bg-secondary/40 px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-[11px]">
+            {["all", "lecture_note", "past_question", "textbook"].map((ft) => (
+              <button
+                key={ft}
+                type="button"
+                onClick={() => setLibraryFilter(ft)}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg font-semibold shrink-0 transition-all",
+                  libraryFilter === ft
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {ft === "all" ? "All Materials" : ft.replace("_", " ")}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 mt-2">
+            {isLoadingLibrary ? (
+              <div className="py-8 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                <Loader2 className="size-4 animate-spin text-primary" /> Loading campus materials...
+              </div>
+            ) : filteredLibraryMaterials.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground space-y-2">
+                <p>No materials found matching your search.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setIsLibraryModalOpen(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="rounded-xl text-xs"
+                >
+                  <Upload className="size-3.5 mr-1" /> Upload New File
+                </Button>
+              </div>
+            ) : (
+              filteredLibraryMaterials.map((mat: any) => (
+                <div
+                  key={mat.id}
+                  onClick={() => selectLibraryMaterial(mat)}
+                  className="p-3 rounded-2xl border border-border/70 bg-card hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all flex items-center justify-between gap-2.5 group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-xs text-foreground group-hover:text-primary truncate">
+                      {mat.title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {mat.course_code ? `${mat.course_code} · ` : ""}{mat.course} · {mat.institution}
+                    </p>
+                    <span className="inline-block mt-1 text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground">
+                      {mat.material_type?.replace("_", " ") || "Note"}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-7 px-2.5 rounded-xl text-xs font-semibold shrink-0 group-hover:bg-primary"
+                  >
+                    Attach
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* MODAL: MCQ CONFIGURATION (Sketch 2: Mark as you go vs end; Up to 50) */}
       {/* ========================================================================= */}
       <Dialog open={isMcqConfigOpen} onOpenChange={setIsMcqConfigOpen}>
         <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
@@ -1716,7 +2034,7 @@ function AssistantPage() {
                 Number of Questions:
               </label>
               <div className="flex items-center gap-1.5 flex-wrap">
-                {[5, 10, 15, 20, 25, 30].map((num) => (
+                {[5, 10, 15, 20, 25, 30, 40, 50].map((num) => (
                   <button
                     key={num}
                     type="button"
@@ -1794,7 +2112,7 @@ function AssistantPage() {
       </Dialog>
 
       {/* ========================================================================= */}
-      {/* MODAL: THEORY CONFIGURATION (Sketch 2 & 4: Mark as you go vs end; 5-30) */}
+      {/* MODAL: THEORY CONFIGURATION (Sketch 2 & 4: Mark as you go vs end; Up to 50) */}
       {/* ========================================================================= */}
       <Dialog open={isTheoryConfigOpen} onOpenChange={setIsTheoryConfigOpen}>
         <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
@@ -1842,7 +2160,7 @@ function AssistantPage() {
                 Number of Questions:
               </label>
               <div className="flex items-center gap-1.5 flex-wrap">
-                {[5, 10, 15, 20, 25, 30].map((num) => (
+                {[5, 10, 15, 20, 25, 30, 40, 50].map((num) => (
                   <button
                     key={num}
                     type="button"
@@ -1872,20 +2190,20 @@ function AssistantPage() {
       </Dialog>
 
       {/* ========================================================================= */}
-      {/* MODAL: FLASHCARD CONFIGURATION (Sketch 1 & 2: Q&A / Fill in blank; 5-50) */}
+      {/* MODAL: FLASHCARDS CONFIGURATION (Sketch 1 & 2: Up to 50 cards) */}
       {/* ========================================================================= */}
       <Dialog open={isFlashcardConfigOpen} onOpenChange={setIsFlashcardConfigOpen}>
         <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Layers className="size-4 text-indigo-500" /> Create Study Flashcards
+              <Layers className="size-4 text-indigo-500" /> 3D Flashcards
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3 mt-2 text-xs">
             <div>
               <label className="font-semibold text-muted-foreground block mb-1">
-                Flashcard Style:
+                Flashcard Type:
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -1898,7 +2216,7 @@ function AssistantPage() {
                       : "border-border text-foreground hover:bg-secondary"
                   )}
                 >
-                  Q & A Mode
+                  Q &amp; A Cards
                 </button>
                 <button
                   type="button"
@@ -1910,17 +2228,17 @@ function AssistantPage() {
                       : "border-border text-foreground hover:bg-secondary"
                   )}
                 >
-                  Fill in the Blank
+                  Fill-in-the-blank
                 </button>
               </div>
             </div>
 
             <div>
               <label className="font-semibold text-muted-foreground block mb-1">
-                Number of Flashcards (Sketch 1):
+                Number of Cards:
               </label>
               <div className="flex items-center gap-1.5 flex-wrap">
-                {[5, 10, 15, 20, 30, 40, 50].map((num) => (
+                {[5, 10, 15, 20, 25, 30, 40, 50].map((num) => (
                   <button
                     key={num}
                     type="button"
@@ -1950,31 +2268,20 @@ function AssistantPage() {
       </Dialog>
 
       {/* ========================================================================= */}
-      {/* MODAL: ASSIGNMENT HELPER (Sketch 2: Detailed vs Short) */}
+      {/* MODAL: ASSIGNMENT HELPER (Sketch 2: Detailed vs Short Breakdown) */}
       {/* ========================================================================= */}
       <Dialog open={isAssignmentModalOpen} onOpenChange={setIsAssignmentModalOpen}>
         <DialogContent className="max-w-md rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <BookOpen className="size-4 text-amber-500" /> Assignment Helper
+              <GraduationCap className="size-4.5 text-amber-500" /> Assignment Helper
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3 mt-2 text-xs">
-            <p className="text-muted-foreground">
-              Paste your assignment question or essay prompt below:
-            </p>
-
-            <textarea
-              value={assignmentInput}
-              onChange={(e) => setAssignmentInput(e.target.value)}
-              placeholder="Paste assignment problem, essay prompt, or case study..."
-              className="w-full min-h-24 rounded-xl border border-border bg-secondary/30 p-2.5 text-xs text-foreground resize-none focus:outline-hidden"
-            />
-
             <div>
               <label className="font-semibold text-muted-foreground block mb-1">
-                Solution Format:
+                Assistance Detail Level:
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -1987,7 +2294,7 @@ function AssistantPage() {
                       : "border-border text-foreground hover:bg-secondary"
                   )}
                 >
-                  Detailed (Step-by-step)
+                  Detailed Breakdown
                 </button>
                 <button
                   type="button"
@@ -1999,18 +2306,31 @@ function AssistantPage() {
                       : "border-border text-foreground hover:bg-secondary"
                   )}
                 >
-                  Short (Key Highlights)
+                  Short &amp; Concise Pointers
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="font-semibold text-muted-foreground block mb-1">
+                Assignment Question / Prompt:
+              </label>
+              <textarea
+                value={assignmentInput}
+                onChange={(e) => setAssignmentInput(e.target.value)}
+                placeholder="Paste your assignment problem or essay question..."
+                rows={4}
+                className="w-full rounded-xl border border-border/80 bg-secondary/30 p-2.5 text-xs text-foreground focus:outline-hidden focus:border-primary"
+              />
             </div>
 
             <Button
               type="button"
               disabled={!assignmentInput.trim()}
               onClick={handleAssignmentSubmit}
-              className="w-full mt-2 rounded-xl font-bold h-9 text-xs"
+              className="w-full rounded-xl font-bold h-9 text-xs"
             >
-              Analyze & Assist with Assignment
+              Get Assignment Assistance
             </Button>
           </div>
         </DialogContent>
