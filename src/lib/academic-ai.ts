@@ -219,27 +219,40 @@ Output ONLY a JSON array of objects:
     console.error("Failed to generate questions:", err);
   }
 
-  // Fallback default questions
-  return [
-    {
-      id: "q1",
-      type: mode,
-      question: `Explain the fundamental theorems introduced in ${materialTitle}.`,
-      options: mode === "objective" ? ["Fundamental law of the system", "Secondary hypothesis", "Unrelated phenomenon", "None of the above"] : undefined,
-      correctOptionIndex: 0,
-      modelAnswer: "The fundamental theorems define the boundary conditions, rate of change, and conservation principles within the subject scope.",
-      explanation: "This tests foundational understanding of the core topic.",
-    },
-    {
-      id: "q2",
-      type: mode,
-      question: `What are the practical applications of this concept in semester examinations?`,
-      options: mode === "objective" ? ["Direct computation & derivation", "Irrelevant theoretical trivia", "Historic dates only", "None of the above"] : undefined,
-      correctOptionIndex: 0,
-      modelAnswer: "It allows students to predict output values given standard initial input parameters.",
-      explanation: "Recurring examination pattern across Nigerian universities.",
-    },
+  // Fallback default questions: guarantee EXACT count requested
+  const fallbackList: QuizQuestion[] = [];
+  const coreTopics = [
+    "Fundamental Definitions and Boundary Regimes",
+    "Governing Principles and Standard Derivations",
+    "Practical Exam Applications and Key Calculations",
+    "Comparative Analysis of Critical Regimes",
+    "Common Examination Pitfalls and Error Reductions",
+    "Experimental Validation and Analytical Verification",
+    "Theoretical Assumptions and Validity Constraints",
+    "High-Yield Semester Examination Problem Types",
   ];
+
+  for (let i = 0; i < count; i++) {
+    const topic = coreTopics[i % coreTopics.length];
+    fallbackList.push({
+      id: `q_${i + 1}`,
+      type: mode,
+      question: mode === "objective"
+        ? `Regarding ${materialTitle}, which statement accurately addresses ${topic.toLowerCase()}?`
+        : `Explain the significance of ${topic} in the study of ${materialTitle}. Detail all key formulas and boundary conditions.`,
+      options: mode === "objective" ? [
+        `Accurately defines the core physical/mathematical parameters under standard exam conditions.`,
+        `Represents a negligible artifact dismissed in standard derivations.`,
+        `Contradicts fundamental conservation theorems across university coursework.`,
+        `Applicable only in non-standard theoretical edge cases.`,
+      ] : undefined,
+      correctOptionIndex: 0,
+      modelAnswer: `A comprehensive answer requires defining the core theorems of ${topic.toLowerCase()}, detailing governing formulas, and applying standard examination proofs.`,
+      explanation: `Tests foundational understanding of ${topic.toLowerCase()} for university semester examinations.`,
+    });
+  }
+
+  return fallbackList;
 }
 
 /**
@@ -331,9 +344,23 @@ Output ONLY a JSON array of objects:
     console.error("Flashcards generation failed:", err);
   }
 
-  return [
-    { id: "fc1", front: `What is the core focus of ${materialTitle}?`, back: "Mastering fundamental formulas and application for semester exams." },
-    { id: "fc2", front: "Common exam trap", back: "Forgetting standard units and notation conversions during numerical problem solving." },
-    { id: "fc3", front: "High-yield advice", back: "Review worked examples 1 to 3 repeatedly to ensure flawless execution under timed conditions." },
+  const fallbackCards: Flashcard[] = [];
+  const cardTopics = [
+    ["Core Law & Theorem", "Governing equations and boundary assumptions required for exam derivations."],
+    ["Key Exam Trap", "Common pitfalls in calculations and unit conversions across semester tests."],
+    ["Mnemonic & Memory Aid", "Systematic memory anchor to recall the sequence of proof steps instantly."],
+    ["Application Domain", "Real-world engineering, legal, or medical implementation scenarios."],
+    ["Exam Scoring Rubric", "Primary markers examined by university professors for full mark allocation."],
   ];
+
+  for (let i = 0; i < count; i++) {
+    const [label, desc] = cardTopics[i % cardTopics.length];
+    fallbackCards.push({
+      id: `fc_${i + 1}`,
+      front: `${label}: ${materialTitle} (#${i + 1})`,
+      back: desc,
+    });
+  }
+
+  return fallbackCards;
 }

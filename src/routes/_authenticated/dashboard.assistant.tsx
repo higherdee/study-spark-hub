@@ -58,7 +58,15 @@ import {
   updateStudyThreadTitleServerFn,
   getStudyMaterialByIdServerFn,
   transcribeVoiceAudioServerFn,
+  generateStudyQuizServerFn,
+  generateStudyFlashcardsServerFn,
+  gradeTheoryAnswerServerFn,
 } from "@/lib/ai/study-assistant.functions";
+import {
+  InChatFlashcardsWidget,
+  InChatMcqQuizWidget,
+  InChatTheoryWidget,
+} from "@/components/chat/in-chat-study-widgets";
 import {
   categorizeDocumentAutonomously,
   auditUploadAutonomous,
@@ -110,6 +118,19 @@ interface ChatMessage {
     department: string;
     level: string;
     status: string;
+  };
+  flashcardsData?: {
+    cards: Flashcard[];
+    topic: string;
+    type?: string;
+    totalCount?: number;
+  };
+  quizData?: {
+    questions: QuizQuestion[];
+    mode: "objective" | "theory";
+    topic: string;
+    markingMode?: "as_you_go" | "at_the_end";
+    totalCount?: number;
   };
 }
 
@@ -313,21 +334,27 @@ function AssistantPage() {
   useEffect(() => {
     if (threadMessages.length > 0) {
       const formatted: ChatMessage[] = threadMessages.map((msg: any) => {
-        let contentText = "";
-        let audioUrl: string | undefined = undefined;
-        let attachedMaterial: any = undefined;
+        let contentText = msg.content || "";
+        let audioUrl: string | undefined = msg.audioUrl || undefined;
+        let attachedMaterial: any = msg.attachedMaterial || undefined;
+        let flashcardsData: any = msg.flashcardsData || undefined;
+        let quizData: any = msg.quizData || undefined;
 
-        try {
-          const parsed = JSON.parse(msg.parts);
-          if (Array.isArray(parsed)) {
-            contentText = parsed.map((p) => p.text || "").join("\n");
-          } else if (typeof parsed === "object") {
-            contentText = parsed.text || "";
-            audioUrl = parsed.audioUrl;
-            attachedMaterial = parsed.attachedMaterial;
+        if (msg.parts) {
+          try {
+            const parsed = typeof msg.parts === "string" ? JSON.parse(msg.parts) : msg.parts;
+            if (Array.isArray(parsed)) {
+              contentText = parsed.map((p) => p.text || "").join("\n");
+            } else if (typeof parsed === "object") {
+              contentText = parsed.text || contentText;
+              audioUrl = parsed.audioUrl || audioUrl;
+              attachedMaterial = parsed.attachedMaterial || attachedMaterial;
+              flashcardsData = parsed.flashcardsData || flashcardsData;
+              quizData = parsed.quizData || quizData;
+            }
+          } catch {
+            contentText = String(msg.parts || "");
           }
-        } catch {
-          contentText = msg.parts;
         }
 
         return {
@@ -335,8 +362,10 @@ function AssistantPage() {
           role: msg.role,
           content: contentText,
           audioUrl,
-          timestamp: msg.created_at,
+          timestamp: msg.timestamp || msg.created_at,
           attachedMaterial,
+          flashcardsData,
+          quizData,
         };
       });
       setMessages(formatted);
@@ -771,132 +800,153 @@ function AssistantPage() {
     }
   }
 
-  // MCQ Practice Quiz Generation (Up to 50 questions)
-  async function startMcqQuiz() {
+  // MCQ Practice Quiz Generation (Up to 50 questions) - rendered inside AI chat reply container!
+  async function startMcqQuiz(countOverride?: number, modeOverride?: "as_you_go" | "at_the_end") {
     setIsMcqConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
-    toast.loading(`Preparing ${mcqCount} practice questions...`, { id: "mcq-gen" });
+
+    const countToUse = countOverride || mcqCount;
+    const modeToUse = modeOverride || mcqMode;
+    toast.loading(`Preparing ${countToUse} practice questions...`, { id: "mcq-gen" });
 
     try {
+      let targetThreadId = activeThreadId;
+      if (!targetThreadId) {
+        targetThreadId = await createNewChat();
+        if (!targetThreadId) return;
+      }
+
       const title = activeDocContext?.title || profile?.course || "University Studies";
       const sample = activeDocContext?.text || "General university examination curriculum.";
-      const questions = await generatePracticeQuestions(title, sample, "objective", mcqCount);
 
-      setQuizQuestions(questions);
-      setCurrentQuizIndex(0);
-      setSelectedObjectiveAnswers({});
-      setQuizScores({});
-      setIsMcqSubmittedAtEnd(false);
-      setUnansweredWarningQuestions(null);
+      const res = await generateStudyQuizServerFn({
+        data: {
+          userId: user!.id,
+          threadId: targetThreadId,
+          title,
+          context: sample,
+          mode: "objective",
+          count: countToUse,
+          markingMode: modeToUse,
+        },
+      });
 
-      toast.success(`${questions.length} Practice Questions Ready!`, { id: "mcq-gen" });
-    } catch {
-      toast.error("Failed to generate quiz questions", { id: "mcq-gen" });
+      const newMsg: ChatMessage = {
+        id: res.assistantMessageId,
+        role: "assistant",
+        content: res.content,
+        quizData: res.quizData as any,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, newMsg]);
+      refetchThreads();
+      toast.success(`${res.quizData.questions.length} Practice Questions Ready!`, { id: "mcq-gen" });
+    } catch (err: any) {
+      console.error("MCQ generation error:", err);
+      toast.error("Failed to generate quiz questions. Please retry.", { id: "mcq-gen" });
     } finally {
       setThinking(false);
     }
   }
 
-  function handleMcqSubmitAtEnd() {
-    if (!quizQuestions) return;
-    const unanswered: number[] = [];
-    quizQuestions.forEach((_, idx) => {
-      if (selectedObjectiveAnswers[idx] === undefined) {
-        unanswered.push(idx + 1);
-      }
-    });
-
-    if (unanswered.length > 0) {
-      setUnansweredWarningQuestions(unanswered);
-      return;
-    }
-
-    finalizeMcqSubmission();
-  }
-
-  function finalizeMcqSubmission() {
-    if (!quizQuestions) return;
-    const scores: Record<number, number> = {};
-    quizQuestions.forEach((q, idx) => {
-      if (selectedObjectiveAnswers[idx] === q.correctOptionIndex) {
-        scores[idx] = 1;
-      } else {
-        scores[idx] = 0;
-      }
-    });
-    setQuizScores(scores);
-    setIsMcqSubmittedAtEnd(true);
-    setUnansweredWarningQuestions(null);
-
-    const totalCorrect = Object.values(scores).reduce((a, b) => a + b, 0);
-    toast.success(`Exam submitted! Scored ${totalCorrect}/${quizQuestions.length}`);
-  }
-
-  // Theory Test Generation (Up to 50 questions)
-  async function startTheoryQuiz() {
+  // Theory Test Generation (Up to 50 questions) - rendered inside AI chat reply container!
+  async function startTheoryQuiz(countOverride?: number, modeOverride?: "as_you_go" | "at_the_end") {
     setIsTheoryConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
-    toast.loading(`Preparing ${theoryCount} theory questions with exam marking...`, { id: "theory-gen" });
+
+    const countToUse = countOverride || theoryCount;
+    const modeToUse = modeOverride || theoryMode;
+    toast.loading(`Preparing ${countToUse} theory questions with exam marking...`, { id: "theory-gen" });
 
     try {
+      let targetThreadId = activeThreadId;
+      if (!targetThreadId) {
+        targetThreadId = await createNewChat();
+        if (!targetThreadId) return;
+      }
+
       const title = activeDocContext?.title || profile?.course || "General Coursework";
       const sample = activeDocContext?.text || "University semester exam preparation concepts.";
-      const questions = await generatePracticeQuestions(title, sample, "theory", theoryCount);
 
-      setQuizQuestions(questions);
-      setCurrentQuizIndex(0);
-      setTheoryAnswerInput("");
-      setTheoryAnswersMap({});
-      setTheoryFeedbackMap({});
+      const res = await generateStudyQuizServerFn({
+        data: {
+          userId: user!.id,
+          threadId: targetThreadId,
+          title,
+          context: sample,
+          mode: "theory",
+          count: countToUse,
+          markingMode: modeToUse,
+        },
+      });
 
-      toast.success(`${questions.length} Theory Questions prepared!`, { id: "theory-gen" });
-    } catch {
-      toast.error("Failed to generate theory questions", { id: "theory-gen" });
+      const newMsg: ChatMessage = {
+        id: res.assistantMessageId,
+        role: "assistant",
+        content: res.content,
+        quizData: res.quizData as any,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, newMsg]);
+      refetchThreads();
+      toast.success(`${res.quizData.questions.length} Theory Questions prepared!`, { id: "theory-gen" });
+    } catch (err: any) {
+      console.error("Theory generation error:", err);
+      toast.error("Failed to generate theory questions. Please retry.", { id: "theory-gen" });
     } finally {
       setThinking(false);
     }
   }
 
-  async function handleGradeCurrentTheory() {
-    if (!quizQuestions || !theoryAnswerInput.trim()) return;
-    const q = quizQuestions[currentQuizIndex];
-    if (!q) return;
-
-    setGradingTheory(true);
-    toast.loading("Grading theory answer...", { id: "grade-th" });
-
-    try {
-      const feedback = await gradeTheoryAnswer(q.question, q.modelAnswer, theoryAnswerInput);
-      setTheoryFeedbackMap((prev) => ({ ...prev, [currentQuizIndex]: feedback }));
-      setTheoryAnswersMap((prev) => ({ ...prev, [currentQuizIndex]: theoryAnswerInput }));
-      toast.success(`Marked: ${feedback.score}/10 (${feedback.verdict})`, { id: "grade-th" });
-    } catch {
-      toast.error("Failed to grade theory answer", { id: "grade-th" });
-    } finally {
-      setGradingTheory(false);
-    }
-  }
-
-  // 3D Flashcards Generation (Up to 50 cards)
-  async function startFlashcards() {
+  // 3D Flashcards Generation (Up to 50 cards) - rendered inside AI chat reply container!
+  async function startFlashcards(countOverride?: number, typeOverride?: "qa" | "fill_blank") {
     setIsFlashcardConfigOpen(false);
     setShowDropUpMenu(false);
     setThinking(true);
-    toast.loading(`Generating ${flashcardCount} 3D flashcards...`, { id: "fc-gen" });
+
+    const countToUse = countOverride || flashcardCount;
+    const typeToUse = typeOverride || flashcardType;
+    toast.loading(`Generating ${countToUse} 3D flashcards...`, { id: "fc-gen" });
 
     try {
+      let targetThreadId = activeThreadId;
+      if (!targetThreadId) {
+        targetThreadId = await createNewChat();
+        if (!targetThreadId) return;
+      }
+
       const title = activeDocContext?.title || profile?.course || "Academic Revision";
       const sample = activeDocContext?.text || "Key definitions, core theorems, and mnemonics.";
-      const cards = await generateFlashcards(title, sample, flashcardCount);
 
-      setFlashcards(cards);
-      setCurrentCardIndex(0);
-      setCardFlipped(false);
-      toast.success(`${cards.length} Flashcards ready to study!`, { id: "fc-gen" });
-    } catch {
-      toast.error("Could not generate flashcards", { id: "fc-gen" });
+      const res = await generateStudyFlashcardsServerFn({
+        data: {
+          userId: user!.id,
+          threadId: targetThreadId,
+          title,
+          context: sample,
+          type: typeToUse,
+          count: countToUse,
+        },
+      });
+
+      const newMsg: ChatMessage = {
+        id: res.assistantMessageId,
+        role: "assistant",
+        content: res.content,
+        flashcardsData: res.flashcardsData as any,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, newMsg]);
+      refetchThreads();
+      toast.success(`${res.flashcardsData.cards.length} Flashcards ready to study!`, { id: "fc-gen" });
+    } catch (err: any) {
+      console.error("Flashcards generation error:", err);
+      toast.error("Could not generate flashcards. Please retry.", { id: "fc-gen" });
     } finally {
       setThinking(false);
     }
@@ -1116,245 +1166,7 @@ function AssistantPage() {
           </div>
         </div>
 
-        {/* Interactive Mode 1: Flashcards Mode (Sketch 1 & 2) */}
-        {flashcards && flashcards.length > 0 && (
-          <div className="border-b border-border/80 bg-secondary/30 p-3 sm:p-4 shrink-0 transition-all">
-            <div className="flex items-center justify-between pb-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                <Layers className="size-3.5" />
-                Flashcard {currentCardIndex + 1} of {flashcards.length}
-              </span>
-              <button
-                type="button"
-                onClick={() => setFlashcards(null)}
-                className="text-xs text-muted-foreground hover:text-foreground font-semibold flex items-center gap-1"
-              >
-                <X className="size-3.5" /> Close
-              </button>
-            </div>
 
-            <div
-              onClick={() => setCardFlipped((f) => !f)}
-              className={cn(
-                "mt-2 min-h-36 sm:min-h-40 cursor-pointer select-none rounded-2xl border p-5 shadow-sm flex flex-col justify-center items-center text-center transition-all bg-linear-to-br hover:shadow-md active:scale-98",
-                FLASHCARD_GRADIENTS[currentCardIndex % FLASHCARD_GRADIENTS.length]
-              )}
-            >
-              <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1.5">
-                {cardFlipped ? "Answer / Definition" : "Question / Concept"}
-              </span>
-              <p className="font-display text-base sm:text-lg font-bold leading-relaxed px-2">
-                {cardFlipped ? flashcards[currentCardIndex]?.back : flashcards[currentCardIndex]?.front}
-              </p>
-              <span className="mt-3 text-[10px] opacity-75 font-medium flex items-center gap-1">
-                <RotateCcw className="size-2.5" /> Tap card to flip
-              </span>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between">
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={currentCardIndex === 0}
-                onClick={() => {
-                  setCurrentCardIndex((i) => i - 1);
-                  setCardFlipped(false);
-                }}
-                className="h-8 rounded-xl text-xs font-semibold"
-              >
-                &lt; Prev
-              </Button>
-              <span className="text-xs text-muted-foreground font-semibold">
-                {currentCardIndex + 1} / {flashcards.length}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={currentCardIndex === flashcards.length - 1}
-                onClick={() => {
-                  setCurrentCardIndex((i) => i + 1);
-                  setCardFlipped(false);
-                }}
-                className="h-8 rounded-xl text-xs font-semibold"
-              >
-                Next &gt;
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Interactive Mode 2: MCQ Quiz (Sketch 2 & 3) */}
-        {quizQuestions && quizQuestions[0]?.type === "objective" && (
-          <div className="border-b border-border/80 bg-secondary/30 p-3 sm:p-4 shrink-0 transition-all">
-            <div className="flex items-center justify-between pb-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                <CheckCircle2 className="size-3.5" />
-                MCQ Question {currentQuizIndex + 1} of {quizQuestions.length}
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuizQuestions(null)}
-                className="text-xs text-muted-foreground hover:text-foreground font-semibold flex items-center gap-1"
-              >
-                <X className="size-3.5" /> Close
-              </button>
-            </div>
-
-            <p className="font-semibold text-xs sm:text-sm text-foreground my-2">
-              {quizQuestions[currentQuizIndex]?.question}
-            </p>
-
-            <div className="grid gap-1.5 my-2">
-              {quizQuestions[currentQuizIndex]?.options?.map((opt, optIdx) => {
-                const isSelected = selectedObjectiveAnswers[currentQuizIndex] === optIdx;
-                const isSubmitted = isMcqSubmittedAtEnd || mcqMode === "as_you_go";
-                const isCorrect = quizQuestions[currentQuizIndex]?.correctOptionIndex === optIdx;
-
-                let stateClass = "border-border/80 bg-card hover:bg-secondary/60 text-foreground";
-                if (isSubmitted) {
-                  if (isCorrect) {
-                    stateClass = "border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold";
-                  } else if (isSelected && !isCorrect) {
-                    stateClass = "border-red-500 bg-red-500/10 text-red-800 dark:text-red-300";
-                  }
-                } else if (isSelected) {
-                  stateClass = "border-primary bg-primary/10 text-primary font-bold";
-                }
-
-                return (
-                  <button
-                    key={optIdx}
-                    type="button"
-                    onClick={() => {
-                      if (mcqMode === "as_you_go" && selectedObjectiveAnswers[currentQuizIndex] !== undefined) return;
-                      setSelectedObjectiveAnswers((prev) => ({ ...prev, [currentQuizIndex]: optIdx }));
-                    }}
-                    className={cn(
-                      "w-full text-left p-2.5 rounded-xl border text-xs transition-all flex items-center justify-between",
-                      stateClass
-                    )}
-                  >
-                    <span>{opt}</span>
-                    {isSubmitted && isCorrect && <Check className="size-3.5 text-emerald-600" />}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={currentQuizIndex === 0}
-                onClick={() => setCurrentQuizIndex((i) => i - 1)}
-                className="h-7 text-xs"
-              >
-                Previous
-              </Button>
-              {currentQuizIndex < quizQuestions.length - 1 ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setCurrentQuizIndex((i) => i + 1)}
-                  className="h-7 text-xs font-semibold gap-1"
-                >
-                  Next <ChevronRight className="size-3" />
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={handleMcqSubmitAtEnd}
-                  className="h-7 text-xs font-bold bg-primary text-primary-foreground"
-                >
-                  Submit Exam
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Interactive Mode 3: Theory Test Mode (Sketch 2 & 4) */}
-        {quizQuestions && quizQuestions[0]?.type === "theory" && (
-          <div className="border-b border-border/80 bg-secondary/30 p-3 sm:p-4 shrink-0 transition-all">
-            <div className="flex items-center justify-between pb-1.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
-                <FileText className="size-3.5" />
-                Theory Question {currentQuizIndex + 1} of {quizQuestions.length} (5 Marks)
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuizQuestions(null)}
-                className="text-xs text-muted-foreground hover:text-foreground font-semibold flex items-center gap-1"
-              >
-                <X className="size-3.5" /> Close
-              </button>
-            </div>
-
-            <p className="font-semibold text-xs sm:text-sm text-foreground my-2">
-              {quizQuestions[currentQuizIndex]?.question}
-            </p>
-
-            <div className="rounded-xl border border-border/80 bg-card p-2 space-y-2">
-              <textarea
-                value={theoryAnswerInput}
-                onChange={(e) => setTheoryAnswerInput(e.target.value)}
-                placeholder="Type your structured answer here..."
-                rows={3}
-                className="w-full resize-none bg-transparent text-xs text-foreground focus:outline-hidden"
-              />
-              <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                <span className="text-[10px] text-muted-foreground">Standard examination rubric</span>
-                <Button
-                  size="sm"
-                  disabled={gradingTheory || !theoryAnswerInput.trim()}
-                  onClick={handleGradeCurrentTheory}
-                  className="h-7 text-xs font-bold"
-                >
-                  {gradingTheory ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
-                  Grade Answer
-                </Button>
-              </div>
-            </div>
-
-            {theoryFeedbackMap[currentQuizIndex] && (
-              <div className="mt-2 p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs space-y-1">
-                <p className="font-bold text-emerald-800 dark:text-emerald-300">
-                  Mark: {theoryFeedbackMap[currentQuizIndex].score} / 10 ({theoryFeedbackMap[currentQuizIndex].verdict})
-                </p>
-                <p className="text-muted-foreground leading-relaxed">
-                  {theoryFeedbackMap[currentQuizIndex].feedback}
-                </p>
-              </div>
-            )}
-
-            <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={currentQuizIndex === 0}
-                onClick={() => {
-                  setCurrentQuizIndex((i) => i - 1);
-                  setTheoryAnswerInput(theoryAnswersMap[currentQuizIndex - 1] || "");
-                }}
-                className="h-7 text-xs"
-              >
-                Previous
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={currentQuizIndex >= quizQuestions.length - 1}
-                onClick={() => {
-                  setCurrentQuizIndex((i) => i + 1);
-                  setTheoryAnswerInput(theoryAnswersMap[currentQuizIndex + 1] || "");
-                }}
-                className="h-7 text-xs font-semibold gap-1"
-              >
-                Next <ChevronRight className="size-3" />
-              </Button>
-            </div>
-          </div>
-        )}
 
         {/* Messages Stream */}
         <div
@@ -1478,7 +1290,27 @@ function AssistantPage() {
                     )}
 
                     {isAssistant ? (
-                      <AiMessageRenderer content={m.content} />
+                      <div className="space-y-2">
+                        {m.content && <AiMessageRenderer content={m.content} />}
+                        {m.flashcardsData && (
+                          <InChatFlashcardsWidget
+                            data={m.flashcardsData}
+                            onSelectCount={(c) => startFlashcards(c)}
+                          />
+                        )}
+                        {m.quizData && m.quizData.mode === "objective" && (
+                          <InChatMcqQuizWidget
+                            data={m.quizData as any}
+                            onSelectCount={(c) => startMcqQuiz(c)}
+                          />
+                        )}
+                        {m.quizData && m.quizData.mode === "theory" && (
+                          <InChatTheoryWidget
+                            data={m.quizData as any}
+                            onSelectCount={(c) => startTheoryQuiz(c)}
+                          />
+                        )}
+                      </div>
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
                     )}
@@ -2087,59 +1919,11 @@ function AssistantPage() {
 
             <Button
               type="button"
-              onClick={startMcqQuiz}
+              onClick={() => startMcqQuiz()}
               className="w-full mt-2 rounded-xl font-bold h-9 text-xs"
             >
               Start MCQ Quiz
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ========================================================================= */}
-      {/* MODAL: MCQ UNANSWERED QUESTIONS WARNING (Sketch 2 requirement) */}
-      {/* ========================================================================= */}
-      <Dialog
-        open={Boolean(unansweredWarningQuestions)}
-        onOpenChange={() => setUnansweredWarningQuestions(null)}
-      >
-        <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2 text-amber-600">
-              <AlertCircle className="size-4" /> Unanswered Questions
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-3 mt-2 text-xs">
-            <p className="text-muted-foreground leading-relaxed">
-              You haven't answered question(s):{" "}
-              <strong>{unansweredWarningQuestions?.join(", ")}</strong>.
-            </p>
-            <p className="text-muted-foreground">
-              Would you like to go back and answer them or skip and submit anyway?
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (unansweredWarningQuestions?.[0]) {
-                    setCurrentQuizIndex(unansweredWarningQuestions[0] - 1);
-                  }
-                  setUnansweredWarningQuestions(null);
-                }}
-                className="rounded-xl text-xs"
-              >
-                Answer Question
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={finalizeMcqSubmission}
-                className="rounded-xl text-xs"
-              >
-                Skip & Submit
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -2213,7 +1997,7 @@ function AssistantPage() {
 
             <Button
               type="button"
-              onClick={startTheoryQuiz}
+              onClick={() => startTheoryQuiz()}
               className="w-full mt-2 rounded-xl font-bold h-9 text-xs"
             >
               Start Theory Test
@@ -2291,7 +2075,7 @@ function AssistantPage() {
 
             <Button
               type="button"
-              onClick={startFlashcards}
+              onClick={() => startFlashcards()}
               className="w-full mt-2 rounded-xl font-bold h-9 text-xs"
             >
               Generate Flashcards
