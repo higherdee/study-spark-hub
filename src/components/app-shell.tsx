@@ -133,6 +133,12 @@ export function AppShell({
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   useEffect(() => {
+    if (!isAssistantPage) {
+      setInternalScrolledDown(false);
+    }
+  }, [isAssistantPage]);
+
+  useEffect(() => {
     const keyHandler = (e: any) => {
       setIsKeyboardOpen(Boolean(e.detail?.isOpen));
     };
@@ -149,6 +155,8 @@ export function AppShell({
     };
   }, []);
 
+  const isAssistantScrolledDown = isAssistantPage && internalScrolledDown;
+
   return (
     <div
       className={cn(
@@ -164,7 +172,7 @@ export function AppShell({
           "px-3 transition-all duration-300 ease-out sm:px-6 lg:px-8",
           isFullScreenAppPage ? "shrink-0 py-2" : "sticky top-0 z-40 py-2.5",
           isAssistantPage && "hidden md:block",
-          (isScrolledDown || internalScrolledDown) && "-translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
+          (isScrolledDown || isAssistantScrolledDown) && "-translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
         )}
       >
           <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 rounded-[1.35rem] border border-border/70 bg-card/90 px-3 py-2 shadow-[0_12px_32px_-18px_rgba(13,40,30,0.35)] backdrop-blur-md transition-all sm:px-4">
@@ -257,7 +265,7 @@ export function AppShell({
             : isFullScreenAppPage
             ? cn(
                 "mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 flex-1 min-h-0 overflow-hidden flex flex-col py-0",
-                isKeyboardOpen || isScrolledDown || internalScrolledDown
+                isKeyboardOpen || isScrolledDown || isAssistantScrolledDown
                   ? "pb-0"
                   : "pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-[5.25rem]"
               )
@@ -286,7 +294,7 @@ export function AppShell({
         className={cn(
           "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:bottom-6 inset-x-0 z-40 mx-auto w-fit max-w-[calc(100vw-1rem)] pointer-events-none px-1 transition-all duration-300 ease-out",
           showSideNav && "hidden pointer-events-none opacity-0",
-          (isScrolledDown || internalScrolledDown || isKeyboardOpen) && "translate-y-36 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
+          (isScrolledDown || isAssistantScrolledDown || isKeyboardOpen) && "translate-y-36 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
         )}
       >
         <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-md bg-card/95 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.18)] transition-all duration-300">

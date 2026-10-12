@@ -200,33 +200,6 @@ export function CommunityPage() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Internal chat scroll detection for drawer auto-collapse
-  const [isChatScrolledDown, setIsChatScrolledDown] = useState(false);
-  const lastScrollTopRef = useRef(0);
-
-  const handleCommunityScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    const st = el.scrollTop;
-    const delta = st - lastScrollTopRef.current;
-
-    if (st < 40) {
-      setIsChatScrolledDown(false);
-    } else if (delta > 15) {
-      setIsChatScrolledDown(true);
-    } else if (delta < -15) {
-      setIsChatScrolledDown(false);
-    }
-    lastScrollTopRef.current = st;
-  };
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("syllaboss-scroll-direction", { detail: { isScrolledDown: isChatScrolledDown } })
-      );
-    }
-  }, [isChatScrolledDown]);
-
   // Swipe-to-reply gesture tracking
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -1023,10 +996,7 @@ export function CommunityPage() {
             </div>
 
             {/* Chat Messages Stream */}
-            <div
-              onScroll={handleCommunityScroll}
-              className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]"
-            >
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]">
               {chatMessages.length === 0 ? (
                 <div className="py-16 text-center flex flex-col items-center">
                   <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-2">
@@ -1173,14 +1143,7 @@ export function CommunityPage() {
             )}
 
             {/* Bottom Composer Capsule */}
-            <div
-              className={cn(
-                "p-2.5 border-t border-border/70 bg-card shrink-0 transition-all duration-300 ease-out",
-                !isChatScrolledDown && !showCustomKeyboard
-                  ? "mb-[calc(4.5rem+env(safe-area-inset-bottom))] md:mb-0"
-                  : "mb-0"
-              )}
-            >
+            <div className="p-2.5 border-t border-border/70 bg-card shrink-0">
               <div className="rounded-2xl border border-border/80 bg-secondary/30 p-2 shadow-xs flex flex-col gap-1 focus-within:border-primary/50 focus-within:bg-card">
                 <textarea
                   ref={composerTextareaRef}
