@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { turso } from "@/integrations/turso/client";
-import { askGeminiAI, askGeminiVisionAI } from "@/lib/gemini";
+import { askGeminiAI, askGeminiVisionAI, getGroqApiKey } from "@/lib/gemini";
+export { getGroqApiKey };
 
 // Smart model assignment prioritizing active Groq models
 export type AcademicTaskType = "general" | "quiz" | "theory-grade" | "flashcards" | "summary";
@@ -237,11 +238,7 @@ ${
 
     const modelsToTry = pickBestGroqModel(data.taskType);
     let aiResponseText = "";
-    const groqKey =
-      process.env["GROQ_API_KEY"] ||
-      process.env["VITE_GROQ_API_KEY"] ||
-      GROQ_API_KEY ||
-      (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
+    const groqKey = getGroqApiKey();
 
     if (groqKey) {
       for (const model of modelsToTry) {
@@ -442,11 +439,7 @@ export const generateSmartThreadTitleServerFn = createServerFn({ method: "POST" 
   )
   .handler(async ({ data }) => {
     let smartTitle = "";
-    const groqKey =
-      process.env["GROQ_API_KEY"] ||
-      process.env["VITE_GROQ_API_KEY"] ||
-      GROQ_API_KEY ||
-      (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
+    const groqKey = getGroqApiKey();
 
     if (groqKey) {
       try {
@@ -532,11 +525,7 @@ export const transcribeVoiceAudioServerFn = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data }) => {
-    const groqKey =
-      process.env["GROQ_API_KEY"] ||
-      process.env["VITE_GROQ_API_KEY"] ||
-      GROQ_API_KEY ||
-      (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
+    const groqKey = getGroqApiKey();
 
     if (!groqKey) {
       throw new Error("GROQ API key not configured");
@@ -634,11 +623,7 @@ export const generateStudyQuizServerFn = createServerFn({ method: "POST" })
       }
     }
 
-    const groqKey =
-      process.env["GROQ_API_KEY"] ||
-      process.env["VITE_GROQ_API_KEY"] ||
-      GROQ_API_KEY ||
-      (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
+    const groqKey = getGroqApiKey();
 
     const targetCount = data.count;
     const isObjective = data.mode === "objective";
@@ -881,11 +866,7 @@ export const generateStudyFlashcardsServerFn = createServerFn({ method: "POST" }
       }
     }
 
-    const groqKey =
-      process.env["GROQ_API_KEY"] ||
-      process.env["VITE_GROQ_API_KEY"] ||
-      GROQ_API_KEY ||
-      (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
+    const groqKey = getGroqApiKey();
 
     const targetCount = data.count;
 
@@ -1124,10 +1105,7 @@ Marking Instructions:
     }
 
     // 2. TEXT CASE: Student typed or transcribed text response
-    const groqKey =
-      process.env["GROQ_API_KEY"] ||
-      process.env["VITE_GROQ_API_KEY"] ||
-      (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
+    const groqKey = getGroqApiKey();
 
     const prompt = `Grade this university student's theory examination response out of 10 marks against the official rubric.
 Question: "${data.question}"

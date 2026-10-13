@@ -910,7 +910,8 @@ function AssistantPage() {
       sendDeviceNotification("Boss AI Response Ready", {
         body: result.response.slice(0, 110).replace(/[#*`\n]/g, " ").trim(),
       }).catch(() => {});
-    } catch {
+    } catch (err: any) {
+      console.error("Boss AI query execution error:", err);
       toast.error("Boss AI was unable to generate a response. Please retry.");
     } finally {
       setThinking(false);

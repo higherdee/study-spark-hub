@@ -9,7 +9,8 @@ export const PLAN_NAME = "SyllaPlus";
 export const SYLLAPLUS_EARNINGS_MULTIPLIER = 1.3;
 export const SYLLAPLUS_PRICE_NAIRA = 1500;
 export const PAYSTACK_PUBLIC_KEY =
-  (import.meta.env['VITE_PAYSTACK_PUBLIC_KEY'] as string | undefined) ||
+  (typeof import.meta !== "undefined" && import.meta.env?.['VITE_PAYSTACK_PUBLIC_KEY'] as string | undefined) ||
+  (typeof process !== "undefined" && process.env?.['VITE_PAYSTACK_PUBLIC_KEY']) ||
   "pk_test_dce9deb490b95d717f302454b656a2450d83da4d";
 
 // Economics: 1 Naira = 5 SyllaPoints

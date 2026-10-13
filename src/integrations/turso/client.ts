@@ -16,13 +16,13 @@ import {
 } from "@/lib/constants";
 
 const TURSO_URL =
-  (import.meta.env['TURSO_DATABASE_URL'] as string | undefined) ||
-  process.env['TURSO_DATABASE_URL'] ||
+  (typeof import.meta !== "undefined" && import.meta.env?.['TURSO_DATABASE_URL'] as string | undefined) ||
+  (typeof process !== "undefined" && process.env?.['TURSO_DATABASE_URL']) ||
   "libsql://syllaboss-db-kunle.aws-us-east-2.turso.io";
 
 const TURSO_AUTH_TOKEN =
-  (import.meta.env['TURSO_AUTH_TOKEN'] as string | undefined) ||
-  process.env['TURSO_AUTH_TOKEN'] ||
+  (typeof import.meta !== "undefined" && import.meta.env?.['TURSO_AUTH_TOKEN'] as string | undefined) ||
+  (typeof process !== "undefined" && process.env?.['TURSO_AUTH_TOKEN']) ||
   "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3OTA5NDU2ODUsImlkIjoiMDFhMGZjYWUtNDUwMS03ZTQxLTkxNzItZGEzNzhkNmNlNDIxIiwia2lkIjoiSW1vS2lmVHNJNEZkMDFsOUVfNDJQQ01TTUtuUXkyR2pTWGhKOUZ1OEVtWSIsInJpZCI6IjQyZjEyNjgxLWZhMGMtNDYwZS04MWIyLTkwMWNjOWQ1MDcyMyJ9.eD10y_k_LzyciYuiNuCsuFRMouzlWrrYTStmQWEuR5XgbM0uWmCutRBc8mnBQSKQN5XYlBM_zpGCi0Q-X23aAQ";
 
 export const turso: Client = createClient({
