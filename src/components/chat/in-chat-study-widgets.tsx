@@ -35,7 +35,7 @@ import {
   transcribeVoiceAudioServerFn,
 } from "@/lib/ai/study-assistant.functions";
 import { AiMessageRenderer } from "@/components/ai-message-renderer";
-import { convertTextAndMathToSpeech } from "@/lib/math-to-speech";
+import { convertTextAndMathToSpeech, getBestNaturalVoice } from "@/lib/math-to-speech";
 
 const QUESTION_COUNTS = [5, 10, 15, 20, 25, 30, 40, 50];
 
@@ -85,7 +85,10 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
 
     const cleanText = convertTextAndMathToSpeech(text);
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 0.95;
+    const naturalVoice = getBestNaturalVoice(window.speechSynthesis.getVoices());
+    if (naturalVoice) utterance.voice = naturalVoice;
+    utterance.rate = 0.98;
+    utterance.pitch = 1.0;
     utterance.onend = () => setSpeakingIndex(null);
     utterance.onerror = () => setSpeakingIndex(null);
     setSpeakingIndex(currentIndex);
@@ -644,9 +647,17 @@ export interface InChatTheoryWidgetProps {
   onSelectCount?: (count: number) => void;
 }
 
+interface AttachedImageInfo {
+  dataUrl: string;
+  base64: string;
+  mimeType: string;
+  name: string;
+}
+
 export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answersMap, setAnswersMap] = useState<Record<number, string>>({});
+  const [attachedImagesMap, setAttachedImagesMap] = useState<Record<number, AttachedImageInfo | null>>({});
   const [feedbackMap, setFeedbackMap] = useState<Record<number, any>>({});
   const [isGrading, setIsGrading] = useState(false);
   const [showModelAnswer, setShowModelAnswer] = useState(false);
@@ -661,14 +672,20 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
   const currentQ = questions[currentIndex] || questions[0];
   const total = questions.length;
   const currentAnswer = answersMap[currentIndex] || "";
+  const currentImage = attachedImagesMap[currentIndex] || null;
   const currentFeedback = feedbackMap[currentIndex] || null;
 
   if (total === 0) return null;
 
   async function handleGradeAnswer() {
-    if (!currentAnswer.trim() || isGrading) return;
+    if ((!currentAnswer.trim() && !currentImage) || isGrading) return;
     setIsGrading(true);
-    toast.loading("Marking answer against university rubric...", { id: "grade-th" });
+    toast.loading(
+      currentImage
+        ? "Analyzing handwritten working with Vision OCR..."
+        : "Marking answer against university rubric...",
+      { id: "grade-th" }
+    );
 
     try {
       const res = await gradeTheoryAnswerServerFn({
@@ -676,6 +693,8 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
           question: currentQ.question,
           modelAnswer: currentQ.modelAnswer,
           studentAnswer: currentAnswer,
+          imageBase64: currentImage?.base64,
+          mimeType: currentImage?.mimeType,
         },
       });
 
@@ -751,13 +770,33 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
   function handleSnapUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAnswersMap((prev) => ({
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+      const mimeType = file.type || "image/jpeg";
+
+      setAttachedImagesMap((prev) => ({
+        ...prev,
+        [currentIndex]: {
+          dataUrl,
+          base64,
+          mimeType,
+          name: file.name,
+        },
+      }));
+      toast.success(`Photo attached: ${file.name}`);
+    };
+    reader.readAsDataURL(file);
+    if (e.target) e.target.value = "";
+  }
+
+  function removeAttachedImage() {
+    setAttachedImagesMap((prev) => ({
       ...prev,
-      [currentIndex]:
-        (prev[currentIndex] ? prev[currentIndex] + "\n\n" : "") +
-        `[Attached handwritten notes: ${file.name}]`,
+      [currentIndex]: null,
     }));
-    toast.success(`Attached photo: ${file.name}`);
   }
 
   return (
@@ -780,6 +819,33 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
 
       {/* Answer Box */}
       <div className="rounded-xl border border-border/80 bg-card p-3 space-y-2">
+        {/* Attached Handwritten Photo Preview */}
+        {currentImage && (
+          <div className="flex items-center justify-between p-2 rounded-xl bg-muted/60 border border-border/70 text-xs">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <img
+                src={currentImage.dataUrl}
+                alt="Handwritten note preview"
+                className="size-10 object-cover rounded-lg border border-border shadow-2xs shrink-0"
+              />
+              <div className="truncate">
+                <p className="font-semibold text-foreground truncate text-[11px]">{currentImage.name}</p>
+                <p className="text-[10px] text-emerald-600 font-medium">Handwritten notes ready for Vision OCR</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={removeAttachedImage}
+              className="size-6 text-muted-foreground hover:text-destructive"
+              title="Remove photo"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        )}
+
         <textarea
           value={currentAnswer}
           onChange={(e) =>
@@ -827,7 +893,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
           <Button
             type="button"
             size="sm"
-            disabled={!currentAnswer.trim() || isGrading}
+            disabled={(!currentAnswer.trim() && !currentImage) || isGrading}
             onClick={handleGradeAnswer}
             className="h-7 px-3 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
           >
@@ -852,6 +918,15 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
               {showModelAnswer ? "Hide Model Answer" : "View Model Answer"}
             </button>
           </div>
+
+          {currentFeedback.transcription && (
+            <div className="p-2.5 rounded-xl bg-card/80 border border-border/60 text-[11px] space-y-0.5">
+              <p className="font-bold text-[10px] uppercase tracking-wider text-emerald-600">
+                Handwritten OCR Transcription:
+              </p>
+              <p className="text-muted-foreground italic">"{currentFeedback.transcription}"</p>
+            </div>
+          )}
 
           <AiMessageRenderer content={currentFeedback.feedback} className="text-xs text-muted-foreground leading-relaxed" />
 

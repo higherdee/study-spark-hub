@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { turso } from "@/integrations/turso/client";
-import { GROQ_API_KEY } from "@/lib/ai/gateway.server";
-import { askGeminiAI } from "@/lib/gemini";
+import { askGeminiAI, askGeminiVisionAI } from "@/lib/gemini";
 
 // Smart model assignment prioritizing active Groq models
 export type AcademicTaskType = "general" | "quiz" | "theory-grade" | "flashcards" | "summary";
@@ -189,6 +188,9 @@ Formatting Guidelines:
   * Use single dollar signs $expression$ for inline math (e.g. $L_1$, $\\theta(t)$, $\\phi$, $\\vec{AB}$, $A(x_A, y_A)$).
   * Use double dollar signs $$expression$$ on their own lines for standalone block equations, derivations, matrices, loop-closure equations, and multiline systems.
   * Always use proper LaTeX for Greek letters, symbols, sums (\\sum), limits, integrals, fractions (\\frac), norms, and matrices.
+- Problem Solving & Practical Calculations:
+  * When the user's question relates to Mathematics, Statistics, Physics, Chemistry, Engineering, Accounting, Economics, or Quantitative sciences, ACTUALLY SOLVE THE PROBLEM with complete step-by-step numerical working, intermediate algebraic steps, and clear final answers with units.
+  * Do NOT replace practical calculation with vague theoretical essays (such as "derive and state the significance of...") unless the student explicitly asks for theoretical history. Provide real, worked mathematical solutions!
 - Tables & Definitions: Always format structured data, variable definitions, and comparison tables using clean standard GitHub-flavored Markdown tables with headers (e.g. | Symbol | Meaning | Units |).
 - Organization: Use clear markdown headings (##, ###), bullet points, and bold text for maximum readability and exam revision.
 ${
@@ -641,11 +643,29 @@ export const generateStudyQuizServerFn = createServerFn({ method: "POST" })
     const targetCount = data.count;
     const isObjective = data.mode === "objective";
 
+    const isStemTopic = /math|stat|calcul|physic|chem|engin|mechanic|thermo|electr|circui|dynami|static|algebra|probab|geometr|trigon|quant|econometric|account|financ|matrix|vector|integral|deriv|fluid/i.test(
+      `${data.title} ${data.context} ${data.userPrompt || ""}`
+    );
+
     // Helper to query Groq for a specific sub-count of questions
     async function fetchQuestionsChunk(chunkCount: number, startIndex: number): Promise<any[]> {
+      const stemInstruction = isStemTopic
+        ? `
+CRITICAL STEM / QUANTITATIVE CALCULATION REQUIREMENT:
+This subject belongs to Mathematics, Statistics, Physics, Chemistry, Engineering, or a Quantitative field.
+- AT LEAST 75% of questions MUST be CONCRETE NUMERICAL PROBLEM-SOLVING AND CALCULATION QUESTIONS with given numerical values, equations, data tables, or parameters to solve (e.g. solving equations, finding derivatives/integrals, calculating forces/accelerations/currents, computing statistical means/variances/probabilities, or evaluating stoichiometric yields).
+- DO NOT generate vague qualitative or definitional prompts (such as "derive and state the significance of..." or "explain why..."). Present concrete numbers and problems for students to calculate and solve!
+${
+  isObjective
+    ? `- For Multiple Choice: All 4 options (A, B, C, D) must be realistic calculated numerical or symbolic answers (e.g. "$14.5\\text{ m/s}^2$", "$28.2\\text{ N}$", "$x = \\pm 3$"). The "explanation" MUST provide the complete step-by-step mathematical working showing formulas, numerical substitutions, and calculation.`
+    : `- For Theory / Essay: The question must provide specific numerical/applied parameters to solve. The "modelAnswer" MUST include the full step-by-step mathematical working, intermediate algebraic steps, and final numerical solution with units.`
+}`
+        : "";
+
       const prompt = `You are a university exam examiner.
 Generate exactly ${chunkCount} high-yield university exam questions on "${data.title}".
 Context Excerpt: "${data.context.slice(0, 3000)}"
+${stemInstruction}
 
 Mode: ${isObjective ? "MULTIPLE CHOICE (Objective) with 4 realistic options A, B, C, D" : "THEORY / ESSAY requiring structured explanation and key points"}.
 
@@ -1022,23 +1042,94 @@ Constraints:
     };
   });
 
-// 12. Grade Theory Answer using Groq LPU
+// 12. Grade Theory Answer using Multimodal Gemini Vision (for handwritten photos) or Groq LPU
 export const gradeTheoryAnswerServerFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       question: z.string(),
       modelAnswer: z.string(),
-      studentAnswer: z.string(),
+      studentAnswer: z.string().default(""),
+      imageBase64: z.string().optional(),
+      mimeType: z.string().optional(),
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    // 1. VISION CASE: Student snapped or uploaded a photo of handwritten notes/working
+    if (data.imageBase64) {
+      try {
+        const visionPrompt = `You are a strict, fair university examination marker.
+The student has submitted a photograph of their handwritten solution, mathematical derivation, calculation, or diagram.
+Optional typed notes from student: "${data.studentAnswer || "None provided"}"
+
+Question:
+"${data.question}"
+
+Official Rubric / Model Answer:
+"${data.modelAnswer}"
+
+Marking Instructions:
+1. Perform OCR to read and transcribe all handwritten text, formulas, algebraic steps, numbers, diagrams, and final conclusions in the image.
+2. Directly verify the mathematical derivations, formulas, intermediate steps, and arithmetic against the official model answer and rubric.
+3. Award an honest, realistic score out of 10 marks:
+   - Award marks for correct methodology, key definitions, correct formula application, intermediate steps, and final answers with units.
+   - Deduct marks for algebraic or arithmetic errors, missing steps, wrong formulas, or illegible work.
+4. DO NOT USE EMOJIS WHATSOEVER.
+5. Return ONLY a valid JSON object matching this schema:
+{
+  "transcription": "Brief summary of the handwritten steps read from the image",
+  "score": integer between 0 and 10,
+  "maxScore": 10,
+  "verdict": "Excellent" | "Good" | "Needs Revision",
+  "feedback": "Detailed, constructive academic assessment directly referencing the student's handwritten steps and pointing out exact errors or strengths",
+  "strengths": ["Clear initial formula stated", "Correct intermediate step"],
+  "areasToImprove": ["Calculation error in line 3", "Missing units on final answer"]
+}`;
+
+        const visionRaw = await askGeminiVisionAI(
+          visionPrompt,
+          data.imageBase64,
+          data.mimeType || "image/jpeg",
+          {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+          }
+        );
+
+        const match = visionRaw.match(/\{[\s\S]*\}/);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          const score = Math.max(0, Math.min(10, Number(parsed.score) || 0));
+          const verdict =
+            parsed.verdict ||
+            (score >= 8 ? "Excellent" : score >= 5 ? "Good" : "Needs Revision");
+          return {
+            score,
+            maxScore: 10,
+            verdict,
+            feedback: String(
+              parsed.feedback || "Handwritten response analyzed against university rubric."
+            ),
+            transcription: parsed.transcription ? String(parsed.transcription) : undefined,
+            strengths: Array.isArray(parsed.strengths)
+              ? parsed.strengths.map(String)
+              : ["Handwritten derivation evaluated"],
+            areasToImprove: Array.isArray(parsed.areasToImprove)
+              ? parsed.areasToImprove.map(String)
+              : ["Ensure all mathematical steps are fully shown"],
+          };
+        }
+      } catch (visionErr: any) {
+        console.warn("Gemini vision grading error:", visionErr?.message);
+      }
+    }
+
+    // 2. TEXT CASE: Student typed or transcribed text response
     const groqKey =
       process.env["GROQ_API_KEY"] ||
       process.env["VITE_GROQ_API_KEY"] ||
-      GROQ_API_KEY ||
       (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
 
-    const prompt = `Grade this university student's theory examination response out of 10 marks.
+    const prompt = `Grade this university student's theory examination response out of 10 marks against the official rubric.
 Question: "${data.question}"
 Expected Model Answer / Rubric:
 "${data.modelAnswer}"
@@ -1048,6 +1139,7 @@ Student's Written Response:
 
 Constraints:
 - DO NOT USE EMOJIS WHATSOEVER.
+- Award marks strictly based on technical accuracy, coverage of rubric key points, and correct mathematical/conceptual reasoning.
 - Output ONLY valid JSON:
 {
   "score": integer between 0 and 10,
@@ -1058,7 +1150,9 @@ Constraints:
   "areasToImprove": ["Missing derivation step", "Should cite standard units"]
 }`;
 
-    if (groqKey) {
+    // Try active Groq models
+    const activeModels = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
+    for (const model of activeModels) {
       try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
@@ -1066,9 +1160,9 @@ Constraints:
             "Content-Type": "application/json",
             Authorization: `Bearer ${groqKey}`,
           },
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(16000),
           body: JSON.stringify({
-            model: "llama-3.1-8b-instant",
+            model,
             messages: [
               { role: "system", content: "You are a university examination marker. Output ONLY valid JSON." },
               { role: "user", content: prompt },
@@ -1083,32 +1177,59 @@ Constraints:
           const match = text.match(/\{[\s\S]*\}/);
           if (match) {
             const parsed = JSON.parse(match[0]);
-            const score = Math.max(0, Math.min(10, Number(parsed.score) || 7));
-            const verdict = parsed.verdict || (score >= 8 ? "Excellent" : score >= 5 ? "Good" : "Needs Revision");
+            const score = Math.max(0, Math.min(10, Number(parsed.score) || 5));
+            const verdict =
+              parsed.verdict ||
+              (score >= 8 ? "Excellent" : score >= 5 ? "Good" : "Needs Revision");
             return {
               score,
               maxScore: 10,
               verdict,
-              feedback: String(parsed.feedback || "Solid attempt with clear fundamental grasp."),
+              feedback: String(parsed.feedback || "Response evaluated against university rubric."),
               strengths: Array.isArray(parsed.strengths) ? parsed.strengths.map(String) : ["Core points covered"],
-              areasToImprove: Array.isArray(parsed.areasToImprove) ? parsed.areasToImprove.map(String) : ["Add more technical depth"],
+              areasToImprove: Array.isArray(parsed.areasToImprove) ? parsed.areasToImprove.map(String) : ["Review specific rubric requirements"],
             };
           }
         }
       } catch (err: any) {
-        console.warn("Groq grading error:", err?.message);
+        console.warn(`Groq grading with ${model} error:`, err?.message);
       }
     }
 
-    const len = data.studentAnswer.trim().length;
-    const score = len > 120 ? 8 : len > 40 ? 6 : 4;
+    // Secondary Engine: Gemini Text Fallback
+    try {
+      const geminiText = await askGeminiAI(prompt, {
+        temperature: 0.2,
+        responseMimeType: "application/json",
+      });
+      const match = geminiText.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        const score = Math.max(0, Math.min(10, Number(parsed.score) || 5));
+        const verdict =
+          parsed.verdict ||
+          (score >= 8 ? "Excellent" : score >= 5 ? "Good" : "Needs Revision");
+        return {
+          score,
+          maxScore: 10,
+          verdict,
+          feedback: String(parsed.feedback || "Response marked against university rubric."),
+          strengths: Array.isArray(parsed.strengths) ? parsed.strengths.map(String) : ["Concepts addressed"],
+          areasToImprove: Array.isArray(parsed.areasToImprove) ? parsed.areasToImprove.map(String) : ["Provide deeper step-by-step working"],
+        };
+      }
+    } catch (gErr: any) {
+      console.warn("Gemini text grading fallback error:", gErr?.message);
+    }
+
+    // Honest network retry prompt (never award fake mock template scores)
     return {
-      score,
+      score: 0,
       maxScore: 10,
-      verdict: score >= 8 ? "Excellent" : "Good",
-      feedback: "Your response addresses the core requirements. Expand with more specific formulas and boundary assumptions for full marks.",
-      strengths: ["Demonstrates understanding of key principles", "Addresses the primary question prompts"],
-      areasToImprove: ["Include step-by-step mathematical or conceptual derivations", "Cite relevant textbook definitions"],
+      verdict: "Needs Revision" as const,
+      feedback: "The grading service encountered a temporary connection timeout. Please click Grade Answer again to evaluate your response.",
+      strengths: ["Submission recorded"],
+      areasToImprove: ["Please tap Grade Answer to complete marking"],
     };
   });
 

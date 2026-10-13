@@ -58,19 +58,100 @@ export function getGeminiApiKey(): string {
 
 // Live tested working models on Groq:
 const GROQ_MODELS = [
-  "llama-3.1-8b-instant",
   "openai/gpt-oss-120b",
   "qwen/qwen3.8-27b",
   "openai/gpt-oss-20b",
 ];
 
 const GEMINI_MODELS = [
-  "gemini-flash-latest",
   "gemini-flash-lite-latest",
+  "gemini-flash-latest",
   "gemini-3.1-flash-lite",
   "gemini-3.5-flash-lite",
   "gemini-3.6-flash",
 ];
+
+/**
+ * Multimodal vision analyzer using Google Gemini for handwritten notes, equations, and diagrams
+ */
+export async function askGeminiVisionAI(
+  prompt: string,
+  imageBase64: string,
+  mimeType: string = "image/jpeg",
+  options?: {
+    systemPrompt?: string;
+    temperature?: number;
+    responseMimeType?: string;
+  }
+): Promise<string> {
+  const geminiApiKey = getGeminiApiKey();
+  if (!geminiApiKey) {
+    throw new Error("Missing Gemini API key for vision processing.");
+  }
+
+  // Strip possible data URL prefix if passed directly
+  const cleanBase64 = imageBase64.includes(",")
+    ? imageBase64.split(",")[1]
+    : imageBase64;
+
+  const contents = [
+    {
+      role: "user",
+      parts: [
+        {
+          inline_data: {
+            mime_type: mimeType,
+            data: cleanBase64,
+          },
+        },
+        {
+          text: prompt,
+        },
+      ],
+    },
+  ];
+
+  const payload: any = {
+    contents,
+    generationConfig: {
+      temperature: options?.temperature ?? 0.2,
+    },
+  };
+
+  if (options?.systemPrompt) {
+    payload.systemInstruction = {
+      parts: [{ text: options.systemPrompt }],
+    };
+  }
+  if (options?.responseMimeType) {
+    payload.generationConfig.responseMimeType = options.responseMimeType;
+  }
+
+  const visionModels = ["gemini-flash-lite-latest", "gemini-flash-latest"];
+  for (const model of visionModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(25000),
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      } else {
+        console.warn(`Gemini vision model ${model} HTTP ${res.status}`);
+      }
+    } catch (err: any) {
+      console.warn(`Gemini vision model ${model} error:`, err?.message);
+    }
+  }
+
+  throw new Error("Gemini vision analysis failed across all available models.");
+}
 
 export async function askGeminiAI(
   promptOrMessages: string | GeminiMessage[],

@@ -85,7 +85,7 @@ import {
   getPresignedUploadUrlServerFn,
 } from "@/lib/upload.functions";
 import { getMaterialsForChatServerFn } from "@/lib/community.functions";
-import { convertTextAndMathToSpeech, initSpeechRuleEngine } from "@/lib/math-to-speech";
+import { convertTextAndMathToSpeech, initSpeechRuleEngine, getBestNaturalVoice } from "@/lib/math-to-speech";
 import { sendDeviceNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
@@ -605,7 +605,9 @@ function AssistantPage() {
     }
     const cleanText = convertTextAndMathToSpeech(text);
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.0;
+    const naturalVoice = getBestNaturalVoice(window.speechSynthesis.getVoices());
+    if (naturalVoice) utterance.voice = naturalVoice;
+    utterance.rate = 0.98;
     utterance.pitch = 1.0;
     utterance.onend = () => setSpeakingMessageId(null);
     utterance.onerror = () => setSpeakingMessageId(null);
