@@ -70,12 +70,14 @@ import {
   editGroupMessageServerFn,
   deleteGroupMessageServerFn,
   addMemberToStudyGroupServerFn,
+  markDirectMessagesReadServerFn,
 } from "@/lib/community.functions";
 import { askBossAiServerFn } from "@/lib/ai/study-assistant.functions";
 import {
   subscribeToChatChannel,
   broadcastChatMessage,
 } from "@/lib/supabase-realtime";
+import { sendDeviceNotification } from "@/lib/notifications";
 import { StudentQrModal } from "@/components/student-qr-modal";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
 import { MobileCustomKeyboard } from "@/components/chat/mobile-custom-keyboard";
@@ -851,6 +853,16 @@ export function CommunityPage() {
                       avatarUrl: c.peer.avatar_url,
                       peerId: c.peer.id,
                     });
+                    if (c.unread_count > 0 && user?.id) {
+                      markDirectMessagesReadServerFn({
+                        data: {
+                          conversationId: c.id,
+                          readerUserId: user.id,
+                        },
+                      })
+                        .then(() => refetchConversations())
+                        .catch(() => {});
+                    }
                   }}
                   onContextMenu={(e) => {
                     e.preventDefault();
@@ -869,11 +881,18 @@ export function CommunityPage() {
                   </Avatar>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center justify-between gap-1.5">
                       <span className="font-bold text-xs text-foreground truncate">
                         {c.peer.full_name}
                       </span>
-                      {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
+                        {c.unread_count > 0 && (
+                          <span className="size-4.5 min-w-4.5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold grid place-items-center shadow-xs">
+                            {c.unread_count > 9 ? "9+" : c.unread_count}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                       {c.last_message_text || `@${c.peer.username}`}

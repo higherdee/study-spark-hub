@@ -35,6 +35,7 @@ import {
   transcribeVoiceAudioServerFn,
 } from "@/lib/ai/study-assistant.functions";
 import { AiMessageRenderer } from "@/components/ai-message-renderer";
+import { convertTextAndMathToSpeech } from "@/lib/math-to-speech";
 
 const QUESTION_COUNTS = [5, 10, 15, 20, 25, 30, 40, 50];
 
@@ -82,11 +83,7 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
       return;
     }
 
-    const cleanText = text
-      .replace(/[\$\#\*\_\[\]\(\)]/g, " ")
-      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 over $2")
-      .trim();
-
+    const cleanText = convertTextAndMathToSpeech(text);
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 0.95;
     utterance.onend = () => setSpeakingIndex(null);

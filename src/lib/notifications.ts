@@ -77,3 +77,49 @@ export async function sendDeviceNotification(title: string, options?: {
     return false;
   }
 }
+
+/**
+ * Automatically requests permission for device notifications on entry
+ */
+export async function autoPromptNotificationConsent(): Promise<NotificationPermission> {
+  if (!isNotificationSupported()) return "denied";
+  if (Notification.permission === "default") {
+    try {
+      return await Notification.requestPermission();
+    } catch {
+      return "default";
+    }
+  }
+  return Notification.permission;
+}
+
+/**
+ * Occasional study reminder to keep student streak active
+ */
+export function schedulePeriodicStudyReminder(): void {
+  if (typeof window === "undefined" || !isNotificationSupported()) return;
+
+  const LAST_REMINDER_KEY = "syllaboss_last_study_reminder";
+  const now = Date.now();
+  const lastReminder = Number(localStorage.getItem(LAST_REMINDER_KEY) || 0);
+
+  // Send at most once every 6 hours
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  if (now - lastReminder > SIX_HOURS && Notification.permission === "granted") {
+    const reminders = [
+      "Keep your study streak burning! Take a 5-minute practice quiz on Boss AI.",
+      "Time for a quick revision! Review your flashcards or ask Boss AI a question.",
+      "Your semester exams are approaching! Check out new shared course materials.",
+      "Study milestone reminder: Dedicate 15 minutes today to boost your ranking!",
+    ];
+    const picked = reminders[Math.floor(Math.random() * reminders.length)];
+
+    // Send after 30 seconds of browsing or schedule
+    setTimeout(() => {
+      sendDeviceNotification("Syllaboss Study Reminder", {
+        body: picked,
+      });
+      localStorage.setItem(LAST_REMINDER_KEY, String(Date.now()));
+    }, 30000);
+  }
+}

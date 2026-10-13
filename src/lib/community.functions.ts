@@ -130,6 +130,14 @@ export const sendDirectMessageServerFn = createServerFn({ method: "POST" })
     return await sendDirectMessage(data);
   });
 
+export const markDirectMessagesReadServerFn = createServerFn({ method: "POST" })
+  .validator((d: { conversationId: string; readerUserId: string }) => d)
+  .handler(async ({ data }) => {
+    const { markDirectMessagesRead } = await import("@/integrations/turso/community");
+    await markDirectMessagesRead(data.conversationId, data.readerUserId);
+    return { success: true };
+  });
+
 export const forwardMaterialToChatServerFn = createServerFn({ method: "POST" })
   .validator((d: {
     targetType: "peer" | "group";

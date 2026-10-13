@@ -444,7 +444,7 @@ export async function getOrCreatePeerConversation(user1Id: string, user2Id: stri
 }
 
 /**
- * Retrieves all direct conversations for a user
+ * Retrieves all direct conversations for a user with real unread counts
  */
 export async function getStudentConversations(userId: string): Promise<DirectConversation[]> {
   const rs = await turso.execute({
@@ -453,13 +453,20 @@ export async function getStudentConversations(userId: string): Promise<DirectCon
         c.id, c.user1_id, c.user2_id, c.last_message_text, c.last_message_at,
         p.id as peer_id, p.username as peer_username, p.full_name as peer_full_name,
         p.avatar_url as peer_avatar_url, p.institution as peer_institution,
-        p.course as peer_course, p.level as peer_level, p.points as peer_points
+        p.course as peer_course, p.level as peer_level, p.points as peer_points,
+        (
+          SELECT COUNT(*) 
+          FROM direct_messages dm 
+          WHERE dm.conversation_id = c.id 
+            AND dm.sender_id != ? 
+            AND (dm.is_read = 0 OR dm.is_read IS NULL)
+        ) as unread_count
       FROM direct_conversations c
       JOIN profiles p ON p.id = CASE WHEN c.user1_id = ? THEN c.user2_id ELSE c.user1_id END
       WHERE c.user1_id = ? OR c.user2_id = ?
       ORDER BY c.last_message_at DESC
     `,
-    args: [userId, userId, userId],
+    args: [userId, userId, userId, userId],
   });
 
   return rs.rows.map((r: any) => ({
@@ -476,8 +483,18 @@ export async function getStudentConversations(userId: string): Promise<DirectCon
     },
     last_message_text: r.last_message_text ? String(r.last_message_text) : null,
     last_message_at: String(r.last_message_at || ""),
-    unread_count: 0,
+    unread_count: Number(r.unread_count || 0),
   }));
+}
+
+/**
+ * Marks all incoming messages in a conversation as read
+ */
+export async function markDirectMessagesRead(conversationId: string, readerUserId: string): Promise<void> {
+  await turso.execute({
+    sql: "UPDATE direct_messages SET is_read = 1 WHERE conversation_id = ? AND sender_id != ?",
+    args: [conversationId, readerUserId],
+  });
 }
 
 /**

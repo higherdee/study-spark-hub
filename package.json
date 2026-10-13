@@ -90,6 +90,7 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "sonner": "^2.0.7",
+    "speech-rule-engine": "^5.0.0-rc.4",
     "streamdown": "^2.7.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",

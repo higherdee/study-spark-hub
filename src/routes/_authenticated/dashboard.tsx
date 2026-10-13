@@ -10,6 +10,7 @@ import { PageBreathingLoader } from "@/components/syllaboss-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { updateStreakServerFn } from "@/lib/community.functions";
+import { autoPromptNotificationConsent, schedulePeriodicStudyReminder } from "@/lib/notifications";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -52,6 +53,14 @@ function DashboardLayout() {
         .catch(() => {});
     }
   }, [user?.id, queryClient]);
+
+  // Prompt device notification consent immediately on entry & schedule periodic reminders
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      autoPromptNotificationConsent().catch(() => {});
+      schedulePeriodicStudyReminder();
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoading && (!profile || profile.onboarding_step < 3)) {

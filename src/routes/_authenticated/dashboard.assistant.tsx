@@ -58,6 +58,7 @@ import {
   askBossAiServerFn,
   saveStudyMessageServerFn,
   updateStudyThreadTitleServerFn,
+  generateSmartThreadTitleServerFn,
   getStudyMaterialByIdServerFn,
   transcribeVoiceAudioServerFn,
   generateStudyQuizServerFn,
@@ -84,6 +85,8 @@ import {
   getPresignedUploadUrlServerFn,
 } from "@/lib/upload.functions";
 import { getMaterialsForChatServerFn } from "@/lib/community.functions";
+import { convertTextAndMathToSpeech, initSpeechRuleEngine } from "@/lib/math-to-speech";
+import { sendDeviceNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({
@@ -160,6 +163,11 @@ function AssistantPage() {
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Initialize Speech Rule Engine for math narration
+  useEffect(() => {
+    initSpeechRuleEngine();
   }, []);
 
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -587,7 +595,7 @@ function AssistantPage() {
     }
   }
 
-  // Speak AI response aloud (SpeechSynthesis)
+  // Speak AI response aloud (SpeechSynthesis with Math-to-Speech)
   function speakAiResponse(text: string, msgId: string) {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
@@ -595,10 +603,7 @@ function AssistantPage() {
       setSpeakingMessageId(null);
       return;
     }
-    const cleanText = text
-      .replace(/[*#_`$]/g, "")
-      .replace(/\[.*?\]\(.*?\)/g, "")
-      .replace(/\{.*?\}/g, "");
+    const cleanText = convertTextAndMathToSpeech(text);
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
@@ -891,14 +896,18 @@ function AssistantPage() {
       refetchThreads();
 
       if (messages.length === 0) {
-        const smartTitle = queryText.slice(0, 32).replace(/\n/g, " ");
-        updateStudyThreadTitleServerFn({
+        generateSmartThreadTitleServerFn({
           data: {
             threadId: targetThreadId,
-            title: smartTitle.length > 30 ? `${smartTitle}...` : smartTitle,
+            query: queryText,
           },
-        }).then(() => refetchThreads());
+        }).then(() => refetchThreads()).catch(() => {});
       }
+
+      // Deliver device notification for completed AI answer
+      sendDeviceNotification("Boss AI Response Ready", {
+        body: result.response.slice(0, 110).replace(/[#*`\n]/g, " ").trim(),
+      }).catch(() => {});
     } catch {
       toast.error("Boss AI was unable to generate a response. Please retry.");
     } finally {
@@ -1362,12 +1371,13 @@ function AssistantPage() {
       {/* MAIN CHAT & INTERACTIVE WORKSPACE */}
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
-        {/* Mobile Modern Top Header Bar */}
-        <div className="md:hidden flex items-center justify-between px-3 py-2 border-b border-border/60 bg-card/90 backdrop-blur-md z-30 shrink-0">
+        {/* Mobile Floating Dynamic Islands (Demarcation removed, Boss AI title removed) */}
+        <div className="md:hidden absolute top-3 inset-x-3.5 z-30 flex items-center justify-between pointer-events-none">
+          {/* Island 1: Recent Chats */}
           <button
             type="button"
             onClick={() => setShowMenuDrawer(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-secondary/80 border border-border/70 text-foreground text-xs font-semibold hover:bg-secondary active:scale-95 transition-all shadow-xs"
+            className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/90 border border-border/70 text-foreground text-xs font-semibold shadow-md backdrop-blur-md hover:bg-card active:scale-95 transition-all"
           >
             <History className="size-3.5 text-primary" />
             <span>Recent Chats</span>
@@ -1378,17 +1388,11 @@ function AssistantPage() {
             )}
           </button>
 
-          <div className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold text-foreground truncate max-w-[140px]">
-              {activeDocContext ? activeDocContext.title : "Boss AI"}
-            </span>
-          </div>
-
+          {/* Island 2: Start New Conversation (+) */}
           <button
             type="button"
             onClick={() => createNewChat()}
-            className="size-8 rounded-full grid place-items-center bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all shadow-xs"
+            className="pointer-events-auto size-8.5 rounded-full grid place-items-center bg-primary text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
             title="Start New Conversation"
           >
             <Plus className="size-4" />
@@ -1443,7 +1447,7 @@ function AssistantPage() {
         <div
           ref={messagesScrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3 sm:p-4 space-y-3.5 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth pt-14 pb-3 px-3 sm:p-4 space-y-3.5 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]"
         >
           {messages.length === 0 ? (
             <div className="grid h-full place-items-center p-4 text-center">

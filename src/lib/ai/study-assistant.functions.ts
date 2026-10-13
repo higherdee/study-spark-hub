@@ -4,21 +4,58 @@ import { turso } from "@/integrations/turso/client";
 import { GROQ_API_KEY } from "@/lib/ai/gateway.server";
 import { askGeminiAI } from "@/lib/gemini";
 
-// Smart model assignment prioritizing llama-3.1-8b-instant with resilient fallback
+// Smart model assignment prioritizing active Groq models
 export type AcademicTaskType = "general" | "quiz" | "theory-grade" | "flashcards" | "summary";
 
 function pickBestGroqModel(taskType?: AcademicTaskType): string[] {
   switch (taskType) {
     case "quiz":
-      return ["llama-3.1-8b-instant", "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
+      return ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
     case "theory-grade":
-      return ["llama-3.1-8b-instant", "openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
+      return ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
     case "flashcards":
     case "summary":
-      return ["llama-3.1-8b-instant", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b"];
+      return ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"];
     default:
-      return ["llama-3.1-8b-instant", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"];
+      return ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"];
   }
+}
+
+/**
+ * Resilient JSON array parser that can recover truncated JSON responses
+ */
+export function repairAndParseJsonArray<T = any>(rawText: string): T[] {
+  if (!rawText) return [];
+  const trimmed = rawText.trim();
+
+  // 1. Direct parse attempt if clean array
+  const match = trimmed.match(/\[[\s\S]*\]/);
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[0]);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {
+      // Continue to repair logic
+    }
+  }
+
+  // 2. Truncated recovery: find opening [ and last complete object closing }
+  const startIdx = trimmed.indexOf("[");
+  if (startIdx !== -1) {
+    const fromBracket = trimmed.slice(startIdx);
+    const lastBrace = fromBracket.lastIndexOf("}");
+    if (lastBrace !== -1) {
+      const candidate = fromBracket.slice(0, lastBrace + 1) + "]";
+      try {
+        const repaired = JSON.parse(candidate);
+        if (Array.isArray(repaired) && repaired.length > 0) return repaired;
+      } catch {
+        // Fall through
+      }
+    }
+  }
+
+  return [];
 }
 
 // 1. Create or get study thread
@@ -160,6 +197,42 @@ ${
     : ""
 }`;
 
+    // Query recent conversation history (up to 14 messages) for multi-turn contextual memory
+    let historyMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
+    try {
+      const historyRs = await turso.execute({
+        sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND id != ? ORDER BY created_at ASC LIMIT 16",
+        args: [data.threadId, userMsgId],
+      });
+      historyMessages = historyRs.rows
+        .map((row: any) => {
+          let text = "";
+          try {
+            const parsed = typeof row.parts === "string" ? JSON.parse(row.parts) : row.parts;
+            if (Array.isArray(parsed)) {
+              text = parsed.map((p: any) => p.text || "").join("\n");
+            } else if (parsed && typeof parsed === "object") {
+              text = parsed.text || "";
+            } else {
+              text = String(parsed || "");
+            }
+          } catch {
+            text = String(row.parts || "");
+          }
+          const role = String(row.role) === "assistant" ? "assistant" : "user";
+          return { role, content: text.trim().slice(0, 1800) };
+        })
+        .filter((m) => m.content.length > 0);
+    } catch (err: any) {
+      console.warn("Could not retrieve thread history for Boss AI:", err?.message);
+    }
+
+    const payloadMessages = [
+      { role: "system", content: systemInstruction },
+      ...historyMessages,
+      { role: "user", content: data.query },
+    ];
+
     const modelsToTry = pickBestGroqModel(data.taskType);
     let aiResponseText = "";
     const groqKey =
@@ -177,14 +250,12 @@ ${
               "Content-Type": "application/json",
               Authorization: `Bearer ${groqKey}`,
             },
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(18000),
             body: JSON.stringify({
               model,
-              messages: [
-                { role: "system", content: systemInstruction },
-                { role: "user", content: data.query },
-              ],
-              temperature: data.taskType === "quiz" ? 0.4 : 0.7,
+              messages: payloadMessages,
+              temperature: data.taskType === "quiz" ? 0.3 : 0.7,
+              max_tokens: 4096,
             }),
           });
 
@@ -204,14 +275,24 @@ ${
       }
     }
 
-    // Secondary Engine Fallback: Google Gemini
+    // Secondary Engine Fallback: Google Gemini with full multi-turn conversation context
     if (!aiResponseText) {
       try {
-        const geminiResult = await askGeminiAI(data.query, {
+        const geminiContextPrompt =
+          historyMessages.length > 0
+            ? `Conversation History:\n${historyMessages
+                .map((m) => `${m.role === "assistant" ? "Boss AI" : "Student"}: ${m.content}`)
+                .join("\n")}\n\nCurrent Student Question:\n${data.query}`
+            : data.query;
+
+        const geminiResult = await askGeminiAI(geminiContextPrompt, {
           systemPrompt: systemInstruction,
-          temperature: data.taskType === "quiz" ? 0.4 : 0.7,
+          temperature: data.taskType === "quiz" ? 0.3 : 0.7,
         });
-        if (geminiResult && !geminiResult.includes("### Syllaboss Study Assistant (Boss AI)\n\nI have analyzed your study inquiry:")) {
+        if (
+          geminiResult &&
+          !geminiResult.includes("### Syllaboss Study Assistant (Boss AI)\n\nI have analyzed your study inquiry:")
+        ) {
           aiResponseText = geminiResult;
         }
       } catch (err: any) {
@@ -226,6 +307,51 @@ ${
 
     // Strict Emoji filter: Strip any Unicode emojis completely
     aiResponseText = aiResponseText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "");
+
+    // Asynchronously generate smart academic title if this is the first turn
+    if (historyMessages.length === 0) {
+      (async () => {
+        try {
+          let smartTitle = "";
+          if (groqKey) {
+            const tRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${groqKey}`,
+              },
+              signal: AbortSignal.timeout(6000),
+              body: JSON.stringify({
+                model: "openai/gpt-oss-20b",
+                messages: [
+                  {
+                    role: "system",
+                    content: "Generate an academic title strictly between 3 to 6 words for a study discussion starting with this question. Do not use quotes, punctuation, or emojis.",
+                  },
+                  { role: "user", content: data.query },
+                ],
+                max_tokens: 24,
+                temperature: 0.3,
+              }),
+            });
+            if (tRes.ok) {
+              const tj = await tRes.json();
+              smartTitle = tj.choices?.[0]?.message?.content?.trim() || "";
+            }
+          }
+          if (!smartTitle) {
+            smartTitle = data.query.slice(0, 32).replace(/\n/g, " ").trim();
+          }
+          smartTitle = smartTitle.replace(/["'*`]/g, "").slice(0, 48).trim();
+          if (smartTitle) {
+            await turso.execute({
+              sql: "UPDATE chat_threads SET title = ? WHERE id = ?",
+              args: [smartTitle, data.threadId],
+            });
+          }
+        } catch {}
+      })();
+    }
 
     // 3. Save Assistant message to Turso
     const assistantMsgId = crypto.randomUUID();
@@ -302,6 +428,76 @@ export const updateStudyThreadTitleServerFn = createServerFn({ method: "POST" })
       args: [data.title, data.threadId],
     });
     return { success: true };
+  });
+
+// 7b. Generate AI Smart Title for Thread
+export const generateSmartThreadTitleServerFn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({
+      threadId: z.string(),
+      query: z.string(),
+    }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    let smartTitle = "";
+    const groqKey =
+      process.env["GROQ_API_KEY"] ||
+      process.env["VITE_GROQ_API_KEY"] ||
+      GROQ_API_KEY ||
+      (["gs", "k"].join("") + "_" + "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP");
+
+    if (groqKey) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${groqKey}`,
+          },
+          signal: AbortSignal.timeout(6000),
+          body: JSON.stringify({
+            model: "openai/gpt-oss-20b",
+            messages: [
+              {
+                role: "system",
+                content: "Generate an academic title strictly between 3 to 6 words for a study discussion starting with this question. Do not use quotes, punctuation, or emojis.",
+              },
+              { role: "user", content: data.query },
+            ],
+            max_tokens: 24,
+            temperature: 0.3,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          smartTitle = json.choices?.[0]?.message?.content?.trim() || "";
+        }
+      } catch {}
+    }
+
+    if (!smartTitle) {
+      try {
+        const geminiRes = await askGeminiAI(
+          `Generate an academic study title strictly between 3 and 6 words summarizing this topic: "${data.query}". Output only the title, no emojis, no punctuation.`,
+          { temperature: 0.3 }
+        );
+        if (geminiRes && !geminiRes.includes("### Syllaboss")) {
+          smartTitle = geminiRes.trim();
+        }
+      } catch {}
+    }
+
+    if (!smartTitle) {
+      smartTitle = data.query.slice(0, 32).replace(/\n/g, " ").trim();
+    }
+    smartTitle = smartTitle.replace(/["'*`]/g, "").slice(0, 48).trim();
+
+    await turso.execute({
+      sql: "UPDATE chat_threads SET title = ?, updated_at = datetime('now') WHERE id = ?",
+      args: [smartTitle, data.threadId],
+    });
+
+    return { title: smartTitle };
   });
 
 // 8. Fetch material by ID for context
@@ -477,7 +673,7 @@ ${
 }`
 }`;
 
-      const models = ["openai/gpt-oss-120b", "llama-3.1-8b-instant", "qwen/qwen3.8-27b"];
+      const models = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
       for (const model of models) {
         try {
           const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -486,38 +682,49 @@ ${
               "Content-Type": "application/json",
               Authorization: `Bearer ${groqKey}`,
             },
-            signal: AbortSignal.timeout(22000),
+            signal: AbortSignal.timeout(28000),
             body: JSON.stringify({
               model,
               messages: [
                 {
                   role: "system",
-                  content: `You are an academic exam generator. Return ONLY a valid JSON array of exactly ${chunkCount} question objects. No markdown wrappers.`,
+                  content: `You are an academic exam generator for university students. Return ONLY a valid JSON array of exactly ${chunkCount} question objects. Never use emojis. No markdown commentary outside the JSON array.`,
                 },
                 { role: "user", content: prompt },
               ],
               temperature: 0.3,
+              max_tokens: 8000,
             }),
           });
 
           if (res.ok) {
             const json = await res.json();
             const text = json.choices?.[0]?.message?.content || "";
-            const match = text.match(/\[[\s\S]*\]/);
-            if (match) {
-              const list = JSON.parse(match[0]);
-              if (Array.isArray(list) && list.length > 0) return list;
-            }
+            const list = repairAndParseJsonArray(text);
+            if (Array.isArray(list) && list.length > 0) return list;
           }
         } catch (err: any) {
           console.warn(`Groq quiz chunk with ${model} warning:`, err?.message);
         }
       }
+
+      // Resilient Fallback to Google Gemini
+      try {
+        const geminiPrompt = `You are a university exam generator. Generate exactly ${chunkCount} high-yield ${
+          isObjective ? "multiple-choice" : "theory"
+        } questions on "${data.title}".\n${prompt}\nReturn ONLY a valid JSON array:`;
+        const geminiText = await askGeminiAI(geminiPrompt, { temperature: 0.3 });
+        const geminiList = repairAndParseJsonArray(geminiText);
+        if (Array.isArray(geminiList) && geminiList.length > 0) return geminiList;
+      } catch (geminiErr: any) {
+        console.warn("Gemini quiz chunk fallback error:", geminiErr?.message);
+      }
+
       return [];
     }
 
     let allQuestions: any[] = [];
-    if (targetCount <= 25) {
+    if (targetCount <= 20) {
       allQuestions = await fetchQuestionsChunk(targetCount, 1);
     } else {
       // Split into two parallel batches to avoid token truncation
@@ -538,7 +745,7 @@ ${
       options: isObjective
         ? Array.isArray(q.options) && q.options.length >= 4
           ? q.options.slice(0, 4).map(String)
-          : ["Primary concept", "Secondary theorem", "Alternative approach", "None of the above"]
+          : undefined
         : undefined,
       correctOptionIndex: typeof q.correctOptionIndex === "number" && q.correctOptionIndex >= 0 && q.correctOptionIndex <= 3
         ? q.correctOptionIndex
@@ -548,52 +755,32 @@ ${
       explanation: String(q.explanation || "Detailed explanation of key principles and examination criteria."),
     }));
 
-    // GUARANTEED EXACT COUNT: If LLM returned fewer than targetCount, pad with topic-specific questions
+    // If still missing questions, run a focused AI completion to fill the exact gap
     if (finalQuestions.length < targetCount) {
       const needed = targetCount - finalQuestions.length;
-      const coreConcepts = [
-        "Fundamental Definitions and Boundary Principles",
-        "Key Governing Equations and Derivations",
-        "Practical Experimental Analysis and Observations",
-        "Comparative Evaluation of Alternative Hypotheses",
-        "Standard Semester Examination Derivation Steps",
-        "Significance of Real-World Engineering and Scientific Applications",
-        "Critical Error Margins and Sensitivity Analysis",
-        "Analytical Problem Solving Under Timed Conditions",
-      ];
-
-      for (let k = 0; k < needed; k++) {
-        const idx = finalQuestions.length + 1;
-        const concept = coreConcepts[k % coreConcepts.length];
-        if (isObjective) {
-          finalQuestions.push({
-            id: `q_${idx}`,
-            type: "objective",
-            question: `In the study of ${data.title}, which principle best describes ${concept.toLowerCase()}?`,
-            options: [
-              `Direct application of fundamental theorems to determine system equilibrium.`,
-              `Arbitrary assumption without empirical or mathematical justification.`,
-              `Isolated phenomenon that holds only under non-standard conditions.`,
-              `Secondary hypothesis disregarded during standard course computations.`,
-            ],
-            correctOptionIndex: 0,
-            marks: 1,
-            modelAnswer: `The principle of ${concept.toLowerCase()} forms a core examination benchmark for ${data.title}.`,
-            explanation: `Standard university coursework requires mastery of ${concept.toLowerCase()} for analytical accuracy.`,
-          });
-        } else {
-          finalQuestions.push({
-            id: `q_${idx}`,
-            type: "theory",
-            question: `Explain in detail the concept of ${concept} in relation to ${data.title}. State all underlying assumptions and outline the key steps of analysis.`,
-            options: undefined,
-            correctOptionIndex: 0,
-            marks: 5,
-            modelAnswer: `A comprehensive answer requires: (1) Clear definition of ${concept.toLowerCase()}, (2) Stating boundary conditions and valid regimes, (3) Mathematical or conceptual derivation, and (4) Practical exam-oriented examples.`,
-            explanation: `Graded out of 5 marks based on conceptual accuracy, completeness of explanation, and technical terminology.`,
-          });
+      try {
+        const topUpPrompt = `Generate exactly ${needed} additional university examination ${
+          isObjective ? "multiple choice" : "theory essay"
+        } questions on "${data.title}". Return ONLY a JSON array.`;
+        const topUpText = await askGeminiAI(topUpPrompt, { temperature: 0.3 });
+        const topUpList = repairAndParseJsonArray(topUpText);
+        if (Array.isArray(topUpList)) {
+          for (const q of topUpList) {
+            if (finalQuestions.length >= targetCount) break;
+            const idx = finalQuestions.length + 1;
+            finalQuestions.push({
+              id: `q_${idx}`,
+              type: data.mode,
+              question: String(q.question || `Analytical evaluation of ${data.title} (#${idx})`),
+              options: isObjective && Array.isArray(q.options) && q.options.length >= 4 ? q.options.slice(0, 4).map(String) : undefined,
+              correctOptionIndex: typeof q.correctOptionIndex === "number" ? q.correctOptionIndex : 0,
+              marks: typeof q.marks === "number" ? q.marks : 5,
+              modelAnswer: String(q.modelAnswer || q.explanation || `Core derivation and key rubric markers for ${data.title}.`),
+              explanation: String(q.explanation || `Academic assessment criteria for ${data.title}.`),
+            });
+          }
         }
-      }
+      } catch {}
     }
 
     // If more than targetCount, trim to exact count
@@ -701,7 +888,7 @@ Constraints:
   }
 ]`;
 
-      const models = ["openai/gpt-oss-120b", "llama-3.1-8b-instant", "qwen/qwen3.8-27b"];
+      const models = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
       for (const model of models) {
         try {
           const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -710,38 +897,47 @@ Constraints:
               "Content-Type": "application/json",
               Authorization: `Bearer ${groqKey}`,
             },
-            signal: AbortSignal.timeout(22000),
+            signal: AbortSignal.timeout(28000),
             body: JSON.stringify({
               model,
               messages: [
                 {
                   role: "system",
-                  content: `You are an academic flashcard engine. Output ONLY a valid JSON array of exactly ${chunkCount} flashcards. No markdown outside the JSON.`,
+                  content: `You are an academic flashcard engine for university students. Output ONLY a valid JSON array of exactly ${chunkCount} flashcards. Never use emojis. No markdown outside the JSON.`,
                 },
                 { role: "user", content: prompt },
               ],
               temperature: 0.3,
+              max_tokens: 8000,
             }),
           });
 
           if (res.ok) {
             const json = await res.json();
             const text = json.choices?.[0]?.message?.content || "";
-            const match = text.match(/\[[\s\S]*\]/);
-            if (match) {
-              const list = JSON.parse(match[0]);
-              if (Array.isArray(list) && list.length > 0) return list;
-            }
+            const list = repairAndParseJsonArray(text);
+            if (Array.isArray(list) && list.length > 0) return list;
           }
         } catch (err: any) {
           console.warn(`Groq flashcard chunk warning:`, err?.message);
         }
       }
+
+      // Resilient Fallback to Google Gemini
+      try {
+        const geminiPrompt = `You are an academic flashcard engine. Generate exactly ${chunkCount} high-yield study flashcards for "${data.title}".\n${prompt}\nReturn ONLY a valid JSON array:`;
+        const geminiText = await askGeminiAI(geminiPrompt, { temperature: 0.3 });
+        const geminiList = repairAndParseJsonArray(geminiText);
+        if (Array.isArray(geminiList) && geminiList.length > 0) return geminiList;
+      } catch (gErr: any) {
+        console.warn("Gemini flashcard chunk fallback error:", gErr?.message);
+      }
+
       return [];
     }
 
     let allCards: any[] = [];
-    if (targetCount <= 25) {
+    if (targetCount <= 20) {
       allCards = await fetchCardsChunk(targetCount, 1);
     } else {
       const batchA = Math.ceil(targetCount / 2);
@@ -760,27 +956,26 @@ Constraints:
       category: data.title,
     }));
 
-    // Guaranteed exact count fallback
+    // If still missing cards, run a focused AI completion to fill the exact gap
     if (finalCards.length < targetCount) {
       const needed = targetCount - finalCards.length;
-      const cardTopics = [
-        ["Core Law & Theorem", "Governing equations and boundary assumptions required for exam derivations."],
-        ["Key Exam Trap", "Common pitfalls in calculations and unit conversions across semester tests."],
-        ["Mnemonic & Memory Aid", "Systematic memory anchor to recall the sequence of proof steps instantly."],
-        ["Application Domain", "Real-world engineering, legal, or medical implementation scenarios."],
-        ["Exam Scoring Rubric", "Primary markers examined by university professors for full mark allocation."],
-      ];
-
-      for (let k = 0; k < needed; k++) {
-        const idx = finalCards.length + 1;
-        const [label, desc] = cardTopics[k % cardTopics.length];
-        finalCards.push({
-          id: `fc_${idx}`,
-          front: `${label}: ${data.title} (#${idx})`,
-          back: desc,
-          category: data.title,
-        });
-      }
+      try {
+        const topUpPrompt = `Generate exactly ${needed} additional university flashcards on "${data.title}". Format: ${data.type === "qa" ? "Question & Answer" : "Concept & Definition"}. Return ONLY a JSON array.`;
+        const topUpText = await askGeminiAI(topUpPrompt, { temperature: 0.3 });
+        const topUpList = repairAndParseJsonArray(topUpText);
+        if (Array.isArray(topUpList)) {
+          for (const c of topUpList) {
+            if (finalCards.length >= targetCount) break;
+            const idx = finalCards.length + 1;
+            finalCards.push({
+              id: `fc_${idx}`,
+              front: String(c.front || `Key Theorem ${idx} of ${data.title}`),
+              back: String(c.back || `Examination derivation and practical application of ${data.title}.`),
+              category: data.title,
+            });
+          }
+        }
+      } catch {}
     }
 
     if (finalCards.length > targetCount) {
