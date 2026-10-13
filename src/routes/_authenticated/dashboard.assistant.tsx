@@ -92,6 +92,7 @@ import { cn } from "@/lib/utils";
 const searchSchema = z.object({
   materialId: z.string().optional(),
   view: z.string().optional(),
+  threadId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/_authenticated/dashboard/assistant")({
@@ -149,7 +150,8 @@ const FLASHCARD_GRADIENTS = [
 ];
 
 function AssistantPage() {
-  const { materialId, view } = Route.useSearch();
+  const { materialId, view, threadId: searchThreadId } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
@@ -170,7 +172,32 @@ function AssistantPage() {
     initSpeechRuleEngine();
   }, []);
 
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  // Initialize activeThreadId from URL search param or localStorage
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(() => {
+    if (searchThreadId) return searchThreadId;
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("syllaboss_active_chat_thread") || null;
+    }
+    return null;
+  });
+
+  const handleSelectThread = (threadId: string | null) => {
+    setActiveThreadId(threadId);
+    if (typeof window !== "undefined") {
+      if (threadId) {
+        localStorage.setItem("syllaboss_active_chat_thread", threadId);
+      } else {
+        localStorage.removeItem("syllaboss_active_chat_thread");
+      }
+    }
+    navigate({
+      search: (prev: any) => ({
+        ...prev,
+        threadId: threadId || undefined,
+      }),
+      replace: true,
+    });
+  };
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -338,8 +365,54 @@ function AssistantPage() {
     }
   }, [materialId]);
 
+  // Auto-restore active thread if null or ensure valid selection
+  useEffect(() => {
+    if (!threads || threads.length === 0) return;
+
+    // 1. If searchThreadId in URL is valid, ensure activeThreadId matches
+    if (searchThreadId && threads.some((t: any) => t.id === searchThreadId)) {
+      if (activeThreadId !== searchThreadId) {
+        setActiveThreadId(searchThreadId);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("syllaboss_active_chat_thread", searchThreadId);
+        }
+      }
+      return;
+    }
+
+    // 2. If activeThreadId is already set and valid in threads, ensure URL has it
+    if (activeThreadId && threads.some((t: any) => t.id === activeThreadId)) {
+      if (searchThreadId !== activeThreadId) {
+        navigate({
+          search: (prev: any) => ({ ...prev, threadId: activeThreadId }),
+          replace: true,
+        });
+      }
+      return;
+    }
+
+    // 3. Check localStorage
+    const savedThreadId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("syllaboss_active_chat_thread")
+        : null;
+    if (savedThreadId && threads.some((t: any) => t.id === savedThreadId)) {
+      handleSelectThread(savedThreadId);
+      return;
+    }
+
+    // 4. Default to first (most recent) thread
+    if (!activeThreadId && threads.length > 0) {
+      handleSelectThread(threads[0].id);
+    }
+  }, [threads, searchThreadId, activeThreadId]);
+
   // Fetch active thread messages
-  const { data: threadMessages = [] } = useQuery({
+  const {
+    data: threadMessages = [],
+    isLoading: isLoadingMessages,
+    isFetching: isFetchingMessages,
+  } = useQuery({
     queryKey: ["chat-messages", activeThreadId],
     enabled: Boolean(activeThreadId),
     queryFn: async () => {
@@ -350,6 +423,7 @@ function AssistantPage() {
 
   // Sync loaded thread messages
   useEffect(() => {
+    if (thinking) return;
     if (activeThreadId) {
       if (threadMessages && threadMessages.length > 0) {
         const formatted: ChatMessage[] = threadMessages.map((msg: any) => {
@@ -388,11 +462,13 @@ function AssistantPage() {
           };
         });
         setMessages(formatted);
-      } else {
+      } else if (!isLoadingMessages && !isFetchingMessages) {
         setMessages([]);
       }
+    } else {
+      setMessages([]);
     }
-  }, [threadMessages, activeThreadId]);
+  }, [threadMessages, activeThreadId, isLoadingMessages, isFetchingMessages, thinking]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -549,6 +625,10 @@ function AssistantPage() {
             };
 
             setMessages((prev) => [...prev, aiMsg]);
+            await Promise.all([
+              qc.invalidateQueries({ queryKey: ["chat-messages", targetThreadId] }),
+              qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
+            ]);
             refetchThreads();
 
             // Auto speak response aloud
@@ -622,13 +702,14 @@ function AssistantPage() {
       const newThread = await createStudyThreadServerFn({
         data: {
           userId: user.id,
-          title: "New Study Conversation",
+          title: "New Conversation",
         },
       });
-      setActiveThreadId(newThread.id);
+      handleSelectThread(newThread.id);
       setMessages([]);
       setQuizQuestions(null);
       setFlashcards(null);
+      await qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] });
       refetchThreads();
       return newThread.id;
     } catch {
@@ -643,11 +724,18 @@ function AssistantPage() {
     try {
       await deleteStudyThreadServerFn({ data: { threadId: id } });
       toast.success("Conversation deleted");
+      await qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] });
+      qc.removeQueries({ queryKey: ["chat-messages", id] });
+      const updatedThreads = await refetchThreads();
       if (activeThreadId === id) {
-        setActiveThreadId(null);
-        setMessages([]);
+        const remaining = (updatedThreads.data || []).filter((t: any) => t.id !== id);
+        if (remaining.length > 0) {
+          handleSelectThread(remaining[0].id);
+        } else {
+          handleSelectThread(null);
+          setMessages([]);
+        }
       }
-      refetchThreads();
     } catch {
       toast.error("Failed to delete conversation");
     }
@@ -895,16 +983,11 @@ function AssistantPage() {
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["chat-messages", targetThreadId] }),
+        qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
+      ]);
       refetchThreads();
-
-      if (messages.length === 0) {
-        generateSmartThreadTitleServerFn({
-          data: {
-            threadId: targetThreadId,
-            query: queryText,
-          },
-        }).then(() => refetchThreads()).catch(() => {});
-      }
 
       // Deliver device notification for completed AI answer
       sendDeviceNotification("Boss AI Response Ready", {
@@ -1012,6 +1095,10 @@ function AssistantPage() {
       };
 
       setMessages((prev) => [...prev, newMsg]);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["chat-messages", targetThreadId] }),
+        qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
+      ]);
       refetchThreads();
       toast.success(`${res.quizData.questions.length} Practice Questions Ready!`, { id: "mcq-gen" });
     } catch (err: any) {
@@ -1069,6 +1156,10 @@ function AssistantPage() {
       };
 
       setMessages((prev) => [...prev, newMsg]);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["chat-messages", targetThreadId] }),
+        qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
+      ]);
       refetchThreads();
       toast.success(`${res.quizData.questions.length} Theory Questions prepared!`, { id: "theory-gen" });
     } catch (err: any) {
@@ -1125,6 +1216,10 @@ function AssistantPage() {
       };
 
       setMessages((prev) => [...prev, newMsg]);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["chat-messages", targetThreadId] }),
+        qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
+      ]);
       refetchThreads();
       toast.success(`${res.flashcardsData.cards.length} Flashcards ready to study!`, { id: "fc-gen" });
     } catch (err: any) {
@@ -1342,8 +1437,7 @@ function AssistantPage() {
                   )}
                   onClick={() => {
                     if (activeThreadId !== t.id) {
-                      setActiveThreadId(t.id);
-                      setMessages([]);
+                      handleSelectThread(t.id);
                       setQuizQuestions(null);
                       setFlashcards(null);
                     }
@@ -1452,7 +1546,14 @@ function AssistantPage() {
           onScroll={handleScroll}
           className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth pt-14 pb-3 px-3 sm:p-4 space-y-3.5 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]"
         >
-          {messages.length === 0 ? (
+          {isLoadingMessages && messages.length === 0 ? (
+            <div className="grid h-full place-items-center p-4 text-center">
+              <div className="flex flex-col items-center gap-2.5 text-muted-foreground">
+                <Loader2 className="size-6 animate-spin text-primary" />
+                <p className="text-xs font-medium">Loading conversation...</p>
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
             <div className="grid h-full place-items-center p-4 text-center">
               <div className="max-w-md space-y-2.5">
                 <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
@@ -2012,7 +2113,7 @@ function AssistantPage() {
                         type="button"
                         className="min-w-0 flex-1 truncate text-left"
                         onClick={() => {
-                          setActiveThreadId(t.id);
+                          handleSelectThread(t.id);
                           setQuizQuestions(null);
                           setFlashcards(null);
                           setShowMenuDrawer(false);

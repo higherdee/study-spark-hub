@@ -58,12 +58,112 @@ export function repairAndParseJsonArray<T = any>(rawText: string): T[] {
   return [];
 }
 
+/**
+ * Intelligent topic title generator (ChatGPT / Gemini style)
+ * Generates clean, concise, 2-5 word topic titles (e.g. "Thermodynamics", "Solving Quadratic Equations").
+ * Distinguishes casual greetings ("hello", "hi") and returns "New Conversation" without hallucinating pretentious academic titles.
+ */
+export async function generateIntelligentTitle(query: string): Promise<string> {
+  const cleaned = query
+    .replace(/^\[(Assignment Helper[^\]]*|High-Yield Exam Summary[^\]]*)\]\s*(Problem:|Topic \/ Context:)?/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // If pure greeting / casual opener, return "New Conversation" directly without wasting LLM call
+  const GREETING_REGEX = /^(hi|hello|hey|heyy|heya|howdy|good\s+(morning|afternoon|evening|day)|sup|wassup|what'?s\s+up|yo|hola|greetings|how\s+are\s+you|who\s+are\s+you|test|testing)[\s!?.~]*$/i;
+  if (GREETING_REGEX.test(cleaned)) {
+    return "New Conversation";
+  }
+
+  const systemPrompt = `You are an AI chat title generator (like ChatGPT and Gemini).
+Create a concise, clean, and natural title (strictly 2 to 5 words, maximum 36 characters) summarizing the core topic.
+Rules:
+- If the message is just a greeting, casual chat, or vague opener (e.g. 'hello', 'hi', 'wassup', 'hey', 'good morning', 'how are you', 'yo'), output strictly: New Conversation.
+- Focus directly on the actual academic or discussion topic (e.g. 'Quadratic Equations', 'Thermodynamics Exam Prep', 'Newton\\'s Second Law', 'Photosynthesis Guide').
+- NEVER generate pretentious, long-winded academic titles like 'Cultural Significance of...', 'Academic Overview of...', or 'Discourse on...'.
+- Do NOT use quotation marks, periods, punctuation, or emojis.
+- Capitalize in clean Title Case.`;
+
+  const groqKey = getGroqApiKey();
+  let title = "";
+
+  if (groqKey) {
+    const models = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
+    for (const model of models) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${groqKey}`,
+          },
+          signal: AbortSignal.timeout(5000),
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: cleaned.slice(0, 500) },
+            ],
+            max_tokens: 30,
+            temperature: 0.1,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const candidate = json.choices?.[0]?.message?.content?.trim() || "";
+          if (candidate && candidate.length > 1) {
+            title = candidate;
+            break;
+          }
+        }
+      } catch (err: any) {
+        console.warn(`Groq title generation with ${model} warning:`, err?.message);
+      }
+    }
+  }
+
+  // Gemini fallback if Groq failed or wasn't configured
+  if (!title) {
+    try {
+      const geminiRes = await askGeminiAI(
+        `${systemPrompt}\nUser message: "${cleaned.slice(0, 300)}"\nOutput strictly only the 2 to 5 word title:`,
+        { temperature: 0.1 }
+      );
+      if (geminiRes && !geminiRes.includes("### Syllaboss")) {
+        title = geminiRes.trim();
+      }
+    } catch {}
+  }
+
+  // Sanitize title
+  if (title) {
+    title = title
+      .replace(/["'*`#]/g, "")
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "")
+      .replace(/[.!?:;]+$/g, "")
+      .trim();
+  }
+
+  // If still empty or failed, fallback to clean snippet of user query
+  if (!title) {
+    const words = cleaned.split(/\s+/).slice(0, 5).join(" ");
+    title = words.slice(0, 36).trim();
+    if (title.length > 0) {
+      title = title.charAt(0).toUpperCase() + title.slice(1);
+    } else {
+      title = "New Conversation";
+    }
+  }
+
+  return title.slice(0, 48).trim();
+}
+
 // 1. Create or get study thread
 export const createStudyThreadServerFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       userId: z.string(),
-      title: z.string().default("New Study Session"),
+      title: z.string().default("New Conversation"),
     }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -106,7 +206,7 @@ export const getStudyMessagesServerFn = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ threadId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const rs = await turso.execute({
-      sql: "SELECT id, message_id, role, parts, created_at FROM chat_messages WHERE thread_id = ? ORDER BY created_at ASC",
+      sql: "SELECT id, message_id, role, parts, created_at FROM chat_messages WHERE thread_id = ? ORDER BY created_at ASC, rowid ASC",
       args: [data.threadId],
     });
 
@@ -307,50 +407,36 @@ ${
     // Strict Emoji filter: Strip any Unicode emojis completely
     aiResponseText = aiResponseText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "");
 
-    // Asynchronously generate smart academic title if this is the first turn
-    if (historyMessages.length === 0) {
-      (async () => {
-        try {
-          let smartTitle = "";
-          if (groqKey) {
-            const tRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${groqKey}`,
-              },
-              signal: AbortSignal.timeout(6000),
-              body: JSON.stringify({
-                model: "openai/gpt-oss-20b",
-                messages: [
-                  {
-                    role: "system",
-                    content: "Generate an academic title strictly between 3 to 6 words for a study discussion starting with this question. Do not use quotes, punctuation, or emojis.",
-                  },
-                  { role: "user", content: data.query },
-                ],
-                max_tokens: 24,
-                temperature: 0.3,
-              }),
-            });
-            if (tRes.ok) {
-              const tj = await tRes.json();
-              smartTitle = tj.choices?.[0]?.message?.content?.trim() || "";
-            }
-          }
-          if (!smartTitle) {
-            smartTitle = data.query.slice(0, 32).replace(/\n/g, " ").trim();
-          }
-          smartTitle = smartTitle.replace(/["'*`]/g, "").slice(0, 48).trim();
-          if (smartTitle) {
+    // Asynchronously generate intelligent title if thread currently has a generic title
+    (async () => {
+      try {
+        const threadRs = await turso.execute({
+          sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
+          args: [data.threadId],
+        });
+        const currentTitle = String(threadRs.rows[0]?.title || "").trim();
+        const isGeneric =
+          !currentTitle ||
+          /^(new (study )?conversation|untitled|chat|new chat)$/i.test(currentTitle);
+
+        if (isGeneric) {
+          const smartTitle = await generateIntelligentTitle(data.query);
+          if (smartTitle && smartTitle !== "New Conversation") {
             await turso.execute({
-              sql: "UPDATE chat_threads SET title = ? WHERE id = ?",
+              sql: "UPDATE chat_threads SET title = ?, updated_at = datetime('now') WHERE id = ?",
               args: [smartTitle, data.threadId],
             });
+          } else if (smartTitle === "New Conversation" && currentTitle === "New Study Conversation") {
+            await turso.execute({
+              sql: "UPDATE chat_threads SET title = 'New Conversation' WHERE id = ?",
+              args: [data.threadId],
+            });
           }
-        } catch {}
-      })();
-    }
+        }
+      } catch (err: any) {
+        console.warn("Title auto-update error:", err?.message);
+      }
+    })();
 
     // 3. Save Assistant message to Turso
     const assistantMsgId = crypto.randomUUID();
@@ -438,61 +524,37 @@ export const generateSmartThreadTitleServerFn = createServerFn({ method: "POST" 
     }).parse(d)
   )
   .handler(async ({ data }) => {
-    let smartTitle = "";
-    const groqKey = getGroqApiKey();
+    try {
+      const threadRs = await turso.execute({
+        sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
+        args: [data.threadId],
+      });
+      const currentTitle = String(threadRs.rows[0]?.title || "").trim();
+      const isGeneric =
+        !currentTitle ||
+        /^(new (study )?conversation|untitled|chat|new chat)$/i.test(currentTitle);
 
-    if (groqKey) {
-      try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${groqKey}`,
-          },
-          signal: AbortSignal.timeout(6000),
-          body: JSON.stringify({
-            model: "openai/gpt-oss-20b",
-            messages: [
-              {
-                role: "system",
-                content: "Generate an academic title strictly between 3 to 6 words for a study discussion starting with this question. Do not use quotes, punctuation, or emojis.",
-              },
-              { role: "user", content: data.query },
-            ],
-            max_tokens: 24,
-            temperature: 0.3,
-          }),
-        });
-        if (res.ok) {
-          const json = await res.json();
-          smartTitle = json.choices?.[0]?.message?.content?.trim() || "";
+      if (isGeneric) {
+        const smartTitle = await generateIntelligentTitle(data.query);
+        if (smartTitle && smartTitle !== "New Conversation") {
+          await turso.execute({
+            sql: "UPDATE chat_threads SET title = ?, updated_at = datetime('now') WHERE id = ?",
+            args: [smartTitle, data.threadId],
+          });
+          return { title: smartTitle };
+        } else if (smartTitle === "New Conversation" && currentTitle === "New Study Conversation") {
+          await turso.execute({
+            sql: "UPDATE chat_threads SET title = 'New Conversation' WHERE id = ?",
+            args: [data.threadId],
+          });
+          return { title: "New Conversation" };
         }
-      } catch {}
+      }
+      return { title: currentTitle || "New Conversation" };
+    } catch (err: any) {
+      console.warn("generateSmartThreadTitleServerFn error:", err?.message);
+      return { title: "" };
     }
-
-    if (!smartTitle) {
-      try {
-        const geminiRes = await askGeminiAI(
-          `Generate an academic study title strictly between 3 and 6 words summarizing this topic: "${data.query}". Output only the title, no emojis, no punctuation.`,
-          { temperature: 0.3 }
-        );
-        if (geminiRes && !geminiRes.includes("### Syllaboss")) {
-          smartTitle = geminiRes.trim();
-        }
-      } catch {}
-    }
-
-    if (!smartTitle) {
-      smartTitle = data.query.slice(0, 32).replace(/\n/g, " ").trim();
-    }
-    smartTitle = smartTitle.replace(/["'*`]/g, "").slice(0, 48).trim();
-
-    await turso.execute({
-      sql: "UPDATE chat_threads SET title = ?, updated_at = datetime('now') WHERE id = ?",
-      args: [smartTitle, data.threadId],
-    });
-
-    return { title: smartTitle };
   });
 
 // 8. Fetch material by ID for context
@@ -831,6 +893,27 @@ ${
       args: [data.threadId],
     });
 
+    // Update thread title if currently generic
+    (async () => {
+      try {
+        const threadRs = await turso.execute({
+          sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
+          args: [data.threadId],
+        });
+        const currentTitle = String(threadRs.rows[0]?.title || "").trim();
+        const isGeneric =
+          !currentTitle ||
+          /^(new (study )?conversation|untitled|chat|new chat)$/i.test(currentTitle);
+        if (isGeneric) {
+          const quizTitle = `${data.title.slice(0, 30)} Quiz`.trim();
+          await turso.execute({
+            sql: "UPDATE chat_threads SET title = ? WHERE id = ?",
+            args: [quizTitle, data.threadId],
+          });
+        }
+      } catch {}
+    })();
+
     return {
       assistantMessageId: assistantMsgId,
       content: introText,
@@ -1015,6 +1098,27 @@ Constraints:
       sql: "UPDATE chat_threads SET updated_at = datetime('now') WHERE id = ?",
       args: [data.threadId],
     });
+
+    // Update thread title if currently generic
+    (async () => {
+      try {
+        const threadRs = await turso.execute({
+          sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
+          args: [data.threadId],
+        });
+        const currentTitle = String(threadRs.rows[0]?.title || "").trim();
+        const isGeneric =
+          !currentTitle ||
+          /^(new (study )?conversation|untitled|chat|new chat)$/i.test(currentTitle);
+        if (isGeneric) {
+          const fcTitle = `${data.title.slice(0, 26)} Flashcards`.trim();
+          await turso.execute({
+            sql: "UPDATE chat_threads SET title = ? WHERE id = ?",
+            args: [fcTitle, data.threadId],
+          });
+        }
+      } catch {}
+    })();
 
     return {
       assistantMessageId: assistantMsgId,
