@@ -161,7 +161,7 @@ export function AppShell({
           !isFullScreenAppPage && isScrolledDown && "-translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
         )}
       >
-          <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 rounded-[1.35rem] border border-border/70 bg-card/90 px-3 py-2 shadow-[0_12px_32px_-18px_rgba(13,40,30,0.35)] backdrop-blur-md transition-all sm:px-4">
+          <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 rounded-2xl border border-border/70 bg-card/90 px-3 py-2 shadow-[0_18px_40px_-24px_rgba(18,59,43,0.45)] backdrop-blur-xl transition-all sm:px-4">
             {/* Left: Hamburger menu icon opening side drop menu */}
             <div className="flex items-center gap-2.5">
               <button
@@ -249,7 +249,7 @@ export function AppShell({
           "w-full transition-all duration-300",
           isFullScreenAppPage
             ? "mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-24"
-            : "mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 pb-28 sm:py-8 sm:pb-32"
+            : "mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 pb-28 sm:py-8 sm:pb-32 lg:pl-20"
         )}
       >
         {children}
