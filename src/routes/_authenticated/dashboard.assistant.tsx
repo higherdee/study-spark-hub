@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowLeft,
   Bot,
   Send,
   Loader2,
@@ -290,35 +291,11 @@ function AssistantPage() {
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Scroll direction detection for drawer collapse / prompt bar docking
-  const [isChatScrolledDown, setIsChatScrolledDown] = useState(false);
-  const lastScrollTopRef = useRef(0);
-
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
-    const st = el.scrollTop;
-    const delta = st - lastScrollTopRef.current;
-
-    if (st < 40) {
-      setIsChatScrolledDown(false);
-    } else if (delta > 15) {
-      setIsChatScrolledDown(true);
-    } else if (delta < -15) {
-      setIsChatScrolledDown(false);
-    }
-    lastScrollTopRef.current = st;
-
-    const isUp = el.scrollHeight - st - el.clientHeight > 140;
+    const isUp = el.scrollHeight - el.scrollTop - el.clientHeight > 140;
     setShowScrollBottom(isUp);
   };
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("syllaboss-scroll-direction", { detail: { isScrolledDown: isChatScrolledDown } })
-      );
-    }
-  }, [isChatScrolledDown]);
 
   // Query Recent Chat Threads
   const { data: threads = [], refetch: refetchThreads } = useQuery({
@@ -1429,78 +1406,6 @@ function AssistantPage() {
           )}
         </div>
 
-        {/* Study Tools Quick Triggers */}
-        <div className="p-3 border-b border-border/70 space-y-1.5 bg-secondary/10">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-            Study Modes &amp; Tools
-          </span>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("mcq")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-primary/10 text-primary grid place-items-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
-              <CheckCircle2 className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">MCQ Practice Quiz</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">Customizable questions on your topic</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("theory")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-emerald-500/10 hover:text-emerald-600 transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-emerald-500/10 text-emerald-600 grid place-items-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
-              <FileText className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">Theory Test &amp; Marking</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">Exam questions &amp; rubric marking</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("flashcards")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-indigo-500/10 hover:text-indigo-600 transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-indigo-500/10 text-indigo-500 grid place-items-center group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
-              <Layers className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">3D Flashcards</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">Physical flip cards with KaTeX</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("assignment")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-amber-500/10 hover:text-amber-600 transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-amber-500/10 text-amber-500 grid place-items-center group-hover:bg-amber-600 group-hover:text-white transition-colors shrink-0">
-              <GraduationCap className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">Assignment Helper</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">Step-by-step academic breakdown</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("summary")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-rose-500/10 hover:text-rose-600 transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-rose-500/10 text-rose-500 grid place-items-center group-hover:bg-rose-600 group-hover:text-white transition-colors shrink-0">
-              <Sparkles className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">Summarize Material</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">High-yield revision notes</p>
-            </div>
-          </button>
-        </div>
-
         {/* Recent Chats list */}
         <div className="p-3 flex-1 min-h-0 flex flex-col space-y-2 overflow-hidden">
           <div className="flex items-center justify-between">
@@ -1573,6 +1478,13 @@ function AssistantPage() {
         {/* Mobile Header (Top-Right Recent Menu + New Chat) */}
         <div className="md:hidden flex items-center justify-between px-3.5 py-2 border-b border-border/50 bg-card/85 backdrop-blur-md shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
+            <Link
+              to="/dashboard"
+              className="size-7 rounded-lg border border-border/70 hover:bg-secondary text-foreground grid place-items-center shrink-0 active:scale-95 transition-all"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="size-3.5" />
+            </Link>
             <div className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
               <Bot className="size-3.5" />
             </div>
@@ -1884,12 +1796,7 @@ function AssistantPage() {
         {/* MODERN GEMINI / CHATGPT AUTOGROWING TYPING BAR */}
         {/* ========================================================================= */}
         <div
-          className={cn(
-            "shrink-0 border-t border-border/60 bg-card p-2 sm:p-3 relative z-30 transition-all duration-300 ease-out",
-            !isChatScrolledDown && !showCustomKeyboard
-              ? "mb-[calc(4.5rem+env(safe-area-inset-bottom))] md:mb-0"
-              : "mb-0"
-          )}
+          className="shrink-0 border-t border-border/60 bg-card p-2 sm:p-3 relative z-30 mb-0"
         >
           {/* Mention Autocomplete Suggestion Pill */}
           <AnimatePresence>
