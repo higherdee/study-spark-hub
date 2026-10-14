@@ -1352,7 +1352,7 @@ function AssistantPage() {
   }
 
   return (
-    <div className="flex flex-1 min-h-0 h-full max-h-full w-full overflow-hidden bg-background relative font-sans">
+    <div className="flex min-h-0 h-full max-h-full flex-1 w-full overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans relative">
       {/* Hidden File Inputs */}
       <input
         type="file"
@@ -1370,10 +1370,207 @@ function AssistantPage() {
       />
 
       {/* ========================================================================= */}
-      {/* MAIN CHAT & INTERACTIVE WORKSPACE (FULL WIDTH PER SKETCHES) */}
+      {/* DESKTOP SIDEBAR: Conversations, Attached Document, & Study Tools */}
+      {/* ========================================================================= */}
+      <aside className="hidden md:flex w-72 lg:w-80 flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden">
+        {/* New Chat Button */}
+        <div className="p-3 border-b border-border/70">
+          <Button
+            onClick={createNewChat}
+            className="w-full justify-start gap-2 rounded-xl font-bold text-xs h-9 shadow-xs"
+          >
+            <MessageSquarePlus className="size-4" /> Start New Conversation
+          </Button>
+        </div>
+
+        {/* Active Study Document Section */}
+        <div className="p-3 border-b border-border/70 space-y-2 bg-secondary/20">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Study Document
+            </span>
+            {activeDocContext && (
+              <button
+                type="button"
+                onClick={() => setActiveDocContext(null)}
+                className="text-[10px] font-semibold text-destructive hover:underline"
+              >
+                Detach
+              </button>
+            )}
+          </div>
+
+          {activeDocContext ? (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-xs space-y-0.5">
+              <p className="font-bold text-primary truncate">{activeDocContext.title}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{activeDocContext.course}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLibraryModalOpen(true)}
+                className="rounded-xl text-[11px] font-semibold h-8 border-border/80 hover:bg-primary/10 hover:text-primary"
+              >
+                <BookOpen className="size-3.5 mr-1 text-primary" /> Library
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-xl text-[11px] font-semibold h-8 border-border/80 hover:bg-primary/10 hover:text-primary"
+              >
+                <Upload className="size-3.5 mr-1 text-primary" /> Upload
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Study Tools Quick Triggers */}
+        <div className="p-3 border-b border-border/70 space-y-1.5 bg-secondary/10">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
+            Study Modes &amp; Tools
+          </span>
+          <button
+            type="button"
+            onClick={() => prepareStudyPrompt("mcq")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all group"
+          >
+            <span className="size-6 rounded-lg bg-primary/10 text-primary grid place-items-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
+              <CheckCircle2 className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">MCQ Practice Quiz</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">Customizable questions on your topic</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => prepareStudyPrompt("theory")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-emerald-500/10 hover:text-emerald-600 transition-all group"
+          >
+            <span className="size-6 rounded-lg bg-emerald-500/10 text-emerald-600 grid place-items-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
+              <FileText className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">Theory Test &amp; Marking</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">Exam questions &amp; rubric marking</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => prepareStudyPrompt("flashcards")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-indigo-500/10 hover:text-indigo-600 transition-all group"
+          >
+            <span className="size-6 rounded-lg bg-indigo-500/10 text-indigo-500 grid place-items-center group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+              <Layers className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">3D Flashcards</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">Physical flip cards with KaTeX</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => prepareStudyPrompt("assignment")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-amber-500/10 hover:text-amber-600 transition-all group"
+          >
+            <span className="size-6 rounded-lg bg-amber-500/10 text-amber-500 grid place-items-center group-hover:bg-amber-600 group-hover:text-white transition-colors shrink-0">
+              <GraduationCap className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">Assignment Helper</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">Step-by-step academic breakdown</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => prepareStudyPrompt("summary")}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-rose-500/10 hover:text-rose-600 transition-all group"
+          >
+            <span className="size-6 rounded-lg bg-rose-500/10 text-rose-500 grid place-items-center group-hover:bg-rose-600 group-hover:text-white transition-colors shrink-0">
+              <Sparkles className="size-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="leading-tight font-semibold">Summarize Material</p>
+              <p className="text-[10px] text-muted-foreground font-normal truncate">High-yield revision notes</p>
+            </div>
+          </button>
+        </div>
+
+        {/* Recent Chats list */}
+        <div className="p-3 flex-1 min-h-0 flex flex-col space-y-2 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Recent Conversations ({threads.length})
+            </span>
+          </div>
+
+          {threads.length > 4 && (
+            <div className="relative">
+              <input
+                type="text"
+                value={threadSearch}
+                onChange={(e) => setThreadSearch(e.target.value)}
+                placeholder="Search chats..."
+                className="w-full h-7 rounded-lg border border-border/70 bg-secondary/30 px-2 pl-6 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary"
+              />
+              <Search className="size-3 text-muted-foreground absolute left-1.5 top-2" />
+            </div>
+          )}
+
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1 [scrollbar-width:thin]">
+            {filteredThreads.length === 0 ? (
+              <p className="py-4 text-xs text-muted-foreground text-center">
+                {threadSearch ? "No matching conversations." : "No chats yet."}
+              </p>
+            ) : (
+              filteredThreads.map((t: any) => (
+                <div
+                  key={t.id}
+                  className={cn(
+                    "group flex items-center justify-between gap-1.5 rounded-xl px-2.5 py-2 text-xs transition-all cursor-pointer border",
+                    activeThreadId === t.id
+                      ? "bg-primary/10 border-primary/40 font-semibold text-primary shadow-2xs"
+                      : "border-transparent text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                  )}
+                  onClick={() => {
+                    if (activeThreadId !== t.id) {
+                      handleSelectThread(t.id);
+                      setQuizQuestions(null);
+                      setFlashcards(null);
+                    }
+                  }}
+                >
+                  <div className="min-w-0 flex-1 truncate text-left">
+                    <p className="truncate text-xs leading-tight">{t.title}</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Delete chat"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteChat(t.id);
+                    }}
+                    className="p-1 opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-opacity"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* ========================================================================= */}
+      {/* MAIN CHAT & INTERACTIVE WORKSPACE */}
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
-        {/* Mobile Header per Prototype Sketch (Top-Right Recent Menu + New Chat) */}
+        {/* Mobile Header (Top-Right Recent Menu + New Chat) */}
         <div className="md:hidden flex items-center justify-between px-3.5 py-2 border-b border-border/50 bg-card/85 backdrop-blur-md shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
             <div className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
@@ -1411,8 +1608,8 @@ function AssistantPage() {
           </div>
         </div>
 
-        {/* Desktop Chat Header per Prototype Sketch (Full Width, Top-Right Recent + New Chat) */}
-        <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-card/70 backdrop-blur-md shrink-0 relative z-20">
+        {/* Desktop Chat Header */}
+        <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-border/70 bg-card shrink-0 relative z-20">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="size-8 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
               <Bot className="size-4.5" />
@@ -1437,7 +1634,7 @@ function AssistantPage() {
                 )}
               </div>
               <p className="text-[10px] text-muted-foreground">
-                Active University Session · Groq LLaMA 3.1 & Whisper
+                Active University Session · Groq LLaMA 3.1 &amp; Whisper
               </p>
             </div>
           </div>
@@ -1455,105 +1652,6 @@ function AssistantPage() {
                 <span>Delete Chat</span>
               </Button>
             )}
-
-            {/* Recent Conversations Popover */}
-            <div className="relative">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowRecentPopover((prev) => !prev)}
-                className={cn(
-                  "h-8 px-2.5 text-xs font-semibold rounded-xl gap-1.5 border-border/80 transition-all",
-                  showRecentPopover ? "bg-secondary text-primary border-primary/40" : "hover:bg-secondary"
-                )}
-              >
-                <History className="size-3.5 text-primary" />
-                <span>Recent</span>
-                {threads.length > 0 && (
-                  <span className="size-4 rounded-full bg-primary/15 text-primary text-[10px] grid place-items-center font-bold">
-                    {threads.length}
-                  </span>
-                )}
-              </Button>
-
-              <AnimatePresence>
-                {showRecentPopover && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                    className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-border/80 bg-card p-3 shadow-2xl z-50 space-y-2 font-sans"
-                  >
-                    <div className="flex items-center justify-between pb-1 border-b border-border/50">
-                      <span className="text-[11px] font-bold text-foreground">Recent Conversations</span>
-                      <span className="text-[10px] text-muted-foreground font-semibold">{threads.length} chats</span>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={threadSearch}
-                        onChange={(e) => setThreadSearch(e.target.value)}
-                        placeholder="Search chats..."
-                        className="w-full h-7 rounded-lg border border-border/70 bg-secondary/30 px-2 pl-6 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary"
-                      />
-                      <Search className="size-3 text-muted-foreground absolute left-1.5 top-2" />
-                    </div>
-                    <div className="max-h-64 overflow-y-auto space-y-1 pr-1 [scrollbar-width:thin]">
-                      {filteredThreads.length === 0 ? (
-                        <p className="py-4 text-xs text-muted-foreground text-center">
-                          {threadSearch ? "No matching conversations." : "No chats yet."}
-                        </p>
-                      ) : (
-                        filteredThreads.map((t: any) => (
-                          <div
-                            key={t.id}
-                            className={cn(
-                              "group flex items-center justify-between gap-1.5 rounded-xl px-2.5 py-2 text-xs transition-all cursor-pointer border",
-                              activeThreadId === t.id
-                                ? "bg-primary/10 border-primary/40 font-semibold text-primary shadow-2xs"
-                                : "border-transparent text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                            )}
-                            onClick={() => {
-                              if (activeThreadId !== t.id) {
-                                handleSelectThread(t.id);
-                                setQuizQuestions(null);
-                                setFlashcards(null);
-                              }
-                              setShowRecentPopover(false);
-                            }}
-                          >
-                            <div className="min-w-0 flex-1 truncate text-left">
-                              <p className="truncate text-xs leading-tight">{t.title}</p>
-                            </div>
-                            <button
-                              type="button"
-                              aria-label="Delete chat"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteChat(t.id);
-                              }}
-                              className="p-1 opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-opacity"
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* New Conversation Button */}
-            <Button
-              size="sm"
-              onClick={createNewChat}
-              className="h-8 px-3 text-xs font-bold rounded-xl gap-1.5 shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all"
-            >
-              <Plus className="size-3.5" />
-              <span>New Conversation</span>
-            </Button>
           </div>
         </div>
 

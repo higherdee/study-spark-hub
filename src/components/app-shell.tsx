@@ -260,11 +260,9 @@ export function AppShell({
       <main
         className={cn(
           "w-full transition-all duration-300",
-          isAssistantPage
-            ? "flex-1 min-h-0 h-full max-h-full overflow-hidden flex flex-col p-0 max-w-none"
-            : isFullScreenAppPage
+          isFullScreenAppPage
             ? cn(
-                "mx-auto max-w-7xl px-2 sm:px-6 lg:px-8 flex-1 min-h-0 overflow-hidden flex flex-col py-0",
+                "mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 flex-1 min-h-0 overflow-hidden flex flex-col py-0",
                 isKeyboardOpen || isScrolledDown || isAssistantScrolledDown
                   ? "pb-0"
                   : "pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-[5.25rem]"
