@@ -37,6 +37,7 @@ import {
   Volume2,
   Ban,
   ShieldAlert,
+  Swords,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "motion/react";
@@ -81,6 +82,9 @@ import { sendDeviceNotification } from "@/lib/notifications";
 import { StudentQrModal } from "@/components/student-qr-modal";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
 import { MobileCustomKeyboard } from "@/components/chat/mobile-custom-keyboard";
+import { HostBattleModal } from "@/components/battle/host-battle-modal";
+import { BattleLobbyCard } from "@/components/battle/battle-lobby-card";
+import { BattleArenaModal } from "@/components/battle/battle-arena-modal";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard/community")({
@@ -182,6 +186,11 @@ export function CommunityPage() {
     title: string;
     course: string;
   } | null>(null);
+
+  // Study Battle States
+  const [isHostBattleOpen, setIsHostBattleOpen] = useState(false);
+  const [activeBattleIdForArena, setActiveBattleIdForArena] = useState<string | null>(null);
+  const [battleArenaRole, setBattleArenaRole] = useState<"fighter" | "spectator">("fighter");
 
   // New Group Form
   const [newGroupName, setNewGroupName] = useState("");
@@ -992,15 +1001,27 @@ export function CommunityPage() {
               {/* Header Actions */}
               <div className="flex items-center gap-1.5">
                 {activeChat.type === "group" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsAddMemberOpen(true)}
-                    className="h-8 rounded-full text-xs font-semibold gap-1 border-primary/40 text-primary hover:bg-primary/10"
-                  >
-                    <UserPlus className="size-3.5" />
-                    <span>Add Member</span>
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsHostBattleOpen(true)}
+                      className="h-8 rounded-full text-xs font-bold gap-1 border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 shadow-xs"
+                    >
+                      <Swords className="size-3.5" />
+                      <span>⚡ Battle</span>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsAddMemberOpen(true)}
+                      className="h-8 rounded-full text-xs font-semibold gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                    >
+                      <UserPlus className="size-3.5" />
+                      <span>Add Member</span>
+                    </Button>
+                  </>
                 )}
 
                 <Button
@@ -1029,6 +1050,29 @@ export function CommunityPage() {
                 </div>
               ) : (
                 chatMessages.map((msg: any) => {
+                  const battleMatch = msg.content?.match(/\[(STUDY_BATTLE|BATTLE_RECEIPT):([a-zA-Z0-9-]+)\]/);
+                  if (battleMatch) {
+                    const battleId = battleMatch[2];
+                    return (
+                      <div key={msg.id} className="w-full flex justify-center my-2.5">
+                        <BattleLobbyCard
+                          battleId={battleId}
+                          groupId={activeChat.id}
+                          currentUserId={user?.id || ""}
+                          currentUserName={profile?.full_name || "Scholar"}
+                          currentUserAvatar={profile?.avatar_url}
+                          onOpenArena={(bId, role) => {
+                            setActiveBattleIdForArena(bId);
+                            setBattleArenaRole(role);
+                          }}
+                          onRunItBack={() => {
+                            setIsHostBattleOpen(true);
+                          }}
+                        />
+                      </div>
+                    );
+                  }
+
                   const isMe = msg.sender_id === user?.id || msg.user_id === user?.id;
                   const senderDisplay = msg.sender_name || msg.user_name || "Scholar";
                   const isBossAi =
@@ -1233,6 +1277,17 @@ export function CommunityPage() {
                     >
                       <Paperclip className="size-4" />
                     </button>
+
+                    {activeChat.type === "group" && (
+                      <button
+                        type="button"
+                        onClick={() => setIsHostBattleOpen(true)}
+                        title="⚡ Host Study Battle / Group Quiz"
+                        className="size-7.5 rounded-full grid place-items-center text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                      >
+                        <Swords className="size-4" />
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -1623,6 +1678,43 @@ export function CommunityPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL: Host Study Battle */}
+      {activeChat?.type === "group" && (
+        <HostBattleModal
+          isOpen={isHostBattleOpen}
+          onClose={() => setIsHostBattleOpen(false)}
+          groupId={activeChat.id}
+          groupTitle={activeChat.title}
+          currentUser={{
+            id: user?.id || "",
+            fullName: profile?.full_name || "Scholar",
+            avatarUrl: profile?.avatar_url,
+            points: profile?.points || 0,
+          }}
+          onBattleCreated={(battleId) => {
+            setActiveBattleIdForArena(battleId);
+            setBattleArenaRole("fighter");
+          }}
+        />
+      )}
+
+      {/* MODAL: Battle Arena & Results */}
+      {activeBattleIdForArena && activeChat?.type === "group" && (
+        <BattleArenaModal
+          isOpen={Boolean(activeBattleIdForArena)}
+          onClose={() => setActiveBattleIdForArena(null)}
+          battleId={activeBattleIdForArena}
+          groupId={activeChat.id}
+          currentUserId={user?.id || ""}
+          currentUserName={profile?.full_name || "Scholar"}
+          userRole={battleArenaRole}
+          onRunItBack={() => {
+            setActiveBattleIdForArena(null);
+            setIsHostBattleOpen(true);
+          }}
+        />
+      )}
     </div>
   );
 }

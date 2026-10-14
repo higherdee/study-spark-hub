@@ -694,4 +694,468 @@ export async function addMemberToStudyGroup(data: {
   return true;
 }
 
+export type GroupMemberWithBalance = {
+  id: string;
+  full_name: string;
+  username: string | null;
+  avatar_url: string | null;
+  points: number;
+};
+
+/**
+ * Fetch all members of a study group with their live points balance
+ */
+export async function getStudyGroupMembersWithBalances(groupId: string): Promise<GroupMemberWithBalance[]> {
+  const rs = await turso.execute({
+    sql: `SELECT p.id, p.full_name, p.username, p.avatar_url, p.points
+          FROM study_group_members sgm
+          JOIN profiles p ON p.id = sgm.user_id
+          WHERE sgm.group_id = ?
+          ORDER BY p.full_name ASC`,
+    args: [groupId],
+  });
+
+  return rs.rows.map((r: any) => ({
+    id: String(r.id),
+    full_name: String(r.full_name || "Student"),
+    username: r.username ? String(r.username) : null,
+    avatar_url: r.avatar_url ? String(r.avatar_url) : null,
+    points: Number(r.points) || 0,
+  }));
+}
+
+export type StudyBattle = {
+  id: string;
+  group_id: string;
+  host_id: string;
+  host_name: string;
+  title: string;
+  mode: "mcq" | "theory";
+  source_summary: string | null;
+  time_per_question: number | null;
+  question_count: number;
+  questions_json: string;
+  stake_amount: number;
+  total_pot: number;
+  status: "lobby" | "active" | "grading" | "completed" | "cancelled";
+  winner_ids_json: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BattleParticipant = {
+  id: string;
+  battle_id: string;
+  user_id: string;
+  user_name: string;
+  avatar_url: string | null;
+  role: "fighter" | "spectator";
+  status: "invited" | "joined" | "submitted" | "declined";
+  stake_paid: number;
+  sponsored_by: string | null;
+  score: number;
+  answers_json: string | null;
+  submitted_at: string | null;
+  created_at: string;
+};
+
+/**
+ * Creates a new Study Battle and initializes participants
+ */
+export async function createStudyBattleRecord(data: {
+  id: string;
+  groupId: string;
+  hostId: string;
+  hostName: string;
+  hostAvatar?: string | null;
+  title: string;
+  mode: "mcq" | "theory";
+  sourceSummary?: string;
+  timePerQuestion?: number | null;
+  questionCount: number;
+  questionsJson: string;
+  stakeAmount: number;
+  fighterIds: string[];
+  sponsoredIds?: string[];
+}): Promise<StudyBattle> {
+  const now = new Date().toISOString();
+  const initialPot = data.stakeAmount; // Host's stake
+
+  // Prepare batch statements
+  const batchStatements: any[] = [
+    {
+      sql: `INSERT INTO study_battles (
+              id, group_id, host_id, host_name, title, mode, source_summary,
+              time_per_question, question_count, questions_json, stake_amount,
+              total_pot, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lobby', ?, ?)`,
+      args: [
+        data.id,
+        data.groupId,
+        data.hostId,
+        data.hostName,
+        data.title,
+        data.mode,
+        data.sourceSummary || null,
+        data.timePerQuestion || null,
+        data.questionCount,
+        data.questionsJson,
+        data.stakeAmount,
+        initialPot,
+        now,
+        now,
+      ],
+    },
+  ];
+
+  // If stake > 0, deduct from host's balance
+  if (data.stakeAmount > 0) {
+    batchStatements.push({
+      sql: `UPDATE profiles SET points = MAX(0, points - ?) WHERE id = ?`,
+      args: [data.stakeAmount, data.hostId],
+    });
+  }
+
+  // Add host as joined fighter
+  batchStatements.push({
+    sql: `INSERT INTO battle_participants (
+            id, battle_id, user_id, user_name, avatar_url, role, status, stake_paid, created_at
+          ) VALUES (?, ?, ?, ?, ?, 'fighter', 'joined', ?, ?)`,
+    args: [
+      crypto.randomUUID(),
+      data.id,
+      data.hostId,
+      data.hostName,
+      data.hostAvatar || null,
+      data.stakeAmount,
+      now,
+    ],
+  });
+
+  // Query member names for invited fighters
+  for (const fId of data.fighterIds) {
+    if (fId === data.hostId) continue;
+    const isSponsored = data.sponsoredIds?.includes(fId);
+    batchStatements.push({
+      sql: `INSERT INTO battle_participants (
+              id, battle_id, user_id, user_name, avatar_url, role, status, stake_paid, sponsored_by, created_at
+            ) SELECT ?, ?, p.id, p.full_name, p.avatar_url, 'fighter', ?, ?, ?, ?
+              FROM profiles p WHERE p.id = ?`,
+      args: [
+        crypto.randomUUID(),
+        data.id,
+        isSponsored ? "joined" : "invited",
+        isSponsored ? data.stakeAmount : 0,
+        isSponsored ? data.hostId : null,
+        now,
+        fId,
+      ],
+    });
+
+    if (isSponsored && data.stakeAmount > 0) {
+      // Deduct sponsored stake from host
+      batchStatements.push({
+        sql: `UPDATE profiles SET points = MAX(0, points - ?) WHERE id = ?`,
+        args: [data.stakeAmount, data.hostId],
+      });
+      batchStatements.push({
+        sql: `UPDATE study_battles SET total_pot = total_pot + ? WHERE id = ?`,
+        args: [data.stakeAmount, data.id],
+      });
+    }
+  }
+
+  await turso.batch(batchStatements);
+
+  return {
+    id: data.id,
+    group_id: data.groupId,
+    host_id: data.hostId,
+    host_name: data.hostName,
+    title: data.title,
+    mode: data.mode,
+    source_summary: data.sourceSummary || null,
+    time_per_question: data.timePerQuestion || null,
+    question_count: data.questionCount,
+    questions_json: data.questionsJson,
+    stake_amount: data.stakeAmount,
+    total_pot: initialPot + (data.sponsoredIds?.length || 0) * data.stakeAmount,
+    status: "lobby",
+    winner_ids_json: null,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+/**
+ * Fetch battle details
+ */
+export async function getStudyBattle(battleId: string): Promise<StudyBattle | null> {
+  const rs = await turso.execute({
+    sql: `SELECT * FROM study_battles WHERE id = ? LIMIT 1`,
+    args: [battleId],
+  });
+  if (rs.rows.length === 0) return null;
+  const r: any = rs.rows[0];
+  return {
+    id: String(r.id),
+    group_id: String(r.group_id),
+    host_id: String(r.host_id),
+    host_name: String(r.host_name),
+    title: String(r.title),
+    mode: r.mode as "mcq" | "theory",
+    source_summary: r.source_summary ? String(r.source_summary) : null,
+    time_per_question: r.time_per_question ? Number(r.time_per_question) : null,
+    question_count: Number(r.question_count) || 5,
+    questions_json: String(r.questions_json),
+    stake_amount: Number(r.stake_amount) || 0,
+    total_pot: Number(r.total_pot) || 0,
+    status: r.status as any,
+    winner_ids_json: r.winner_ids_json ? String(r.winner_ids_json) : null,
+    created_at: String(r.created_at),
+    updated_at: String(r.updated_at),
+  };
+}
+
+/**
+ * Fetch battle participants
+ */
+export async function getBattleParticipants(battleId: string): Promise<BattleParticipant[]> {
+  const rs = await turso.execute({
+    sql: `SELECT * FROM battle_participants WHERE battle_id = ? ORDER BY created_at ASC`,
+    args: [battleId],
+  });
+
+  return rs.rows.map((r: any) => ({
+    id: String(r.id),
+    battle_id: String(r.battle_id),
+    user_id: String(r.user_id),
+    user_name: String(r.user_name),
+    avatar_url: r.avatar_url ? String(r.avatar_url) : null,
+    role: r.role as "fighter" | "spectator",
+    status: r.status as "invited" | "joined" | "submitted" | "declined",
+    stake_paid: Number(r.stake_paid) || 0,
+    sponsored_by: r.sponsored_by ? String(r.sponsored_by) : null,
+    score: Number(r.score) || 0,
+    answers_json: r.answers_json ? String(r.answers_json) : null,
+    submitted_at: r.submitted_at ? String(r.submitted_at) : null,
+    created_at: String(r.created_at),
+  }));
+}
+
+/**
+ * Atomically locks stake into escrow and joins the battle
+ */
+export async function joinBattleEscrowRecord(data: {
+  battleId: string;
+  userId: string;
+  userName: string;
+  avatarUrl?: string | null;
+  role?: "fighter" | "spectator";
+}): Promise<{ success: boolean; error?: string }> {
+  // 1. Fetch battle details to verify stake amount and status
+  const battle = await getStudyBattle(data.battleId);
+  if (!battle) return { success: false, error: "Battle not found" };
+  if (battle.status !== "lobby" && battle.status !== "active") {
+    return { success: false, error: "Battle is no longer accepting participants" };
+  }
+
+  const isFighter = (data.role || "fighter") === "fighter";
+
+  // Check if participant row already exists
+  const existingRs = await turso.execute({
+    sql: `SELECT id, status, stake_paid, role FROM battle_participants WHERE battle_id = ? AND user_id = ? LIMIT 1`,
+    args: [data.battleId, data.userId],
+  });
+  const existing = existingRs.rows[0] as any;
+
+  if (isFighter && battle.stake_amount > 0 && (!existing || existing.stake_paid < battle.stake_amount)) {
+    // Check user points balance
+    const userRes = await turso.execute({
+      sql: `SELECT points FROM profiles WHERE id = ? LIMIT 1`,
+      args: [data.userId],
+    });
+    const currentPoints = Number(userRes.rows[0]?.points) || 0;
+    if (currentPoints < battle.stake_amount) {
+      return {
+        success: false,
+        error: `Insufficient points. You have ${currentPoints} pts, but this battle requires ${battle.stake_amount} pts.`,
+      };
+    }
+
+    const batchStatements: any[] = [
+      {
+        sql: `UPDATE profiles SET points = points - ? WHERE id = ?`,
+        args: [battle.stake_amount, data.userId],
+      },
+      {
+        sql: `UPDATE study_battles SET total_pot = total_pot + ? WHERE id = ?`,
+        args: [battle.stake_amount, data.battleId],
+      },
+    ];
+
+    if (existing) {
+      batchStatements.push({
+        sql: `UPDATE battle_participants SET status = 'joined', stake_paid = ?, role = 'fighter' WHERE id = ?`,
+        args: [battle.stake_amount, existing.id],
+      });
+    } else {
+      batchStatements.push({
+        sql: `INSERT INTO battle_participants (
+                id, battle_id, user_id, user_name, avatar_url, role, status, stake_paid, created_at
+              ) VALUES (?, ?, ?, ?, ?, 'fighter', 'joined', ?, datetime('now'))`,
+        args: [
+          crypto.randomUUID(),
+          data.battleId,
+          data.userId,
+          data.userName,
+          data.avatarUrl || null,
+          battle.stake_amount,
+        ],
+      });
+    }
+
+    await turso.batch(batchStatements);
+  } else {
+    // Free or spectator join, or already paid
+    if (existing) {
+      await turso.execute({
+        sql: `UPDATE battle_participants SET status = 'joined', role = ? WHERE id = ?`,
+        args: [data.role || existing.role || "fighter", existing.id],
+      });
+    } else {
+      await turso.execute({
+        sql: `INSERT INTO battle_participants (
+                id, battle_id, user_id, user_name, avatar_url, role, status, stake_paid, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, 'joined', 0, datetime('now'))`,
+        args: [
+          crypto.randomUUID(),
+          data.battleId,
+          data.userId,
+          data.userName,
+          data.avatarUrl || null,
+          data.role || "spectator",
+        ],
+      });
+    }
+  }
+
+  return { success: true };
+}
+
+/**
+ * Decline battle participation
+ */
+export async function declineBattleRecord(data: {
+  battleId: string;
+  userId: string;
+}): Promise<boolean> {
+  await turso.execute({
+    sql: `UPDATE battle_participants SET status = 'declined' WHERE battle_id = ? AND user_id = ?`,
+    args: [data.battleId, data.userId],
+  });
+  return true;
+}
+
+/**
+ * Submit participant's answers and score
+ */
+export async function submitBattleAnswersRecord(data: {
+  battleId: string;
+  userId: string;
+  score: number;
+  answersJson: string;
+}): Promise<{ allSubmitted: boolean; participantCount: number; submittedCount: number }> {
+  // Update participant status and score
+  await turso.execute({
+    sql: `UPDATE battle_participants 
+          SET status = 'submitted', score = ?, answers_json = ?, submitted_at = datetime('now')
+          WHERE battle_id = ? AND user_id = ?`,
+    args: [data.score, data.answersJson, data.battleId, data.userId],
+  });
+
+  // Check if all joined fighters have submitted
+  const rs = await turso.execute({
+    sql: `SELECT 
+            COUNT(CASE WHEN role = 'fighter' AND status IN ('joined', 'submitted') THEN 1 END) as total_fighters,
+            COUNT(CASE WHEN role = 'fighter' AND status = 'submitted' THEN 1 END) as submitted_fighters
+          FROM battle_participants 
+          WHERE battle_id = ?`,
+    args: [data.battleId],
+  });
+
+  const totalFighters = Number(rs.rows[0]?.total_fighters) || 0;
+  const submittedFighters = Number(rs.rows[0]?.submitted_fighters) || 0;
+  const allSubmitted = totalFighters > 0 && submittedFighters >= totalFighters;
+
+  if (allSubmitted) {
+    await turso.execute({
+      sql: `UPDATE study_battles SET status = 'grading' WHERE id = ? AND status != 'completed'`,
+      args: [data.battleId],
+    });
+  }
+
+  return {
+    allSubmitted,
+    participantCount: totalFighters,
+    submittedCount: submittedFighters,
+  };
+}
+
+/**
+ * Conclude battle: award pot points to winner(s), mark battle completed
+ */
+export async function concludeBattleRecord(data: {
+  battleId: string;
+  winners: Array<{ userId: string; score: number }>;
+}): Promise<{ success: boolean; potDistributed: number }> {
+  const battle = await getStudyBattle(data.battleId);
+  if (!battle) return { success: false, potDistributed: 0 };
+
+  const pot = battle.total_pot;
+  const batchStatements: any[] = [];
+  const winnerIds = data.winners.map((w) => w.userId);
+
+  if (pot > 0 && winnerIds.length > 0) {
+    const pointsPerWinner = Math.floor(pot / winnerIds.length);
+    for (const wId of winnerIds) {
+      batchStatements.push({
+        sql: `UPDATE profiles SET points = points + ? WHERE id = ?`,
+        args: [pointsPerWinner, wId],
+      });
+    }
+  }
+
+  batchStatements.push({
+    sql: `UPDATE study_battles 
+          SET status = 'completed', winner_ids_json = ?, updated_at = datetime('now')
+          WHERE id = ?`,
+    args: [JSON.stringify(winnerIds), data.battleId],
+  });
+
+  if (batchStatements.length > 0) {
+    await turso.batch(batchStatements);
+  }
+
+  return { success: true, potDistributed: pot };
+}
+
+/**
+ * Get unsubmitted slowpokes for nudging
+ */
+export async function getSlowpokesRecord(battleId: string): Promise<Array<{ userId: string; userName: string }>> {
+  const rs = await turso.execute({
+    sql: `SELECT user_id, user_name 
+          FROM battle_participants 
+          WHERE battle_id = ? AND role = 'fighter' AND status IN ('invited', 'joined')`,
+    args: [battleId],
+  });
+
+  return rs.rows.map((r: any) => ({
+    userId: String(r.user_id),
+    userName: String(r.user_name),
+  }));
+}
+
+
 
