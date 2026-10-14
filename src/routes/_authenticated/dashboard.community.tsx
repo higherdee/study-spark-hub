@@ -555,7 +555,7 @@ export function CommunityPage() {
               const aiMsg = await sendGroupMessageServerFn({
                 data: {
                   groupId: activeChat.id,
-                  userId: "system",
+                  userId: "boss-ai",
                   userName: "Boss AI",
                   userInstitution: "Campus AI Intelligence",
                   content: aiFormattedText,
@@ -567,7 +567,8 @@ export function CommunityPage() {
             await refetchActiveMessages();
             toast.success("Boss AI replied to the discussion!", { id: "ai-peer-reply" });
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error("Boss AI reply error:", err);
             toast.error("Boss AI could not reply at this time.", { id: "ai-peer-reply" });
           });
       }
@@ -1162,7 +1163,39 @@ export function CommunityPage() {
             )}
 
             {/* Bottom Composer Capsule */}
-            <div className="p-2.5 border-t border-border/70 bg-card shrink-0">
+            <div className="p-2.5 border-t border-border/70 bg-card shrink-0 relative">
+              {/* Mention Suggestion Popup */}
+              {(() => {
+                const match = messageInput.match(/@(\w*)$/);
+                const query = match?.[1]?.toLowerCase() ?? "";
+                const showSuggestion =
+                  match !== null &&
+                  ("bossai".startsWith(query) ||
+                    query === "" ||
+                    "boss".startsWith(query) ||
+                    "ai".startsWith(query));
+                if (!showSuggestion) return null;
+                return (
+                  <div className="absolute bottom-full left-3 mb-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = messageInput.replace(/@\w*$/, "@BossAI ");
+                        setMessageInput(next);
+                        composerTextareaRef.current?.focus();
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-primary/40 shadow-xl text-foreground text-xs font-semibold hover:border-primary hover:bg-primary/5 active:scale-95 transition-all"
+                    >
+                      <div className="size-5 rounded-lg bg-primary text-primary-foreground grid place-items-center">
+                        <Bot className="size-3" />
+                      </div>
+                      <span className="font-bold text-primary">@BossAI</span>
+                      <span className="text-[10px] text-muted-foreground">· Summon AI Study Assistant</span>
+                    </button>
+                  </div>
+                );
+              })()}
+
               <div className="rounded-2xl border border-border/80 bg-secondary/30 p-2 shadow-xs flex flex-col gap-1 focus-within:border-primary/50 focus-within:bg-card">
                 <textarea
                   ref={composerTextareaRef}

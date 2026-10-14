@@ -19,6 +19,7 @@ import {
   Check,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   GraduationCap,
   Mic,
   Volume2,
@@ -208,8 +209,23 @@ function AssistantPage() {
   // Floating scroll-to-bottom state
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
-  // Drop-up menu for study tools
+  // Drop-up menu for study tools & documents
   const [showDropUpMenu, setShowDropUpMenu] = useState(false);
+  const [showDocMenu, setShowDocMenu] = useState(false);
+  const [showModesMenu, setShowModesMenu] = useState(false);
+  const [showRecentPopover, setShowRecentPopover] = useState(false);
+
+  // Mention autocomplete popup when user types @
+  const showAssistantMention = useMemo(() => {
+    const match = input.match(/@(\w*)$/);
+    return (
+      match !== null &&
+      ("bossai".startsWith(match[1].toLowerCase()) ||
+        match[1] === "" ||
+        "boss".startsWith(match[1].toLowerCase()) ||
+        "ai".startsWith(match[1].toLowerCase()))
+    );
+  }, [input]);
 
   // Text-to-speech audio state
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
@@ -369,25 +385,20 @@ function AssistantPage() {
   useEffect(() => {
     if (!threads || threads.length === 0) return;
 
-    // 1. If searchThreadId in URL is valid, ensure activeThreadId matches
-    if (searchThreadId && threads.some((t: any) => t.id === searchThreadId)) {
-      if (activeThreadId !== searchThreadId) {
-        setActiveThreadId(searchThreadId);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("syllaboss_active_chat_thread", searchThreadId);
-        }
-      }
-      return;
-    }
-
-    // 2. If activeThreadId is already set and valid in threads, ensure URL has it
-    if (activeThreadId && threads.some((t: any) => t.id === activeThreadId)) {
+    // 1. If activeThreadId is already set, ensure URL is synced and DO NOT overwrite activeThreadId
+    if (activeThreadId) {
       if (searchThreadId !== activeThreadId) {
         navigate({
           search: (prev: any) => ({ ...prev, threadId: activeThreadId }),
           replace: true,
         });
       }
+      return;
+    }
+
+    // 2. If activeThreadId is not set, check searchThreadId from URL
+    if (searchThreadId && threads.some((t: any) => t.id === searchThreadId)) {
+      handleSelectThread(searchThreadId);
       return;
     }
 
@@ -402,7 +413,7 @@ function AssistantPage() {
     }
 
     // 4. Default to first (most recent) thread
-    if (!activeThreadId && threads.length > 0) {
+    if (threads.length > 0) {
       handleSelectThread(threads[0].id);
     }
   }, [threads, searchThreadId, activeThreadId]);
@@ -699,12 +710,16 @@ function AssistantPage() {
   async function createNewChat() {
     if (!user) return null;
     try {
+      setShowRecentPopover(false);
+      setShowMenuDrawer(false);
       const newThread = await createStudyThreadServerFn({
         data: {
           userId: user.id,
           title: "New Conversation",
         },
       });
+      // Optimistically add to TanStack Query cache so thread is immediately recognized
+      qc.setQueryData(["chat-threads", user?.id], (old: any) => [newThread, ...(old || [])]);
       handleSelectThread(newThread.id);
       setMessages([]);
       setQuizQuestions(null);
@@ -925,11 +940,21 @@ function AssistantPage() {
 
     // 3. Fallback topic match using "on", "about", "for", "regarding", "in"
     if (!topic) {
-      const topicMatch = text.match(/(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._\-\(\)]{3,60})/i);
+      const topicMatch = text.match(/(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._\-\(\)]{2,60})/i);
       if (topicMatch && topicMatch[1]) {
         const candidate = topicMatch[1].trim().replace(/\s+(please|now|thanks).*$/i, "").replace(/[\.\?!]+$/, "");
         if (candidate.length > 1) topic = candidate;
       }
+    }
+
+    // If candidate topic is a demonstrative or referential pronoun, discard it so we resolve to active discussion
+    if (
+      topic &&
+      /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
+        topic.trim()
+      )
+    ) {
+      topic = undefined;
     }
 
     // Flashcards intent
@@ -1057,6 +1082,8 @@ function AssistantPage() {
   ) {
     setIsMcqConfigOpen(false);
     setShowDropUpMenu(false);
+    setShowModesMenu(false);
+    setShowDocMenu(false);
     setThinking(true);
 
     const countToUse = countOverride || mcqCount;
@@ -1070,8 +1097,32 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = topicOverride || activeDocContext?.title || "University Examination Material";
-      const sample = activeDocContext?.text || `Curriculum topics and past exam questions on ${title}.`;
+      const isDemonstrative =
+        !topicOverride ||
+        /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
+          topicOverride.trim()
+        );
+
+      const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
+      const specificThreadTitle =
+        activeThreadObj?.title &&
+        !/^(new (study )?conversation|untitled|chat|new chat)$/i.test(activeThreadObj.title.trim())
+          ? activeThreadObj.title.trim()
+          : undefined;
+
+      const title = !isDemonstrative
+        ? topicOverride!.trim()
+        : activeDocContext?.title || specificThreadTitle || "University Examination Material";
+
+      // Include recent conversation transcript in context so AI has the exact topic and formulas discussed
+      const recentChatContext = messages
+        .slice(-6)
+        .map((m) => `${m.role === "assistant" ? "Boss AI" : "Student"}: ${m.content.slice(0, 800)}`)
+        .join("\n\n");
+
+      const sample = activeDocContext?.text
+        ? `${activeDocContext.text.slice(0, 3000)}\n\nRecent Discussion:\n${recentChatContext.slice(0, 1500)}`
+        : recentChatContext || `Curriculum topics and past exam questions on ${title}.`;
 
       const res = await generateStudyQuizServerFn({
         data: {
@@ -1118,6 +1169,8 @@ function AssistantPage() {
   ) {
     setIsTheoryConfigOpen(false);
     setShowDropUpMenu(false);
+    setShowModesMenu(false);
+    setShowDocMenu(false);
     setThinking(true);
 
     const countToUse = countOverride || theoryCount;
@@ -1131,8 +1184,32 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = topicOverride || activeDocContext?.title || "University Examination Material";
-      const sample = activeDocContext?.text || `University semester exam preparation concepts on ${title}.`;
+      const isDemonstrative =
+        !topicOverride ||
+        /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
+          topicOverride.trim()
+        );
+
+      const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
+      const specificThreadTitle =
+        activeThreadObj?.title &&
+        !/^(new (study )?conversation|untitled|chat|new chat)$/i.test(activeThreadObj.title.trim())
+          ? activeThreadObj.title.trim()
+          : undefined;
+
+      const title = !isDemonstrative
+        ? topicOverride!.trim()
+        : activeDocContext?.title || specificThreadTitle || "University Examination Material";
+
+      // Include recent conversation transcript in context so AI has the exact topic and formulas discussed
+      const recentChatContext = messages
+        .slice(-6)
+        .map((m) => `${m.role === "assistant" ? "Boss AI" : "Student"}: ${m.content.slice(0, 800)}`)
+        .join("\n\n");
+
+      const sample = activeDocContext?.text
+        ? `${activeDocContext.text.slice(0, 3000)}\n\nRecent Discussion:\n${recentChatContext.slice(0, 1500)}`
+        : recentChatContext || `University semester exam preparation concepts on ${title}.`;
 
       const res = await generateStudyQuizServerFn({
         data: {
@@ -1179,6 +1256,8 @@ function AssistantPage() {
   ) {
     setIsFlashcardConfigOpen(false);
     setShowDropUpMenu(false);
+    setShowModesMenu(false);
+    setShowDocMenu(false);
     setThinking(true);
 
     const countToUse = countOverride || flashcardCount;
@@ -1192,8 +1271,31 @@ function AssistantPage() {
         if (!targetThreadId) return;
       }
 
-      const title = topicOverride || activeDocContext?.title || "University Examination Material";
-      const sample = activeDocContext?.text || `Key definitions, core theorems, and mnemonics for ${title}.`;
+      const isDemonstrative =
+        !topicOverride ||
+        /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
+          topicOverride.trim()
+        );
+
+      const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
+      const specificThreadTitle =
+        activeThreadObj?.title &&
+        !/^(new (study )?conversation|untitled|chat|new chat)$/i.test(activeThreadObj.title.trim())
+          ? activeThreadObj.title.trim()
+          : undefined;
+
+      const title = !isDemonstrative
+        ? topicOverride!.trim()
+        : activeDocContext?.title || specificThreadTitle || "University Examination Material";
+
+      const recentChatContext = messages
+        .slice(-6)
+        .map((m) => `${m.role === "assistant" ? "Boss AI" : "Student"}: ${m.content.slice(0, 800)}`)
+        .join("\n\n");
+
+      const sample = activeDocContext?.text
+        ? `${activeDocContext.text.slice(0, 3000)}\n\nRecent Discussion:\n${recentChatContext.slice(0, 1500)}`
+        : recentChatContext || `Key definitions, core theorems, and mnemonics for ${title}.`;
 
       const res = await generateStudyFlashcardsServerFn({
         data: {
@@ -1268,272 +1370,189 @@ function AssistantPage() {
       />
 
       {/* ========================================================================= */}
-      {/* DESKTOP SIDEBAR: Conversations, Attached Document, & Study Tools */}
-      {/* ========================================================================= */}
-      <aside className="hidden md:flex w-72 lg:w-80 flex-col border-r border-border/70 bg-card/40 shrink-0 overflow-hidden">
-        {/* New Chat Button */}
-        <div className="p-3 border-b border-border/70">
-          <Button
-            onClick={createNewChat}
-            className="w-full justify-start gap-2 rounded-xl font-bold text-xs h-9 shadow-xs"
-          >
-            <MessageSquarePlus className="size-4" /> Start New Conversation
-          </Button>
-        </div>
-
-        {/* Active Study Document Section */}
-        <div className="p-3 border-b border-border/70 space-y-2 bg-secondary/15">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Study Document
-            </span>
-            {activeDocContext && (
-              <button
-                type="button"
-                onClick={() => setActiveDocContext(null)}
-                className="text-[10px] font-semibold text-destructive hover:underline"
-              >
-                Detach
-              </button>
-            )}
-          </div>
-
-          {activeDocContext ? (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-xs space-y-0.5">
-              <p className="font-bold text-primary truncate">{activeDocContext.title}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{activeDocContext.course}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsLibraryModalOpen(true)}
-                className="rounded-xl text-[11px] font-semibold h-8 border-border/80 hover:bg-primary/10 hover:text-primary"
-              >
-                <BookOpen className="size-3.5 mr-1 text-primary" /> Library
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="rounded-xl text-[11px] font-semibold h-8 border-border/80 hover:bg-primary/10 hover:text-primary"
-              >
-                <Upload className="size-3.5 mr-1 text-primary" /> Upload
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Study Tools Quick Triggers */}
-        <div className="p-3 border-b border-border/70 space-y-1.5 bg-secondary/10">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-            Study Modes &amp; Tools
-          </span>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("mcq")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-primary/10 text-primary grid place-items-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors shrink-0">
-              <CheckCircle2 className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">MCQ Practice Quiz</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">Customizable questions on your topic</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("theory")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-emerald-500/10 hover:text-emerald-600 transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-emerald-500/10 text-emerald-600 grid place-items-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
-              <FileText className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">Theory Test &amp; Marking</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">Exam questions &amp; rubric marking</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("flashcards")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-indigo-500/10 hover:text-indigo-600 transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-indigo-500/10 text-indigo-500 grid place-items-center group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
-              <Layers className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">3D Flashcards</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">Physical flip cards with KaTeX</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("assignment")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-amber-500/10 hover:text-amber-600 transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-amber-500/10 text-amber-500 grid place-items-center group-hover:bg-amber-600 group-hover:text-white transition-colors shrink-0">
-              <GraduationCap className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">Assignment Helper</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">Step-by-step academic breakdown</p>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => prepareStudyPrompt("summary")}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-rose-500/10 hover:text-rose-600 transition-all group"
-          >
-            <span className="size-6 rounded-lg bg-rose-500/10 text-rose-500 grid place-items-center group-hover:bg-rose-600 group-hover:text-white transition-colors shrink-0">
-              <Sparkles className="size-3.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="leading-tight font-semibold">Summarize Material</p>
-              <p className="text-[10px] text-muted-foreground font-normal truncate">High-yield revision notes</p>
-            </div>
-          </button>
-        </div>
-
-        {/* Recent Chats list */}
-        <div className="p-3 flex-1 min-h-0 flex flex-col space-y-2 overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Recent Conversations ({threads.length})
-            </span>
-          </div>
-
-          {threads.length > 4 && (
-            <div className="relative">
-              <input
-                type="text"
-                value={threadSearch}
-                onChange={(e) => setThreadSearch(e.target.value)}
-                placeholder="Search chats..."
-                className="w-full h-7 rounded-lg border border-border/70 bg-secondary/30 px-2 pl-6 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary"
-              />
-              <Search className="size-3 text-muted-foreground absolute left-1.5 top-2" />
-            </div>
-          )}
-
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1 [scrollbar-width:thin]">
-            {filteredThreads.length === 0 ? (
-              <p className="py-4 text-xs text-muted-foreground text-center">
-                {threadSearch ? "No matching conversations." : "No chats yet."}
-              </p>
-            ) : (
-              filteredThreads.map((t: any) => (
-                <div
-                  key={t.id}
-                  className={cn(
-                    "group flex items-center justify-between gap-1.5 rounded-xl px-2.5 py-2 text-xs transition-all cursor-pointer border",
-                    activeThreadId === t.id
-                      ? "bg-primary/10 border-primary/40 font-semibold text-primary shadow-2xs"
-                      : "border-transparent text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                  )}
-                  onClick={() => {
-                    if (activeThreadId !== t.id) {
-                      handleSelectThread(t.id);
-                      setQuizQuestions(null);
-                      setFlashcards(null);
-                    }
-                  }}
-                >
-                  <div className="min-w-0 flex-1 truncate text-left">
-                    <p className="truncate text-xs leading-tight">{t.title}</p>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label="Delete chat"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteChat(t.id);
-                    }}
-                    className="p-1 opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-opacity"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </aside>
-
-      {/* ========================================================================= */}
-      {/* MAIN CHAT & INTERACTIVE WORKSPACE */}
+      {/* MAIN CHAT & INTERACTIVE WORKSPACE (FULL WIDTH PER SKETCHES) */}
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
-        {/* Mobile Floating Dynamic Islands (Demarcation removed, Boss AI title removed) */}
-        <div className="md:hidden absolute top-3 inset-x-3.5 z-30 flex items-center justify-between pointer-events-none">
-          {/* Island 1: Recent Chats */}
-          <button
-            type="button"
-            onClick={() => setShowMenuDrawer(true)}
-            className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card/90 border border-border/70 text-foreground text-xs font-semibold shadow-md backdrop-blur-md hover:bg-card active:scale-95 transition-all"
-          >
-            <History className="size-3.5 text-primary" />
-            <span>Recent Chats</span>
-            {threads.length > 0 && (
-              <span className="size-4 rounded-full bg-primary/20 text-primary text-[10px] grid place-items-center font-bold">
-                {threads.length}
-              </span>
-            )}
-          </button>
+        {/* Mobile Header per Prototype Sketch (Top-Right Recent Menu + New Chat) */}
+        <div className="md:hidden flex items-center justify-between px-3.5 py-2 border-b border-border/50 bg-card/85 backdrop-blur-md shrink-0 z-20">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+              <Bot className="size-3.5" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xs font-bold text-foreground truncate">
+                {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI"}
+              </h2>
+            </div>
+          </div>
 
-          {/* Island 2: Start New Conversation (+) */}
-          <button
-            type="button"
-            onClick={() => createNewChat()}
-            className="pointer-events-auto size-8.5 rounded-full grid place-items-center bg-primary text-primary-foreground shadow-md hover:bg-primary/90 active:scale-95 transition-all"
-            title="Start New Conversation"
-          >
-            <Plus className="size-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowMenuDrawer(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-secondary text-foreground text-xs font-semibold border border-border/60 hover:bg-secondary/80 active:scale-95 transition-all"
+            >
+              <History className="size-3.5 text-primary" />
+              <span>Recent</span>
+              {threads.length > 0 && (
+                <span className="size-4 rounded-full bg-primary/20 text-primary text-[10px] grid place-items-center font-bold">
+                  {threads.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => createNewChat()}
+              className="size-7.5 rounded-full grid place-items-center bg-primary text-primary-foreground shadow-xs active:scale-95 transition-all"
+              title="New Chat"
+            >
+              <Plus className="size-3.5" />
+            </button>
+          </div>
         </div>
 
-        {/* Desktop Chat Header */}
-        <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-card/70 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-xl bg-primary/10 text-primary grid place-items-center">
+        {/* Desktop Chat Header per Prototype Sketch (Full Width, Top-Right Recent + New Chat) */}
+        <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-card/70 backdrop-blur-md shrink-0 relative z-20">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="size-8 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
               <Bot className="size-4.5" />
             </div>
-            <div>
-              <h2 className="text-xs font-bold text-foreground">
-                {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI Study Copilot"}
-              </h2>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-bold text-foreground truncate">
+                  {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI Study Copilot"}
+                </h2>
+                {activeDocContext && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/25 text-primary text-[10px] font-semibold shrink-0">
+                    <BookOpen className="size-3" />
+                    <span className="max-w-[160px] truncate">{activeDocContext.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDocContext(null)}
+                      className="text-muted-foreground hover:text-destructive ml-0.5"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
               <p className="text-[10px] text-muted-foreground">
-                {activeDocContext ? activeDocContext.title : "Active University Session · Groq LLaMA 3.1 & Whisper"}
+                Active University Session · Groq LLaMA 3.1 & Whisper
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {activeThreadId && (
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => deleteChat(activeThreadId)}
-                className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive gap-1"
+                className="h-8 px-2 text-[11px] text-muted-foreground hover:text-destructive gap-1"
                 title="Delete this conversation"
               >
-                <Trash2 className="size-3" />
+                <Trash2 className="size-3.5" />
                 <span>Delete Chat</span>
               </Button>
             )}
 
+            {/* Recent Conversations Popover */}
+            <div className="relative">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowRecentPopover((prev) => !prev)}
+                className={cn(
+                  "h-8 px-2.5 text-xs font-semibold rounded-xl gap-1.5 border-border/80 transition-all",
+                  showRecentPopover ? "bg-secondary text-primary border-primary/40" : "hover:bg-secondary"
+                )}
+              >
+                <History className="size-3.5 text-primary" />
+                <span>Recent</span>
+                {threads.length > 0 && (
+                  <span className="size-4 rounded-full bg-primary/15 text-primary text-[10px] grid place-items-center font-bold">
+                    {threads.length}
+                  </span>
+                )}
+              </Button>
+
+              <AnimatePresence>
+                {showRecentPopover && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                    className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-border/80 bg-card p-3 shadow-2xl z-50 space-y-2 font-sans"
+                  >
+                    <div className="flex items-center justify-between pb-1 border-b border-border/50">
+                      <span className="text-[11px] font-bold text-foreground">Recent Conversations</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">{threads.length} chats</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={threadSearch}
+                        onChange={(e) => setThreadSearch(e.target.value)}
+                        placeholder="Search chats..."
+                        className="w-full h-7 rounded-lg border border-border/70 bg-secondary/30 px-2 pl-6 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary"
+                      />
+                      <Search className="size-3 text-muted-foreground absolute left-1.5 top-2" />
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-1 pr-1 [scrollbar-width:thin]">
+                      {filteredThreads.length === 0 ? (
+                        <p className="py-4 text-xs text-muted-foreground text-center">
+                          {threadSearch ? "No matching conversations." : "No chats yet."}
+                        </p>
+                      ) : (
+                        filteredThreads.map((t: any) => (
+                          <div
+                            key={t.id}
+                            className={cn(
+                              "group flex items-center justify-between gap-1.5 rounded-xl px-2.5 py-2 text-xs transition-all cursor-pointer border",
+                              activeThreadId === t.id
+                                ? "bg-primary/10 border-primary/40 font-semibold text-primary shadow-2xs"
+                                : "border-transparent text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                            )}
+                            onClick={() => {
+                              if (activeThreadId !== t.id) {
+                                handleSelectThread(t.id);
+                                setQuizQuestions(null);
+                                setFlashcards(null);
+                              }
+                              setShowRecentPopover(false);
+                            }}
+                          >
+                            <div className="min-w-0 flex-1 truncate text-left">
+                              <p className="truncate text-xs leading-tight">{t.title}</p>
+                            </div>
+                            <button
+                              type="button"
+                              aria-label="Delete chat"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteChat(t.id);
+                              }}
+                              className="p-1 opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-opacity"
+                            >
+                              <Trash2 className="size-3" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* New Conversation Button */}
             <Button
               size="sm"
-              variant="outline"
               onClick={createNewChat}
-              className="h-7 px-2.5 text-xs font-semibold rounded-lg gap-1 border-border/80 hover:bg-primary/10 hover:text-primary"
+              className="h-8 px-3 text-xs font-bold rounded-xl gap-1.5 shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all"
             >
               <Plus className="size-3.5" />
-              <span>New Chat</span>
+              <span>New Conversation</span>
             </Button>
           </div>
         </div>
@@ -1774,109 +1793,189 @@ function AssistantPage() {
               : "mb-0"
           )}
         >
-          {/* Drop-up Menu for MCQ, Theory, Flashcards, Library, Assignments */}
+          {/* Mention Autocomplete Suggestion Pill */}
           <AnimatePresence>
-            {showDropUpMenu && (
+            {showAssistantMention && (
               <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute bottom-full left-3 mb-2 w-64 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl z-40 space-y-1 font-sans"
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 5 }}
+                className="mb-1.5"
               >
-                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Study Modes & Materials
-                </div>
-
                 <button
                   type="button"
                   onClick={() => {
-                    setShowDropUpMenu(false);
+                    setInput((prev) => prev.replace(/@\w*$/, "@BossAI "));
+                    textareaRef.current?.focus();
+                  }}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-xs font-semibold shadow-xs transition-all cursor-pointer active:scale-95"
+                >
+                  <Bot className="size-4" />
+                  <span>@BossAI</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">
+                    Summon Boss AI study assistant
+                  </span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Popups for + (Documents) and Boss AI (Modes) */}
+          <AnimatePresence>
+            {/* Pop-up 1: + Documents Menu (Library & Device Upload) */}
+            {showDocMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                className="absolute bottom-full left-3 mb-2 w-56 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl z-50 space-y-1 font-sans"
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Study Documents
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDocMenu(false);
                     setIsLibraryModalOpen(true);
                   }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
-                  <BookOpen className="size-4 text-primary" />
+                  <BookOpen className="size-4 text-primary shrink-0" />
                   <div>
                     <p className="leading-tight">Choose from Library</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Attach campus notes & past questions</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">Campus notes &amp; textbooks</p>
                   </div>
                 </button>
-
                 <button
                   type="button"
                   onClick={() => {
-                    setShowDropUpMenu(false);
+                    setShowDocMenu(false);
                     fileInputRef.current?.click();
                   }}
                   className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
-                  <Upload className="size-4 text-primary" />
+                  <Upload className="size-4 text-primary shrink-0" />
                   <div>
                     <p className="leading-tight">Upload from Device</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Upload PDF or image notes</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">PDF, DOCX, or images</p>
                   </div>
                 </button>
+              </motion.div>
+            )}
 
-                <div className="my-1 border-t border-border/60" />
+            {/* Pop-up 2: Boss AI Study Modes Menu (Per Prototypes) */}
+            {showModesMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                className="absolute bottom-full left-10 sm:left-14 mb-2 w-72 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl z-50 space-y-1 font-sans"
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Boss AI Study Modes
+                </div>
 
+                {/* MCQ */}
                 <button
                   type="button"
-                  onClick={() => prepareStudyPrompt("mcq")}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                  onClick={() => {
+                    setShowModesMenu(false);
+                    setIsMcqConfigOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
-                  <CheckCircle2 className="size-4 text-primary" />
-                  <div>
-                    <p className="leading-tight">MCQ Quiz</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Generate practice questions on any topic</p>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-primary shrink-0" />
+                    <span>MCQ Practice Quiz</span>
                   </div>
+                  <ChevronRight className="size-3.5 text-muted-foreground" />
                 </button>
 
+                {/* Theory with direct Grade as you go & Grade at the end options */}
+                <div className="p-2 rounded-xl bg-secondary/30 border border-border/50 space-y-1.5">
+                  <div
+                    onClick={() => {
+                      setShowModesMenu(false);
+                      setIsTheoryConfigOpen(true);
+                    }}
+                    className="flex items-center justify-between cursor-pointer text-xs font-semibold text-foreground hover:text-emerald-600 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="size-4 text-emerald-600 shrink-0" />
+                      <span>Theory Test</span>
+                    </div>
+                    <ChevronRight className="size-3.5 text-muted-foreground" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModesMenu(false);
+                        setTheoryMode("as_you_go");
+                        startTheoryQuiz(theoryCount || 5, "as_you_go");
+                      }}
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all text-center"
+                    >
+                      Grade as you go
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModesMenu(false);
+                        setTheoryMode("at_the_end");
+                        startTheoryQuiz(theoryCount || 5, "at_the_end");
+                      }}
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all text-center"
+                    >
+                      Grade at the end
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3D Flashcards */}
                 <button
                   type="button"
-                  onClick={() => prepareStudyPrompt("theory")}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                  onClick={() => {
+                    setShowModesMenu(false);
+                    setIsFlashcardConfigOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-indigo-500/10 hover:text-indigo-600 transition-all"
                 >
-                  <FileText className="size-4 text-emerald-600" />
-                  <div>
-                    <p className="leading-tight">Theory Test & Marking</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">University grading & rubric</p>
+                  <div className="flex items-center gap-2">
+                    <Layers className="size-4 text-indigo-500 shrink-0" />
+                    <span>3D Flashcards</span>
                   </div>
+                  <ChevronRight className="size-3.5 text-muted-foreground" />
                 </button>
 
+                {/* Assignment Helper */}
                 <button
                   type="button"
-                  onClick={() => prepareStudyPrompt("flashcards")}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                  onClick={() => {
+                    setShowModesMenu(false);
+                    setIsAssignmentModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-amber-500/10 hover:text-amber-600 transition-all"
                 >
-                  <Layers className="size-4 text-indigo-500" />
-                  <div>
-                    <p className="leading-tight">3D Flashcards</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Physical flip cards with KaTeX math</p>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="size-4 text-amber-500 shrink-0" />
+                    <span>Assignment Helper</span>
                   </div>
+                  <ChevronRight className="size-3.5 text-muted-foreground" />
                 </button>
 
+                {/* Summarize Material */}
                 <button
                   type="button"
-                  onClick={() => prepareStudyPrompt("assignment")}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                  onClick={() => {
+                    setShowModesMenu(false);
+                    triggerSummarize();
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-rose-500/10 hover:text-rose-600 transition-all"
                 >
-                  <GraduationCap className="size-4 text-amber-500" />
-                  <div>
-                    <p className="leading-tight">Assignment Helper</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Step-by-step academic solution</p>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => prepareStudyPrompt("summary")}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
-                >
-                  <Sparkles className="size-4 text-rose-500" />
-                  <div>
-                    <p className="leading-tight">Summarize Material</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">High-yield revision notes</p>
-                  </div>
+                  <Sparkles className="size-4 text-rose-500 shrink-0" />
+                  <span>Summarize Material</span>
                 </button>
               </motion.div>
             )}
@@ -1933,47 +2032,50 @@ function AssistantPage() {
               className="w-full resize-none bg-transparent text-xs sm:text-sm text-foreground focus:outline-hidden min-h-[28px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
             />
 
-            {/* Embedded Action Bar */}
+            {/* Embedded Action Bar per Prototype Sketch */}
             <div className="flex items-center justify-between pt-1 border-t border-border/40 mt-1">
-              <div className="flex items-center gap-1">
-                {/* Drop-up Study Modes & Materials Button */}
+              <div className="flex items-center gap-1.5">
+                {/* 1. + Button: Documents Menu Popup */}
                 <button
                   type="button"
-                  onClick={() => setShowDropUpMenu((prev) => !prev)}
-                  title="Study modes & documents"
+                  onClick={() => {
+                    setShowDocMenu((prev) => !prev);
+                    setShowModesMenu(false);
+                  }}
+                  title="Attach or upload document"
                   className={cn(
                     "size-8 rounded-full grid place-items-center transition-all",
-                    showDropUpMenu
-                      ? "bg-primary text-primary-foreground rotate-45"
+                    showDocMenu
+                      ? "bg-primary text-primary-foreground rotate-45 shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   )}
                 >
                   <Plus className="size-4" />
                 </button>
 
-                {/* Library attachment shortcut */}
+                {/* 2. Boss AI ^ Button: Study Modes Popup */}
                 <button
                   type="button"
-                  onClick={() => setIsLibraryModalOpen(true)}
-                  title="Choose from Campus Library"
-                  className="size-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
-                >
-                  <BookOpen className="size-4" />
-                </button>
-
-                {/* File Upload Shortcut */}
-                <button
-                  type="button"
-                  disabled={uploadingDoc}
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Upload PDF or notes from device"
-                  className="size-8 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
-                >
-                  {uploadingDoc ? (
-                    <Loader2 className="size-4 animate-spin text-primary" />
-                  ) : (
-                    <Paperclip className="size-4" />
+                  onClick={() => {
+                    setShowModesMenu((prev) => !prev);
+                    setShowDocMenu(false);
+                  }}
+                  title="Boss AI Study Modes"
+                  className={cn(
+                    "h-8 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-all border",
+                    showModesMenu
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                      : "text-foreground bg-secondary/60 hover:bg-secondary border-border/60"
                   )}
+                >
+                  <Bot className="size-3.5 text-primary shrink-0" />
+                  <span>Boss AI</span>
+                  <ChevronUp
+                    className={cn(
+                      "size-3.5 transition-transform",
+                      showModesMenu && "rotate-180"
+                    )}
+                  />
                 </button>
               </div>
 
@@ -2002,7 +2104,7 @@ function AssistantPage() {
                   className={cn(
                     "size-8 rounded-full grid place-items-center transition-all",
                     input.trim() && !thinking
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs active:scale-95"
                       : "text-muted-foreground opacity-40 cursor-not-allowed"
                   )}
                 >

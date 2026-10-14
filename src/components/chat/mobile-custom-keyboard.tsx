@@ -116,6 +116,15 @@ const PREDICTIVE_RULES: Array<{ prefix: RegExp; suggestions: string[] }> = [
 ];
 
 export function getPredictiveSuggestions(value: string, activeDocTitle?: string): string[] {
+  if (/@\w*$/.test(value)) {
+    return [
+      "@BossAI",
+      "@BossAI Explain this concept",
+      "@BossAI Solve step-by-step",
+      "@BossAI Practice questions on this",
+    ];
+  }
+
   const trimmed = value.trim();
   if (!trimmed) {
     if (activeDocTitle) {
@@ -435,7 +444,11 @@ export function MobileCustomKeyboard({
               transition={{ duration: 0.15 }}
               onClick={() => {
                 triggerHaptic();
-                onChange(suggestion);
+                if (/@\w*$/.test(value)) {
+                  onChange(value.replace(/@\w*$/, `${suggestion} `));
+                } else {
+                  onChange(suggestion);
+                }
               }}
               className="group flex shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-3 py-1 text-[11px] font-medium text-foreground shadow-xs transition-all hover:border-primary/50 hover:bg-primary/5 active:scale-95"
             >
@@ -444,7 +457,11 @@ export function MobileCustomKeyboard({
                 onClick={(e) => {
                   e.stopPropagation();
                   triggerHaptic();
-                  onChange(suggestion);
+                  if (/@\w*$/.test(value)) {
+                    onChange(value.replace(/@\w*$/, `${suggestion} `));
+                  } else {
+                    onChange(suggestion);
+                  }
                   setTimeout(() => onSend(), 50);
                 }}
                 title="Send immediately"

@@ -252,7 +252,7 @@ export const askBossAiServerFn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z.object({
       userId: z.string(),
-      threadId: z.string(),
+      threadId: z.string().optional(),
       query: z.string(),
       taskType: z.enum(["general", "quiz", "theory-grade", "flashcards", "summary"]).default("general"),
       docContext: z
@@ -271,12 +271,18 @@ export const askBossAiServerFn = createServerFn({ method: "POST" })
       ? JSON.stringify({ text: data.query, attachedMaterial: data.attachedMaterial })
       : JSON.stringify([{ type: "text", text: data.query }]);
 
-    // 1. Save user message to Turso
-    await turso.execute({
-      sql: `INSERT INTO chat_messages (id, thread_id, user_id, role, parts, message_id, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
-      args: [userMsgId, data.threadId, data.userId, "user", userPayload, userMsgId],
-    });
+    // 1. Save user message to Turso if threadId is provided
+    if (data.threadId) {
+      try {
+        await turso.execute({
+          sql: `INSERT INTO chat_messages (id, thread_id, user_id, role, parts, message_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+          args: [userMsgId, data.threadId, data.userId, "user", userPayload, userMsgId],
+        });
+      } catch (err: any) {
+        console.warn("Failed to persist user message in thread:", err?.message);
+      }
+    }
 
     // 2. Build AI context & instructions
     const systemInstruction = `You are Boss AI, the elite academic study copilot on Syllaboss for university students.
@@ -302,32 +308,34 @@ ${
 
     // Query recent conversation history (up to 14 messages) for multi-turn contextual memory
     let historyMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
-    try {
-      const historyRs = await turso.execute({
-        sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND id != ? ORDER BY created_at ASC LIMIT 16",
-        args: [data.threadId, userMsgId],
-      });
-      historyMessages = historyRs.rows
-        .map((row: any) => {
-          let text = "";
-          try {
-            const parsed = typeof row.parts === "string" ? JSON.parse(row.parts) : row.parts;
-            if (Array.isArray(parsed)) {
-              text = parsed.map((p: any) => p.text || "").join("\n");
-            } else if (parsed && typeof parsed === "object") {
-              text = parsed.text || "";
-            } else {
-              text = String(parsed || "");
+    if (data.threadId) {
+      try {
+        const historyRs = await turso.execute({
+          sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND id != ? ORDER BY created_at ASC LIMIT 16",
+          args: [data.threadId, userMsgId],
+        });
+        historyMessages = historyRs.rows
+          .map((row: any) => {
+            let text = "";
+            try {
+              const parsed = typeof row.parts === "string" ? JSON.parse(row.parts) : row.parts;
+              if (Array.isArray(parsed)) {
+                text = parsed.map((p: any) => p.text || "").join("\n");
+              } else if (parsed && typeof parsed === "object") {
+                text = parsed.text || "";
+              } else {
+                text = String(parsed || "");
+              }
+            } catch {
+              text = String(row.parts || "");
             }
-          } catch {
-            text = String(row.parts || "");
-          }
-          const role = String(row.role) === "assistant" ? "assistant" : "user";
-          return { role, content: text.trim().slice(0, 1800) };
-        })
-        .filter((m) => m.content.length > 0);
-    } catch (err: any) {
-      console.warn("Could not retrieve thread history for Boss AI:", err?.message);
+            const role = String(row.role) === "assistant" ? "assistant" : "user";
+            return { role, content: text.trim().slice(0, 1800) };
+          })
+          .filter((m) => m.content.length > 0);
+      } catch (err: any) {
+        console.warn("Could not retrieve thread history for Boss AI:", err?.message);
+      }
     }
 
     const payloadMessages = [
@@ -407,52 +415,59 @@ ${
     // Strict Emoji filter: Strip any Unicode emojis completely
     aiResponseText = aiResponseText.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "");
 
-    // Asynchronously generate intelligent title if thread currently has a generic title
-    (async () => {
+    const assistantMsgId = crypto.randomUUID();
+
+    // If threadId is provided, auto-update title and save assistant message to Turso
+    if (data.threadId) {
+      // Asynchronously generate intelligent title if thread currently has a generic title
+      (async () => {
+        try {
+          const threadRs = await turso.execute({
+            sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
+            args: [data.threadId],
+          });
+          const currentTitle = String(threadRs.rows[0]?.title || "").trim();
+          const isGeneric =
+            !currentTitle ||
+            /^(new (study )?conversation|untitled|chat|new chat)$/i.test(currentTitle);
+
+          if (isGeneric) {
+            const smartTitle = await generateIntelligentTitle(data.query);
+            if (smartTitle && smartTitle !== "New Conversation") {
+              await turso.execute({
+                sql: "UPDATE chat_threads SET title = ?, updated_at = datetime('now') WHERE id = ?",
+                args: [smartTitle, data.threadId],
+              });
+            } else if (smartTitle === "New Conversation" && currentTitle === "New Study Conversation") {
+              await turso.execute({
+                sql: "UPDATE chat_threads SET title = 'New Conversation' WHERE id = ?",
+                args: [data.threadId],
+              });
+            }
+          }
+        } catch (err: any) {
+          console.warn("Title auto-update error:", err?.message);
+        }
+      })();
+
+      // 3. Save Assistant message to Turso
       try {
-        const threadRs = await turso.execute({
-          sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
+        const assistantPayload = JSON.stringify([{ type: "text", text: aiResponseText }]);
+        await turso.execute({
+          sql: `INSERT INTO chat_messages (id, thread_id, user_id, role, parts, message_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+          args: [assistantMsgId, data.threadId, data.userId, "assistant", assistantPayload, assistantMsgId],
+        });
+
+        // 4. Touch chat_thread updated_at
+        await turso.execute({
+          sql: "UPDATE chat_threads SET updated_at = datetime('now') WHERE id = ?",
           args: [data.threadId],
         });
-        const currentTitle = String(threadRs.rows[0]?.title || "").trim();
-        const isGeneric =
-          !currentTitle ||
-          /^(new (study )?conversation|untitled|chat|new chat)$/i.test(currentTitle);
-
-        if (isGeneric) {
-          const smartTitle = await generateIntelligentTitle(data.query);
-          if (smartTitle && smartTitle !== "New Conversation") {
-            await turso.execute({
-              sql: "UPDATE chat_threads SET title = ?, updated_at = datetime('now') WHERE id = ?",
-              args: [smartTitle, data.threadId],
-            });
-          } else if (smartTitle === "New Conversation" && currentTitle === "New Study Conversation") {
-            await turso.execute({
-              sql: "UPDATE chat_threads SET title = 'New Conversation' WHERE id = ?",
-              args: [data.threadId],
-            });
-          }
-        }
       } catch (err: any) {
-        console.warn("Title auto-update error:", err?.message);
+        console.warn("Failed to persist assistant message to thread:", err?.message);
       }
-    })();
-
-    // 3. Save Assistant message to Turso
-    const assistantMsgId = crypto.randomUUID();
-    const assistantPayload = JSON.stringify([{ type: "text", text: aiResponseText }]);
-
-    await turso.execute({
-      sql: `INSERT INTO chat_messages (id, thread_id, user_id, role, parts, message_id, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
-      args: [assistantMsgId, data.threadId, data.userId, "assistant", assistantPayload, assistantMsgId],
-    });
-
-    // 4. Touch chat_thread updated_at
-    await turso.execute({
-      sql: "UPDATE chat_threads SET updated_at = datetime('now') WHERE id = ?",
-      args: [data.threadId],
-    });
+    }
 
     return {
       userMessageId: userMsgId,
@@ -687,11 +702,70 @@ export const generateStudyQuizServerFn = createServerFn({ method: "POST" })
 
     const groqKey = getGroqApiKey();
 
+    let resolvedTitle = data.title.trim();
+    let resolvedContext = data.context || "";
+
+    const isDemonstrativeTitle =
+      !resolvedTitle ||
+      /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
+        resolvedTitle
+      );
+
+    if (isDemonstrativeTitle || !resolvedContext || resolvedContext.length < 50) {
+      try {
+        const threadRs = await turso.execute({
+          sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
+          args: [data.threadId],
+        });
+        const threadTitle = String(threadRs.rows[0]?.title || "").trim();
+        if (
+          threadTitle &&
+          !/^(new (study )?conversation|untitled|chat|new chat)$/i.test(threadTitle)
+        ) {
+          if (isDemonstrativeTitle) resolvedTitle = threadTitle;
+        }
+
+        const msgRs = await turso.execute({
+          sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? ORDER BY created_at DESC LIMIT 8",
+          args: [data.threadId],
+        });
+        if (msgRs.rows.length > 0) {
+          const recentText = msgRs.rows
+            .reverse()
+            .map((r: any) => {
+              let t = "";
+              try {
+                const p = typeof r.parts === "string" ? JSON.parse(r.parts) : r.parts;
+                if (Array.isArray(p)) t = p.map((x: any) => x.text || "").join("\n");
+                else if (p && typeof p === "object") t = p.text || "";
+                else t = String(p || "");
+              } catch {
+                t = String(r.parts || "");
+              }
+              return `${r.role === "assistant" ? "Boss AI" : "Student"}: ${t.slice(0, 600)}`;
+            })
+            .join("\n\n");
+
+          if (!resolvedContext || resolvedContext.length < 100) {
+            resolvedContext = recentText;
+          } else {
+            resolvedContext = `${resolvedContext}\n\nRecent Discussion:\n${recentText}`;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not enhance quiz context from thread:", e);
+      }
+    }
+
+    if (!resolvedTitle || isDemonstrativeTitle) {
+      resolvedTitle = "University Examination Material";
+    }
+
     const targetCount = data.count;
     const isObjective = data.mode === "objective";
 
     const isStemTopic = /math|stat|calcul|physic|chem|engin|mechanic|thermo|electr|circui|dynami|static|algebra|probab|geometr|trigon|quant|econometric|account|financ|matrix|vector|integral|deriv|fluid/i.test(
-      `${data.title} ${data.context} ${data.userPrompt || ""}`
+      `${resolvedTitle} ${resolvedContext} ${data.userPrompt || ""}`
     );
 
     // Helper to query Groq for a specific sub-count of questions
@@ -710,8 +784,8 @@ ${
         : "";
 
       const prompt = `You are a university exam examiner.
-Generate exactly ${chunkCount} high-yield university exam questions on "${data.title}".
-Context Excerpt: "${data.context.slice(0, 3000)}"
+Generate exactly ${chunkCount} high-yield university exam questions on "${resolvedTitle}".
+Context Excerpt: "${resolvedContext.slice(0, 3000)}"
 ${stemInstruction}
 
 Mode: ${isObjective ? "MULTIPLE CHOICE (Objective) with 4 realistic options A, B, C, D" : "THEORY / ESSAY requiring structured explanation and key points"}.
@@ -867,14 +941,14 @@ ${
     const quizData = {
       questions: finalQuestions,
       mode: data.mode,
-      topic: data.title,
+      topic: resolvedTitle,
       markingMode: data.markingMode,
       totalCount: finalQuestions.length,
     };
 
     const introText = isObjective
-      ? `### Practice Quiz: ${data.title}\n\nGenerated **${finalQuestions.length} multiple-choice questions** (${data.markingMode === "as_you_go" ? "Instant Feedback" : "Exam Mode"}). Review and select your answers below:`
-      : `### Theory Examination: ${data.title}\n\nGenerated **${finalQuestions.length} theory examination questions**. Type, record audio, or snap your solution below to receive instant university rubric grading:`;
+      ? `### Practice Quiz: ${resolvedTitle}\n\nGenerated **${finalQuestions.length} multiple-choice questions** (${data.markingMode === "as_you_go" ? "Instant Feedback" : "Exam Mode"}). Review and select your answers below:`
+      : `### Theory Examination: ${resolvedTitle}\n\nGenerated **${finalQuestions.length} theory examination questions**. Type, record audio, or snap your solution below to receive instant university rubric grading:`;
 
     const assistantMsgId = crypto.randomUUID();
     const payload = JSON.stringify({
@@ -951,13 +1025,72 @@ export const generateStudyFlashcardsServerFn = createServerFn({ method: "POST" }
 
     const groqKey = getGroqApiKey();
 
+    let resolvedTitle = data.title.trim();
+    let resolvedContext = data.context || "";
+
+    const isDemonstrativeTitle =
+      !resolvedTitle ||
+      /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
+        resolvedTitle
+      );
+
+    if (isDemonstrativeTitle || !resolvedContext || resolvedContext.length < 50) {
+      try {
+        const threadRs = await turso.execute({
+          sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
+          args: [data.threadId],
+        });
+        const threadTitle = String(threadRs.rows[0]?.title || "").trim();
+        if (
+          threadTitle &&
+          !/^(new (study )?conversation|untitled|chat|new chat)$/i.test(threadTitle)
+        ) {
+          if (isDemonstrativeTitle) resolvedTitle = threadTitle;
+        }
+
+        const msgRs = await turso.execute({
+          sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? ORDER BY created_at DESC LIMIT 8",
+          args: [data.threadId],
+        });
+        if (msgRs.rows.length > 0) {
+          const recentText = msgRs.rows
+            .reverse()
+            .map((r: any) => {
+              let t = "";
+              try {
+                const p = typeof r.parts === "string" ? JSON.parse(r.parts) : r.parts;
+                if (Array.isArray(p)) t = p.map((x: any) => x.text || "").join("\n");
+                else if (p && typeof p === "object") t = p.text || "";
+                else t = String(p || "");
+              } catch {
+                t = String(r.parts || "");
+              }
+              return `${r.role === "assistant" ? "Boss AI" : "Student"}: ${t.slice(0, 600)}`;
+            })
+            .join("\n\n");
+
+          if (!resolvedContext || resolvedContext.length < 100) {
+            resolvedContext = recentText;
+          } else {
+            resolvedContext = `${resolvedContext}\n\nRecent Discussion:\n${recentText}`;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not enhance flashcard context from thread:", e);
+      }
+    }
+
+    if (!resolvedTitle || isDemonstrativeTitle) {
+      resolvedTitle = "University Examination Material";
+    }
+
     const targetCount = data.count;
 
     async function fetchCardsChunk(chunkCount: number, startIndex: number): Promise<any[]> {
       const prompt = `You are an academic flashcard generator for university students.
-Generate exactly ${chunkCount} high-yield study flashcards for "${data.title}".
+Generate exactly ${chunkCount} high-yield study flashcards for "${resolvedTitle}".
 Format: ${data.type === "qa" ? "Question & Answer / Concept & Definition" : "Fill in the blank with key terms"}.
-Context: "${data.context.slice(0, 3000)}"
+Context: "${resolvedContext.slice(0, 3000)}"
 
 Constraints:
 - DO NOT USE EMOJIS WHATSOEVER.
@@ -968,7 +1101,7 @@ Constraints:
     "id": "fc_${startIndex}",
     "front": "Front of card (Question or Key Concept)",
     "back": "Back of card (Clear, concise answer, definition, or mnemonics)",
-    "category": "${data.title}"
+    "category": "${resolvedTitle}"
   }
 ]`;
 
@@ -1075,12 +1208,12 @@ Constraints:
 
     const flashcardsData = {
       cards: finalCards,
-      topic: data.title,
+      topic: resolvedTitle,
       type: data.type,
       totalCount: finalCards.length,
     };
 
-    const introText = `### 3D Study Flashcards: ${data.title}\n\nHere are **${finalCards.length} high-yield revision flashcards** ready for exam practice. Tap any card to flip between front and back:`;
+    const introText = `### 3D Study Flashcards: ${resolvedTitle}\n\nHere are **${finalCards.length} high-yield revision flashcards** ready for exam practice. Tap any card to flip between front and back:`;
 
     const assistantMsgId = crypto.randomUUID();
     const payload = JSON.stringify({
