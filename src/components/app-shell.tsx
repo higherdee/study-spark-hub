@@ -24,6 +24,7 @@ import { useProfile, useIsAdmin } from "@/lib/profile";
 import { useStudyTimer } from "@/hooks/use-study-timer";
 import { POINTS_NAME } from "@/lib/constants";
 import { getUserNotifications } from "@/integrations/turso/client";
+import { CampusWrappedModal } from "@/components/scholar/campus-wrapped-modal";
 import { cn } from "@/lib/utils";
 
 /**
@@ -94,6 +95,7 @@ export function AppShell({
   const { seconds, isPaused, isInactive, togglePause } = useStudyTimer();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSideNav, setShowSideNav] = useState(false);
+  const [showCampusWrapped, setShowCampusWrapped] = useState(false);
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["user-notifications", user?.id],
@@ -178,15 +180,16 @@ export function AppShell({
 
           {/* Right: Dynamic Island widgets cluster matching Screenshot 2 */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Study Streak Capsule (Replaces header timer) */}
-            <Link
-              to="/dashboard/community"
-              title="Daily Study Streak — Click to visit Community & Study Hub"
-              className="group flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 shadow-xs border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+            {/* Study Streak Capsule - Click to Open Campus Wrapped Flex Card */}
+            <button
+              type="button"
+              onClick={() => setShowCampusWrapped(true)}
+              title="Daily Study Streak — Click to flex your Campus Wrapped stats"
+              className="group flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 shadow-xs border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20 cursor-pointer"
             >
               <Flame className="size-3.5 text-amber-500 fill-amber-500 transition-transform group-hover:scale-125" />
               <span>{profile?.current_streak || 1} {Number(profile?.current_streak || 1) === 1 ? "Day" : "Days"}</span>
-            </Link>
+            </button>
 
             {/* SyllaPoints Capsule - pure points, no Naira! */}
             <Link
@@ -262,6 +265,14 @@ export function AppShell({
       <SideNavSheet
         open={showSideNav}
         onClose={() => setShowSideNav(false)}
+      />
+
+      {/* Campus Wrapped & Scholar Flex Card Modal */}
+      <CampusWrappedModal
+        isOpen={showCampusWrapped}
+        onClose={() => setShowCampusWrapped(false)}
+        userId={user?.id}
+        username={profile?.username || undefined}
       />
 
       {/* Bottom Floating Navigation Dock (Collapses immediately on keyboard open or scroll) */}

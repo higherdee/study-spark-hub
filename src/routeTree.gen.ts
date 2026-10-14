@@ -27,6 +27,8 @@ import { Route as ApiDownloadRouteImport } from './routes/api/download'
 import { Route as ApiHarvesterRouteImport } from './routes/api/harvester'
 import { Route as ApiMaterialsRouteImport } from './routes/api/materials'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
+import { Route as ScholarUsernameRouteImport } from './routes/scholar.$username'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authenticated/admin.broadcast'
 import { Route as AuthenticatedAdminComplaintsRouteImport } from './routes/_authenticated/admin.complaints'
@@ -132,6 +134,16 @@ const ApiMaterialsRoute = ApiMaterialsRouteImport.update({
 const ApiUploadRoute = ApiUploadRouteImport.update({
   id: '/api/upload',
   path: '/api/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScholarUsernameRoute = ScholarUsernameRouteImport.update({
+  id: '/scholar/$username',
+  path: '/scholar/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
@@ -253,6 +265,8 @@ export interface FileRoutesByFullPath {
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
+  '/scholar/$username': typeof ScholarUsernameRoute
+  '/u/$username': typeof UUsernameRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
@@ -287,6 +301,8 @@ export interface FileRoutesByTo {
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
+  '/scholar/$username': typeof ScholarUsernameRoute
+  '/u/$username': typeof UUsernameRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
@@ -325,6 +341,8 @@ export interface FileRoutesById {
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
   '/api/upload': typeof ApiUploadRoute
+  '/scholar/$username': typeof ScholarUsernameRoute
+  '/u/$username': typeof UUsernameRoute
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/_authenticated/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/_authenticated/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
@@ -363,6 +381,8 @@ export interface FileRouteTypes {
     | '/api/harvester'
     | '/api/materials'
     | '/api/upload'
+    | '/scholar/$username'
+    | '/u/$username'
     | '/admin/broadcast'
     | '/admin/complaints'
     | '/admin/harvester'
@@ -397,6 +417,8 @@ export interface FileRouteTypes {
     | '/api/harvester'
     | '/api/materials'
     | '/api/upload'
+    | '/scholar/$username'
+    | '/u/$username'
     | '/admin/broadcast'
     | '/admin/complaints'
     | '/admin/harvester'
@@ -434,6 +456,8 @@ export interface FileRouteTypes {
     | '/api/harvester'
     | '/api/materials'
     | '/api/upload'
+    | '/scholar/$username'
+    | '/u/$username'
     | '/_authenticated/admin/broadcast'
     | '/_authenticated/admin/complaints'
     | '/_authenticated/admin/harvester'
@@ -469,6 +493,8 @@ export interface RootRouteChildren {
   ApiHarvesterRoute: typeof ApiHarvesterRoute
   ApiMaterialsRoute: typeof ApiMaterialsRoute
   ApiUploadRoute: typeof ApiUploadRoute
+  ScholarUsernameRoute: typeof ScholarUsernameRoute
+  UUsernameRoute: typeof UUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -597,6 +623,20 @@ declare module '@tanstack/react-router' {
       path: '/api/upload'
       fullPath: '/api/upload'
       preLoaderRoute: typeof ApiUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scholar/$username': {
+      id: '/scholar/$username'
+      path: '/scholar/$username'
+      fullPath: '/scholar/$username'
+      preLoaderRoute: typeof ScholarUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
@@ -808,6 +848,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHarvesterRoute: ApiHarvesterRoute,
   ApiMaterialsRoute: ApiMaterialsRoute,
   ApiUploadRoute: ApiUploadRoute,
+  ScholarUsernameRoute: ScholarUsernameRoute,
+  UUsernameRoute: UUsernameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

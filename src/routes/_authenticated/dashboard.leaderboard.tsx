@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import { getLeaderboardServerFn } from "@/lib/upload.functions";
 import { POINTS_NAME, formatNaira, pointsToNaira } from "@/lib/constants";
+import { CampusWrappedModal } from "@/components/scholar/campus-wrapped-modal";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard/leaderboard")({
@@ -41,6 +42,7 @@ function LeaderboardPage() {
   const { data: profile } = useProfile();
   const [filterMode, setFilterMode] = useState<"all" | "school" | "faculty">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFlexCardOpen, setIsFlexCardOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["leaderboard"],
@@ -90,8 +92,8 @@ function LeaderboardPage() {
           </p>
         </div>
 
-        {/* Segmented Cohort Switcher */}
-        <div className="flex items-center gap-2">
+        {/* Actions: Cohort Switcher & Flex My Card */}
+        <div className="flex flex-wrap items-center gap-2">
           <div className="p-1 rounded-full bg-[#edf6f0] border border-[#dce5df] flex items-center gap-1">
             <button
               type="button"
@@ -124,6 +126,15 @@ function LeaderboardPage() {
               Programme
             </button>
           </div>
+
+          <Button
+            type="button"
+            onClick={() => setIsFlexCardOpen(true)}
+            className="h-8.5 rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-black font-extrabold text-xs shadow-md gap-1.5 active:scale-95 transition-all"
+          >
+            <Sparkles className="size-3.5 fill-current" />
+            <span>Flex My Card 🚀</span>
+          </Button>
         </div>
       </header>
 
@@ -441,6 +452,14 @@ function LeaderboardPage() {
           </table>
         </div>
       </section>
+
+      {/* Campus Wrapped & Flex Story Card Modal */}
+      <CampusWrappedModal
+        isOpen={isFlexCardOpen}
+        onClose={() => setIsFlexCardOpen(false)}
+        userId={user?.id}
+        username={profile?.username || undefined}
+      />
     </div>
   );
 }

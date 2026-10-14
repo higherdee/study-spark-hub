@@ -29,6 +29,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { SyllaPlusModal } from "@/components/syllaplus-modal";
+import { CampusWrappedModal } from "@/components/scholar/campus-wrapped-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, getPointsLedger } from "@/integrations/turso/client";
 import { useProfile } from "@/lib/profile";
@@ -52,6 +53,7 @@ function HomePage() {
   const [interval, setInterval] = useState<"30d" | "90d">("30d");
   const [activeTooltip, setActiveTooltip] = useState<{ label: string; value: string } | null>(null);
   const [showPlusModal, setShowPlusModal] = useState(false);
+  const [showCampusWrapped, setShowCampusWrapped] = useState(false);
 
   const { data: materials = [] } = useQuery({
     queryKey: ["my-materials", user?.id],
@@ -160,6 +162,47 @@ function HomePage() {
               Upload & Earn
             </Link>
           </Button>
+        </div>
+      </section>
+
+      {/* Campus Wrapped & Scholar Flex Card Viral Banner */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#00110a] via-[#0d281e] to-[#041d13] text-white p-5 sm:p-6 shadow-md border border-[#1b7a4e]/30">
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-[#1b7a4e]/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 left-1/3 w-40 h-40 rounded-full bg-[#eab308]/15 blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="size-11 sm:size-12 rounded-xl bg-gradient-to-br from-[#1b7a4e] to-[#0d281e] border border-[#2ef387]/40 flex items-center justify-center shrink-0 shadow-inner">
+              <Flame className="size-6 text-[#2ef387] animate-pulse" />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-mono uppercase tracking-widest text-[#2ef387] font-bold">
+                  Campus Wrapped • Flex Card
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/90 text-[10px] font-semibold border border-white/10">
+                  ✨ WhatsApp Status & IG Story Ready
+                </span>
+              </div>
+              <h3 className="font-display text-lg sm:text-xl font-medium text-white tracking-tight">
+                Your Scholar Archetype & Department Rank are ready
+              </h3>
+              <p className="text-xs sm:text-sm text-white/70 max-w-xl">
+                See where you rank in your faculty, your battle win-rate, study flame streak, and your Spotify-style 9:16 Flex Story Card with custom QR code.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
+            <Button
+              type="button"
+              onClick={() => setShowCampusWrapped(true)}
+              className="rounded-full bg-gradient-to-r from-[#2ef387] to-[#1b7a4e] text-[#00110a] hover:opacity-95 font-bold text-xs h-10 px-5 shadow-sm transition-transform active:scale-95"
+            >
+              <Sparkles className="size-3.5 mr-1.5 text-[#00110a]" />
+              View My Wrapped
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -700,6 +743,14 @@ function HomePage() {
         open={showPlusModal}
         onClose={() => setShowPlusModal(false)}
         onSuccess={() => setShowPlusModal(false)}
+      />
+
+      {/* Campus Wrapped & Scholar Flex Card Modal */}
+      <CampusWrappedModal
+        isOpen={showCampusWrapped}
+        onClose={() => setShowCampusWrapped(false)}
+        userId={user?.id}
+        username={profile?.username || undefined}
       />
     </div>
   );
