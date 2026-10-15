@@ -471,7 +471,7 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
           let optionStyle = "border-border/80 bg-card hover:bg-secondary/60 text-foreground";
           if (showAnswerFeedback) {
             if (isCorrect) {
-              optionStyle = "border-brand bg-brand/10 text-brand-deep dark:text-brand font-bold";
+              optionStyle = "border-brand bg-brand/10 text-forest font-bold";
             } else if (isSelected && !isCorrect) {
               optionStyle = "border-red-500 bg-red-500/10 text-red-800 dark:text-red-300";
             }
@@ -907,7 +907,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
       {currentFeedback && (
         <div className="p-3.5 rounded-2xl border border-brand/30 bg-brand/10 text-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-brand-deep dark:text-brand flex items-center gap-1.5">
+            <span className="font-bold text-forest flex items-center gap-1.5">
               <Award className="size-3.5" /> Mark: {currentFeedback.score} / 10 ({currentFeedback.verdict})
             </span>
             <button
@@ -932,7 +932,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
 
           {currentFeedback.strengths && currentFeedback.strengths.length > 0 && (
             <div className="space-y-0.5 pt-1">
-              <p className="font-bold text-[10px] text-brand-deep dark:text-brand">Strengths:</p>
+              <p className="font-bold text-[10px] text-forest">Strengths:</p>
               <ul className="list-disc list-inside text-[11px] text-muted-foreground">
                 {currentFeedback.strengths.map((s: string, idx: number) => (
                   <li key={idx}>{s}</li>

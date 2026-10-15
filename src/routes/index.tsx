@@ -231,7 +231,7 @@ export function HomePage() {
                 variant="outline"
                 className="hidden md:inline-flex rounded-full text-xs h-9 border-black/[0.1] dark:border-white/[0.12] bg-white dark:bg-[#111915] font-semibold"
               >
-                <a href="https://web.syllaboss.org/dashboard">Dashboard</a>
+                <Link to="/dashboard">Dashboard</Link>
               </Button>
             ) : (
               <Button
@@ -240,9 +240,7 @@ export function HomePage() {
                 variant="ghost"
                 className="hidden md:inline-flex rounded-full text-xs h-9 text-slate-700 dark:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] font-semibold"
               >
-                <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer">
-                  Launch App
-                </a>
+                <Link to="/auth">Launch App</Link>
               </Button>
             )}
           </div>
@@ -294,10 +292,10 @@ export function HomePage() {
                 size="lg"
                 className="w-full sm:w-auto h-12.5 rounded-full border-black/[0.1] dark:border-white/[0.15] bg-white dark:bg-card/80 hover:bg-slate-100 dark:hover:bg-card text-foreground text-sm font-semibold px-7 shadow-xs active:scale-[0.98] transition-all"
               >
-                <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer">
+                <Link to="/dashboard">
                   <span>Launch Web App</span>
                   <ArrowRight className="size-4 ml-1.5" />
-                </a>
+                </Link>
               </Button>
             </div>
 
@@ -375,10 +373,8 @@ export function HomePage() {
               </Link>
 
               {/* Tile 2: Boss AI Step-by-Step Derivations */}
-              <a
-                href="https://web.syllaboss.org"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/dashboard/assistant"
                 className="group relative flex flex-col justify-between rounded-3xl bg-white dark:bg-[#111915] p-7 sm:p-8 border border-slate-200/80 dark:border-white/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_12px_36px_rgba(0,17,10,0.08)] block text-left"
               >
                 <div>
@@ -397,7 +393,7 @@ export function HomePage() {
                   <span>Standard LaTeX Math</span>
                   <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-              </a>
+              </Link>
 
               {/* Tile 3: Authentic Past Questions */}
               <Link
@@ -542,9 +538,9 @@ export function HomePage() {
                     size="sm"
                     className="rounded-full bg-[#0d281e] text-white hover:bg-black dark:bg-emerald-500 dark:text-black font-semibold text-xs px-4"
                   >
-                    <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer">
+                    <Link to="/dashboard/assistant">
                       <span>Try in App &rarr;</span>
-                    </a>
+                    </Link>
                   </Button>
                 </div>
               </div>
@@ -852,10 +848,10 @@ export function HomePage() {
                 size="lg"
                 className="w-full sm:w-auto h-12 rounded-full border-white/20 bg-transparent hover:bg-white/10 text-white font-semibold px-7"
               >
-                <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer">
+                <Link to="/dashboard">
                   <span>Open in Browser</span>
                   <ArrowRight className="size-4 ml-1.5" />
-                </a>
+                </Link>
               </Button>
             </div>
           </section>
@@ -905,9 +901,9 @@ export function HomePage() {
                   </a>
                 </li>
                 <li>
-                  <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
+                  <Link to="/dashboard/assistant" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                     Boss AI Step-by-Step Solver
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -919,9 +915,9 @@ export function HomePage() {
               </h3>
               <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
                 <li>
-                  <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-semibold text-emerald-700 dark:text-emerald-400">
+                  <Link to="/dashboard" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-semibold text-emerald-700 dark:text-emerald-400">
                     Launch Web App &rarr;
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a href="#pwa" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
@@ -1018,9 +1014,9 @@ export function HomePage() {
                 Support
               </Link>
               <span>·</span>
-              <a href="https://web.syllaboss.org" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600 dark:hover:text-emerald-400 font-medium">
-                web.syllaboss.org
-              </a>
+              <Link to="/dashboard" className="hover:text-emerald-600 dark:hover:text-emerald-400 font-medium">
+                syllaboss.org
+              </Link>
             </div>
           </div>
         </div>

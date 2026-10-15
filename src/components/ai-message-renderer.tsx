@@ -126,7 +126,7 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
             if (!isBlock) {
               return (
                 <code
-                  className="rounded bg-secondary dark:bg-ink/80 px-1.5 py-0.5 font-mono text-[12px] md:text-[13px] text-brand-deep dark:text-brand border border-border/60 dark:border-ink-soft/60"
+                  className="rounded bg-secondary dark:bg-ink/80 px-1.5 py-0.5 font-mono text-[12px] md:text-[13px] text-forest dark:text-brand border border-border/60 dark:border-ink-soft/60"
                   {...props}
                 >
                   {children}

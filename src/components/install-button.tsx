@@ -220,7 +220,7 @@ export function InstallButton({
                       </h4>
                       <p className="text-[11px] text-muted-foreground">Samsung, Xiaomi, Tecno, Infinix, Pixel, Redmi, etc.</p>
                     </div>
-                    <span className="px-2 py-0.5 rounded-md bg-accent dark:bg-brand-deep text-brand-deep dark:text-brand font-bold text-[10px]">
+                    <span className="px-2 py-0.5 rounded-md bg-accent text-forest font-bold text-[10px]">
                       Instant PWA
                     </span>
                   </div>
@@ -243,12 +243,12 @@ export function InstallButton({
                   </div>
 
                   <Button
-                    className="w-full h-11 rounded-xl bg-brand hover:bg-brand-deep text-white font-bold gap-2 text-sm shadow-sm"
+                    className="w-full h-11 rounded-xl bg-brand hover:bg-brand/90 text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
                       if (canPrompt) {
                         install();
                       } else {
-                        window.location.href = "https://web.syllaboss.org";
+                        window.location.href = "/dashboard";
                       }
                       setModalOpen(false);
                     }}
@@ -292,9 +292,9 @@ export function InstallButton({
                   </div>
 
                   <Button
-                    className="w-full h-11 rounded-xl bg-ink hover:bg-black text-white font-bold gap-2 text-sm shadow-sm"
+                    className="w-full h-11 rounded-xl bg-forest hover:bg-forest/90 text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
-                      window.location.href = "https://web.syllaboss.org";
+                      window.location.href = "/dashboard";
                       setModalOpen(false);
                     }}
                   >
@@ -314,7 +314,7 @@ export function InstallButton({
                       </h4>
                       <p className="text-[11px] text-muted-foreground">Chrome or Microsoft Edge desktop app.</p>
                     </div>
-                    <span className="px-2 py-0.5 rounded-md bg-accent dark:bg-brand-deep text-brand-deep dark:text-brand font-bold text-[10px]">
+                    <span className="px-2 py-0.5 rounded-md bg-accent text-forest font-bold text-[10px]">
                       Desktop PWA
                     </span>
                   </div>
@@ -334,12 +334,12 @@ export function InstallButton({
                   </div>
 
                   <Button
-                    className="w-full h-11 rounded-xl bg-brand hover:bg-brand-deep text-white font-bold gap-2 text-sm shadow-sm"
+                    className="w-full h-11 rounded-xl bg-brand hover:bg-brand/90 text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
                       if (canPrompt) {
                         install();
                       } else {
-                        window.location.href = "https://web.syllaboss.org";
+                        window.location.href = "/dashboard";
                       }
                       setModalOpen(false);
                     }}
@@ -380,9 +380,9 @@ export function InstallButton({
                   </div>
 
                   <Button
-                    className="w-full h-11 rounded-xl bg-stone-800 hover:bg-black text-white font-bold gap-2 text-sm shadow-sm"
+                    className="w-full h-11 rounded-xl bg-forest hover:bg-forest/90 text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
-                      window.location.href = "https://web.syllaboss.org";
+                      window.location.href = "/dashboard";
                       setModalOpen(false);
                     }}
                   >
@@ -396,11 +396,9 @@ export function InstallButton({
             <div className="mt-4 flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/60">
               <span>Zero downloads or installers required</span>
               <a
-                href="https://web.syllaboss.org"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/dashboard"
                 onClick={() => setModalOpen(false)}
-                className="font-bold text-primary hover:underline"
+                className="font-bold text-forest hover:underline"
               >
                 Continue in browser &rarr;
               </a>

@@ -311,7 +311,7 @@ function HomePage() {
             </div>
             <p className="tnum mt-2.5 text-xs text-muted-foreground">
               {toWithdraw === 0 ? (
-                <span className="font-semibold text-brand-deep">You can withdraw now</span>
+                <span className="font-semibold text-forest">You can withdraw now</span>
               ) : (
                 <>
                   <span className="font-semibold text-ink">{toWithdraw.toLocaleString()} pts</span> to your first withdrawal
@@ -447,7 +447,7 @@ function HomePage() {
                       {formatDistanceToNowStrict(new Date(entry.created_at), { addSuffix: true })}
                     </p>
                   </div>
-                  <p className={cn("tnum text-sm font-bold", gain ? "text-brand-deep" : "text-ink-soft")}>
+                  <p className={cn("tnum text-sm font-bold", gain ? "text-forest" : "text-ink-soft")}>
                     {gain ? "+" : "−"}
                     {Math.abs(entry.amount).toLocaleString()}
                   </p>

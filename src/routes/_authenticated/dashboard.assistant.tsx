@@ -144,10 +144,10 @@ interface ChatMessage {
 
 // Colorful gradients for 3D Flashcards based on Sketch 1
 const FLASHCARD_GRADIENTS = [
-  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-brand-deep dark:text-accent",
-  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-brand-deep dark:text-accent",
+  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-forest dark:text-accent",
+  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-forest dark:text-accent",
   "from-brass/15 via-brass/10 to-brass/5 border-brass/40 text-brass-ink dark:text-brass-soft",
-  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-brand-deep dark:text-accent",
+  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-forest dark:text-accent",
   "from-rose-500/15 via-pink-500/10 to-rose-500/5 border-rose-500/40 text-rose-950 dark:text-rose-100",
 ];
 
@@ -1379,7 +1379,7 @@ function AssistantPage() {
 
           {activeDocContext ? (
             <div className="rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-xs space-y-0.5">
-              <p className="font-semibold text-brand-deep truncate">{activeDocContext.title}</p>
+              <p className="font-semibold text-forest truncate">{activeDocContext.title}</p>
               <p className="text-[10px] text-muted-foreground truncate">{activeDocContext.course}</p>
             </div>
           ) : (
@@ -1532,7 +1532,7 @@ function AssistantPage() {
                   {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI Study Copilot"}
                 </h2>
                 {activeDocContext && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/40 border border-brand/30 text-brand-deep text-[11px] font-semibold shrink-0">
+                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/40 border border-brand/30 text-forest text-[11px] font-semibold shrink-0">
                     <BookOpen className="size-3" />
                     <span className="max-w-[160px] truncate">{activeDocContext.title}</span>
                     <button
@@ -1675,7 +1675,7 @@ function AssistantPage() {
                             <CheckCircle2 className="size-3.5 text-brand" />
                             Registered to Library
                           </span>
-                          <span className="rounded-full bg-accent text-brand-deep px-2 py-0.5 text-[10px] font-bold font-mono">
+                          <span className="rounded-full bg-accent text-forest px-2 py-0.5 text-[10px] font-bold font-mono">
                             +25 SyllaPoints
                           </span>
                         </div>

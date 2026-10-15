@@ -490,7 +490,7 @@ export function StatusBadge({ status }: { status: string }) {
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize",
-        ok && "border-brand/20 bg-brand/10 text-brand-deep",
+        ok && "border-brand/20 bg-brand/10 text-forest",
         bad && "border-destructive/20 bg-destructive/10 text-destructive",
         !ok && !bad && "border-brass/25 bg-brass-soft text-brass-ink",
       )}

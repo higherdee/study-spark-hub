@@ -121,7 +121,7 @@ export function ForwardMaterialModal({
             {materialTitle}
           </span>
           {materialCourse && (
-            <span className="text-[11px] text-brand-deep dark:text-brand font-sans shrink-0">
+            <span className="text-[11px] text-forest font-sans shrink-0">
               · {materialCourse}
             </span>
           )}

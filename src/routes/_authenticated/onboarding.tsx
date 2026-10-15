@@ -351,7 +351,7 @@ function Onboarding() {
                   <div className="absolute right-3 top-2.5 flex items-center">
                     {usernameChecking && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
                     {!usernameChecking && isUsernameAvailable === true && (
-                      <span className="flex items-center gap-1 text-[11px] text-brand-deep font-semibold bg-accent px-2 py-0.5 rounded-full border border-brand/30">
+                      <span className="flex items-center gap-1 text-[11px] text-forest font-semibold bg-accent px-2 py-0.5 rounded-full border border-brand/30">
                         <Check className="size-3" /> Available
                       </span>
                     )}

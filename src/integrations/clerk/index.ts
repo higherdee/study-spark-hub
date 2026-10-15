@@ -29,7 +29,7 @@ export const clerkAppearance = {
       "h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:border-brand focus-visible:ring-4 focus-visible:ring-brand/15 transition-[border-color,box-shadow]",
     formButtonPrimary:
       "bg-primary text-primary-foreground hover:bg-primary-container rounded-lg font-semibold h-11 text-sm transition-[background-color,transform] shadow-none active:scale-[0.98] normal-case",
-    footerActionLink: "text-brand-deep hover:underline font-semibold",
+    footerActionLink: "text-forest hover:underline font-semibold",
     footer: "bg-transparent border-t-0",
     footerAction: "justify-start",
   },

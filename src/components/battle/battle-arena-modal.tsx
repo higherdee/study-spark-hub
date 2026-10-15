@@ -616,7 +616,7 @@ export function BattleArenaModal({
                       </div>
 
                       {battle.mode === "mcq" ? (
-                        <div className="mt-2 rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-[11px] font-medium text-brand-deep">
+                        <div className="mt-2 rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-[11px] font-medium text-forest">
                           Correct Answer: <strong className="font-semibold text-ink">{q.options?.[q.correctAnswer]}</strong>
                         </div>
                       ) : (
@@ -767,7 +767,7 @@ export function BattleArenaModal({
                       <div className="p-2.5 rounded-xl bg-accent/30 border border-brand/30 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
                           <FileText className="size-4 text-brand" />
-                          <span className="font-medium text-brand-deep">
+                          <span className="font-medium text-forest">
                             Handwritten notes attached for AI optical verification
                           </span>
                         </div>
@@ -847,7 +847,7 @@ export function BattleArenaModal({
                         type="button"
                         disabled={isSubmitting || hasSubmitted || isSpectator}
                         onClick={handleSubmitTheory}
-                        className="h-9 rounded-full bg-brand hover:bg-brand-deep text-white font-semibold text-xs gap-1.5 px-5 shadow-sm press"
+                        className="h-9 rounded-full bg-brand hover:bg-brand/90 text-white font-semibold text-xs gap-1.5 px-5 shadow-sm press"
                       >
                         {isSubmitting ? (
                           <Loader2 className="size-3.5 animate-spin" />
@@ -886,7 +886,7 @@ export function BattleArenaModal({
                         className={cn(
                           "p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors",
                           isDone
-                            ? "border-brand/30 bg-accent/40 text-brand-deep"
+                            ? "border-brand/30 bg-accent/40 text-forest"
                             : "border-border bg-card text-muted-foreground"
                         )}
                       >

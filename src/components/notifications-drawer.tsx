@@ -89,7 +89,7 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-2.5 text-xs font-semibold text-brand-deep"
+                    className="h-8 px-2.5 text-xs font-semibold text-forest"
                     onClick={handleMarkAllRead}
                   >
                     Mark all read
@@ -152,7 +152,7 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                               isComplaint
                                 ? "bg-brass-soft text-brass-ink"
                                 : isPoints
-                                  ? "bg-accent text-brand-deep"
+                                  ? "bg-accent text-forest"
                                   : "bg-muted text-moss",
                             )}
                           >
