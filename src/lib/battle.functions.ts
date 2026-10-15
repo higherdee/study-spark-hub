@@ -35,16 +35,16 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
     groupId: string;
     hostId: string;
     hostName: string;
-    hostAvatar?: string | null;
+    hostAvatar?: string | null | undefined;
     title: string;
     mode: "mcq" | "theory";
-    sourceSummary?: string;
-    sourceContext?: string;
-    timePerQuestion?: number | null;
-    questionCount?: number;
-    stakeAmount?: number;
+    sourceSummary?: string | undefined;
+    sourceContext?: string | undefined;
+    timePerQuestion?: number | null | undefined;
+    questionCount?: number | undefined;
+    stakeAmount?: number | undefined;
     fighterIds: string[];
-    sponsoredIds?: string[];
+    sponsoredIds?: string[] | undefined;
   }) => d)
   .handler(async ({ data }): Promise<StudyBattle> => {
     const questionCount = data.questionCount || 5;
@@ -124,8 +124,8 @@ export const joinBattleEscrowServerFn = createServerFn({ method: "POST" })
     groupId: string;
     userId: string;
     userName: string;
-    avatarUrl?: string | null;
-    role?: "fighter" | "spectator";
+    avatarUrl?: string | null | undefined;
+    role?: "fighter" | "spectator" | undefined;
   }) => d)
   .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
     const res = await joinBattleEscrowRecord({

@@ -157,8 +157,8 @@ function AdminHarvester() {
           >
             <RotateCw className={cn("size-3.5", (isLoading || isRefetching) && "animate-spin")} /> Refresh Feed
           </Button>
-          <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 shadow-xs">
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-medium text-brand dark:text-brand shadow-xs">
+            <span className="size-2 rounded-full bg-brand animate-pulse" />
             Active • 20k Daily Target
           </div>
         </div>
@@ -226,7 +226,7 @@ function AdminHarvester() {
           </div>
           <div className="h-3 w-full bg-secondary/60 rounded-full overflow-hidden p-0.5 border border-border/50">
             <div
-              className="h-full bg-linear-to-r from-primary to-emerald-500 rounded-full transition-all duration-1000 ease-out shadow-xs"
+              className="h-full bg-linear-to-r from-primary to-brand rounded-full transition-all duration-1000 ease-out shadow-xs"
               style={{ width: `${Math.max(2, progressPercent)}%` }}
             />
           </div>
@@ -297,7 +297,7 @@ function AdminHarvester() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display text-base font-semibold text-foreground flex items-center gap-2">
-              <FileText className="size-4 text-emerald-500" /> Material Types
+              <FileText className="size-4 text-brand" /> Material Types
             </h3>
           </div>
           <div className="h-60 w-full">
@@ -336,7 +336,7 @@ function AdminHarvester() {
         <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display text-base font-semibold text-foreground flex items-center gap-2">
-              <TrendingUp className="size-4 text-amber-500" /> Top Disciplines
+              <TrendingUp className="size-4 text-brass" /> Top Disciplines
             </h3>
           </div>
           <div className="h-60 w-full">
@@ -465,7 +465,7 @@ function AdminHarvester() {
                 className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-2xl border border-border/60 bg-secondary/30 text-xs gap-2"
               >
                 <div className="flex items-center gap-3">
-                  <div className="grid size-8 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                  <div className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand dark:text-brand font-bold">
                     ✓
                   </div>
                   <div>

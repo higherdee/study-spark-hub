@@ -81,10 +81,10 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
         onClick={(e) => e.stopPropagation()}
       >
         {/* Glow ambient background */}
-        <div className="absolute -top-20 -right-20 size-48 rounded-full bg-gradient-to-br from-amber-500/20 to-primary/20 blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 -right-20 size-48 rounded-full bg-gradient-to-br from-brass/20 to-primary/20 blur-3xl pointer-events-none" />
 
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+          <div className="flex items-center gap-2 rounded-full border border-brass/30 bg-brass/10 px-3 py-1 text-xs font-semibold text-brass-ink dark:text-brass">
             <Sparkles className="size-3.5" />
             <span>VIP Academic Pass</span>
           </div>
@@ -99,7 +99,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
 
         <div className="mt-4">
           <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Supercharge Your Journey with <span className="text-amber-500">SyllaPlus</span>
+            Supercharge Your Journey with <span className="text-brass">SyllaPlus</span>
           </h2>
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
             Upgrade your account to unlock accelerated earnings, 300 bonus points right away, and unlimited AI study power.
@@ -107,8 +107,8 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
         </div>
 
         <div className="mt-6 space-y-3">
-          <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3.5">
-            <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+          <div className="flex items-start gap-3 rounded-2xl border border-brass/20 bg-brass/5 p-3.5">
+            <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-brass/10 text-brass-ink dark:text-brass">
               <Zap className="size-4" />
             </div>
             <div>
@@ -148,7 +148,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
           <Button
             onClick={handleBachsPayment}
             disabled={loading}
-            className="w-full h-12 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
+            className="w-full h-12 rounded-xl text-sm font-semibold bg-gradient-to-r from-brass to-brass-ink hover:from-brass-ink hover:to-brass-ink text-white shadow-lg shadow-brass/20 transition-all active:scale-[0.98]"
           >
             {loading ? (
               <Loader2 className="animate-spin size-4 mr-2" />

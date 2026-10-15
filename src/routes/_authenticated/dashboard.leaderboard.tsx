@@ -130,7 +130,7 @@ function LeaderboardPage() {
           <Button
             type="button"
             onClick={() => setIsFlexCardOpen(true)}
-            className="h-8.5 rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-black font-extrabold text-xs shadow-md gap-1.5 active:scale-95 transition-all"
+            className="h-8.5 rounded-full bg-gradient-to-r from-brass to-brand hover:from-brass-ink hover:to-brand text-black font-extrabold text-xs shadow-md gap-1.5 active:scale-95 transition-all"
           >
             <Sparkles className="size-3.5 fill-current" />
             <span>Flex My Card 🚀</span>
@@ -352,7 +352,7 @@ function LeaderboardPage() {
                         {s.avatar_url ? (
                           <img src={s.avatar_url} alt="" className="size-7 rounded-full object-cover border border-border" />
                         ) : (
-                          <div className="size-7 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] flex items-center justify-center">
+                          <div className="size-7 rounded-full bg-accent text-brand-deep font-bold text-[11px] flex items-center justify-center">
                             {((s.username || s.full_name)[0] ?? "S").toUpperCase()}
                           </div>
                         )}

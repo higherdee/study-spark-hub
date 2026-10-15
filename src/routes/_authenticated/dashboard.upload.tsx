@@ -170,67 +170,44 @@ function UploadPage() {
 
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-16 font-sans">
-      {/* Executive Header Section */}
-      <section className="pt-2 pb-2 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/80">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-brand animate-pulse" />
-            <span className="text-xs uppercase tracking-widest text-moss font-semibold">
-              Earn {POINTS_PER_VERIFIED_UPLOAD} SyllaPoints Per Verified Upload
-            </span>
-          </div>
-          <h1 className="font-display text-3xl sm:text-4xl text-ink tracking-tight font-medium">
-            Upload Academic Material
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl">
+          <p className="eyebrow flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-brand" />
+            Earn {POINTS_PER_VERIFIED_UPLOAD} SyllaPoints per verified upload
+          </p>
+          <h1 className="mt-1.5 font-display text-3xl tracking-tight text-ink sm:text-4xl">
+            Upload a material
           </h1>
-          <p className="text-sm text-ink-soft max-w-2xl mt-1">
-            Contribute peer-reviewed course reserves, lecture manuscripts, and laboratory archives to the decentralized intellectual repository.
+          <p className="mt-1.5 text-sm text-ink-soft">
+            Share notes, past questions or lab reports. Each file is checked against the details
+            you enter, and approved uploads earn points every time they're viewed or downloaded.
           </p>
         </div>
-
-        {/* Academic Tier Balance Pill */}
-        <div className="flex items-center gap-4 p-2.5 px-4 rounded-2xl bg-white shadow-xs border border-border">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Yield Tier</span>
-            <span className="font-display text-sm text-ink font-bold leading-tight">
-              {profile?.sylla_plus ? "SyllaPlus Fellow" : "Scholar Active"}
-            </span>
+        <div className="flex items-center gap-3 self-start rounded-2xl border border-border bg-white px-4 py-2.5 shadow-[var(--elev-1)] md:self-auto">
+          <div>
+            <p className="eyebrow">Earning rate</p>
+            <p className="font-display text-sm text-ink">
+              {profile?.sylla_plus ? "SyllaPlus" : "Standard"}
+            </p>
           </div>
-          <div className="h-7 w-px bg-border" />
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-accent text-accent-foreground text-xs font-semibold">
-            <Sparkles className="size-3.5 text-brand" />
-            <span>{profile?.sylla_plus ? "+30% Multiplier" : "1.0x Base"}</span>
-          </div>
+          <span className="flex items-center gap-1.5 rounded-full bg-brass-soft px-3 py-1 text-xs font-semibold text-brass-ink tnum">
+            <Sparkles className="size-3.5" />
+            {profile?.sylla_plus ? "1.3x" : "1.0x"}
+          </span>
         </div>
-      </section>
+      </header>
 
-      {/* Security & Verification Notice Banner */}
-      <section>
-        <div className="relative overflow-hidden rounded-2xl p-5 bg-muted border border-border shadow-xs">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5 max-w-4xl">
-              <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center text-accent-foreground shrink-0 mt-0.5 shadow-xs font-semibold">
-                <ShieldCheck className="size-5 text-brand" />
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-ink font-bold">Automated Integrity & Semantic OCR Filter</span>
-                  <span className="px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] tracking-widest uppercase font-bold">
-                    Protocol v4.2
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-ink-soft mt-1 leading-relaxed">
-                  Every file is checked automatically to confirm it matches the title, course, and type you enter. Matching files are approved instantly and you get <strong>{POINTS_PER_VERIFIED_UPLOAD} SyllaPoints</strong> (+{POINTS_PER_VIEW} pts per view, +{POINTS_PER_DOWNLOAD} pts per download). Unclear files go to peer review.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-foreground font-mono text-xs shadow-xs border border-border">
-                <span className="inline-block w-2 h-2 rounded-full bg-brand" />
-                <span>Avg. OCR speed: 1.8s</span>
-              </div>
-            </div>
-          </div>
-        </div>
+      <section className="flex items-start gap-3 rounded-2xl border border-border bg-muted/60 p-4">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-brand-deep">
+          <ShieldCheck className="size-4.5" />
+        </span>
+        <p className="text-sm text-ink-soft">
+          <strong className="font-semibold text-ink">How it works.</strong> Matching files are
+          approved instantly and you get <strong>{POINTS_PER_VERIFIED_UPLOAD} SyllaPoints</strong>{" "}
+          (+{POINTS_PER_VIEW} per view, +{POINTS_PER_DOWNLOAD} per download). Unclear files go to
+          peer review.
+        </p>
       </section>
 
       {result && <ResultCard r={result} />}
@@ -239,20 +216,15 @@ function UploadPage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Left Column: Form Fields & Ingestion Area (7 cols on XL) */}
         <div className="xl:col-span-7 flex flex-col gap-4">
-          <form onSubmit={onSubmit} className="p-6 rounded-2xl bg-white shadow-xs border border-border flex flex-col gap-4">
-            <div className="flex items-center justify-between pb-2 border-b border-surface-container">
-              <div className="flex items-center gap-2">
-                <FileUp className="size-5 text-moss" />
-                <h2 className="font-display text-xl text-ink font-semibold">Metadata Ingestion</h2>
-              </div>
-              <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Stage 01 of 02</span>
+          <form onSubmit={onSubmit} className="surface flex flex-col gap-5 p-5 sm:p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl text-ink">Material details</h2>
+              <span className="text-xs text-muted-foreground">All fields marked * are required</span>
             </div>
 
-            {/* Material Title Field */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="material-title" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center justify-between">
-                <span>Material Title <span className="text-rose-600">*</span></span>
-                <span className="font-normal lowercase tracking-normal text-muted-foreground text-[11px]">e.g. Full semester lecture notes</span>
+              <Label htmlFor="material-title" className="text-xs font-semibold text-ink-soft">
+                Title <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="material-title"
@@ -260,27 +232,26 @@ function UploadPage() {
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Introduction to Thermodynamics — Lecture notes week 1-4"
-                className="rounded-xl bg-muted/50 border-border focus:bg-white text-sm"
+                placeholder="e.g. Thermodynamics lecture notes, weeks 1–4"
+                className="h-11 rounded-xl bg-muted/50 text-sm focus:bg-white"
               />
             </div>
 
-            {/* Two Sub-Grid Input Row: Course Code & Course Name */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-              <div className="sm:col-span-4 flex flex-col gap-1.5">
-                <Label htmlFor="course-code" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  Course Code <span className="text-rose-600">*</span>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
+              <div className="flex flex-col gap-1.5 sm:col-span-4">
+                <Label htmlFor="course-code" className="text-xs font-semibold text-ink-soft">
+                  Course code <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="course-code"
                   maxLength={20}
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="e.g. MTH 101"
-                  className="rounded-xl bg-muted/50 border-border focus:bg-white text-sm uppercase font-mono"
+                  placeholder="MTH 101"
+                  className="h-11 rounded-xl bg-muted/50 text-sm uppercase tnum focus:bg-white"
                 />
               </div>
-              <div className="sm:col-span-8 flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 sm:col-span-8">
                 <SearchSelect
                   id="u-course"
                   label="Course"
@@ -292,119 +263,125 @@ function UploadPage() {
               </div>
             </div>
 
-            {/* Institution Field */}
-            <div className="flex flex-col gap-1.5">
-              <SearchSelect
-                id="u-inst"
-                label="Institution"
-                placeholder="Search university or polytechnic"
-                options={institutionOptions}
-                value={inst}
-                onChange={setInst}
-              />
-            </div>
+            <SearchSelect
+              id="u-inst"
+              label="Institution"
+              placeholder="Search university or polytechnic"
+              options={institutionOptions}
+              value={inst}
+              onChange={setInst}
+            />
 
-            {/* Level & Material Type Dropdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="l" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  Academic Level <span className="text-rose-600">*</span>
+                <Label htmlFor="l" className="text-xs font-semibold text-ink-soft">
+                  Level <span className="text-destructive">*</span>
                 </Label>
                 <select
                   id="l"
                   value={level}
                   onChange={(e) => setLevel(e.target.value)}
-                  className="flex h-10 w-full rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:bg-white cursor-pointer"
+                  className="flex h-11 w-full cursor-pointer rounded-xl border border-border bg-muted/50 px-3 text-sm focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {LEVELS.map((lvl) => (
-                    <option key={lvl} value={lvl}>{lvl}</option>
+                    <option key={lvl} value={lvl}>
+                      {lvl}
+                    </option>
                   ))}
                 </select>
               </div>
-
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="ty" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  Material Type <span className="text-rose-600">*</span>
+                <Label htmlFor="ty" className="text-xs font-semibold text-ink-soft">
+                  Type <span className="text-destructive">*</span>
                 </Label>
                 <select
                   id="ty"
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="flex h-10 w-full rounded-xl border border-border bg-muted/50 px-3 py-2 text-sm focus:outline-none focus:bg-white cursor-pointer"
+                  className="flex h-11 w-full cursor-pointer rounded-xl border border-border bg-muted/50 px-3 text-sm focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {MATERIAL_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* Description (Optional) */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="desc" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center justify-between">
+              <Label htmlFor="desc" className="flex items-center justify-between text-xs font-semibold text-ink-soft">
                 <span>Description (optional)</span>
-                <span className="font-mono text-[11px] text-muted-foreground">{desc.length} / 300</span>
+                <span className="font-normal text-muted-foreground tnum">{desc.length} / 300</span>
               </Label>
               <Textarea
                 id="desc"
                 maxLength={300}
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
-                placeholder="Topic overview, lecturer name or semester details..."
-                className="rounded-xl bg-muted/50 border-border focus:bg-white text-sm resize-none"
+                placeholder="Topics covered, lecturer, semester…"
+                className="resize-none rounded-xl bg-muted/50 text-sm focus:bg-white"
                 rows={3}
               />
             </div>
 
-            {/* File Upload Dropzone */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="file-input" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center justify-between">
-                <span>Source Artifact Deposit <span className="text-rose-600">*</span></span>
-                <span className="text-moss font-semibold text-[11px]">Max 20MB</span>
+              <Label htmlFor="file-input" className="flex items-center justify-between text-xs font-semibold text-ink-soft">
+                <span>
+                  File <span className="text-destructive">*</span>
+                </span>
+                <span className="font-normal text-muted-foreground">PDF or image · up to 20MB</span>
               </Label>
 
-              <div className="relative group rounded-2xl p-6 sm:p-8 bg-muted/70 hover:bg-muted border-2 border-dashed border-border hover:border-moss transition-all flex flex-col items-center justify-center text-center cursor-pointer">
+              <div
+                className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors duration-200 ${
+                  file
+                    ? "border-brand/50 bg-accent/40"
+                    : "border-border bg-muted/50 hover:border-brand/50 hover:bg-muted"
+                }`}
+              >
                 <input
                   id="file-input"
                   type="file"
                   accept={ACCEPTED_FILES}
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
                 />
-                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-moss shadow-xs group-hover:scale-110 transition-transform mb-2">
+                <div className="mb-3 grid size-12 place-items-center rounded-2xl bg-white text-brand shadow-[var(--elev-1)] transition-transform duration-200 group-hover:-translate-y-0.5">
                   <FileUp className="size-6" />
                 </div>
-                <p className="text-sm font-semibold text-ink">
-                  {file ? file.name : "Drag and drop file here, or click to browse"}
+                <p className="max-w-full truncate text-sm font-semibold text-ink">
+                  {file ? file.name : "Drop your file here, or tap to browse"}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB • Ready for AI verification` : "Accepts PDF or images (PNG, JPG, WEBP)"}
+                <p className="mt-0.5 text-xs text-muted-foreground tnum">
+                  {file
+                    ? `${(file.size / (1024 * 1024)).toFixed(1)} MB · ready to check`
+                    : "PNG, JPG, WEBP or PDF"}
                 </p>
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex flex-col-reverse items-stretch justify-between gap-3 pt-1 sm:flex-row sm:items-center">
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Lock className="size-3.5 text-moss" />
-                <span>Cryptographically time-stamped upon ingestion</span>
-              </div>
+                Your file is stored privately until it passes the check.
+              </p>
               <Button
                 type="submit"
                 disabled={busy}
-                className="w-full sm:w-auto h-11 px-6 rounded-full bg-forest hover:bg-ink text-white text-xs font-semibold shadow-xs"
+                className="h-11 rounded-full bg-forest px-6 text-white hover:bg-ink"
               >
                 {stage === "uploading" ? (
                   <>
-                    <Loader2 className="animate-spin size-4 mr-2" /> Uploading to Cloudflare R2…
+                    <Loader2 className="size-4 animate-spin" /> Uploading…
                   </>
                 ) : stage === "checking" ? (
                   <>
-                    <Loader2 className="animate-spin size-4 mr-2" /> Running Semantic AI Audit…
+                    <Loader2 className="size-4 animate-spin" /> Checking your file…
                   </>
                 ) : (
                   <>
-                    Submit for Instant Verification <ArrowRight className="size-3.5 ml-1.5" />
+                    Submit for verification <ArrowRight className="size-4" />
                   </>
                 )}
               </Button>
@@ -586,16 +563,16 @@ function ResultCard({ r }: { r: Result }) {
     );
   }
   return (
-    <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 shadow-xs">
+    <div className="mb-6 rounded-2xl border border-brass bg-brass-soft p-5 shadow-xs">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 font-display text-lg font-semibold text-amber-900">
-          <Clock className="size-5 text-amber-700" /> Pending Audit & Verification
+        <div className="flex items-center gap-2 font-display text-lg font-semibold text-brass-ink">
+          <Clock className="size-5 text-brass-ink" /> Pending Audit & Verification
         </div>
-        <span className="rounded-full bg-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
+        <span className="rounded-full bg-brass px-2.5 py-0.5 text-xs font-semibold text-brass-ink">
           In Review
         </span>
       </div>
-      <p className="mt-2 text-sm text-amber-950">
+      <p className="mt-2 text-sm text-brass-ink">
         Your file has been safely uploaded and queued for automated audit and admin review. You can check the live status of your file and track verification progress in your <b>My Materials</b> tab!
       </p>
     </div>

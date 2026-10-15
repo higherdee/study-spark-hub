@@ -144,10 +144,10 @@ interface ChatMessage {
 
 // Colorful gradients for 3D Flashcards based on Sketch 1
 const FLASHCARD_GRADIENTS = [
-  "from-emerald-500/15 via-teal-500/10 to-emerald-500/5 border-emerald-500/40 text-emerald-950 dark:text-emerald-100",
-  "from-indigo-500/15 via-purple-500/10 to-indigo-500/5 border-indigo-500/40 text-indigo-950 dark:text-indigo-100",
-  "from-amber-500/15 via-orange-500/10 to-amber-500/5 border-amber-500/40 text-amber-950 dark:text-amber-100",
-  "from-sky-500/15 via-blue-500/10 to-sky-500/5 border-sky-500/40 text-sky-950 dark:text-sky-100",
+  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-brand-deep dark:text-accent",
+  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-brand-deep dark:text-accent",
+  "from-brass/15 via-brass/10 to-brass/5 border-brass/40 text-brass-ink dark:text-brass-soft",
+  "from-brand/15 via-brand/10 to-brand/5 border-brand/40 text-brand-deep dark:text-accent",
   "from-rose-500/15 via-pink-500/10 to-rose-500/5 border-rose-500/40 text-rose-950 dark:text-rose-100",
 ];
 
@@ -1617,7 +1617,7 @@ function AssistantPage() {
                     className="rounded-xl border border-border/80 bg-card p-2.5 text-xs font-medium hover:border-primary transition-all flex items-center justify-between"
                   >
                     <span>20 Study Flashcards</span>
-                    <Layers className="size-3.5 text-indigo-500" />
+                    <Layers className="size-3.5 text-brand" />
                   </button>
                   <button
                     type="button"
@@ -1672,10 +1672,10 @@ function AssistantPage() {
                       <div className="mb-2 rounded-xl bg-muted/60 border border-border/80 p-2.5 text-foreground">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-xs flex items-center gap-1.5 text-primary">
-                            <CheckCircle2 className="size-3.5 text-emerald-600" />
+                            <CheckCircle2 className="size-3.5 text-brand" />
                             Registered to Library
                           </span>
-                          <span className="rounded-full bg-emerald-500/10 text-emerald-700 px-2 py-0.5 text-[10px] font-bold">
+                          <span className="rounded-full bg-brand/10 text-brand-deep px-2 py-0.5 text-[10px] font-bold">
                             +25 SyllaPoints
                           </span>
                         </div>
@@ -1688,7 +1688,7 @@ function AssistantPage() {
 
                     {m.audioUrl && (
                       <div className="mb-2 p-2 rounded-xl bg-black/15 flex items-center gap-2">
-                        <Volume2 className="size-4 text-emerald-400" />
+                        <Volume2 className="size-4 text-brand" />
                         <audio src={m.audioUrl} controls className="h-7 w-48" />
                       </div>
                     )}
@@ -1904,10 +1904,10 @@ function AssistantPage() {
                       setShowModesMenu(false);
                       setIsTheoryConfigOpen(true);
                     }}
-                    className="flex items-center justify-between cursor-pointer text-xs font-semibold text-foreground hover:text-emerald-600 transition-colors"
+                    className="flex items-center justify-between cursor-pointer text-xs font-semibold text-foreground hover:text-brand transition-colors"
                   >
                     <div className="flex items-center gap-2">
-                      <FileText className="size-4 text-emerald-600 shrink-0" />
+                      <FileText className="size-4 text-brand shrink-0" />
                       <span>Theory Test</span>
                     </div>
                     <ChevronRight className="size-3.5 text-muted-foreground" />
@@ -1920,7 +1920,7 @@ function AssistantPage() {
                         setTheoryMode("as_you_go");
                         startTheoryQuiz(theoryCount || 5, "as_you_go");
                       }}
-                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all text-center"
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-brand/30 bg-brand/10 text-brand dark:text-brand hover:bg-brand/20 active:scale-95 transition-all text-center"
                     >
                       Grade as you go
                     </button>
@@ -1931,7 +1931,7 @@ function AssistantPage() {
                         setTheoryMode("at_the_end");
                         startTheoryQuiz(theoryCount || 5, "at_the_end");
                       }}
-                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all text-center"
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-brand/30 bg-brand/10 text-brand dark:text-brand hover:bg-brand/20 active:scale-95 transition-all text-center"
                     >
                       Grade at the end
                     </button>
@@ -1945,10 +1945,10 @@ function AssistantPage() {
                     setShowModesMenu(false);
                     setIsFlashcardConfigOpen(true);
                   }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-indigo-500/10 hover:text-indigo-600 transition-all"
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-brand/10 hover:text-brand transition-all"
                 >
                   <div className="flex items-center gap-2">
-                    <Layers className="size-4 text-indigo-500 shrink-0" />
+                    <Layers className="size-4 text-brand shrink-0" />
                     <span>3D Flashcards</span>
                   </div>
                   <ChevronRight className="size-3.5 text-muted-foreground" />
@@ -1961,10 +1961,10 @@ function AssistantPage() {
                     setShowModesMenu(false);
                     setIsAssignmentModalOpen(true);
                   }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-amber-500/10 hover:text-amber-600 transition-all"
+                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-brass/10 hover:text-brass-ink transition-all"
                 >
                   <div className="flex items-center gap-2">
-                    <GraduationCap className="size-4 text-amber-500 shrink-0" />
+                    <GraduationCap className="size-4 text-brass shrink-0" />
                     <span>Assignment Helper</span>
                   </div>
                   <ChevronRight className="size-3.5 text-muted-foreground" />
@@ -1988,7 +1988,7 @@ function AssistantPage() {
 
           {/* Assignment Mode indicator banner */}
           {isAssignmentMode && (
-            <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-semibold animate-in fade-in slide-in-from-bottom-1">
+            <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-brass/10 border border-brass/30 text-brass-ink dark:text-brass text-xs font-semibold animate-in fade-in slide-in-from-bottom-1">
               <div className="flex items-center gap-2">
                 <GraduationCap className="size-3.5" />
                 <span>Assignment Mode: Academic breakdown with derivations &amp; steps</span>
@@ -2004,7 +2004,7 @@ function AssistantPage() {
           )}
 
           {/* Autogrowing Typing Capsule */}
-          <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-secondary/30 dark:bg-zinc-900/50 p-2 sm:p-2.5 shadow-xs transition-all focus-within:border-primary/50 focus-within:bg-card">
+          <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-secondary/30 dark:bg-ink/50 p-2 sm:p-2.5 shadow-xs transition-all focus-within:border-primary/50 focus-within:bg-card">
             <textarea
               ref={textareaRef}
               value={input}
@@ -2424,7 +2424,7 @@ function AssistantPage() {
         <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <FileText className="size-4 text-emerald-600" /> Theory Practice Test
+              <FileText className="size-4 text-brand" /> Theory Practice Test
             </DialogTitle>
           </DialogHeader>
 
@@ -2502,7 +2502,7 @@ function AssistantPage() {
         <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Layers className="size-4 text-indigo-500" /> 3D Flashcards
+              <Layers className="size-4 text-brand" /> 3D Flashcards
             </DialogTitle>
           </DialogHeader>
 
@@ -2580,7 +2580,7 @@ function AssistantPage() {
         <DialogContent className="max-w-md rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <GraduationCap className="size-4.5 text-amber-500" /> Assignment Helper
+              <GraduationCap className="size-4.5 text-brass" /> Assignment Helper
             </DialogTitle>
           </DialogHeader>
 

@@ -1,16 +1,19 @@
-import { Bell, Check, Loader2, MessageSquare, Sparkles, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
+import { Bell, MessageSquare, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { getUserNotifications, markNotificationRead, type UserNotification } from "@/integrations/turso/client";
+import { getUserNotifications, markNotificationRead } from "@/integrations/turso/client";
 import { cn } from "@/lib/utils";
 
 interface NotificationsDrawerProps {
   open: boolean;
   onClose: () => void;
 }
+
+const EASE = [0.23, 1, 0.32, 1] as const;
 
 export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps) {
   const { user } = useAuth();
@@ -50,118 +53,146 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center sm:place-items-end bg-black/50 p-4 sm:p-6 backdrop-blur-md animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md overflow-hidden rounded-3xl border border-white/20 bg-card p-6 shadow-2xl backdrop-blur-2xl animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-border/60 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="grid size-8 place-items-center rounded-full bg-primary/10 text-primary">
-              <Bell className="size-4" />
-            </div>
-            <div>
-              <h3 className="font-display text-lg font-bold text-foreground">Notifications</h3>
-              <p className="text-xs text-muted-foreground">
-                {unreadCount > 0 ? `${unreadCount} unread message${unreadCount > 1 ? "s" : ""}` : "All messages read"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs h-7 px-2 text-primary"
-                onClick={handleMarkAllRead}
-              >
-                Mark all read
-              </Button>
-            )}
-            <button
-              onClick={onClose}
-              className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-3 pr-1">
-          {isLoading ? (
-            <div className="grid place-items-center py-10">
-              <Loader2 className="animate-spin text-primary size-6" />
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="py-12 text-center text-xs text-muted-foreground">
-              <Bell className="mx-auto size-8 text-muted-foreground/40 mb-2" />
-              <p className="font-medium text-foreground">No notifications yet</p>
-              <p className="mt-0.5">Admin broadcasts and appeal replies will appear here.</p>
-            </div>
-          ) : (
-            notifications.map((n) => {
-              const isComplaint = n.type === "complaint_reply";
-              const isBroadcast = n.type === "broadcast";
-              const isPoints = n.type === "points";
-
-              return (
-                <div
-                  key={n.id}
-                  onClick={() => !n.read && handleMarkRead(n.id)}
-                  className={cn(
-                    "relative flex items-start gap-3 rounded-2xl border p-3.5 transition-all cursor-pointer",
-                    n.read
-                      ? "border-border/40 bg-card/60 opacity-80"
-                      : "border-primary/30 bg-primary/5 shadow-xs"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "grid size-8 shrink-0 place-items-center rounded-xl",
-                      isComplaint
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        : isPoints
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "bg-primary/10 text-primary"
-                    )}
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="notifications"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 backdrop-blur-[2px] sm:items-stretch sm:justify-end"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: EASE }}
+          onClick={onClose}
+        >
+          <motion.aside
+            role="dialog"
+            aria-label="Notifications"
+            className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-background shadow-[var(--elev-3)] sm:max-h-none sm:w-[26rem] sm:rounded-none sm:rounded-l-3xl"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ duration: 0.32, ease: EASE }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div>
+                <h3 className="font-display text-xl text-ink">Notifications</h3>
+                <p className="text-xs text-muted-foreground tnum">
+                  {unreadCount > 0
+                    ? `${unreadCount} unread`
+                    : "You're all caught up"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs font-semibold text-brand-deep"
+                    onClick={handleMarkAllRead}
                   >
-                    {isComplaint ? (
-                      <MessageSquare className="size-4" />
-                    ) : isPoints ? (
-                      <Sparkles className="size-4" />
-                    ) : (
-                      <Bell className="size-4" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold text-xs text-foreground truncate">{n.title}</p>
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {new Date(n.created_at).toLocaleDateString([], {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
+                    Mark all read
+                  </Button>
+                )}
+                <button
+                  type="button"
+                  aria-label="Close notifications"
+                  onClick={onClose}
+                  className="press grid size-9 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-4 pb-safe">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="flex gap-3 rounded-2xl border border-border p-3.5">
+                      <div className="skeleton size-9 rounded-xl" />
+                      <div className="flex-1 space-y-2">
+                        <div className="skeleton h-3.5 w-1/2 rounded" />
+                        <div className="skeleton h-3 w-full rounded" />
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                      {n.message}
-                    </p>
-                  </div>
-                  {!n.read && (
-                    <div className="size-2 rounded-full bg-primary shrink-0 self-center" />
-                  )}
+                  ))}
                 </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-    </div>
+              ) : notifications.length === 0 ? (
+                <div className="grid place-items-center px-6 py-16 text-center">
+                  <span className="grid size-12 place-items-center rounded-2xl bg-muted text-moss">
+                    <Bell className="size-6" />
+                  </span>
+                  <p className="mt-4 font-display text-lg text-ink">Nothing yet</p>
+                  <p className="mt-1 text-sm text-ink-soft">
+                    Announcements, point rewards and replies to your appeals will show up here.
+                  </p>
+                </div>
+              ) : (
+                <ul className="stagger space-y-2.5">
+                  {notifications.map((n) => {
+                    const isComplaint = n.type === "complaint_reply";
+                    const isPoints = n.type === "points";
+                    return (
+                      <li key={n.id}>
+                        <button
+                          type="button"
+                          onClick={() => !n.read && handleMarkRead(n.id)}
+                          className={cn(
+                            "press flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors duration-150",
+                            n.read
+                              ? "border-border bg-white/60"
+                              : "border-brand/30 bg-white shadow-[var(--elev-1)]",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "grid size-9 shrink-0 place-items-center rounded-xl",
+                              isComplaint
+                                ? "bg-brass-soft text-brass-ink"
+                                : isPoints
+                                  ? "bg-accent text-brand-deep"
+                                  : "bg-muted text-moss",
+                            )}
+                          >
+                            {isComplaint ? (
+                              <MessageSquare className="size-4" />
+                            ) : isPoints ? (
+                              <Sparkles className="size-4" />
+                            ) : (
+                              <Bell className="size-4" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="truncate text-sm font-semibold text-ink">
+                                {n.title}
+                              </span>
+                              <span className="shrink-0 text-[11px] text-muted-foreground">
+                                {new Date(n.created_at).toLocaleDateString([], {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block whitespace-pre-wrap text-xs leading-relaxed text-ink-soft">
+                              {n.message}
+                            </span>
+                          </span>
+                          {!n.read && (
+                            <span className="mt-1.5 size-2 shrink-0 rounded-full bg-brand" />
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </motion.aside>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

@@ -86,8 +86,8 @@ function AdminComplaintsPage() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
-          <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Pending Review</p>
+        <div className="rounded-2xl border border-brass/30 bg-brass/5 p-4">
+          <p className="text-xs font-semibold text-brass-ink dark:text-brass">Pending Review</p>
           <p className="mt-1 font-display text-2xl font-bold text-foreground">{pendingCount}</p>
         </div>
         <div className="rounded-2xl border border-border/60 bg-card p-4">
@@ -123,7 +123,7 @@ function AdminComplaintsPage() {
             ) : complaints.length === 0 ? (
               <tr>
                 <td colSpan={5} className="p-10 text-center text-xs text-muted-foreground">
-                  <CheckCircle2 className="mx-auto size-8 text-emerald-500/40 mb-2" />
+                  <CheckCircle2 className="mx-auto size-8 text-brand/40 mb-2" />
                   <p className="font-semibold text-foreground">No pending complaints!</p>
                   <p className="mt-0.5">All uploaded material disputes have been processed.</p>
                 </td>

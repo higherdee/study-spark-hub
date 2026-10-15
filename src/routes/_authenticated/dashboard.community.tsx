@@ -753,15 +753,15 @@ export function CommunityPage() {
         {/* Top Header */}
         <div className="p-3.5 border-b border-border/70 flex items-center justify-between gap-2 bg-card shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Avatar className="size-9 ring-2 ring-emerald-500/20">
+            <Avatar className="size-9 ring-2 ring-brand/20">
               <AvatarImage src={profile?.avatar_url || ""} />
-              <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
+              <AvatarFallback className="bg-brand text-xs font-bold text-white">
                 {profile?.full_name?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <h2 className="text-xs font-bold text-foreground truncate">Peers & Groups</h2>
-              <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 truncate">
+              <p className="text-[11px] font-medium text-brand dark:text-brand truncate">
                 @{profile?.username || "student"}
               </p>
             </div>
@@ -774,7 +774,7 @@ export function CommunityPage() {
               size="icon"
               onClick={() => setIsQrModalOpen(true)}
               title="Show my SyllaID QR"
-              className="size-8 rounded-full text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
+              className="size-8 rounded-full text-muted-foreground hover:text-brand hover:bg-brand/10"
             >
               <QrCode className="size-4" />
             </Button>
@@ -784,7 +784,7 @@ export function CommunityPage() {
               size="icon"
               onClick={() => setIsScannerOpen(true)}
               title="Scan peer QR code"
-              className="size-8 rounded-full text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
+              className="size-8 rounded-full text-muted-foreground hover:text-brand hover:bg-brand/10"
             >
               <ScanLine className="size-4" />
             </Button>
@@ -885,7 +885,7 @@ export function CommunityPage() {
                 >
                   <Avatar className="size-10 shrink-0">
                     <AvatarImage src={c.peer.avatar_url || ""} />
-                    <AvatarFallback className="bg-emerald-600 text-white font-bold text-xs">
+                    <AvatarFallback className="bg-brand text-white font-bold text-xs">
                       {c.peer.full_name?.charAt(0) || "P"}
                     </AvatarFallback>
                   </Avatar>
@@ -939,7 +939,7 @@ export function CommunityPage() {
                     isSelected && "bg-secondary/70 font-semibold"
                   )}
                 >
-                  <div className="size-10 rounded-full bg-indigo-600/10 text-indigo-600 grid place-items-center font-bold text-xs shrink-0">
+                  <div className="size-10 rounded-full bg-brand/10 text-brand grid place-items-center font-bold text-xs shrink-0">
                     <Users className="size-5" />
                   </div>
 
@@ -987,7 +987,7 @@ export function CommunityPage() {
                       {activeChat.title}
                     </h3>
                     {activeChat.type === "group" && (
-                      <span className="rounded-full bg-indigo-500/10 text-indigo-600 text-[10px] font-bold px-2 py-0.2">
+                      <span className="rounded-full bg-brand/10 text-brand text-[10px] font-bold px-2 py-0.2">
                         Group
                       </span>
                     )}
@@ -1004,12 +1004,12 @@ export function CommunityPage() {
                   <>
                     <Button
                       size="sm"
-                      variant="outline"
                       onClick={() => setIsHostBattleOpen(true)}
-                      className="h-8 rounded-full text-xs font-bold gap-1 border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 shadow-xs"
+                      aria-label="Start a study battle"
+                      className="h-8 gap-1.5 rounded-full bg-forest px-3 text-xs font-semibold text-white hover:bg-ink"
                     >
-                      <Swords className="size-3.5" />
-                      <span>⚡ Battle</span>
+                      <Swords className="size-3.5 text-brass-soft" />
+                      <span>Battle</span>
                     </Button>
 
                     <Button
@@ -1040,7 +1040,7 @@ export function CommunityPage() {
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]">
               {chatMessages.length === 0 ? (
                 <div className="py-16 text-center flex flex-col items-center">
-                  <div className="size-12 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-2">
+                  <div className="size-12 rounded-full bg-brand/10 text-brand grid place-items-center mb-2">
                     <MessageSquare className="size-5" />
                   </div>
                   <h4 className="text-xs font-semibold text-foreground">Start of conversation</h4>
@@ -1097,7 +1097,7 @@ export function CommunityPage() {
                         <span
                           className={cn(
                             "text-[10px] font-bold mb-0.5 px-1",
-                            isBossAi ? "text-amber-500" : "text-emerald-600 dark:text-emerald-400"
+                            isBossAi ? "text-brass" : "text-brand dark:text-brand"
                           )}
                         >
                           {senderDisplay}
@@ -1112,7 +1112,7 @@ export function CommunityPage() {
                           isMe
                             ? "bg-primary text-primary-foreground rounded-br-xs"
                             : isBossAi
-                            ? "bg-amber-500/10 border border-amber-500/30 text-foreground rounded-bl-xs"
+                            ? "bg-brass/10 border border-brass/30 text-foreground rounded-bl-xs"
                             : "bg-card border border-border/80 text-foreground rounded-bl-xs"
                         )}
                       >
@@ -1186,10 +1186,10 @@ export function CommunityPage() {
 
             {/* Telegram Feature: Editing Message Banner */}
             {editingMessage && (
-              <div className="px-3 py-1.5 bg-amber-500/10 border-t border-amber-500/30 flex items-center justify-between text-xs">
+              <div className="px-3 py-1.5 bg-brass/10 border-t border-brass/30 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Edit2 className="size-3.5 text-amber-600 shrink-0" />
-                  <span className="font-bold text-[11px] text-amber-700 dark:text-amber-400">
+                  <Edit2 className="size-3.5 text-brass-ink shrink-0" />
+                  <span className="font-bold text-[11px] text-brass-ink dark:text-brass">
                     Editing message (within 10-minute window)
                   </span>
                 </div>
@@ -1282,8 +1282,9 @@ export function CommunityPage() {
                       <button
                         type="button"
                         onClick={() => setIsHostBattleOpen(true)}
-                        title="⚡ Host Study Battle / Group Quiz"
-                        className="size-7.5 rounded-full grid place-items-center text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                        title="Start a study battle"
+                        aria-label="Start a study battle"
+                        className="press size-7.5 rounded-full grid place-items-center text-brass hover:bg-brass-soft transition-colors"
                       >
                         <Swords className="size-4" />
                       </button>
@@ -1331,7 +1332,7 @@ export function CommunityPage() {
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="size-16 rounded-full bg-emerald-500/10 text-emerald-600 grid place-items-center mb-3">
+            <div className="size-16 rounded-full bg-brand/10 text-brand grid place-items-center mb-3">
               <MessageSquare className="size-8" />
             </div>
             <h3 className="text-base font-bold text-foreground">Select a peer or study group</h3>
@@ -1372,7 +1373,7 @@ export function CommunityPage() {
               }}
               className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
             >
-              <CornerUpLeft className="size-4 text-emerald-600" /> Reply to Message
+              <CornerUpLeft className="size-4 text-brand" /> Reply to Message
             </button>
 
             {selectedMessageForMenu?.sender_id === user?.id && (
@@ -1382,7 +1383,7 @@ export function CommunityPage() {
                   onClick={() => handleStartEditMessage(selectedMessageForMenu)}
                   className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
                 >
-                  <Edit2 className="size-4 text-amber-500" /> Edit Message (within 10m)
+                  <Edit2 className="size-4 text-brass" /> Edit Message (within 10m)
                 </button>
 
                 <button
@@ -1548,7 +1549,7 @@ export function CommunityPage() {
         <DialogContent className="max-w-md rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <UserPlus className="size-4 text-emerald-600" /> Start Direct Peer Chat
+              <UserPlus className="size-4 text-brand" /> Start Direct Peer Chat
             </DialogTitle>
           </DialogHeader>
 

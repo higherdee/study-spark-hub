@@ -54,7 +54,7 @@ export function PublicScholarProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#070B14] text-white flex flex-col items-center justify-center p-6">
-        <Loader2 className="size-10 animate-spin text-emerald-400 mb-3" />
+        <Loader2 className="size-10 animate-spin text-brand mb-3" />
         <p className="text-sm text-white/70 font-semibold">Loading Scholar Profile...</p>
       </div>
     );
@@ -68,7 +68,7 @@ export function PublicScholarProfilePage() {
         <p className="text-xs text-white/60 max-w-sm mt-1 mb-6">
           No scholar matching "@{username}" was found. Check the spelling or join Syllaboss to create your own profile!
         </p>
-        <Button asChild className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold">
+        <Button asChild className="rounded-full bg-brand hover:bg-brand text-black font-bold">
           <Link to="/">Explore Syllaboss</Link>
         </Button>
       </div>
@@ -76,7 +76,7 @@ export function PublicScholarProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-white flex flex-col justify-between selection:bg-emerald-500 selection:text-black">
+    <div className="min-h-screen bg-[#070B14] text-white flex flex-col justify-between selection:bg-brand selection:text-black">
       {/* Top Navbar */}
       <header className="border-b border-white/10 backdrop-blur-md sticky top-0 z-40 bg-[#070B14]/80 px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
@@ -87,7 +87,7 @@ export function PublicScholarProfilePage() {
           <Button
             size="sm"
             asChild
-            className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs shadow-md shadow-emerald-500/20"
+            className="rounded-full bg-brand hover:bg-brand text-black font-extrabold text-xs shadow-md shadow-brand/20"
           >
             <Link to="/auth">
               <span>Join Syllaboss</span>
@@ -101,14 +101,14 @@ export function PublicScholarProfilePage() {
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 space-y-10">
         {/* Hero Banner */}
         <div className="text-center space-y-2 max-w-xl mx-auto">
-          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-[10px] font-black uppercase tracking-wider">
+          <Badge className="bg-brass/20 text-brass border-brass/40 text-[10px] font-black uppercase tracking-wider">
             Campus Wrapped 2026 Showcase
           </Badge>
           <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
             Meet Scholar @{data.user.username}
           </h1>
           <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
-            Ranked <strong className="text-amber-400">Top {data.departmentPercentile}%</strong> in {data.user.course} at {data.user.institution}.
+            Ranked <strong className="text-brass">Top {data.departmentPercentile}%</strong> in {data.user.course} at {data.user.institution}.
           </p>
         </div>
 
@@ -122,8 +122,8 @@ export function PublicScholarProfilePage() {
           {/* Right: Challenge This Scholar & Campus Viral Pitch */}
           <div className="lg:col-span-6 space-y-6 lg:pt-4">
             {/* Viral Challenge Box */}
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-500/20 via-white/[0.03] to-emerald-500/15 border-2 border-amber-500/40 shadow-2xl space-y-4">
-              <div className="size-12 rounded-2xl bg-amber-500 text-black grid place-items-center shadow-lg shadow-amber-500/30">
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-brass/20 via-white/[0.03] to-brand/15 border-2 border-brass/40 shadow-2xl space-y-4">
+              <div className="size-12 rounded-2xl bg-brass text-black grid place-items-center shadow-lg shadow-brass/30">
                 <Swords className="size-6" />
               </div>
 
@@ -139,7 +139,7 @@ export function PublicScholarProfilePage() {
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <Button
                   asChild
-                  className="h-11 rounded-2xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs sm:text-sm shadow-xl shadow-amber-500/20 gap-2 flex-1"
+                  className="h-11 rounded-2xl bg-brass hover:bg-brass-ink text-black font-black text-xs sm:text-sm shadow-xl shadow-brass/20 gap-2 flex-1"
                 >
                   <Link to="/auth">
                     <Swords className="size-4" />
@@ -153,7 +153,7 @@ export function PublicScholarProfilePage() {
                   className="h-11 rounded-2xl border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold text-xs gap-1.5"
                 >
                   <Link to="/dashboard/leaderboard">
-                    <Trophy className="size-4 text-amber-400" />
+                    <Trophy className="size-4 text-brass" />
                     <span>View Campus Leaderboard</span>
                   </Link>
                 </Button>
@@ -163,7 +163,7 @@ export function PublicScholarProfilePage() {
             {/* AI Archetype Highlight Card */}
             <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/10 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
+                <span className="text-[10px] font-black uppercase tracking-widest text-brand">
                   Boss AI Archetype Assigned
                 </span>
                 <span className="text-2xl">{data.archetype.badgeEmoji}</span>
@@ -172,7 +172,7 @@ export function PublicScholarProfilePage() {
               <h4 className="text-lg font-black text-white">
                 {data.archetype.title}
               </h4>
-              <p className="text-xs font-bold text-violet-300">{data.archetype.tagline}</p>
+              <p className="text-xs font-bold text-brand">{data.archetype.tagline}</p>
               <p className="text-xs italic text-white/70 leading-relaxed">
                 "{data.archetype.quote}"
               </p>
@@ -181,8 +181,8 @@ export function PublicScholarProfilePage() {
             {/* Quick Stats Summary */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1">
-                <div className="flex items-center gap-1.5 text-amber-400 font-bold">
-                  <Flame className="size-3.5 fill-amber-400" />
+                <div className="flex items-center gap-1.5 text-brass font-bold">
+                  <Flame className="size-3.5 fill-brass" />
                   <span>Daily Streak</span>
                 </div>
                 <p className="text-xl font-black text-white">{data.user.currentStreak} Days</p>
@@ -190,7 +190,7 @@ export function PublicScholarProfilePage() {
               </div>
 
               <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1">
-                <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                <div className="flex items-center gap-1.5 text-brand font-bold">
                   <Swords className="size-3.5" />
                   <span>Battle Win-Rate</span>
                 </div>

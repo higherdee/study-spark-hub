@@ -241,7 +241,7 @@ function SettingsPage() {
         await qc.invalidateQueries({ queryKey: ["profile"] });
         setIsUsernameAvailable(null);
       } else {
-        toast.error(res.message || "Failed to update username.");
+        toast.error((res as any).error || (res as any).message || "Failed to update username.");
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to update username.");
@@ -465,11 +465,11 @@ function SettingsPage() {
       />
 
       {/* SyllaPlus Plan Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-amber-600/5 to-card p-6 shadow-soft">
+      <div className="relative overflow-hidden rounded-3xl border border-brass/30 bg-gradient-to-br from-brass/10 via-brass-ink/5 to-card p-6 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-full bg-amber-500/20 text-amber-600">
+              <span className="flex size-7 items-center justify-center rounded-full bg-brass/20 text-brass-ink">
                 <Sparkles className="size-4" />
               </span>
               <h2 className="font-display text-xl font-bold text-foreground">
@@ -487,12 +487,12 @@ function SettingsPage() {
             <Button
               onClick={handleUpgrade}
               disabled={upgrading}
-              className="rounded-full bg-amber-600 text-white hover:bg-amber-700 shadow-md font-semibold text-xs px-5 h-9"
+              className="rounded-full bg-brass-ink text-white hover:bg-brass-ink shadow-md font-semibold text-xs px-5 h-9"
             >
               {upgrading ? "Connecting Bachs..." : `Upgrade with Bachs (${formatNaira(SYLLAPLUS_PRICE_NAIRA)})`}
             </Button>
           ) : (
-            <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-1 text-xs font-semibold text-amber-700">
+            <span className="rounded-full bg-brass/20 border border-brass/40 px-3 py-1 text-xs font-semibold text-brass-ink">
               Active Member
             </span>
           )}
@@ -515,7 +515,7 @@ function SettingsPage() {
             <div className="flex items-center gap-2">
               {notificationPermission === "granted" ? (
                 <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                  <span className="flex items-center gap-1 text-xs font-medium text-brand bg-accent px-2.5 py-1 rounded-full border border-accent">
                     <Check className="size-3.5" /> Enabled
                   </span>
                   <Button
@@ -586,8 +586,8 @@ function SettingsPage() {
             <div className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
                 <span className="relative flex size-2">
-                  <span className={cn("absolute inline-flex size-full rounded-full bg-emerald-400 opacity-75", !isPaused && "animate-ping")} />
-                  <span className={cn("relative inline-flex size-2 rounded-full", isPaused ? "bg-amber-500" : "bg-emerald-500")} />
+                  <span className={cn("absolute inline-flex size-full rounded-full bg-brand opacity-75", !isPaused && "animate-ping")} />
+                  <span className={cn("relative inline-flex size-2 rounded-full", isPaused ? "bg-brass" : "bg-brand")} />
                 </span>
                 Active Study Session Timer
               </span>
@@ -658,7 +658,7 @@ function SettingsPage() {
 
           <div className="flex items-center justify-between p-4 text-sm">
             <span className="text-muted-foreground">Inactivity Timeout</span>
-            <span className="font-medium text-emerald-600">
+            <span className="font-medium text-brand">
               Auto-pauses after 1 hour idle to protect points integrity
             </span>
           </div>
@@ -745,7 +745,7 @@ function SettingsPage() {
                   />
                 ) : (
                   <div className="size-16 rounded-full bg-primary/10 text-primary font-bold text-xl flex items-center justify-center border-2 border-primary/20 shadow-xs">
-                    {(fullName || username || "S")[0].toUpperCase()}
+                    {((fullName || username || "S")[0] ?? "S").toUpperCase()}
                   </div>
                 )}
                 <input
@@ -825,7 +825,7 @@ function SettingsPage() {
                 <div className="absolute right-2.5 top-2 flex items-center">
                   {usernameChecking && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
                   {!usernameChecking && isUsernameAvailable === true && (
-                    <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                    <span className="flex items-center gap-0.5 text-[10px] text-brand font-semibold bg-accent px-1.5 py-0.5 rounded-full border border-accent">
                       <Check className="size-2.5" /> Available
                     </span>
                   )}
@@ -989,7 +989,7 @@ function SettingsPage() {
                 variant="default"
                 size="sm"
                 onClick={shareWhatsApp}
-                className="rounded-xl flex-1 sm:flex-initial text-xs h-9 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="rounded-xl flex-1 sm:flex-initial text-xs h-9 bg-brand hover:bg-brand-deep text-white"
               >
                 WhatsApp
               </Button>
@@ -1027,7 +1027,7 @@ function SettingsPage() {
               {claimingInstall ? "Claiming..." : `Claim +${POINTS_INSTALL_APP_BONUS} pts`}
             </Button>
           ) : (
-            <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+            <span className="flex items-center gap-1 text-xs font-medium text-brand">
               <Check className="size-3.5" /> Claimed
             </span>
           )}

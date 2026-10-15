@@ -371,7 +371,7 @@ function WalletPage() {
                 readOnly
                 value={name}
                 placeholder={isResolving ? "Verifying with Paystack..." : "Auto-verified name"}
-                className={`h-11 rounded-xl font-medium ${isVerified ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-semibold" : ""}`}
+                className={`h-11 rounded-xl font-medium ${isVerified ? "bg-brand/10 text-brand-deep dark:text-brand font-semibold" : ""}`}
               />
             </div>
           </div>
@@ -385,8 +385,8 @@ function WalletPage() {
           )}
 
           {isVerified && (
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 p-3 text-xs text-brand-deep dark:text-brand">
+              <CheckCircle2 className="size-4 shrink-0 text-brand dark:text-brand" />
               <span>Verified Account Holder: <strong>{name}</strong></span>
             </div>
           )}
@@ -498,7 +498,7 @@ function WalletPage() {
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "grid size-9 place-items-center rounded-xl shrink-0",
-                      l.amount > 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"
+                      l.amount > 0 ? "bg-brand/10 text-brand" : "bg-red-500/10 text-red-600"
                     )}>
                       {l.amount > 0 ? (
                         <ArrowDownLeft className="size-4" />
@@ -517,7 +517,7 @@ function WalletPage() {
                   </div>
                   <span className={cn(
                     "font-mono text-xs font-bold shrink-0",
-                    l.amount > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                    l.amount > 0 ? "text-brand dark:text-brand" : "text-muted-foreground"
                   )}>
                     {l.amount > 0 ? `+${l.amount.toLocaleString()}` : l.amount.toLocaleString()} pts
                   </span>

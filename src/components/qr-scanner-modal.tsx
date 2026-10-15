@@ -130,7 +130,7 @@ export function QrScannerModal({ open, onOpenChange, onScanPeer }: QrScannerModa
       <DialogContent className="max-w-sm rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
         <DialogHeader className="text-center sm:text-center">
           <DialogTitle className="flex items-center justify-center gap-2 text-xl font-bold tracking-tight">
-            <Camera className="size-5 text-emerald-600" />
+            <Camera className="size-5 text-brand" />
             Scan Peer QR Code
           </DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -141,12 +141,12 @@ export function QrScannerModal({ open, onOpenChange, onScanPeer }: QrScannerModa
         <div className="mt-4 flex flex-col items-center">
           {detectedUsername ? (
             /* Confirmation card when a student QR code is successfully captured */
-            <div className="w-full flex flex-col items-center text-center p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/40 animate-in zoom-in-95 duration-200">
-              <div className="size-16 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-2xl shadow-lg mb-3">
+            <div className="w-full flex flex-col items-center text-center p-5 rounded-2xl bg-brand/10 border-2 border-brand/40 animate-in zoom-in-95 duration-200">
+              <div className="size-16 rounded-full bg-brand text-white flex items-center justify-center font-bold text-2xl shadow-lg mb-3">
                 {detectedUsername.charAt(0).toUpperCase()}
               </div>
 
-              <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider mb-1">
+              <div className="flex items-center gap-1 text-brand dark:text-brand font-bold text-xs uppercase tracking-wider mb-1">
                 <CheckCircle2 className="size-4" /> Student Discovered
               </div>
 
@@ -164,7 +164,7 @@ export function QrScannerModal({ open, onOpenChange, onScanPeer }: QrScannerModa
                     onOpenChange(false);
                     onScanPeer(peer);
                   }}
-                  className="w-full rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-10 gap-2 shadow-md"
+                  className="w-full rounded-full bg-brand hover:bg-brand-deep text-white font-semibold text-xs h-10 gap-2 shadow-md"
                 >
                   <MessageSquare className="size-4" /> Message @{detectedUsername}
                 </Button>
@@ -181,7 +181,7 @@ export function QrScannerModal({ open, onOpenChange, onScanPeer }: QrScannerModa
             </div>
           ) : (
             /* Live Viewfinder Frame */
-            <div className="relative size-64 overflow-hidden rounded-2xl border-2 border-emerald-500/40 bg-black shadow-inner">
+            <div className="relative size-64 overflow-hidden rounded-2xl border-2 border-brand/40 bg-black shadow-inner">
               <video
                 ref={videoRef}
                 className="size-full object-cover"
@@ -192,13 +192,13 @@ export function QrScannerModal({ open, onOpenChange, onScanPeer }: QrScannerModa
 
               {/* Viewfinder crosshairs overlay */}
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="size-48 rounded-xl border-2 border-emerald-400/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse" />
+                <div className="size-48 rounded-xl border-2 border-brand/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse" />
               </div>
 
               {hasPermission === false && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-black/90 text-center">
-                  <AlertCircle className="size-8 text-amber-400 mb-2" />
-                  <p className="text-xs text-slate-200 leading-relaxed">{errorMessage}</p>
+                  <AlertCircle className="size-8 text-brass mb-2" />
+                  <p className="text-xs text-border leading-relaxed">{errorMessage}</p>
                   <Button
                     size="sm"
                     variant="outline"

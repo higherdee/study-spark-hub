@@ -405,7 +405,7 @@ export function MobileCustomKeyboard({
                   : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
               )}
             >
-              <Sparkles className="size-3 text-amber-500" /> Prompts
+              <Sparkles className="size-3 text-brass" /> Prompts
             </button>
           </div>
 
@@ -432,7 +432,7 @@ export function MobileCustomKeyboard({
         {/* Live Predictive Suggestions Carousel */}
         <div className="flex items-center gap-1.5 overflow-x-auto px-2.5 py-1.5 [scrollbar-width:none]">
           <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70 shrink-0 flex items-center gap-1 pl-1">
-            <Sparkles className="size-2.5 text-amber-500 animate-pulse" />
+            <Sparkles className="size-2.5 text-brass animate-pulse" />
             Suggestions:
           </span>
           {predictiveSuggestions.map((suggestion, idx) => (
@@ -507,7 +507,7 @@ export function MobileCustomKeyboard({
               >
                 <ArrowUp className={cn("size-4 transition-transform", isCapsLock && "stroke-[3]")} />
                 {isCapsLock && (
-                  <span className="absolute bottom-1 size-1 rounded-full bg-emerald-400" />
+                  <span className="absolute bottom-1 size-1 rounded-full bg-brand" />
                 )}
               </button>
 
@@ -735,7 +735,7 @@ export function MobileCustomKeyboard({
                 }}
                 className="flex items-center justify-center rounded-xl h-10 min-w-12 sm:min-w-14 px-2 bg-muted/80 text-foreground border border-border/70 text-xs font-bold transition-all active:scale-95"
               >
-                <Sparkles className="size-3 mr-1 text-amber-500" /> Prompts
+                <Sparkles className="size-3 mr-1 text-brass" /> Prompts
               </button>
 
               <div className="flex justify-center gap-1 sm:gap-1.5 flex-1">

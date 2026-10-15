@@ -317,20 +317,25 @@ export function HostBattleModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl p-5 border-border bg-card shadow-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-base sm:text-lg font-black flex items-center justify-between text-foreground">
-            <div className="flex items-center gap-2">
-              <div className="size-8 rounded-xl bg-amber-500/20 text-amber-500 grid place-items-center">
-                <Swords className="size-4" />
+      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto rounded-3xl border-border bg-card p-0 shadow-[var(--elev-3)]">
+        <DialogHeader className="border-b border-border bg-forest px-5 py-4 text-white">
+          <DialogTitle className="flex items-center justify-between gap-3 font-display text-xl font-normal text-white">
+            <div className="flex items-center gap-2.5">
+              <div className="grid size-9 place-items-center rounded-xl bg-white/10 text-brass-soft">
+                <Swords className="size-4.5" />
               </div>
-              <span>Host Study Battle</span>
+              <span>Start a battle</span>
             </div>
-            <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold text-xs">
+            <Badge variant="outline" className="max-w-[40%] truncate border-white/20 text-xs font-medium text-white/80">
               {groupTitle}
             </Badge>
           </DialogTitle>
+          <p className="mt-1 text-xs text-white/60">
+            Pick a source, set the stakes, and challenge your group.
+          </p>
         </DialogHeader>
+        <div className="p-5 pt-0">
+
 
         <div className="space-y-4 mt-2 text-xs">
           {/* 1. Battle Title */}
@@ -376,7 +381,7 @@ export function HostBattleModal({
                     : "border-border hover:bg-secondary text-muted-foreground"
                 )}
               >
-                <Upload className="size-4 text-emerald-500" />
+                <Upload className="size-4 text-brand" />
                 <span className="text-[11px]">Upload PDF/Doc</span>
               </button>
 
@@ -390,7 +395,7 @@ export function HostBattleModal({
                     : "border-border hover:bg-secondary text-muted-foreground"
                 )}
               >
-                <BookOpen className="size-4 text-indigo-500" />
+                <BookOpen className="size-4 text-brand" />
                 <span className="text-[11px]">Campus Library</span>
               </button>
 
@@ -404,7 +409,7 @@ export function HostBattleModal({
                     : "border-border hover:bg-secondary text-muted-foreground"
                 )}
               >
-                <Mic className="size-4 text-amber-500" />
+                <Mic className="size-4 text-brass" />
                 <span className="text-[11px]">Groq Voice</span>
               </button>
             </div>
@@ -440,9 +445,9 @@ export function HostBattleModal({
               {sourceType === "file" && (
                 <div className="text-center py-2">
                   {uploadedFile ? (
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-card border border-emerald-500/40">
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-card border border-brand/40">
                       <div className="flex items-center gap-2">
-                        <FileText className="size-4 text-emerald-500" />
+                        <FileText className="size-4 text-brand" />
                         <span className="font-semibold text-foreground text-xs">{uploadedFile.name}</span>
                       </div>
                       <Button
@@ -511,7 +516,7 @@ export function HostBattleModal({
                       <Button
                         type="button"
                         onClick={startVoiceRecording}
-                        className="h-9 rounded-full bg-amber-500 hover:bg-amber-600 text-black font-bold gap-2 px-4 shadow-sm"
+                        className="h-9 rounded-full bg-brass hover:bg-brass-ink text-black font-bold gap-2 px-4 shadow-sm"
                       >
                         <Mic className="size-3.5" />
                         <span>Record Topic Prompt (Whisper)</span>
@@ -520,7 +525,7 @@ export function HostBattleModal({
                   </div>
                   {voiceTranscript && (
                     <div className="w-full p-2 rounded-xl bg-card border border-border text-[11px] text-foreground">
-                      <span className="text-[9px] uppercase font-bold text-amber-500 block">Transcribed:</span>
+                      <span className="text-[9px] uppercase font-bold text-brass block">Transcribed:</span>
                       "{voiceTranscript}"
                     </div>
                   )}
@@ -547,7 +552,7 @@ export function HostBattleModal({
                       : "border-border hover:bg-secondary text-muted-foreground"
                   )}
                 >
-                  <Zap className="size-4 text-amber-500" />
+                  <Zap className="size-4 text-brass" />
                   <span className="text-[11px]">MCQ Blitz</span>
                   <span className="text-[9px] text-muted-foreground">Timed Speed Battle</span>
                 </button>
@@ -558,11 +563,11 @@ export function HostBattleModal({
                   className={cn(
                     "p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all",
                     mode === "theory"
-                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
+                      ? "border-brand bg-brand/10 text-brand dark:text-brand font-bold shadow-xs"
                       : "border-border hover:bg-secondary text-muted-foreground"
                   )}
                 >
-                  <BookOpen className="size-4 text-emerald-500" />
+                  <BookOpen className="size-4 text-brand" />
                   <span className="text-[11px]">Theory Showdown</span>
                   <span className="text-[9px] text-muted-foreground">Untimed · Deep Derivations</span>
                 </button>
@@ -606,7 +611,7 @@ export function HostBattleModal({
                   />
                 </div>
               ) : (
-                <div className="h-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 flex items-center justify-between text-emerald-700 dark:text-emerald-400 font-bold text-xs">
+                <div className="h-8 rounded-xl border border-brand/30 bg-brand/10 px-3 flex items-center justify-between text-brand-deep dark:text-brand font-bold text-xs">
                   <span>Untimed ⏱️</span>
                   <span className="text-[10px] font-normal text-muted-foreground">Submit handwritten or voice</span>
                 </div>
@@ -620,7 +625,7 @@ export function HostBattleModal({
               <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                 Buy-in Stake per Fighter
               </label>
-              <div className="flex items-center gap-1.5 text-xs font-black text-amber-500">
+              <div className="flex items-center gap-1.5 text-xs font-black text-brass">
                 <Coins className="size-3.5" />
                 <span>Total Pot: {totalPot} pts</span>
               </div>
@@ -638,7 +643,7 @@ export function HostBattleModal({
                   className={cn(
                     "flex-1 h-8 rounded-lg border text-xs font-bold transition-all",
                     stakeAmount === pts && !customStake
-                      ? "border-amber-500 bg-amber-500 text-black shadow-xs"
+                      ? "border-brass bg-brass text-black shadow-xs"
                       : "border-border hover:bg-secondary text-foreground"
                   )}
                 >
@@ -687,11 +692,11 @@ export function HostBattleModal({
 
             {/* Wallet Scan Alert Banner if anyone has insufficient points */}
             {underfundedMembers.length > 0 && stakeAmount > 0 && (
-              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-xs space-y-2">
+              <div className="p-3 rounded-2xl bg-brass/10 border border-brass/40 text-xs space-y-2">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <AlertTriangle className="size-4 text-brass-ink dark:text-brass shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold text-amber-800 dark:text-amber-300">
+                    <p className="font-bold text-brass-ink dark:text-brass">
                       Wallet Scan: {underfundedMembers.length} fighter(s) have fewer than {stakeAmount} pts
                     </p>
                     <p className="text-[10px] text-muted-foreground">
@@ -705,7 +710,7 @@ export function HostBattleModal({
                     size="sm"
                     variant="outline"
                     onClick={handleAutoCapStake}
-                    className="h-7 text-[10px] rounded-full border-amber-500/50 text-amber-700 dark:text-amber-300 hover:bg-amber-500/15 font-bold"
+                    className="h-7 text-[10px] rounded-full border-brass/50 text-brass-ink dark:text-brass hover:bg-brass/15 font-bold"
                   >
                     📉 Auto-Cap Stake to {Math.max(0, minBalance)} pts
                   </Button>
@@ -723,7 +728,7 @@ export function HostBattleModal({
                     size="sm"
                     variant="outline"
                     onClick={handleSponsorAll}
-                    className="h-7 text-[10px] rounded-full bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 font-bold"
+                    className="h-7 text-[10px] rounded-full bg-brand/10 border-brand/40 text-brand-deep dark:text-brand hover:bg-brand/20 font-bold"
                   >
                     🤝 Sponsor All Underfunded
                   </Button>
@@ -754,7 +759,7 @@ export function HostBattleModal({
                       className={cn(
                         "flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-all",
                         isBroke
-                          ? "border-amber-500/70 bg-amber-500/10"
+                          ? "border-brass/70 bg-brass/10"
                           : isSelected
                           ? "border-primary/50 bg-card shadow-xs"
                           : "border-border/60 opacity-60 hover:opacity-100 bg-secondary/20"
@@ -774,7 +779,7 @@ export function HostBattleModal({
                               {member.full_name} {isHost && "(You / Host)"}
                             </span>
                             {isSponsored && (
-                              <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold">
+                              <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-brand/15 border-brand/40 text-brand dark:text-brand font-bold">
                                 Sponsored
                               </Badge>
                             )}
@@ -791,8 +796,8 @@ export function HostBattleModal({
                           className={cn(
                             "px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1",
                             member.points < stakeAmount && !isSponsored
-                              ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                              : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              ? "bg-brass/20 text-brass-ink dark:text-brass"
+                              : "bg-brand/15 text-brand dark:text-brand"
                           )}
                         >
                           <Coins className="size-2.5" />
@@ -810,7 +815,7 @@ export function HostBattleModal({
                             }}
                             className={cn(
                               "h-6 px-2 text-[10px] rounded-full",
-                              isSponsored ? "text-emerald-600 font-bold" : "text-muted-foreground hover:text-foreground"
+                              isSponsored ? "text-brand font-bold" : "text-muted-foreground hover:text-foreground"
                             )}
                           >
                             {isSponsored ? "Sponsoring" : "Sponsor"}
@@ -841,7 +846,7 @@ export function HostBattleModal({
               type="button"
               disabled={isCreating || selectedFighterIds.length === 0}
               onClick={handleLaunchBattle}
-              className="w-full h-11 rounded-2xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs sm:text-sm shadow-xl shadow-amber-500/20 gap-2 transition-all active:scale-[0.98]"
+              className="w-full h-11 rounded-2xl bg-brass hover:bg-brass-ink text-black font-black text-xs sm:text-sm shadow-xl shadow-brass/20 gap-2 transition-all active:scale-[0.98]"
             >
               {isCreating ? (
                 <>
@@ -856,6 +861,7 @@ export function HostBattleModal({
               )}
             </Button>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -33,7 +33,7 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
 
   return (
     <div
-      className={`prose prose-sm dark:prose-invert max-w-none text-slate-800 dark:text-slate-100 leading-relaxed text-[13px] md:text-sm ${className}`}
+      className={`prose prose-sm dark:prose-invert max-w-none text-ink dark:text-secondary leading-relaxed text-[13px] md:text-sm ${className}`}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
@@ -41,58 +41,58 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
         components={{
           // Responsive & Clean GFM Tables
           table: ({ children }) => (
-            <div className="my-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
+            <div className="my-3 overflow-x-auto rounded-lg border border-border dark:border-ink shadow-xs">
               <table className="w-full border-collapse text-left text-xs md:text-sm">{children}</table>
             </div>
           ),
           thead: ({ children }) => (
-            <thead className="bg-slate-100/90 dark:bg-slate-800/80 font-semibold text-slate-900 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700">
+            <thead className="bg-secondary/90 dark:bg-ink/80 font-semibold text-ink dark:text-secondary border-b border-border dark:border-ink-soft">
               {children}
             </thead>
           ),
           th: ({ children }) => (
-            <th className="px-3.5 py-2 font-semibold text-slate-900 dark:text-slate-100 border-r last:border-r-0 border-slate-200 dark:border-slate-800">
+            <th className="px-3.5 py-2 font-semibold text-ink dark:text-secondary border-r last:border-r-0 border-border dark:border-ink">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="border-b border-slate-200/80 dark:border-slate-800/80 px-3.5 py-2 text-slate-700 dark:text-slate-300 border-r last:border-r-0">
+            <td className="border-b border-border/80 dark:border-ink/80 px-3.5 py-2 text-ink-soft dark:text-border border-r last:border-r-0">
               {children}
             </td>
           ),
 
           // Clean Structured Headings
           h1: ({ children }) => (
-            <h1 className="mt-5 mb-2 text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-1.5">
+            <h1 className="mt-5 mb-2 text-lg md:text-xl font-bold tracking-tight text-ink dark:text-white flex items-center gap-1.5 border-b border-border dark:border-ink pb-1.5">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="mt-4 mb-2 text-base md:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+            <h2 className="mt-4 mb-2 text-base md:text-lg font-bold tracking-tight text-ink dark:text-white">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="mt-3 mb-1 text-sm md:text-base font-semibold text-slate-900 dark:text-white">
+            <h3 className="mt-3 mb-1 text-sm md:text-base font-semibold text-ink dark:text-white">
               {children}
             </h3>
           ),
 
           // Paragraphs & Text
           p: ({ children }) => (
-            <p className="mb-2.5 last:mb-0 leading-relaxed text-slate-800 dark:text-slate-200">
+            <p className="mb-2.5 last:mb-0 leading-relaxed text-ink dark:text-border">
               {children}
             </p>
           ),
 
           // Lists
           ul: ({ children }) => (
-            <ul className="my-2 list-disc pl-5 space-y-1 marker:text-emerald-600 dark:marker:text-emerald-400">
+            <ul className="my-2 list-disc pl-5 space-y-1 marker:text-brand dark:marker:text-brand">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="my-2 list-decimal pl-5 space-y-1 marker:font-semibold marker:text-emerald-600 dark:marker:text-emerald-400">
+            <ol className="my-2 list-decimal pl-5 space-y-1 marker:font-semibold marker:text-brand dark:marker:text-brand">
               {children}
             </ol>
           ),
@@ -100,13 +100,13 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
 
           // Blockquotes / Callout notes
           blockquote: ({ children }) => (
-            <blockquote className="my-3 border-l-4 border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/30 px-3.5 py-2 text-xs md:text-sm text-slate-700 dark:text-slate-300 rounded-r-md italic">
+            <blockquote className="my-3 border-l-4 border-brand bg-accent/70 dark:bg-brand-deep/30 px-3.5 py-2 text-xs md:text-sm text-ink-soft dark:text-border rounded-r-md italic">
               {children}
             </blockquote>
           ),
 
           // Divider
-          hr: () => <hr className="my-4 border-slate-200 dark:border-slate-800" />,
+          hr: () => <hr className="my-4 border-border dark:border-ink" />,
 
           // Links
           a: ({ href, children }) => (
@@ -114,7 +114,7 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-600 dark:text-emerald-400 font-medium underline underline-offset-2 hover:opacity-80"
+              className="text-brand dark:text-brand font-medium underline underline-offset-2 hover:opacity-80"
             >
               {children}
             </a>
@@ -126,7 +126,7 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
             if (!isBlock) {
               return (
                 <code
-                  className="rounded bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 font-mono text-[12px] md:text-[13px] text-emerald-700 dark:text-emerald-400 border border-slate-200/60 dark:border-slate-700/60"
+                  className="rounded bg-secondary dark:bg-ink/80 px-1.5 py-0.5 font-mono text-[12px] md:text-[13px] text-brand-deep dark:text-brand border border-border/60 dark:border-ink-soft/60"
                   {...props}
                 >
                   {children}
@@ -134,7 +134,7 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
               );
             }
             return (
-              <pre className="my-3 overflow-x-auto rounded-lg bg-slate-900 dark:bg-slate-950 p-3 text-slate-100 font-mono text-xs border border-slate-800">
+              <pre className="my-3 overflow-x-auto rounded-lg bg-ink dark:bg-ink p-3 text-secondary font-mono text-xs border border-ink">
                 <code className={className} {...props}>
                   {children}
                 </code>

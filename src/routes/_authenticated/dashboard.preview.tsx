@@ -528,7 +528,7 @@ Include:
           <button
             type="button"
             onClick={() => setShowRatingModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-brass font-semibold text-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brass/10 border border-brass/30 hover:bg-brass/20 text-brass font-semibold text-xs transition-colors cursor-pointer"
             title="Click to rate this document"
           >
             <Star className="size-3.5 fill-brass text-brass" />
@@ -570,7 +570,7 @@ Include:
               size="sm"
               onClick={handleDownload}
               disabled={downloading}
-              className="rounded-full text-xs font-semibold h-8 gap-1.5 bg-accent hover:bg-[#b0dfca] text-accent-foreground"
+              className="rounded-full text-xs font-semibold h-8 gap-1.5 bg-accent hover:bg-accent/80 text-accent-foreground"
             >
               {downloading ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5 text-brand" />}
               <span className="hidden sm:inline">Download</span>
@@ -583,7 +583,7 @@ Include:
               className={cn(
                 "rounded-full text-xs font-semibold h-8 gap-1.5 shadow-xs transition-all",
                 isSplit
-                  ? "bg-brand text-white hover:bg-[#15633f]"
+                  ? "bg-brand text-white hover:bg-brand-deep"
                   : "bg-forest text-white hover:bg-ink"
               )}
             >
@@ -595,7 +595,7 @@ Include:
       </div>
 
       {/* Main Workspace (Resizable Split Container) */}
-      <div ref={containerRef} className="flex-1 flex w-full relative min-h-0 bg-[#f4f7f5] overflow-hidden">
+      <div ref={containerRef} className="flex-1 flex w-full relative min-h-0 bg-background overflow-hidden">
         {/* Left Pane: Document Viewer */}
         <div
           style={{ width: isSplit ? `${splitRatio}%` : "100%" }}
@@ -852,19 +852,19 @@ Include:
               </div>
               <button
                 onClick={() => setShowSummarySheet(false)}
-                className="grid size-7 place-items-center rounded-full bg-muted dark:bg-white/5 text-muted-foreground dark:text-slate-400 hover:text-ink dark:hover:text-white"
+                className="grid size-7 place-items-center rounded-full bg-muted dark:bg-white/5 text-muted-foreground dark:text-muted-foreground hover:text-ink dark:hover:text-white"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 text-xs leading-relaxed text-foreground dark:text-slate-100">
+            <div className="flex-1 overflow-y-auto py-4 text-xs leading-relaxed text-foreground dark:text-secondary">
               {generatingSummary ? (
                 <div className="py-20 flex flex-col items-center justify-center gap-3">
                   <div className="animate-breathe-zoom">
                     <SyllabossEmblem className="size-14" />
                   </div>
-                  <p className="font-semibold text-xs text-brand dark:text-emerald-400 animate-pulse">
+                  <p className="font-semibold text-xs text-brand dark:text-brand animate-pulse">
                     Boss AI is formulating core derivations and definitions...
                   </p>
                 </div>
@@ -878,7 +878,7 @@ Include:
                       toast.success("Summary copied to clipboard!");
                       setTimeout(() => setCopiedSummary(false), 2000);
                     }}
-                    className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border dark:border-white/10 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-foreground dark:text-slate-200 shadow-xs hover:bg-muted dark:hover:bg-slate-700 transition-colors"
+                    className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border dark:border-white/10 bg-white dark:bg-ink px-2.5 py-1 text-[11px] font-medium text-foreground dark:text-border shadow-xs hover:bg-muted dark:hover:bg-ink-soft transition-colors"
                   >
                     {copiedSummary ? <Check className="size-3 text-brand" /> : <Copy className="size-3" />}
                     {copiedSummary ? "Copied" : "Copy"}

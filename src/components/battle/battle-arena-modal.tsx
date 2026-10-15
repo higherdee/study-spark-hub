@@ -436,7 +436,7 @@ export function BattleArenaModal({
               transition={{ duration: 1.8, ease: "easeOut" }}
               className="absolute top-1/3 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
             >
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-400 font-black text-xl shadow-[0_0_35px_rgba(16,185,129,0.8)] backdrop-blur-md">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand/20 border-2 border-brand text-brand font-black text-xl shadow-[0_0_35px_rgba(16,185,129,0.8)] backdrop-blur-md">
                 <Sparkles className="size-5 fill-current animate-spin" />
                 <span>{fp.text}</span>
               </div>
@@ -447,7 +447,7 @@ export function BattleArenaModal({
         <DialogHeader className="border-b border-border/70 pb-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="size-8 rounded-xl bg-amber-500/20 text-amber-500 grid place-items-center">
+              <div className="size-8 rounded-xl bg-brass/20 text-brass grid place-items-center">
                 <Swords className="size-4" />
               </div>
               <div>
@@ -456,7 +456,7 @@ export function BattleArenaModal({
                 </DialogTitle>
                 <p className="text-[10px] text-muted-foreground">
                   {battle.mode === "mcq" ? "⚡ MCQ Blitz" : "🥋 Theory Showdown (Untimed)"}
-                  {" • "}Pot: <strong className="text-amber-500">{battle.total_pot} pts</strong>
+                  {" • "}Pot: <strong className="text-brass">{battle.total_pot} pts</strong>
                 </p>
               </div>
             </div>
@@ -469,7 +469,7 @@ export function BattleArenaModal({
                   variant="outline"
                   disabled={isNudging}
                   onClick={handleNudgeSlowpokes}
-                  className="h-7 rounded-full text-[10px] font-bold border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 gap-1"
+                  className="h-7 rounded-full text-[10px] font-bold border-brass/40 text-brass-ink dark:text-brass hover:bg-brass/10 gap-1"
                 >
                   <Bell className="size-3" />
                   <span>Nudge Slowpokes</span>
@@ -502,8 +502,8 @@ export function BattleArenaModal({
         {/* ========================================================================= */}
         {isCompleted ? (
           <div className="space-y-4 py-2">
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-amber-500/15 via-card to-emerald-500/15 border border-amber-500/40 text-center space-y-2">
-              <div className="size-12 rounded-full bg-amber-500 text-black mx-auto grid place-items-center shadow-lg shadow-amber-500/30">
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-brass/15 via-card to-brand/15 border border-brass/40 text-center space-y-2">
+              <div className="size-12 rounded-full bg-brass text-black mx-auto grid place-items-center shadow-lg shadow-brass/30">
                 <Trophy className="size-6" />
               </div>
               <h3 className="text-base font-black text-foreground">Battle Completed!</h3>
@@ -517,7 +517,7 @@ export function BattleArenaModal({
                   <Button
                     type="button"
                     onClick={() => onRunItBack(battle)}
-                    className="h-9 rounded-2xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs gap-1.5 shadow-md shadow-amber-500/20"
+                    className="h-9 rounded-2xl bg-brass hover:bg-brass-ink text-black font-black text-xs gap-1.5 shadow-md shadow-brass/20"
                   >
                     <RotateCcw className="size-3.5" />
                     <span>Run It Back 🔄 (Revenge Match)</span>
@@ -542,7 +542,7 @@ export function BattleArenaModal({
                         className={cn(
                           "flex items-center justify-between p-2.5 rounded-2xl border text-xs",
                           isWinner
-                            ? "border-amber-500/60 bg-amber-500/10 font-bold"
+                            ? "border-brass/60 bg-brass/10 font-bold"
                             : "border-border bg-card"
                         )}
                       >
@@ -550,7 +550,7 @@ export function BattleArenaModal({
                           <span
                             className={cn(
                               "size-5 rounded-full grid place-items-center text-[10px] font-black",
-                              isWinner ? "bg-amber-500 text-black" : "bg-secondary text-muted-foreground"
+                              isWinner ? "bg-brass text-black" : "bg-secondary text-muted-foreground"
                             )}
                           >
                             {rank + 1}
@@ -566,7 +566,7 @@ export function BattleArenaModal({
                         <div className="flex items-center gap-3">
                           <span className="font-extrabold text-foreground">{fighter.score} pts</span>
                           {isWinner && battle.total_pot > 0 && (
-                            <Badge className="bg-amber-500 text-black text-[10px] font-black">
+                            <Badge className="bg-brass text-black text-[10px] font-black">
                               +{battle.total_pot} pts Won!
                             </Badge>
                           )}
@@ -589,7 +589,7 @@ export function BattleArenaModal({
                       Q{idx + 1}. {q.question}
                     </p>
                     {battle.mode === "mcq" ? (
-                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 p-2 rounded-xl">
+                      <div className="text-[11px] text-brand dark:text-brand font-semibold bg-brand/10 p-2 rounded-xl">
                         Correct Answer: {q.options?.[q.correctAnswer]}
                       </div>
                     ) : (
@@ -616,7 +616,7 @@ export function BattleArenaModal({
                   <span
                     className={cn(
                       "font-black text-xs",
-                      timeLeft <= 5 ? "text-red-500 animate-pulse" : "text-amber-500"
+                      timeLeft <= 5 ? "text-red-500 animate-pulse" : "text-brass"
                     )}
                   >
                     ⏱️ {timeLeft}s remaining
@@ -626,7 +626,7 @@ export function BattleArenaModal({
                   value={(timeLeft / (battle.time_per_question || 20)) * 100}
                   className={cn(
                     "h-2 rounded-full",
-                    timeLeft <= 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-amber-500"
+                    timeLeft <= 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-brass"
                   )}
                 />
               </div>
@@ -636,7 +636,7 @@ export function BattleArenaModal({
             <div className="p-4 rounded-3xl border border-border/80 bg-secondary/15 space-y-2">
               <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold">
                 <span>QUESTION {currentQIndex + 1} OF {questions.length}</span>
-                {battle.mode === "theory" && <span className="text-emerald-500">Untimed Session</span>}
+                {battle.mode === "theory" && <span className="text-brand">Untimed Session</span>}
               </div>
               <h3 className="text-sm sm:text-base font-bold text-foreground leading-relaxed">
                 {currentQ?.question || "Exam Question Prompt"}
@@ -694,7 +694,7 @@ export function BattleArenaModal({
                     <div className="flex items-center gap-1.5">
                       {/* Photo / Camera button */}
                       <label className="h-7 px-2.5 rounded-full border border-border text-[10px] font-bold flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer bg-secondary/50">
-                        <Camera className="size-3 text-emerald-500" />
+                        <Camera className="size-3 text-brand" />
                         <span>Snap Notes</span>
                         <input
                           type="file"
@@ -722,7 +722,7 @@ export function BattleArenaModal({
                           size="sm"
                           variant="outline"
                           onClick={handleStartVoiceRecording}
-                          className="h-7 px-2.5 rounded-full text-[10px] font-bold gap-1 text-amber-600 dark:text-amber-400 border-amber-500/40 hover:bg-amber-500/10"
+                          className="h-7 px-2.5 rounded-full text-[10px] font-bold gap-1 text-brass-ink dark:text-brass border-brass/40 hover:bg-brass/10"
                         >
                           <Mic className="size-3" />
                           <span>Voice Note</span>
@@ -733,10 +733,10 @@ export function BattleArenaModal({
 
                   {/* Photo Preview if attached */}
                   {theoryAnswers[currentQIndex]?.imageBase64 && (
-                    <div className="p-2 rounded-xl bg-secondary/40 border border-emerald-500/40 flex items-center justify-between text-xs">
+                    <div className="p-2 rounded-xl bg-secondary/40 border border-brand/40 flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <FileText className="size-4 text-emerald-500" />
-                        <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                        <FileText className="size-4 text-brand" />
+                        <span className="font-semibold text-brand-deep dark:text-brand">
                           Handwritten notes photo attached
                         </span>
                       </div>
@@ -744,10 +744,17 @@ export function BattleArenaModal({
                         size="sm"
                         variant="ghost"
                         onClick={() =>
-                          setTheoryAnswers((prev) => ({
-                            ...prev,
-                            [currentQIndex]: { ...prev[currentQIndex], imageBase64: undefined },
-                          }))
+                          setTheoryAnswers((prev) => {
+                            const cur = prev[currentQIndex];
+                            return {
+                              ...prev,
+                              [currentQIndex]: {
+                                text: cur?.text || "",
+                                imageBase64: undefined,
+                                audioTranscript: cur?.audioTranscript,
+                              },
+                            };
+                          })
                         }
                         className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                       >
@@ -758,8 +765,8 @@ export function BattleArenaModal({
 
                   {/* Voice Transcription Preview */}
                   {theoryAnswers[currentQIndex]?.audioTranscript && (
-                    <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-foreground">
-                      <span className="font-bold text-amber-500 block text-[9px] uppercase">Voice Derivation:</span>
+                    <div className="p-2 rounded-xl bg-brass/10 border border-brass/30 text-[11px] text-foreground">
+                      <span className="font-bold text-brass block text-[9px] uppercase">Voice Derivation:</span>
                       "{theoryAnswers[currentQIndex]?.audioTranscript}"
                     </div>
                   )}
@@ -807,7 +814,7 @@ export function BattleArenaModal({
                       type="button"
                       disabled={isSubmitting || hasSubmitted || isSpectator}
                       onClick={handleSubmitTheory}
-                      className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-md shadow-emerald-500/20"
+                      className="h-9 rounded-xl bg-brand hover:bg-brand-deep text-white font-bold text-xs gap-1.5 shadow-md shadow-brand/20"
                     >
                       <Send className="size-3.5" />
                       <span>{hasSubmitted ? "Already Submitted" : "Submit All 5 Solutions"}</span>
@@ -823,7 +830,7 @@ export function BattleArenaModal({
             <div className="pt-2 border-t border-border/70 space-y-2">
               <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
                 <div className="flex items-center gap-1.5">
-                  <Lock className="size-3 text-amber-500" />
+                  <Lock className="size-3 text-brass" />
                   <span>Anti-Peek Protocol: Answers blurred until all fighters submit</span>
                 </div>
                 <span>
@@ -842,7 +849,7 @@ export function BattleArenaModal({
                       className={cn(
                         "p-2 rounded-xl border flex items-center justify-between text-[11px]",
                         isDone
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                          ? "border-brand/40 bg-brand/10 text-brand-deep dark:text-brand"
                           : "border-border bg-card text-muted-foreground"
                       )}
                     >
@@ -858,9 +865,9 @@ export function BattleArenaModal({
 
                       <div className="flex items-center gap-1">
                         {isDone ? (
-                          <CheckCircle2 className="size-3.5 text-emerald-500" />
+                          <CheckCircle2 className="size-3.5 text-brand" />
                         ) : (
-                          <div className="size-2 rounded-full bg-amber-500 animate-pulse" />
+                          <div className="size-2 rounded-full bg-brass animate-pulse" />
                         )}
                       </div>
                     </div>

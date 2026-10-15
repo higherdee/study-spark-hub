@@ -171,7 +171,7 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
       {/* Progress track */}
       <div className="w-full h-1.5 rounded-full bg-border/60 overflow-hidden">
         <div
-          className="h-full bg-linear-to-r from-primary to-emerald-500 transition-all duration-300 rounded-full"
+          className="h-full bg-linear-to-r from-primary to-brand transition-all duration-300 rounded-full"
           style={{ width: `${((currentIndex + 1) / total) * 100}%` }}
         />
       </div>
@@ -190,7 +190,7 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
           )}
         >
           {/* FRONT FACE (Question / Concept) */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-2xl border border-border/80 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-zinc-900/95">
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-2xl border border-border/80 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-ink/95">
             {/* Index card header margin tab */}
             <div className="flex items-center justify-between pb-2 border-b border-border/40">
               <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10">
@@ -217,13 +217,13 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
           </div>
 
           {/* BACK FACE (Answer / Solution / Formula) */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl border border-emerald-500/40 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-zinc-900/95 bg-linear-to-b from-emerald-500/5 to-transparent">
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl border border-brand/40 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-ink/95 bg-linear-to-b from-brand/5 to-transparent">
             {/* Index card header margin tab */}
             <div className="flex items-center justify-between pb-2 border-b border-border/40">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-brand dark:text-brand flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand/10">
                 <CheckCircle2 className="size-3" /> Solution &amp; Definition
               </span>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+              <span className="text-[10px] font-mono text-brand dark:text-brand font-semibold">
                 Answer {String(currentIndex + 1).padStart(2, "0")}
               </span>
             </div>
@@ -251,8 +251,8 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
                   className={cn(
                     "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all",
                     confidenceMap[currentIndex] === "again"
-                      ? "bg-amber-500/20 text-amber-600 border-amber-500/50"
-                      : "border-border/70 text-muted-foreground hover:text-amber-600"
+                      ? "bg-brass/20 text-brass-ink border-brass/50"
+                      : "border-border/70 text-muted-foreground hover:text-brass-ink"
                   )}
                 >
                   Needs Review
@@ -263,8 +263,8 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
                   className={cn(
                     "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all",
                     confidenceMap[currentIndex] === "good"
-                      ? "bg-sky-500/20 text-sky-600 border-sky-500/50"
-                      : "border-border/70 text-muted-foreground hover:text-sky-600"
+                      ? "bg-brand/20 text-brand border-brand/50"
+                      : "border-border/70 text-muted-foreground hover:text-brand"
                   )}
                 >
                   Good
@@ -275,8 +275,8 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
                   className={cn(
                     "px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all",
                     confidenceMap[currentIndex] === "mastered"
-                      ? "bg-emerald-500/20 text-emerald-600 border-emerald-500/50"
-                      : "border-border/70 text-muted-foreground hover:text-emerald-600"
+                      ? "bg-brand/20 text-brand border-brand/50"
+                      : "border-border/70 text-muted-foreground hover:text-brand"
                   )}
                 >
                   Mastered
@@ -471,7 +471,7 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
           let optionStyle = "border-border/80 bg-card hover:bg-secondary/60 text-foreground";
           if (showAnswerFeedback) {
             if (isCorrect) {
-              optionStyle = "border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold";
+              optionStyle = "border-brand bg-brand/10 text-brand-deep dark:text-brand font-bold";
             } else if (isSelected && !isCorrect) {
               optionStyle = "border-red-500 bg-red-500/10 text-red-800 dark:text-red-300";
             }
@@ -508,7 +508,7 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
                   <AiMessageRenderer content={opt} className="text-xs [&_p]:mb-0 [&_p]:inline [&_p]:text-inherit" />
                 </div>
               </div>
-              {showAnswerFeedback && isCorrect && <Check className="size-4 text-emerald-600 shrink-0" />}
+              {showAnswerFeedback && isCorrect && <Check className="size-4 text-brand shrink-0" />}
               {showAnswerFeedback && isSelected && !isCorrect && (
                 <X className="size-4 text-red-600 shrink-0" />
               )}
@@ -593,7 +593,7 @@ export function InChatMcqQuizWidget({ data, onSelectCount }: InChatMcqQuizWidget
       <Dialog open={showUnansweredModal} onOpenChange={setShowUnansweredModal}>
         <DialogContent className="max-w-sm rounded-3xl p-5 border-border bg-card">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2 text-amber-600">
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-brass-ink">
               <AlertCircle className="size-4" /> Unanswered Questions
             </DialogTitle>
           </DialogHeader>
@@ -803,7 +803,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
     <div className="w-full mt-3 rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xs p-3.5 sm:p-5 select-none shadow-xs space-y-3.5 font-sans">
       {/* Header */}
       <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
-        <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
+        <span className="text-xs font-bold uppercase tracking-wider text-brand flex items-center gap-1.5">
           <FileText className="size-3.5" />
           Question {currentIndex + 1} of {total} ({currentQ.marks || 5} Marks)
         </span>
@@ -830,7 +830,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
               />
               <div className="truncate">
                 <p className="font-semibold text-foreground truncate text-[11px]">{currentImage.name}</p>
-                <p className="text-[10px] text-emerald-600 font-medium">Handwritten notes ready for Vision OCR</p>
+                <p className="text-[10px] text-brand font-medium">Handwritten notes ready for Vision OCR</p>
               </div>
             </div>
             <Button
@@ -885,7 +885,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
               className="h-7 px-2 text-[11px] rounded-lg gap-1 border-border/80"
               title="Speak your answer"
             >
-              <Mic className={cn("size-3", isRecordingAudio ? "animate-pulse" : "text-emerald-600")} />
+              <Mic className={cn("size-3", isRecordingAudio ? "animate-pulse" : "text-brand")} />
               {isRecordingAudio ? "Stop Recording" : "Record Audio"}
             </Button>
           </div>
@@ -895,7 +895,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
             size="sm"
             disabled={(!currentAnswer.trim() && !currentImage) || isGrading}
             onClick={handleGradeAnswer}
-            className="h-7 px-3 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="h-7 px-3 text-xs font-bold rounded-lg bg-brand hover:bg-brand-deep text-white"
           >
             {isGrading ? <Loader2 className="size-3 animate-spin mr-1" /> : null}
             Grade Answer
@@ -905,9 +905,9 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
 
       {/* Graded Rubric Feedback Display with KaTeX Math Rendering */}
       {currentFeedback && (
-        <div className="p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-xs space-y-2">
+        <div className="p-3.5 rounded-2xl border border-brand/30 bg-brand/10 text-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+            <span className="font-bold text-brand-deep dark:text-brand flex items-center gap-1.5">
               <Award className="size-3.5" /> Mark: {currentFeedback.score} / 10 ({currentFeedback.verdict})
             </span>
             <button
@@ -921,7 +921,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
 
           {currentFeedback.transcription && (
             <div className="p-2.5 rounded-xl bg-card/80 border border-border/60 text-[11px] space-y-0.5">
-              <p className="font-bold text-[10px] uppercase tracking-wider text-emerald-600">
+              <p className="font-bold text-[10px] uppercase tracking-wider text-brand">
                 Handwritten OCR Transcription:
               </p>
               <p className="text-muted-foreground italic">"{currentFeedback.transcription}"</p>
@@ -932,7 +932,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
 
           {currentFeedback.strengths && currentFeedback.strengths.length > 0 && (
             <div className="space-y-0.5 pt-1">
-              <p className="font-bold text-[10px] text-emerald-700 dark:text-emerald-400">Strengths:</p>
+              <p className="font-bold text-[10px] text-brand-deep dark:text-brand">Strengths:</p>
               <ul className="list-disc list-inside text-[11px] text-muted-foreground">
                 {currentFeedback.strengths.map((s: string, idx: number) => (
                   <li key={idx}>{s}</li>
@@ -943,7 +943,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
 
           {currentFeedback.areasToImprove && currentFeedback.areasToImprove.length > 0 && (
             <div className="space-y-0.5 pt-1">
-              <p className="font-bold text-[10px] text-amber-700 dark:text-amber-400">Areas to Improve:</p>
+              <p className="font-bold text-[10px] text-brass-ink dark:text-brass">Areas to Improve:</p>
               <ul className="list-disc list-inside text-[11px] text-muted-foreground">
                 {currentFeedback.areasToImprove.map((a: string, idx: number) => (
                   <li key={idx}>{a}</li>
@@ -953,7 +953,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
           )}
 
           {showModelAnswer && (
-            <div className="pt-2 border-t border-emerald-500/20 text-xs space-y-1">
+            <div className="pt-2 border-t border-brand/20 text-xs space-y-1">
               <p className="font-bold text-[11px] text-primary">Expected Model Answer:</p>
               <AiMessageRenderer content={currentQ.modelAnswer} className="text-xs text-muted-foreground leading-relaxed" />
             </div>

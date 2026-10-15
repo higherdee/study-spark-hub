@@ -45,7 +45,7 @@ export function InstallButton({
   async function handleMainClick() {
     if (installed) {
       toast.success("Opening Syllaboss...", {
-        icon: <Check className="size-4 text-emerald-500" />,
+        icon: <Check className="size-4 text-brand" />,
       });
       navigate({ to: "/dashboard" });
       return;
@@ -92,7 +92,7 @@ export function InstallButton({
         onClick={handleMainClick}
       >
         {installed ? (
-          <Check className="size-4.5 shrink-0 text-emerald-400" />
+          <Check className="size-4.5 shrink-0 text-brand" />
         ) : platform === "android" ? (
           <AndroidOutlineIcon className="size-4.5 shrink-0" />
         ) : platform === "windows" ? (
@@ -123,7 +123,7 @@ export function InstallButton({
           >
             <div className="flex items-start justify-between pb-3 border-b border-border/80">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold mb-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand/10 text-brand dark:text-brand text-[10px] font-bold mb-1">
                   <Sparkles className="size-3" />
                   <span>Ultra-Clean PWA · Zero Friction</span>
                 </div>
@@ -157,7 +157,7 @@ export function InstallButton({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <AndroidOutlineIcon className="size-4 text-emerald-600" />
+                <AndroidOutlineIcon className="size-4 text-brand" />
                 <span>Android</span>
                 <span className="text-[9px] font-mono opacity-70">Chrome PWA</span>
               </button>
@@ -172,7 +172,7 @@ export function InstallButton({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <AppleOutlineIcon className="size-4 text-amber-600" />
+                <AppleOutlineIcon className="size-4 text-brass-ink" />
                 <span>iPhone / iPad</span>
                 <span className="text-[9px] font-mono opacity-70">Safari PWA</span>
               </button>
@@ -187,7 +187,7 @@ export function InstallButton({
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <WindowsOutlineIcon className="size-4 text-blue-600" />
+                <WindowsOutlineIcon className="size-4 text-brand" />
                 <span>Windows</span>
                 <span className="text-[9px] font-mono opacity-70">Desktop PWA</span>
               </button>
@@ -215,12 +215,12 @@ export function InstallButton({
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                        <AndroidOutlineIcon className="size-4 text-emerald-600" />
+                        <AndroidOutlineIcon className="size-4 text-brand" />
                         Android Progressive Web App
                       </h4>
                       <p className="text-[11px] text-muted-foreground">Samsung, Xiaomi, Tecno, Infinix, Pixel, Redmi, etc.</p>
                     </div>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+                    <span className="px-2 py-0.5 rounded-md bg-accent dark:bg-brand-deep text-brand-deep dark:text-brand font-bold text-[10px]">
                       Instant PWA
                     </span>
                   </div>
@@ -243,7 +243,7 @@ export function InstallButton({
                   </div>
 
                   <Button
-                    className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 text-sm shadow-sm"
+                    className="w-full h-11 rounded-xl bg-brand hover:bg-brand-deep text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
                       if (canPrompt) {
                         install();
@@ -264,12 +264,12 @@ export function InstallButton({
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                        <AppleOutlineIcon className="size-4 text-amber-600" />
+                        <AppleOutlineIcon className="size-4 text-brass-ink" />
                         Apple iPhone & iPad (iOS)
                       </h4>
                       <p className="text-[11px] text-muted-foreground">Add directly to your iOS Home Screen via Safari.</p>
                     </div>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-medium text-[10px]">
+                    <span className="px-2 py-0.5 rounded-md bg-brass-soft dark:bg-brass-ink text-brass-ink dark:text-brass font-medium text-[10px]">
                       iOS Home Screen
                     </span>
                   </div>
@@ -292,7 +292,7 @@ export function InstallButton({
                   </div>
 
                   <Button
-                    className="w-full h-11 rounded-xl bg-neutral-900 hover:bg-black text-white font-bold gap-2 text-sm shadow-sm"
+                    className="w-full h-11 rounded-xl bg-ink hover:bg-black text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
                       window.location.href = "https://web.syllaboss.org";
                       setModalOpen(false);
@@ -309,12 +309,12 @@ export function InstallButton({
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                        <WindowsOutlineIcon className="size-4 text-blue-600" />
+                        <WindowsOutlineIcon className="size-4 text-brand" />
                         Windows 10 & 11 PWA
                       </h4>
                       <p className="text-[11px] text-muted-foreground">Chrome or Microsoft Edge desktop app.</p>
                     </div>
-                    <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-[10px]">
+                    <span className="px-2 py-0.5 rounded-md bg-accent dark:bg-brand-deep text-brand-deep dark:text-brand font-bold text-[10px]">
                       Desktop PWA
                     </span>
                   </div>
@@ -334,7 +334,7 @@ export function InstallButton({
                   </div>
 
                   <Button
-                    className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 text-sm shadow-sm"
+                    className="w-full h-11 rounded-xl bg-brand hover:bg-brand-deep text-white font-bold gap-2 text-sm shadow-sm"
                     onClick={() => {
                       if (canPrompt) {
                         install();

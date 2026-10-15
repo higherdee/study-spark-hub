@@ -109,19 +109,19 @@ export function ForwardMaterialModal({
       <DialogContent className="max-w-sm sm:max-w-md rounded-3xl p-4.5 sm:p-5 border-border/80 bg-card text-card-foreground shadow-2xl">
         <DialogHeader className="space-y-0.5">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg font-bold tracking-tight">
-            <Send className="size-4.5 text-emerald-600" />
+            <Send className="size-4.5 text-brand" />
             Forward to Peers
           </DialogTitle>
         </DialogHeader>
 
         {/* Compact Material Chip */}
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 min-w-0">
-          <FileText className="size-4 text-emerald-600 shrink-0" />
+        <div className="flex items-center gap-2 rounded-xl border border-brand/20 bg-brand/5 px-2.5 py-1.5 min-w-0">
+          <FileText className="size-4 text-brand shrink-0" />
           <span className="text-xs font-semibold text-foreground truncate flex-1 min-w-0">
             {materialTitle}
           </span>
           {materialCourse && (
-            <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-sans shrink-0">
+            <span className="text-[11px] text-brand-deep dark:text-brand font-sans shrink-0">
               · {materialCourse}
             </span>
           )}
@@ -166,14 +166,14 @@ export function ForwardMaterialModal({
                     }
                     className={`flex w-full items-center justify-between rounded-xl p-2 text-left transition-all ${
                       isSelected
-                        ? "bg-emerald-500/15 border border-emerald-500/40 text-foreground"
+                        ? "bg-brand/15 border border-brand/40 text-foreground"
                         : "hover:bg-secondary/60 text-muted-foreground"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Avatar className="size-8">
                         <AvatarImage src={c.peer.avatar_url || ""} />
-                        <AvatarFallback className="bg-emerald-600 text-xs font-bold text-white">
+                        <AvatarFallback className="bg-brand text-xs font-bold text-white">
                           {c.peer.full_name?.charAt(0) || "P"}
                         </AvatarFallback>
                       </Avatar>
@@ -181,12 +181,12 @@ export function ForwardMaterialModal({
                         <p className="text-xs font-semibold text-foreground truncate">
                           {c.peer.full_name}
                         </p>
-                        <p className="text-[10px] font-sans text-emerald-600 truncate">
+                        <p className="text-[10px] font-sans text-brand truncate">
                           @{c.peer.username}
                         </p>
                       </div>
                     </div>
-                    {isSelected && <Check className="size-4 text-emerald-600 shrink-0" />}
+                    {isSelected && <Check className="size-4 text-brand shrink-0" />}
                   </button>
                 );
               })}
@@ -211,12 +211,12 @@ export function ForwardMaterialModal({
                     }
                     className={`flex w-full items-center justify-between rounded-xl p-2 text-left transition-all ${
                       isSelected
-                        ? "bg-emerald-500/15 border border-emerald-500/40 text-foreground"
+                        ? "bg-brand/15 border border-brand/40 text-foreground"
                         : "hover:bg-secondary/60 text-muted-foreground"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="grid size-8 place-items-center rounded-full bg-emerald-600/10 text-emerald-600 shrink-0">
+                      <div className="grid size-8 place-items-center rounded-full bg-brand/10 text-brand shrink-0">
                         <Users className="size-4" />
                       </div>
                       <div className="min-w-0">
@@ -226,7 +226,7 @@ export function ForwardMaterialModal({
                         </p>
                       </div>
                     </div>
-                    {isSelected && <Check className="size-4 text-emerald-600 shrink-0" />}
+                    {isSelected && <Check className="size-4 text-brand shrink-0" />}
                   </button>
                 );
               })}
@@ -258,7 +258,7 @@ export function ForwardMaterialModal({
             size="sm"
             disabled={!selectedTarget || forwarding}
             onClick={handleForward}
-            className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5"
+            className="rounded-full bg-brand hover:bg-brand-deep text-white text-xs font-semibold gap-1.5"
           >
             {forwarding ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
             {forwarding ? "Forwarding..." : `Send to ${selectedTarget?.name || "Peer"}`}

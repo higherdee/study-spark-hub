@@ -11,9 +11,9 @@ interface StudentQrModalProps {
   onOpenChange: (open: boolean) => void;
   username: string;
   fullName: string;
-  avatarUrl?: string | null;
-  institution?: string | null;
-  onOpenScanner?: () => void;
+  avatarUrl?: string | null | undefined;
+  institution?: string | null | undefined;
+  onOpenScanner?: (() => void) | undefined;
 }
 
 export function StudentQrModal({
@@ -81,7 +81,7 @@ export function StudentQrModal({
       <DialogContent className="max-w-sm rounded-3xl p-6 border-border/80 bg-card text-card-foreground shadow-2xl">
         <DialogHeader className="text-center sm:text-center">
           <DialogTitle className="flex items-center justify-center gap-2 text-xl font-bold tracking-tight">
-            <QrIcon className="size-5 text-emerald-600" />
+            <QrIcon className="size-5 text-brand" />
             Your SyllaID Card
           </DialogTitle>
           <p className="text-xs text-muted-foreground">
@@ -91,10 +91,10 @@ export function StudentQrModal({
 
         <div className="mt-4 flex flex-col items-center">
           {/* Card Container */}
-          <div className="w-full rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 via-card to-card p-5 text-center shadow-inner">
-            <Avatar className="mx-auto size-16 ring-4 ring-emerald-500/20 shadow-md">
+          <div className="w-full rounded-2xl border border-brand/20 bg-gradient-to-b from-brand/5 via-card to-card p-5 text-center shadow-inner">
+            <Avatar className="mx-auto size-16 ring-4 ring-brand/20 shadow-md">
               <AvatarImage src={avatarUrl || ""} alt={fullName} />
-              <AvatarFallback className="bg-emerald-600 text-lg font-bold text-white">
+              <AvatarFallback className="bg-brand text-lg font-bold text-white">
                 {fullName?.charAt(0)?.toUpperCase() || "S"}
               </AvatarFallback>
             </Avatar>
@@ -102,7 +102,7 @@ export function StudentQrModal({
             <h3 className="mt-3 font-semibold text-foreground text-base leading-tight">
               {fullName}
             </h3>
-            <p className="font-mono text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <p className="font-mono text-xs font-medium text-brand dark:text-brand">
               @{username}
             </p>
             {institution && (
@@ -112,7 +112,7 @@ export function StudentQrModal({
             )}
 
             {/* QR Code Canvas */}
-            <div className="mt-4 mx-auto flex justify-center rounded-xl bg-white p-3 shadow-md border border-slate-100 max-w-[200px]">
+            <div className="mt-4 mx-auto flex justify-center rounded-xl bg-white p-3 shadow-md border border-secondary max-w-[200px]">
               {qrDataUrl ? (
                 <img src={qrDataUrl} alt={`QR for @${username}`} className="size-44 object-contain" />
               ) : (
@@ -131,7 +131,7 @@ export function StudentQrModal({
               onClick={handleCopy}
               className="rounded-full text-xs font-semibold gap-1.5"
             >
-              {copied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+              {copied ? <Check className="size-3.5 text-brand" /> : <Copy className="size-3.5" />}
               {copied ? "Copied" : "Copy Link"}
             </Button>
 
@@ -139,7 +139,7 @@ export function StudentQrModal({
               variant="default"
               size="sm"
               onClick={handleShare}
-              className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5"
+              className="rounded-full bg-brand hover:bg-brand-deep text-white text-xs font-semibold gap-1.5"
             >
               <Share2 className="size-3.5" />
               Share Card
@@ -156,7 +156,7 @@ export function StudentQrModal({
               }}
               className="mt-3 w-full rounded-full text-xs text-muted-foreground hover:text-foreground gap-1.5"
             >
-              <ScanLine className="size-3.5 text-emerald-600" />
+              <ScanLine className="size-3.5 text-brand" />
               Scan a peer's QR code instead
             </Button>
           )}

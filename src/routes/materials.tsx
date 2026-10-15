@@ -163,8 +163,8 @@ function MaterialsPage() {
                         <span className="text-brass/80 text-[10px]">({m.rating_count})</span>
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-slate-400 text-xs">
-                        <Star className="size-3.5 text-slate-300" />
+                      <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                        <Star className="size-3.5 text-border" />
                         <span className="text-[10px] text-muted-foreground">Unrated</span>
                       </span>
                     )}

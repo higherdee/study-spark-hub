@@ -18,8 +18,8 @@ export function ThemePickerModal({ open, onConfirm }: ThemePickerModalProps) {
       <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/20 bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-2xl animate-scale-in">
         <div className="text-center">
           <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary mb-3">
-            <Sun className="size-6 dark:hidden text-amber-500" />
-            <Moon className="size-6 hidden dark:block text-sky-400" />
+            <Sun className="size-6 dark:hidden text-brass" />
+            <Moon className="size-6 hidden dark:block text-brand" />
           </div>
           <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
             Choose Your Appearance
@@ -41,7 +41,7 @@ export function ThemePickerModal({ open, onConfirm }: ThemePickerModalProps) {
                 : "border-border/60 bg-secondary/30 hover:border-border hover:bg-secondary/60"
             )}
           >
-            <div className="grid size-12 place-items-center rounded-xl bg-white text-amber-500 shadow-xs mb-3">
+            <div className="grid size-12 place-items-center rounded-xl bg-white text-brass shadow-xs mb-3">
               <Sun className="size-6" />
             </div>
             <p className="font-semibold text-sm text-foreground">Light Mode</p>
@@ -64,7 +64,7 @@ export function ThemePickerModal({ open, onConfirm }: ThemePickerModalProps) {
                 : "border-border/60 bg-secondary/30 hover:border-border hover:bg-secondary/60"
             )}
           >
-            <div className="grid size-12 place-items-center rounded-xl bg-slate-900 text-sky-400 shadow-xs mb-3">
+            <div className="grid size-12 place-items-center rounded-xl bg-ink text-brand shadow-xs mb-3">
               <Moon className="size-6" />
             </div>
             <p className="font-semibold text-sm text-foreground">Dark Mode</p>

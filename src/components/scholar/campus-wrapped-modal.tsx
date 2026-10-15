@@ -74,7 +74,7 @@ export function CampusWrappedModal({
       <DialogContent className="max-w-md max-h-[95vh] overflow-y-auto rounded-3xl p-4 sm:p-6 border-white/10 bg-[#070B14] text-white shadow-2xl">
         <DialogHeader className="border-b border-white/10 pb-3 flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="size-8 rounded-xl bg-amber-500/20 text-amber-400 grid place-items-center">
+            <div className="size-8 rounded-xl bg-brass/20 text-brass grid place-items-center">
               <Sparkles className="size-4" />
             </div>
             <div>
@@ -100,7 +100,7 @@ export function CampusWrappedModal({
 
         {isLoading ? (
           <div className="py-24 text-center flex flex-col items-center justify-center gap-3">
-            <Loader2 className="size-8 animate-spin text-emerald-400" />
+            <Loader2 className="size-8 animate-spin text-brand" />
             <p className="text-xs text-white/60 font-semibold">
               Compiling your semester stats & computing AI archetype...
             </p>
@@ -130,7 +130,7 @@ export function CampusWrappedModal({
                   className={cn(
                     "h-1.5 flex-1 rounded-full cursor-pointer transition-all",
                     idx === currentSlide
-                      ? "bg-amber-400"
+                      ? "bg-brass"
                       : idx < currentSlide
                       ? "bg-white/70"
                       : "bg-white/15"
@@ -149,14 +149,14 @@ export function CampusWrappedModal({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.05 }}
                   transition={{ duration: 0.3 }}
-                  className="p-6 rounded-3xl bg-gradient-to-br from-amber-500/20 via-white/[0.03] to-[#0B111F] border border-amber-500/40 text-center space-y-4"
+                  className="p-6 rounded-3xl bg-gradient-to-br from-brass/20 via-white/[0.03] to-[#0B111F] border border-brass/40 text-center space-y-4"
                 >
-                  <div className="size-16 rounded-full bg-amber-500 text-black mx-auto grid place-items-center shadow-xl shadow-amber-500/30">
+                  <div className="size-16 rounded-full bg-brass text-black mx-auto grid place-items-center shadow-xl shadow-brass/30">
                     <Flame className="size-9 fill-current" />
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-brass">
                       Chapter 1 · The Daily Flame
                     </span>
                     <h3 className="text-2xl font-black text-white mt-1">
@@ -169,7 +169,7 @@ export function CampusWrappedModal({
 
                   <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/10 text-xs">
                     <span className="text-white/50 text-[10px] block">Longest Streak Record</span>
-                    <span className="text-lg font-black text-amber-300">
+                    <span className="text-lg font-black text-brass">
                       {data.user.longestStreak} Consecutive Days 🔥
                     </span>
                   </div>
@@ -184,14 +184,14 @@ export function CampusWrappedModal({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.05 }}
                   transition={{ duration: 0.3 }}
-                  className="p-6 rounded-3xl bg-gradient-to-br from-violet-500/20 via-white/[0.03] to-[#0B111F] border border-violet-500/40 text-center space-y-4"
+                  className="p-6 rounded-3xl bg-gradient-to-br from-brand/20 via-white/[0.03] to-[#0B111F] border border-brand/40 text-center space-y-4"
                 >
-                  <div className="size-16 rounded-full bg-violet-500 text-white mx-auto grid place-items-center shadow-xl shadow-violet-500/30">
+                  <div className="size-16 rounded-full bg-brand text-white mx-auto grid place-items-center shadow-xl shadow-brand/30">
                     <Swords className="size-8" />
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-brand">
                       Chapter 2 · The Quiz Arena
                     </span>
                     <h3 className="text-2xl font-black text-white mt-1">
@@ -205,11 +205,11 @@ export function CampusWrappedModal({
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/10">
                       <span className="text-[10px] text-white/50 block">Battles Won</span>
-                      <span className="text-base font-black text-violet-300">{data.battlesWon} Victories</span>
+                      <span className="text-base font-black text-brand">{data.battlesWon} Victories</span>
                     </div>
                     <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/10">
                       <span className="text-[10px] text-white/50 block">Win Rate</span>
-                      <span className="text-base font-black text-emerald-400">{data.battleWinRate}%</span>
+                      <span className="text-base font-black text-brand">{data.battleWinRate}%</span>
                     </div>
                   </div>
                 </motion.div>
@@ -223,14 +223,14 @@ export function CampusWrappedModal({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.05 }}
                   transition={{ duration: 0.3 }}
-                  className="p-6 rounded-3xl bg-gradient-to-br from-emerald-500/20 via-white/[0.03] to-[#0B111F] border border-emerald-500/40 text-center space-y-4"
+                  className="p-6 rounded-3xl bg-gradient-to-br from-brand/20 via-white/[0.03] to-[#0B111F] border border-brand/40 text-center space-y-4"
                 >
-                  <div className="size-16 rounded-full bg-emerald-500 text-black mx-auto grid place-items-center shadow-xl shadow-emerald-500/30">
+                  <div className="size-16 rounded-full bg-brand text-black mx-auto grid place-items-center shadow-xl shadow-brand/30">
                     <Trophy className="size-8" />
                   </div>
 
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-brand">
                       Chapter 3 · Campus Clout
                     </span>
                     <h3 className="text-3xl font-black text-white mt-1">
@@ -243,7 +243,7 @@ export function CampusWrappedModal({
 
                   <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/10 text-xs">
                     <span className="text-white/50 text-[10px] block">Department Position</span>
-                    <span className="text-base font-black text-emerald-300">
+                    <span className="text-base font-black text-brand">
                       #{data.departmentRank} of {data.departmentTotal} Active Scholars
                     </span>
                   </div>
@@ -288,9 +288,9 @@ export function CampusWrappedModal({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.05 }}
                   transition={{ duration: 0.3 }}
-                  className="p-6 rounded-3xl bg-gradient-to-br from-amber-500/25 via-emerald-500/15 to-[#0B111F] border-2 border-amber-500/50 text-center space-y-4"
+                  className="p-6 rounded-3xl bg-gradient-to-br from-brass/25 via-brand/15 to-[#0B111F] border-2 border-brass/50 text-center space-y-4"
                 >
-                  <div className="size-16 rounded-full bg-gradient-to-tr from-amber-500 to-emerald-400 text-black mx-auto grid place-items-center shadow-xl shadow-amber-500/40">
+                  <div className="size-16 rounded-full bg-gradient-to-tr from-brass to-brand text-black mx-auto grid place-items-center shadow-xl shadow-brass/40">
                     <Sparkles className="size-8" />
                   </div>
 
@@ -304,7 +304,7 @@ export function CampusWrappedModal({
                   <Button
                     type="button"
                     onClick={() => setViewMode("card")}
-                    className="w-full h-11 rounded-2xl bg-gradient-to-r from-amber-500 to-emerald-400 hover:from-amber-600 hover:to-emerald-500 text-black font-black text-xs sm:text-sm shadow-xl shadow-amber-500/25 gap-2"
+                    className="w-full h-11 rounded-2xl bg-gradient-to-r from-brass to-brand hover:from-brass-ink hover:to-brand text-black font-black text-xs sm:text-sm shadow-xl shadow-brass/25 gap-2"
                   >
                     <span>View & Share 9:16 Flex Card 🚀</span>
                   </Button>

@@ -77,7 +77,7 @@ export const searchPeersServerFn = createServerFn({ method: "GET" })
   });
 
 export const checkUsernameAvailableServerFn = createServerFn({ method: "GET" })
-  .validator((d: { username: string; excludeUserId?: string }) => d)
+  .validator((d: { username: string; excludeUserId?: string | undefined }) => d)
   .handler(async ({ data }) => {
     const { checkUsernameAvailable } = await import("@/integrations/turso/community");
     return await checkUsernameAvailable(data.username, data.excludeUserId);
