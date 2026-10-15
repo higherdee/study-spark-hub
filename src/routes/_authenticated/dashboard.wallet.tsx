@@ -192,115 +192,91 @@ function WalletPage() {
     .reduce((a, w) => a + w.amount_naira, 0);
 
   return (
-    <div className="space-y-6">
-      {/* Trust Wallet-Inspired Hero Balance Card */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-[#061e14] via-[#0b2b1d] to-[#04140d] p-6 sm:p-8 text-white shadow-[0_24px_50px_-15px_rgba(4,20,13,0.5)]">
-        {/* Ambient Glow Orbs */}
-        <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-emerald-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute -left-16 -bottom-16 size-64 rounded-full bg-teal-500/10 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider text-emerald-300">
-                <Coins className="size-3 text-emerald-400" />
-                SyllaPoints Wallet
-              </span>
-              {isPlus && (
-                <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300">
-                  ⚡ 1.3x SyllaPlus Active
-                </span>
-              )}
-            </div>
-
-            <span className="text-xs font-medium text-emerald-200/70">
-              1 Naira = {POINTS_PER_NAIRA} {POINTS_NAME}
+    <div className="stagger space-y-6">
+      {/* Balance */}
+      <section className="relative overflow-hidden rounded-3xl bg-forest p-6 text-white shadow-[var(--elev-3)] sm:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">
+              <Coins className="size-3.5 text-brass-soft" />
+              {POINTS_NAME} wallet
             </span>
-          </div>
-
-          <div>
-            <p className="text-xs uppercase tracking-wider text-emerald-300/80 font-bold">
-              Total Cash Value
-            </p>
-            <div className="mt-1 flex flex-wrap items-baseline gap-3">
-              <h1 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
-                {formatNaira(pointsToNaira(points))}
-              </h1>
-              <span className="text-sm sm:text-base font-semibold text-emerald-200/90 font-mono">
-                ≈ {points.toLocaleString()} pts
+            {isPlus && (
+              <span className="rounded-full bg-brass/25 px-2.5 py-1 text-[11px] font-semibold text-brass-soft">
+                SyllaPlus 1.3x active
               </span>
-            </div>
-          </div>
-
-          {/* Quick Action Pills (Trust Wallet action bar) */}
-          <div className="flex flex-wrap items-center gap-2.5 pt-2">
-            <Button
-              asChild
-              className="h-10 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs gap-1.5 shadow-md active:scale-95 transition-all"
-            >
-              <a href="#withdraw-form">
-                <ArrowUpRight className="size-4 stroke-[2.5]" />
-                Withdraw to Bank
-              </a>
-            </Button>
-
-            {!isPlus && (
-              <Button
-                onClick={() => setShowPlusModal(true)}
-                className="h-10 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-xs gap-1.5 shadow-md active:scale-95 transition-all"
-              >
-                <Zap className="size-4 stroke-[2.5] text-black" />
-                Upgrade to SyllaPlus (1.3x)
-              </Button>
             )}
+          </div>
+          <span className="text-xs text-white/60 tnum">
+            1 naira = {POINTS_PER_NAIRA} {POINTS_NAME}
+          </span>
+        </div>
 
+        <p className="mt-7 text-xs font-medium uppercase tracking-[0.12em] text-white/60">
+          Cash value
+        </p>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <h1 className="font-display text-5xl tracking-tight tnum sm:text-6xl">
+            {formatNaira(pointsToNaira(points))}
+          </h1>
+          <span className="text-sm text-white/70 tnum">{points.toLocaleString()} pts</span>
+        </div>
+
+        <div className="mt-7 flex flex-wrap items-center gap-2.5">
+          <Button
+            asChild
+            className="h-11 rounded-full bg-white px-5 text-forest hover:bg-white/90"
+          >
+            <a href="#withdraw-form">
+              <ArrowUpRight className="size-4" />
+              Withdraw to bank
+            </a>
+          </Button>
+          {!isPlus && (
             <Button
-              asChild
-              variant="outline"
-              className="h-10 rounded-2xl border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold text-xs gap-1.5 active:scale-95 transition-all"
+              onClick={() => setShowPlusModal(true)}
+              className="h-11 rounded-full bg-brass px-5 text-white hover:bg-brass-ink"
             >
-              <Link to="/dashboard/upload">
-                <Upload className="size-3.5" />
-                Upload & Earn
-              </Link>
+              <Zap className="size-4" />
+              Upgrade to SyllaPlus
             </Button>
-          </div>
+          )}
+          <Button
+            asChild
+            variant="outline"
+            className="h-11 rounded-full border-white/20 bg-transparent px-5 text-white hover:bg-white/10 hover:text-white"
+          >
+            <Link to="/dashboard/upload">
+              <Upload className="size-4" />
+              Upload and earn
+            </Link>
+          </Button>
         </div>
-      </div>
+      </section>
 
-      {/* Metric Cards Row */}
+      {/* Metrics */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-          <div className="grid size-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-            <ArrowUpRight className="size-6" />
+        <div className="surface flex items-center gap-4 p-5">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-brand-deep">
+            <ArrowUpRight className="size-5" />
           </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Total Cashed Out
-            </p>
-            <p className="font-display text-2xl font-bold text-foreground mt-0.5">
-              {formatNaira(paid)}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Directly deposited to your Nigerian bank
-            </p>
+          <div className="min-w-0">
+            <p className="eyebrow">Total cashed out</p>
+            <p className="mt-0.5 font-display text-2xl text-ink tnum">{formatNaira(paid)}</p>
+            <p className="text-[11px] text-muted-foreground">Paid to your bank account</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-          <div className="grid size-12 place-items-center rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400">
-            <Clock className="size-6" />
+        <div className="surface flex items-center gap-4 p-5">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-brass-soft text-brass-ink">
+            <Clock className="size-5" />
           </div>
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Pending Payouts
-            </p>
-            <p className="font-display text-2xl font-bold text-foreground mt-0.5">
+          <div className="min-w-0">
+            <p className="eyebrow">Pending payouts</p>
+            <p className="mt-0.5 font-display text-2xl text-ink tnum">
               {(withdrawals.data ?? []).filter((w) => w.status === "pending").length} requests
             </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Processed every weekday via automated payout
-            </p>
+            <p className="text-[11px] text-muted-foreground">Processed every weekday</p>
           </div>
         </div>
       </div>

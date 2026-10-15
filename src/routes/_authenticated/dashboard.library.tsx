@@ -192,228 +192,237 @@ This verified material provides high-yield coverage of fundamental principles, s
     setTimeout(() => setCopiedSummary(false), 2000);
   }
 
+  const hasFilters = Boolean(q || type || level);
+  const shownCount = totalCount || materials.length;
+
   return (
-    <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-16 font-sans">
-      {/* Top Header Strip */}
-      <div className="pt-2 pb-2 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/80">
-        <div className="flex flex-col gap-1 max-w-2xl">
-          <div className="flex items-center gap-2 text-moss">
-            <Verified className="size-4 text-brand" />
-            <span className="text-xs uppercase tracking-widest font-bold">Academic Repository</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#c2c8c3]" />
-            <span className="font-mono text-xs text-muted-foreground">Archival Standard v4.18</span>
-          </div>
-          <h1 className="font-display text-3xl sm:text-4xl text-ink tracking-tight font-medium">
-            University Library
+    <div className="w-full max-w-[1200px] mx-auto space-y-6 pb-16 font-sans">
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl">
+          <p className="eyebrow flex items-center gap-1.5">
+            <Verified className="size-3.5 text-brand" /> Verified library
+          </p>
+          <h1 className="mt-1.5 font-display text-3xl sm:text-4xl text-ink tracking-tight">
+            Study materials
           </h1>
-          <p className="text-sm text-ink-soft">
-            Peer-reviewed course materials, algorithmic syllabus outlines, and high-yield dossiers authored across accredited universities.
+          <p className="mt-1.5 text-sm text-ink-soft">
+            Notes, past questions and outlines from students across Nigerian universities. Every
+            file is checked before it appears here.
           </p>
         </div>
+        <Button asChild className="self-start md:self-auto rounded-full bg-forest text-white hover:bg-ink">
+          <Link to="/dashboard/upload">
+            <Upload className="size-4" />
+            Upload material
+            <span className="ml-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] tnum">+25 pts</span>
+          </Link>
+        </Button>
+      </header>
 
-        <div className="flex items-center gap-3">
-          <Button
-            asChild
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-forest text-white hover:bg-ink text-xs font-semibold shadow-xs"
-          >
-            <Link to="/dashboard/upload">
-              <Upload className="size-4" />
-              <span>Upload Material</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded bg-white/20 text-[10px] font-mono text-accent">+25 pts</span>
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Search & Advanced Filter Console */}
-      <div className="w-full rounded-2xl bg-white shadow-xs p-4 sm:p-5 flex flex-col gap-3 border border-border">
-        <div className="relative w-full flex items-center">
-          <Search className="absolute left-4 text-muted-foreground size-5 pointer-events-none" />
+      {/* Search and filters */}
+      <div className="surface p-3 sm:p-4 space-y-3">
+        <div className="relative flex items-center">
+          <Search className="absolute left-4 size-4.5 text-muted-foreground pointer-events-none" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by course name, course code (e.g. MTH 101, GET 206), topic or university..."
-            className="w-full pl-12 pr-10 py-3.5 h-12 rounded-xl bg-muted/70 text-sm text-foreground placeholder:text-muted-foreground/70 border-border focus:bg-white"
+            placeholder="Search a course, code (MTH 101), topic or university"
+            className="h-12 w-full rounded-xl border-border bg-muted/60 pl-11 pr-10 text-sm focus:bg-white"
           />
           {q && (
             <button
               type="button"
+              aria-label="Clear search"
               onClick={() => setQ("")}
-              className="absolute right-4 text-muted-foreground hover:text-foreground"
+              className="press absolute right-3 grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
             >
               <X className="size-4" />
             </button>
           )}
         </div>
 
-        {/* Filter Badges Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="h-9 px-3 rounded-xl bg-muted border border-border text-xs font-medium text-foreground focus:outline-none cursor-pointer"
-            >
-              <option value="">All Material Types</option>
-              {MATERIAL_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+          {["", ...MATERIAL_TYPES].map((t) => {
+            const active = type === t;
+            return (
+              <button
+                key={t || "all"}
+                type="button"
+                onClick={() => setType(t)}
+                className={`press shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors duration-150 ${
+                  active
+                    ? "border-forest bg-forest text-white"
+                    : "border-border bg-white text-ink-soft hover:bg-muted"
+                }`}
+              >
+                {t || "All types"}
+              </button>
+            );
+          })}
+        </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
             <select
               value={level}
               onChange={(e) => setLevel(e.target.value)}
-              className="h-9 px-3 rounded-xl bg-muted border border-border text-xs font-medium text-foreground focus:outline-none cursor-pointer"
+              aria-label="Filter by level"
+              className="h-9 cursor-pointer rounded-xl border border-border bg-white px-3 text-xs font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="">All Levels (100L - Final Yr)</option>
+              <option value="">All levels</option>
               {LEVELS.map((l) => (
-                <option key={l} value={l}>{l}</option>
+                <option key={l} value={l}>
+                  {l}
+                </option>
               ))}
             </select>
-
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="h-9 px-3.5 rounded-xl bg-accent/50 hover:bg-accent border-accent text-accent-foreground text-xs font-semibold gap-1.5"
-            >
-              <Link to="/dashboard/assistant">
-                <Sparkles className="size-3.5 text-brand" />
-                Boss AI Ready
-              </Link>
-            </Button>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQ("");
+                  setType("");
+                  setLevel("");
+                }}
+                className="press text-xs font-semibold text-brand-deep hover:underline"
+              >
+                Clear all
+              </button>
+            )}
           </div>
-
-          <div className="text-xs text-muted-foreground font-mono">
+          <p className="text-xs text-muted-foreground tnum" aria-live="polite">
             {isLoading
-              ? "Browsing archives..."
-              : Boolean(q || type || level)
-                ? `${materials.length} matching of ${(totalCount || materials.length).toLocaleString()} verified academic resources`
-                : `${(totalCount || materials.length).toLocaleString()} verified academic resource${(totalCount || materials.length) === 1 ? "" : "s"}`}
-          </div>
+              ? "Searching…"
+              : hasFilters
+                ? `${materials.length} of ${shownCount.toLocaleString()} files`
+                : `${shownCount.toLocaleString()} file${shownCount === 1 ? "" : "s"}`}
+          </p>
         </div>
       </div>
 
-      {/* Repository Grid / Material Cards */}
-      <section className="flex flex-col gap-4">
-        <div>
-          <span className="text-xs uppercase tracking-widest text-moss font-bold">Verified Records</span>
-          <h2 className="font-display text-2xl text-ink font-medium">All Academic Course Materials</h2>
-        </div>
-
+      {/* Results */}
+      <section>
         {isLoading ? (
-          <div className="py-20 text-center flex flex-col items-center justify-center">
-            <div className="animate-breathe-zoom">
-              <SyllabossEmblem className="size-14" />
-            </div>
-            <p className="mt-3 text-xs font-semibold text-moss animate-pulse">
-              Loading verified university materials...
-            </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="surface p-5 space-y-3">
+                <div className="skeleton h-5 w-24 rounded-full" />
+                <div className="skeleton h-6 w-3/4 rounded-md" />
+                <div className="skeleton h-4 w-1/2 rounded-md" />
+                <div className="skeleton h-10 w-full rounded-xl" />
+              </div>
+            ))}
           </div>
         ) : materials.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
-            <BookOpen className="mx-auto size-10 text-muted-foreground/50" />
-            <h3 className="mt-3 font-display text-lg font-semibold text-ink">No materials found</h3>
-            <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-              Try searching a different course code, university, or clear your search filter.
+          <div className="surface animate-rise grid place-items-center px-6 py-16 text-center">
+            <span className="grid size-12 place-items-center rounded-2xl bg-muted text-moss">
+              <BookOpen className="size-6" />
+            </span>
+            <h3 className="mt-4 font-display text-xl text-ink">Nothing matches yet</h3>
+            <p className="mt-1 max-w-sm text-sm text-ink-soft">
+              Try another course code or university, or clear your filters. Can't find it? Upload
+              it and earn {POINTS_NAME}.
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+          <div className="stagger grid gap-4 sm:grid-cols-2">
             {materials.map((m) => (
               <article
                 key={m.id}
-                className="group flex flex-col justify-between rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-xs transition-all duration-200 hover:shadow-md hover:border-moss/40"
+                className="surface lift group flex flex-col justify-between p-5"
               >
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded bg-accent text-accent-foreground font-mono text-xs font-bold">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 rounded-md bg-accent px-2 py-0.5 text-[11px] font-bold tracking-wide text-accent-foreground tnum">
                         {m.course_code || "ACAD"}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full bg-muted text-moss text-[11px] font-semibold">
+                      <span className="truncate text-[11px] font-semibold text-moss">
                         {m.material_type}
                       </span>
                     </div>
-
                     {m.rating_count && m.rating_count > 0 ? (
-                      <div className="flex items-center gap-1 text-brass text-xs font-semibold">
+                      <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-brass-ink tnum">
                         <Star className="size-3.5 fill-brass text-brass" />
-                        <span>{Number(m.rating_avg || 0).toFixed(1)}</span>
-                        <span className="text-brass/80 text-[10px]">({m.rating_count})</span>
-                      </div>
+                        {Number(m.rating_avg || 0).toFixed(1)}
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          ({m.rating_count})
+                        </span>
+                      </span>
                     ) : (
-                      <div className="flex items-center gap-1 text-slate-400 text-xs">
-                        <Star className="size-3.5 text-slate-300" />
-                        <span className="text-[11px] text-slate-500 font-normal">Unrated</span>
-                      </div>
+                      <span className="text-[11px] text-muted-foreground">Unrated</span>
                     )}
                   </div>
 
-                  <div>
-                    <h3
-                      onClick={() => handleOpenMaterial(m)}
-                      className="font-display text-lg font-semibold text-ink hover:text-moss cursor-pointer transition-colors leading-snug line-clamp-1"
-                    >
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMaterial(m)}
+                    className="block w-full text-left"
+                  >
+                    <h3 className="font-display text-lg font-semibold leading-snug text-ink line-clamp-2 transition-colors group-hover:text-moss">
                       {m.title}
                     </h3>
-                    <p className="text-xs text-moss font-medium mt-0.5">{m.course}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{m.institution}</p>
-                  </div>
+                    <p className="mt-1 text-xs font-medium text-moss line-clamp-1">{m.course}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{m.institution}</p>
+                  </button>
 
-                  {/* Meta statistics row */}
-                  <div className="flex items-center gap-4 py-2 px-3 rounded-xl bg-muted font-mono text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1"><FileText className="size-3.5 text-moss" /> {m.page_count} pgs</span>
-                    <span className="flex items-center gap-1"><Eye className="size-3.5 text-moss" /> {m.views ?? 0} views</span>
-                    <span className="flex items-center gap-1"><Download className="size-3.5 text-moss" /> {m.downloads} dls</span>
+                  <div className="flex items-center gap-4 text-[11px] text-muted-foreground tnum">
+                    <span className="flex items-center gap-1">
+                      <FileText className="size-3.5" /> {m.page_count} pages
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="size-3.5" /> {m.views ?? 0}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Download className="size-3.5" /> {m.downloads}
+                    </span>
                   </div>
                 </div>
 
-                {/* 4 Clean Actions Grid */}
-                <div className="pt-4 mt-3 border-t border-surface-container flex flex-col gap-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl text-xs font-semibold h-9 border-border hover:bg-muted"
-                      onClick={() => handleOpenMaterial(m)}
-                    >
-                      <Eye className="size-3.5 mr-1 text-moss" />
-                      Preview
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="rounded-xl text-xs font-semibold h-9 bg-forest hover:bg-ink text-white"
-                      onClick={() => handleStudyWithAI(m)}
-                    >
-                      <Bot className="size-3.5 mr-1 text-accent" />
-                      Study with Boss AI
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="rounded-xl text-xs font-semibold h-9 bg-muted hover:bg-input text-foreground"
-                      onClick={() => handleSummarizeWithAI(m)}
-                    >
-                      <Sparkles className="size-3.5 mr-1 text-brass" />
-                      Summarize
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="rounded-xl text-xs font-semibold h-9 bg-accent hover:bg-[#b0dfca] text-accent-foreground"
-                      disabled={downloading === m.id}
-                      onClick={() => handleDownload(m)}
-                    >
-                      {downloading === m.id ? (
-                        <Loader2 className="size-3.5 animate-spin mr-1" />
-                      ) : (
-                        <Download className="size-3.5 mr-1 text-brand" />
-                      )}
-                      Download (+5 pts)
-                    </Button>
-                  </div>
+                <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
+                  <Button
+                    size="sm"
+                    className="h-10 flex-1 rounded-xl bg-forest text-white hover:bg-ink"
+                    onClick={() => handleStudyWithAI(m)}
+                  >
+                    <Bot className="size-4" />
+                    Study with Boss AI
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Preview"
+                    title="Preview"
+                    className="size-10 rounded-xl"
+                    onClick={() => handleOpenMaterial(m)}
+                  >
+                    <Eye className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Summarize with AI"
+                    title="Summarize"
+                    className="size-10 rounded-xl"
+                    onClick={() => handleSummarizeWithAI(m)}
+                  >
+                    <Sparkles className="size-4 text-brass" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Download (+5 pts)"
+                    title="Download (+5 pts)"
+                    className="size-10 rounded-xl"
+                    disabled={downloading === m.id}
+                    onClick={() => handleDownload(m)}
+                  >
+                    {downloading === m.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Download className="size-4 text-brand" />
+                    )}
+                  </Button>
                 </div>
               </article>
             ))}

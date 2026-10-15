@@ -30,8 +30,8 @@ import { cn } from "@/lib/utils";
 interface CampusWrappedModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userId?: string;
-  username?: string;
+  userId?: string | undefined;
+  username?: string | undefined;
 }
 
 export function CampusWrappedModal({

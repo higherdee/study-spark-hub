@@ -214,164 +214,91 @@ function LeaderboardPage() {
         </section>
       )}
 
-      {/* Top 3 Students Podium Cards */}
+      {/* Podium */}
       <section className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-2xl text-ink font-medium tracking-tight">Top Ranked Students</h2>
-        </div>
+        <h2 className="font-display text-2xl tracking-tight text-ink">Top of the campus</h2>
 
         {isLoading ? (
-          <div className="py-16 text-center flex flex-col items-center justify-center">
-            <div className="animate-breathe-zoom">
-              <SyllabossEmblem className="size-14" />
-            </div>
-            <p className="mt-3 text-xs font-semibold text-moss animate-pulse">Calculating rankings...</p>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="surface space-y-3 p-5">
+                <div className="skeleton h-8 w-8 rounded-full" />
+                <div className="skeleton h-5 w-2/3 rounded-md" />
+                <div className="skeleton h-16 w-full rounded-xl" />
+              </div>
+            ))}
           </div>
         ) : topThree.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            {/* Rank #2 */}
-            {topThree[1] && (
-              <article className="flex flex-col rounded-2xl bg-white p-5 shadow-xs border border-border transition-all hover:shadow-md order-2 md:order-1">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="size-8 rounded-full bg-slate-100 text-slate-700 font-mono text-xs font-bold flex items-center justify-center">
-                    02
-                  </span>
-                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted text-xs font-semibold text-moss">
-                    <Medal className="size-3.5 text-slate-500" /> 2nd Place
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mb-1">
-                  {topThree[1].avatar_url ? (
-                    <img src={topThree[1].avatar_url} alt="" className="size-8 rounded-full object-cover border border-border" />
-                  ) : (
-                    <div className="size-8 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center">
-                      {(topThree[1].username || topThree[1].full_name)[0].toUpperCase()}
-                    </div>
+          <div className="stagger grid grid-cols-1 items-end gap-4 md:grid-cols-3">
+            {[1, 0, 2].map((idx) => {
+              const s = topThree[idx];
+              if (!s) return null;
+              const first = idx === 0;
+              const handle = s.username || s.full_name.toLowerCase().replace(/\s+/g, "_");
+              const initial = (s.username || s.full_name)[0]?.toUpperCase() ?? "S";
+              const Icon = first ? Trophy : idx === 1 ? Medal : Award;
+              return (
+                <article
+                  key={s.id}
+                  className={cn(
+                    "surface lift relative flex flex-col p-5",
+                    first
+                      ? "order-1 border-brass/50 bg-gradient-to-b from-brass-soft/60 to-white p-6 md:order-2 md:-mt-4"
+                      : idx === 1
+                        ? "order-2 md:order-1"
+                        : "order-3",
                   )}
-                  <div className="truncate">
-                    <h3 className="font-display text-base font-bold text-ink truncate">
-                      @{topThree[1].username || topThree[1].full_name.toLowerCase().replace(/\s+/g, "_")}
-                    </h3>
-                    <p className="text-[11px] text-muted-foreground truncate">{topThree[1].full_name}</p>
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <span
+                      className={cn(
+                        "grid size-9 place-items-center rounded-full text-sm font-bold tnum",
+                        first ? "bg-brass text-white" : "bg-secondary text-ink",
+                      )}
+                    >
+                      {idx + 1}
+                    </span>
+                    <Icon className={cn("size-5", first ? "text-brass" : "text-muted-foreground")} />
                   </div>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{topThree[1].institution}</p>
-                <p className="text-[11px] text-moss truncate mt-0.5">{topThree[1].course}</p>
 
-                <div className="flex flex-col gap-1.5 py-2.5 bg-muted rounded-xl px-3 my-3 font-mono text-xs text-foreground">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">SyllaPoints</span>
-                    <span className="font-bold text-ink">{topThree[1].points.toLocaleString()} pts</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Study Time</span>
-                    <span className="text-moss font-semibold">{Math.round(topThree[1].study_minutes / 60)} hrs</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
-                  <span className="text-brand font-semibold">2nd Rank</span>
-                  <span>Yield: {formatNaira(pointsToNaira(topThree[1].points))}</span>
-                </div>
-              </article>
-            )}
-
-            {/* Rank #1 */}
-            {topThree[0] && (
-              <article className="flex flex-col rounded-2xl bg-white p-6 shadow-md border-2 border-amber-300 transition-all hover:shadow-lg order-1 md:order-2 md:-mt-4 relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-brass-soft text-brass-ink text-[10px] uppercase tracking-widest font-bold shadow-xs flex items-center gap-1">
-                  <Trophy className="size-3 text-amber-600" /> 1st Place Rank
-                </div>
-                <div className="flex items-center justify-between mb-3 mt-1">
-                  <span className="size-9 rounded-full bg-amber-100 text-amber-900 font-mono text-sm font-bold flex items-center justify-center">
-                    01
-                  </span>
-                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-xs font-semibold text-amber-900">
-                    <Sparkles className="size-3.5 text-amber-600" /> 1st Place
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 mb-1">
-                  {topThree[0].avatar_url ? (
-                    <img src={topThree[0].avatar_url} alt="" className="size-9 rounded-full object-cover border-2 border-amber-300" />
-                  ) : (
-                    <div className="size-9 rounded-full bg-amber-100 text-amber-900 font-bold text-sm flex items-center justify-center border border-amber-300">
-                      {(topThree[0].username || topThree[0].full_name)[0].toUpperCase()}
+                  <div className="flex items-center gap-2.5">
+                    {s.avatar_url ? (
+                      <img
+                        src={s.avatar_url}
+                        alt=""
+                        className="size-10 rounded-full border border-border object-cover"
+                      />
+                    ) : (
+                      <div className="grid size-10 place-items-center rounded-full bg-accent text-sm font-bold text-brand-deep">
+                        {initial}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <h3 className="truncate font-display text-lg text-ink">@{handle}</h3>
+                      <p className="truncate text-xs text-muted-foreground">{s.full_name}</p>
                     </div>
-                  )}
-                  <div className="truncate">
-                    <h3 className="font-display text-lg font-bold text-ink truncate">
-                      @{topThree[0].username || topThree[0].full_name.toLowerCase().replace(/\s+/g, "_")}
-                    </h3>
-                    <p className="text-[11px] text-muted-foreground truncate">{topThree[0].full_name}</p>
                   </div>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{topThree[0].institution}</p>
-                <p className="text-[11px] text-moss truncate mt-0.5">{topThree[0].course}</p>
 
-                <div className="flex flex-col gap-1.5 py-3 bg-muted rounded-xl px-3.5 my-3 font-mono text-xs text-foreground">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">SyllaPoints</span>
-                    <span className="font-display text-lg font-bold text-ink">{topThree[0].points.toLocaleString()} pts</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Study Time</span>
-                    <span className="text-moss font-semibold">{Math.round(topThree[0].study_minutes / 60)} hrs</span>
-                  </div>
-                </div>
+                  <p className="mt-3 truncate text-xs text-muted-foreground">{s.institution}</p>
+                  <p className="truncate text-[11px] text-moss">{s.course}</p>
 
-                <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
-                  <span className="text-brand font-semibold">Top Rank</span>
-                  <span className="text-moss font-bold">Yield: {formatNaira(pointsToNaira(topThree[0].points))}</span>
-                </div>
-              </article>
-            )}
-
-            {/* Rank #3 */}
-            {topThree[2] && (
-              <article className="flex flex-col rounded-2xl bg-white p-5 shadow-xs border border-border transition-all hover:shadow-md order-3">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="size-8 rounded-full bg-orange-100 text-amber-950 font-mono text-xs font-bold flex items-center justify-center">
-                    03
-                  </span>
-                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted text-xs font-semibold text-moss">
-                    <Award className="size-3.5 text-amber-800" /> 3rd Place
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mb-1">
-                  {topThree[2].avatar_url ? (
-                    <img src={topThree[2].avatar_url} alt="" className="size-8 rounded-full object-cover border border-border" />
-                  ) : (
-                    <div className="size-8 rounded-full bg-orange-100 text-amber-950 font-bold text-xs flex items-center justify-center">
-                      {(topThree[2].username || topThree[2].full_name)[0].toUpperCase()}
+                  <dl className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-muted p-3 text-xs tnum">
+                    <div>
+                      <dt className="text-muted-foreground">Points</dt>
+                      <dd className="mt-0.5 font-display text-lg text-ink">
+                        {s.points.toLocaleString()}
+                      </dd>
                     </div>
-                  )}
-                  <div className="truncate">
-                    <h3 className="font-display text-base font-bold text-ink truncate">
-                      @{topThree[2].username || topThree[2].full_name.toLowerCase().replace(/\s+/g, "_")}
-                    </h3>
-                    <p className="text-[11px] text-muted-foreground truncate">{topThree[2].full_name}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{topThree[2].institution}</p>
-                <p className="text-[11px] text-moss truncate mt-0.5">{topThree[2].course}</p>
-
-                <div className="flex flex-col gap-1.5 py-2.5 bg-muted rounded-xl px-3 my-3 font-mono text-xs text-foreground">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">SyllaPoints</span>
-                    <span className="font-bold text-ink">{topThree[2].points.toLocaleString()} pts</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Study Time</span>
-                    <span className="text-moss font-semibold">{Math.round(topThree[2].study_minutes / 60)} hrs</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
-                  <span className="text-brand font-semibold">3rd Rank</span>
-                  <span>Yield: {formatNaira(pointsToNaira(topThree[2].points))}</span>
-                </div>
-              </article>
-            )}
+                    <div>
+                      <dt className="text-muted-foreground">Study time</dt>
+                      <dd className="mt-0.5 font-display text-lg text-ink">
+                        {Math.round(s.study_minutes / 60)}h
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              );
+            })}
           </div>
         ) : null}
       </section>
@@ -426,7 +353,7 @@ function LeaderboardPage() {
                           <img src={s.avatar_url} alt="" className="size-7 rounded-full object-cover border border-border" />
                         ) : (
                           <div className="size-7 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] flex items-center justify-center">
-                            {(s.username || s.full_name)[0].toUpperCase()}
+                            {((s.username || s.full_name)[0] ?? "S").toUpperCase()}
                           </div>
                         )}
                         <div className="flex flex-col">
