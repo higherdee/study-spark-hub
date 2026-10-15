@@ -22,9 +22,9 @@ function TermsPage() {
   const lastUpdated = "October 11, 2026";
 
   return (
-    <div className="min-h-screen bg-[#f6faf7] text-[#00110a] font-sans">
+    <div className="min-h-screen bg-surface-container-low text-ink font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-[#e1eae3] bg-[#f6faf7]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-surface-container-high bg-surface-container-low/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <SyllabossLogo />
           <Button asChild variant="ghost" size="sm" className="gap-2 text-xs font-semibold rounded-full">
@@ -39,22 +39,22 @@ function TermsPage() {
       {/* Main Content */}
       <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="mb-10 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#edf6f0] border border-[#d6e3db] text-xs font-semibold text-[#155e3e] mb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-xs font-semibold text-brand-deep mb-3">
             <Scale className="size-3.5" />
             <span>User Agreement & Rules</span>
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-[#00110a]">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-ink">
             Terms of Service
           </h1>
-          <p className="mt-2 text-xs text-[#526359]">
+          <p className="mt-2 text-xs text-ink-soft">
             Last updated: {lastUpdated} · Please review carefully before using our services
           </p>
         </div>
 
-        <div className="rounded-3xl border border-[#d2e0d7] bg-white p-6 sm:p-10 shadow-xs space-y-8 text-sm leading-relaxed text-[#2c3d33]">
+        <div className="rounded-3xl border border-border bg-white p-6 sm:p-10 shadow-xs space-y-8 text-sm leading-relaxed text-[#2c3d33]">
           <section className="space-y-3">
-            <h2 className="font-display text-lg font-bold text-[#00110a] flex items-center gap-2">
-              <span className="size-6 rounded-lg bg-[#edf6f0] text-[#155e3e] flex items-center justify-center text-xs font-bold">1</span>
+            <h2 className="font-display text-lg font-bold text-ink flex items-center gap-2">
+              <span className="size-6 rounded-lg bg-muted text-brand-deep flex items-center justify-center text-xs font-bold">1</span>
               Agreement to Terms
             </h2>
             <p>
@@ -63,8 +63,8 @@ function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-display text-lg font-bold text-[#00110a] flex items-center gap-2">
-              <span className="size-6 rounded-lg bg-[#edf6f0] text-[#155e3e] flex items-center justify-center text-xs font-bold">2</span>
+            <h2 className="font-display text-lg font-bold text-ink flex items-center gap-2">
+              <span className="size-6 rounded-lg bg-muted text-brand-deep flex items-center justify-center text-xs font-bold">2</span>
               User Accounts & Eligibility
             </h2>
             <p>
@@ -73,14 +73,14 @@ function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-display text-lg font-bold text-[#00110a] flex items-center gap-2">
-              <span className="size-6 rounded-lg bg-[#edf6f0] text-[#155e3e] flex items-center justify-center text-xs font-bold">3</span>
+            <h2 className="font-display text-lg font-bold text-ink flex items-center gap-2">
+              <span className="size-6 rounded-lg bg-muted text-brand-deep flex items-center justify-center text-xs font-bold">3</span>
               Academic Integrity & Content Uploads
             </h2>
             <p>
               Syllaboss exists to foster collaborative study, high-yield examination revision, and knowledge preservation. Contributors must strictly adhere to the following standards:
             </p>
-            <ul className="list-disc pl-5 space-y-2 text-[#3f4d45]">
+            <ul className="list-disc pl-5 space-y-2 text-ink-soft">
               <li>
                 <strong>Permitted Materials:</strong> Summarized student lecture notes, personal monographs, solved past examination question sets, syllabus topic breakdowns, and openly licensed academic courseware.
               </li>
@@ -88,20 +88,20 @@ function TermsPage() {
                 <strong>Prohibited Uploads:</strong> Live ongoing examination question papers, leaked test sheets, copyrighted commercial textbooks without explicit distribution rights, or defamatory, plagiarized, or malicious materials.
               </li>
               <li>
-                <strong>Takedown Procedure:</strong> If you represent an institution or copyright owner and believe a document infringes your intellectual property, contact our legal desk at <span className="font-mono text-[#155e3e]">legal@syllaboss.org</span> for immediate review and removal.
+                <strong>Takedown Procedure:</strong> If you represent an institution or copyright owner and believe a document infringes your intellectual property, contact our legal desk at <span className="font-mono text-brand-deep">legal@syllaboss.org</span> for immediate review and removal.
               </li>
             </ul>
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-display text-lg font-bold text-[#00110a] flex items-center gap-2">
-              <span className="size-6 rounded-lg bg-[#edf6f0] text-[#155e3e] flex items-center justify-center text-xs font-bold">4</span>
+            <h2 className="font-display text-lg font-bold text-ink flex items-center gap-2">
+              <span className="size-6 rounded-lg bg-muted text-brand-deep flex items-center justify-center text-xs font-bold">4</span>
               SyllaPoints & Creator Rewards Program
             </h2>
             <p>
               Syllaboss provides a merit-based points economy to reward students who contribute verified, high-quality course summaries and active peer study:
             </p>
-            <ul className="list-disc pl-5 space-y-2 text-[#3f4d45]">
+            <ul className="list-disc pl-5 space-y-2 text-ink-soft">
               <li>Points are earned through verified uploads, genuine reads, and community study milestones.</li>
               <li>Points may be converted to Nigerian Naira (NGN) and withdrawn to verified Nigerian commercial bank accounts once reaching the minimum balance threshold.</li>
               <li>Any attempt to artificially inflate views, game points with dummy accounts, or upload spam results in forfeiture of accrued balance and permanent account termination.</li>
@@ -109,8 +109,8 @@ function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-display text-lg font-bold text-[#00110a] flex items-center gap-2">
-              <span className="size-6 rounded-lg bg-[#edf6f0] text-[#155e3e] flex items-center justify-center text-xs font-bold">5</span>
+            <h2 className="font-display text-lg font-bold text-ink flex items-center gap-2">
+              <span className="size-6 rounded-lg bg-muted text-brand-deep flex items-center justify-center text-xs font-bold">5</span>
               Boss AI Companion Disclaimer
             </h2>
             <p>
@@ -119,8 +119,8 @@ function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-display text-lg font-bold text-[#00110a] flex items-center gap-2">
-              <span className="size-6 rounded-lg bg-[#edf6f0] text-[#155e3e] flex items-center justify-center text-xs font-bold">6</span>
+            <h2 className="font-display text-lg font-bold text-ink flex items-center gap-2">
+              <span className="size-6 rounded-lg bg-muted text-brand-deep flex items-center justify-center text-xs font-bold">6</span>
               Limitation of Liability & Governing Law
             </h2>
             <p>
@@ -131,13 +131,13 @@ function TermsPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#e1eae3] bg-white py-8 text-center text-xs text-[#526359]">
+      <footer className="border-t border-surface-container-high bg-white py-8 text-center text-xs text-ink-soft">
         <div className="mx-auto max-w-5xl px-4 flex flex-wrap justify-center gap-6 mb-3">
-          <Link to="/privacy" className="hover:text-[#00110a]">Privacy Policy</Link>
-          <Link to="/terms" className="font-semibold text-[#00110a]">Terms of Service</Link>
-          <Link to="/about" className="hover:text-[#00110a]">About Us</Link>
-          <Link to="/contact" className="hover:text-[#00110a]">Contact Us</Link>
-          <Link to="/curriculum" className="hover:text-[#00110a]">Academic Curriculum</Link>
+          <Link to="/privacy" className="hover:text-ink">Privacy Policy</Link>
+          <Link to="/terms" className="font-semibold text-ink">Terms of Service</Link>
+          <Link to="/about" className="hover:text-ink">About Us</Link>
+          <Link to="/contact" className="hover:text-ink">Contact Us</Link>
+          <Link to="/curriculum" className="hover:text-ink">Academic Curriculum</Link>
         </div>
         <p>© 2026 Syllaboss Technologies. All rights reserved.</p>
       </footer>

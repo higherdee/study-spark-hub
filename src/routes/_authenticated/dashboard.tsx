@@ -1,5 +1,5 @@
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { BookOpen, Home, Trophy, Upload, Wallet, Loader2, Shield, Bot, Users } from "lucide-react";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { BookOpen, FileStack, Home, Trophy, Upload, Wallet, Shield, Bot, Users, Settings } from "lucide-react";
 import { useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -32,8 +32,13 @@ const nav: NavItem[] = [
   { to: "/dashboard/assistant", label: "Boss AI", icon: Bot },
   { to: "/dashboard/community", label: "Peers", icon: Users },
   { to: "/dashboard/upload", label: "Upload", icon: Upload },
-  { to: "/dashboard/leaderboard", label: "Rankings", icon: Trophy, hideOnMobile: true },
+  { to: "/dashboard/leaderboard", label: "Rankings", icon: Trophy },
   { to: "/dashboard/wallet", label: "Wallet", icon: Wallet },
+];
+
+const secondary: NavItem[] = [
+  { to: "/dashboard/materials", label: "My uploads", icon: FileStack },
+  { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 function DashboardLayout() {
@@ -42,6 +47,7 @@ function DashboardLayout() {
   const { data: isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // Auto-activate streak as soon as student enters the app (no manual check-in needed)
   useEffect(() => {
@@ -75,17 +81,34 @@ function DashboardLayout() {
   return (
     <AppShell
       nav={nav}
+      secondary={secondary}
       title="Student"
       footer={
         isAdmin ? (
-          <Link to="/admin" className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary">
-            <Shield className="size-4 text-primary" /> Admin dashboard
+          <Link
+            to="/admin"
+            className="press flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-[13px] font-semibold text-ink transition-colors hover:bg-muted"
+          >
+            <Shield className="size-4 text-brand" /> Admin console
           </Link>
         ) : null
       }
     >
-      {profile.suspended && <div className="mb-6 rounded-lg border border-destructive bg-destructive/5 p-4 text-sm text-destructive">Your account is suspended. You can't upload or cash out until an admin restores it.</div>}
-      <div className="animate-page-zoom-in h-full flex-1 min-h-0 flex flex-col overflow-hidden">
+      {profile.suspended && (
+        <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm font-medium text-destructive">
+          Your account is suspended. You can't upload or cash out until an admin restores it.
+        </div>
+      )}
+      <div
+        key={pathname}
+        className={
+          pathname.startsWith("/dashboard/assistant") ||
+          pathname.startsWith("/dashboard/community") ||
+          pathname.startsWith("/dashboard/preview")
+            ? "route-enter overflow-hidden"
+            : "route-enter"
+        }
+      >
         <Outlet />
       </div>
     </AppShell>

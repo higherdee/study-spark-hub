@@ -195,18 +195,18 @@ This verified material provides high-yield coverage of fundamental principles, s
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-16 font-sans">
       {/* Top Header Strip */}
-      <div className="pt-2 pb-2 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#dce5df]/80">
+      <div className="pt-2 pb-2 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/80">
         <div className="flex flex-col gap-1 max-w-2xl">
-          <div className="flex items-center gap-2 text-[#446557]">
-            <Verified className="size-4 text-[#1b7a4e]" />
+          <div className="flex items-center gap-2 text-moss">
+            <Verified className="size-4 text-brand" />
             <span className="text-xs uppercase tracking-widest font-bold">Academic Repository</span>
             <span className="w-1.5 h-1.5 rounded-full bg-[#c2c8c3]" />
-            <span className="font-mono text-xs text-[#5a6660]">Archival Standard v4.18</span>
+            <span className="font-mono text-xs text-muted-foreground">Archival Standard v4.18</span>
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl text-[#00110a] tracking-tight font-medium">
+          <h1 className="font-display text-3xl sm:text-4xl text-ink tracking-tight font-medium">
             University Library
           </h1>
-          <p className="text-sm text-[#424844]">
+          <p className="text-sm text-ink-soft">
             Peer-reviewed course materials, algorithmic syllabus outlines, and high-yield dossiers authored across accredited universities.
           </p>
         </div>
@@ -214,32 +214,32 @@ This verified material provides high-yield coverage of fundamental principles, s
         <div className="flex items-center gap-3">
           <Button
             asChild
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] text-xs font-semibold shadow-xs"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-forest text-white hover:bg-ink text-xs font-semibold shadow-xs"
           >
             <Link to="/dashboard/upload">
               <Upload className="size-4" />
               <span>Upload Material</span>
-              <span className="ml-1 px-1.5 py-0.2 rounded bg-white/20 text-[10px] font-mono text-[#c6ebd9]">+25 pts</span>
+              <span className="ml-1 px-1.5 py-0.2 rounded bg-white/20 text-[10px] font-mono text-accent">+25 pts</span>
             </Link>
           </Button>
         </div>
       </div>
 
       {/* Search & Advanced Filter Console */}
-      <div className="w-full rounded-2xl bg-white shadow-xs p-4 sm:p-5 flex flex-col gap-3 border border-[#dce5df]">
+      <div className="w-full rounded-2xl bg-white shadow-xs p-4 sm:p-5 flex flex-col gap-3 border border-border">
         <div className="relative w-full flex items-center">
-          <Search className="absolute left-4 text-[#5a6660] size-5 pointer-events-none" />
+          <Search className="absolute left-4 text-muted-foreground size-5 pointer-events-none" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by course name, course code (e.g. MTH 101, GET 206), topic or university..."
-            className="w-full pl-12 pr-10 py-3.5 h-12 rounded-xl bg-[#edf6f0]/70 text-sm text-[#151d1a] placeholder:text-[#5a6660]/70 border-[#dce5df] focus:bg-white"
+            className="w-full pl-12 pr-10 py-3.5 h-12 rounded-xl bg-muted/70 text-sm text-foreground placeholder:text-muted-foreground/70 border-border focus:bg-white"
           />
           {q && (
             <button
               type="button"
               onClick={() => setQ("")}
-              className="absolute right-4 text-[#5a6660] hover:text-[#151d1a]"
+              className="absolute right-4 text-muted-foreground hover:text-foreground"
             >
               <X className="size-4" />
             </button>
@@ -252,7 +252,7 @@ This verified material provides high-yield coverage of fundamental principles, s
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="h-9 px-3 rounded-xl bg-[#edf6f0] border border-[#dce5df] text-xs font-medium text-[#151d1a] focus:outline-none cursor-pointer"
+              className="h-9 px-3 rounded-xl bg-muted border border-border text-xs font-medium text-foreground focus:outline-none cursor-pointer"
             >
               <option value="">All Material Types</option>
               {MATERIAL_TYPES.map((t) => (
@@ -263,7 +263,7 @@ This verified material provides high-yield coverage of fundamental principles, s
             <select
               value={level}
               onChange={(e) => setLevel(e.target.value)}
-              className="h-9 px-3 rounded-xl bg-[#edf6f0] border border-[#dce5df] text-xs font-medium text-[#151d1a] focus:outline-none cursor-pointer"
+              className="h-9 px-3 rounded-xl bg-muted border border-border text-xs font-medium text-foreground focus:outline-none cursor-pointer"
             >
               <option value="">All Levels (100L - Final Yr)</option>
               {LEVELS.map((l) => (
@@ -275,16 +275,16 @@ This verified material provides high-yield coverage of fundamental principles, s
               variant="outline"
               size="sm"
               asChild
-              className="h-9 px-3.5 rounded-xl bg-[#c6ebd9]/50 hover:bg-[#c6ebd9] border-[#c6ebd9] text-[#002116] text-xs font-semibold gap-1.5"
+              className="h-9 px-3.5 rounded-xl bg-accent/50 hover:bg-accent border-accent text-accent-foreground text-xs font-semibold gap-1.5"
             >
               <Link to="/dashboard/assistant">
-                <Sparkles className="size-3.5 text-[#1b7a4e]" />
+                <Sparkles className="size-3.5 text-brand" />
                 Boss AI Ready
               </Link>
             </Button>
           </div>
 
-          <div className="text-xs text-[#5a6660] font-mono">
+          <div className="text-xs text-muted-foreground font-mono">
             {isLoading
               ? "Browsing archives..."
               : Boolean(q || type || level)
@@ -297,8 +297,8 @@ This verified material provides high-yield coverage of fundamental principles, s
       {/* Repository Grid / Material Cards */}
       <section className="flex flex-col gap-4">
         <div>
-          <span className="text-xs uppercase tracking-widest text-[#446557] font-bold">Verified Records</span>
-          <h2 className="font-display text-2xl text-[#00110a] font-medium">All Academic Course Materials</h2>
+          <span className="text-xs uppercase tracking-widest text-moss font-bold">Verified Records</span>
+          <h2 className="font-display text-2xl text-ink font-medium">All Academic Course Materials</h2>
         </div>
 
         {isLoading ? (
@@ -306,15 +306,15 @@ This verified material provides high-yield coverage of fundamental principles, s
             <div className="animate-breathe-zoom">
               <SyllabossEmblem className="size-14" />
             </div>
-            <p className="mt-3 text-xs font-semibold text-[#446557] animate-pulse">
+            <p className="mt-3 text-xs font-semibold text-moss animate-pulse">
               Loading verified university materials...
             </p>
           </div>
         ) : materials.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#dce5df] bg-white p-12 text-center">
-            <BookOpen className="mx-auto size-10 text-[#5a6660]/50" />
-            <h3 className="mt-3 font-display text-lg font-semibold text-[#00110a]">No materials found</h3>
-            <p className="mt-1 text-xs text-[#5a6660] max-w-sm mx-auto">
+          <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center">
+            <BookOpen className="mx-auto size-10 text-muted-foreground/50" />
+            <h3 className="mt-3 font-display text-lg font-semibold text-ink">No materials found</h3>
+            <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
               Try searching a different course code, university, or clear your search filter.
             </p>
           </div>
@@ -323,24 +323,24 @@ This verified material provides high-yield coverage of fundamental principles, s
             {materials.map((m) => (
               <article
                 key={m.id}
-                className="group flex flex-col justify-between rounded-2xl border border-[#dce5df] bg-white p-5 sm:p-6 shadow-xs transition-all duration-200 hover:shadow-md hover:border-[#446557]/40"
+                className="group flex flex-col justify-between rounded-2xl border border-border bg-white p-5 sm:p-6 shadow-xs transition-all duration-200 hover:shadow-md hover:border-moss/40"
               >
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded bg-[#c6ebd9] text-[#002116] font-mono text-xs font-bold">
+                      <span className="px-2.5 py-0.5 rounded bg-accent text-accent-foreground font-mono text-xs font-bold">
                         {m.course_code || "ACAD"}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full bg-[#edf6f0] text-[#446557] text-[11px] font-semibold">
+                      <span className="px-2 py-0.5 rounded-full bg-muted text-moss text-[11px] font-semibold">
                         {m.material_type}
                       </span>
                     </div>
 
                     {m.rating_count && m.rating_count > 0 ? (
-                      <div className="flex items-center gap-1 text-[#a87c12] text-xs font-semibold">
-                        <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
+                      <div className="flex items-center gap-1 text-brass text-xs font-semibold">
+                        <Star className="size-3.5 fill-brass text-brass" />
                         <span>{Number(m.rating_avg || 0).toFixed(1)}</span>
-                        <span className="text-[#a87c12]/80 text-[10px]">({m.rating_count})</span>
+                        <span className="text-brass/80 text-[10px]">({m.rating_count})</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 text-slate-400 text-xs">
@@ -353,40 +353,40 @@ This verified material provides high-yield coverage of fundamental principles, s
                   <div>
                     <h3
                       onClick={() => handleOpenMaterial(m)}
-                      className="font-display text-lg font-semibold text-[#00110a] hover:text-[#446557] cursor-pointer transition-colors leading-snug line-clamp-1"
+                      className="font-display text-lg font-semibold text-ink hover:text-moss cursor-pointer transition-colors leading-snug line-clamp-1"
                     >
                       {m.title}
                     </h3>
-                    <p className="text-xs text-[#446557] font-medium mt-0.5">{m.course}</p>
-                    <p className="text-xs text-[#5a6660] mt-0.5 truncate">{m.institution}</p>
+                    <p className="text-xs text-moss font-medium mt-0.5">{m.course}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{m.institution}</p>
                   </div>
 
                   {/* Meta statistics row */}
-                  <div className="flex items-center gap-4 py-2 px-3 rounded-xl bg-[#edf6f0] font-mono text-[11px] text-[#5a6660]">
-                    <span className="flex items-center gap-1"><FileText className="size-3.5 text-[#446557]" /> {m.page_count} pgs</span>
-                    <span className="flex items-center gap-1"><Eye className="size-3.5 text-[#446557]" /> {m.views ?? 0} views</span>
-                    <span className="flex items-center gap-1"><Download className="size-3.5 text-[#446557]" /> {m.downloads} dls</span>
+                  <div className="flex items-center gap-4 py-2 px-3 rounded-xl bg-muted font-mono text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1"><FileText className="size-3.5 text-moss" /> {m.page_count} pgs</span>
+                    <span className="flex items-center gap-1"><Eye className="size-3.5 text-moss" /> {m.views ?? 0} views</span>
+                    <span className="flex items-center gap-1"><Download className="size-3.5 text-moss" /> {m.downloads} dls</span>
                   </div>
                 </div>
 
                 {/* 4 Clean Actions Grid */}
-                <div className="pt-4 mt-3 border-t border-[#e7f0eb] flex flex-col gap-2">
+                <div className="pt-4 mt-3 border-t border-surface-container flex flex-col gap-2">
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="rounded-xl text-xs font-semibold h-9 border-[#dce5df] hover:bg-[#edf6f0]"
+                      className="rounded-xl text-xs font-semibold h-9 border-border hover:bg-muted"
                       onClick={() => handleOpenMaterial(m)}
                     >
-                      <Eye className="size-3.5 mr-1 text-[#446557]" />
+                      <Eye className="size-3.5 mr-1 text-moss" />
                       Preview
                     </Button>
                     <Button
                       size="sm"
-                      className="rounded-xl text-xs font-semibold h-9 bg-[#0d281e] hover:bg-[#00110a] text-white"
+                      className="rounded-xl text-xs font-semibold h-9 bg-forest hover:bg-ink text-white"
                       onClick={() => handleStudyWithAI(m)}
                     >
-                      <Bot className="size-3.5 mr-1 text-[#c6ebd9]" />
+                      <Bot className="size-3.5 mr-1 text-accent" />
                       Study with Boss AI
                     </Button>
                   </div>
@@ -394,22 +394,22 @@ This verified material provides high-yield coverage of fundamental principles, s
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="rounded-xl text-xs font-semibold h-9 bg-[#edf6f0] hover:bg-[#e2eae5] text-[#151d1a]"
+                      className="rounded-xl text-xs font-semibold h-9 bg-muted hover:bg-input text-foreground"
                       onClick={() => handleSummarizeWithAI(m)}
                     >
-                      <Sparkles className="size-3.5 mr-1 text-[#a87c12]" />
+                      <Sparkles className="size-3.5 mr-1 text-brass" />
                       Summarize
                     </Button>
                     <Button
                       size="sm"
-                      className="rounded-xl text-xs font-semibold h-9 bg-[#c6ebd9] hover:bg-[#b0dfca] text-[#002116]"
+                      className="rounded-xl text-xs font-semibold h-9 bg-accent hover:bg-[#b0dfca] text-accent-foreground"
                       disabled={downloading === m.id}
                       onClick={() => handleDownload(m)}
                     >
                       {downloading === m.id ? (
                         <Loader2 className="size-3.5 animate-spin mr-1" />
                       ) : (
-                        <Download className="size-3.5 mr-1 text-[#1b7a4e]" />
+                        <Download className="size-3.5 mr-1 text-brand" />
                       )}
                       Download (+5 pts)
                     </Button>
@@ -432,20 +432,20 @@ This verified material provides high-yield coverage of fundamental principles, s
           }}
         >
           <div
-            className="relative flex flex-col w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl border border-[#dce5df] bg-white p-6 shadow-2xl animate-page-zoom-in"
+            className="relative flex flex-col w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl border border-border bg-white p-6 shadow-2xl animate-page-zoom-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-[#e7f0eb] pb-4">
+            <div className="flex items-start justify-between gap-3 border-b border-surface-container pb-4">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#c6ebd9] text-[#002116] font-semibold">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground font-semibold">
                   <FileText className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-display text-lg font-bold text-[#00110a] truncate">
+                  <h3 className="font-display text-lg font-bold text-ink truncate">
                     {selectedMaterial.title}
                   </h3>
-                  <p className="text-xs text-[#5a6660] truncate">
+                  <p className="text-xs text-muted-foreground truncate">
                     {selectedMaterial.course_code ? `${selectedMaterial.course_code} · ` : ""}
                     {selectedMaterial.course} · {selectedMaterial.institution}
                   </p>
@@ -458,21 +458,21 @@ This verified material provides high-yield coverage of fundamental principles, s
                   setSummary(null);
                   setPreviewUrl(null);
                 }}
-                className="grid size-8 place-items-center rounded-full text-[#5a6660] hover:bg-[#edf6f0]"
+                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted"
               >
                 <X className="size-4" />
               </button>
             </div>
 
             {/* Tab navigation within modal */}
-            <div className="mt-4 flex items-center gap-2 border-b border-[#e7f0eb] pb-3 text-xs">
+            <div className="mt-4 flex items-center gap-2 border-b border-surface-container pb-3 text-xs">
               <button
                 type="button"
                 onClick={() => setActiveTab("details")}
                 className={`rounded-full px-3.5 py-1 font-semibold transition-all ${
                   activeTab === "details"
-                    ? "bg-[#0d281e] text-white"
-                    : "text-[#5a6660] hover:bg-[#edf6f0]"
+                    ? "bg-forest text-white"
+                    : "text-muted-foreground hover:bg-muted"
                 }`}
               >
                 Overview
@@ -482,8 +482,8 @@ This verified material provides high-yield coverage of fundamental principles, s
                 onClick={() => handleOpenMaterial(selectedMaterial)}
                 className={`flex items-center gap-1.5 rounded-full px-3.5 py-1 font-semibold transition-all ${
                   activeTab === "open"
-                    ? "bg-[#0d281e] text-white"
-                    : "text-[#5a6660] hover:bg-[#edf6f0]"
+                    ? "bg-forest text-white"
+                    : "text-muted-foreground hover:bg-muted"
                 }`}
               >
                 <Eye className="size-3.5" /> In-App Reader
@@ -493,11 +493,11 @@ This verified material provides high-yield coverage of fundamental principles, s
                 onClick={() => handleSummarizeWithAI(selectedMaterial)}
                 className={`flex items-center gap-1.5 rounded-full px-3.5 py-1 font-semibold transition-all ${
                   activeTab === "summary"
-                    ? "bg-[#0d281e] text-white"
-                    : "text-[#5a6660] hover:bg-[#edf6f0]"
+                    ? "bg-forest text-white"
+                    : "text-muted-foreground hover:bg-muted"
                 }`}
               >
-                <Sparkles className="size-3.5 text-[#f3e8c9]" /> AI Summary
+                <Sparkles className="size-3.5 text-brass-soft" /> AI Summary
               </button>
             </div>
 
@@ -506,41 +506,41 @@ This verified material provides high-yield coverage of fundamental principles, s
               {activeTab === "details" && (
                 <div className="space-y-4">
                   {selectedMaterial.description && (
-                    <div className="rounded-xl bg-[#edf6f0] p-4 text-xs leading-relaxed text-[#151d1a]">
+                    <div className="rounded-xl bg-muted p-4 text-xs leading-relaxed text-foreground">
                       {selectedMaterial.description}
                     </div>
                   )}
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-xl border border-[#dce5df] bg-white p-3.5">
-                      <p className="text-[#5a6660] flex items-center gap-1.5 font-medium">
-                        <Building2 className="size-3.5 text-[#446557]" /> Institution
+                    <div className="rounded-xl border border-border bg-white p-3.5">
+                      <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <Building2 className="size-3.5 text-moss" /> Institution
                       </p>
-                      <p className="font-semibold text-[#00110a] mt-1 truncate">{selectedMaterial.institution}</p>
+                      <p className="font-semibold text-ink mt-1 truncate">{selectedMaterial.institution}</p>
                     </div>
-                    <div className="rounded-xl border border-[#dce5df] bg-white p-3.5">
-                      <p className="text-[#5a6660] flex items-center gap-1.5 font-medium">
-                        <GraduationCap className="size-3.5 text-[#446557]" /> Level & Type
+                    <div className="rounded-xl border border-border bg-white p-3.5">
+                      <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <GraduationCap className="size-3.5 text-moss" /> Level & Type
                       </p>
-                      <p className="font-semibold text-[#00110a] mt-1 truncate">
+                      <p className="font-semibold text-ink mt-1 truncate">
                         {selectedMaterial.level || "Any level"} · {selectedMaterial.material_type}
                       </p>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-[#dce5df] bg-white p-4 text-xs">
-                    <p className="font-semibold text-[#00110a]">Document Stats</p>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[#5a6660]">
-                      <div className="rounded-lg bg-[#edf6f0] p-2">
-                        <p className="text-base font-bold text-[#00110a]">{selectedMaterial.page_count}</p>
+                  <div className="rounded-xl border border-border bg-white p-4 text-xs">
+                    <p className="font-semibold text-ink">Document Stats</p>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-center text-muted-foreground">
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-base font-bold text-ink">{selectedMaterial.page_count}</p>
                         <p className="text-[10px]">Pages</p>
                       </div>
-                      <div className="rounded-lg bg-[#edf6f0] p-2">
-                        <p className="text-base font-bold text-[#00110a]">{selectedMaterial.views ?? 0}</p>
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-base font-bold text-ink">{selectedMaterial.views ?? 0}</p>
                         <p className="text-[10px]">Views</p>
                       </div>
-                      <div className="rounded-lg bg-[#edf6f0] p-2">
-                        <p className="text-base font-bold text-[#00110a]">{selectedMaterial.downloads}</p>
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-base font-bold text-ink">{selectedMaterial.downloads}</p>
                         <p className="text-[10px]">Downloads</p>
                       </div>
                     </div>
@@ -555,10 +555,10 @@ This verified material provides high-yield coverage of fundamental principles, s
                       <div className="animate-breathe-zoom">
                         <SyllabossEmblem className="size-14" />
                       </div>
-                      <p className="mt-3 text-xs font-semibold text-[#446557] animate-pulse">Loading preview reader...</p>
+                      <p className="mt-3 text-xs font-semibold text-moss animate-pulse">Loading preview reader...</p>
                     </div>
                   ) : previewUrl ? (
-                    <div className="rounded-xl border border-[#dce5df] overflow-hidden bg-white">
+                    <div className="rounded-xl border border-border overflow-hidden bg-white">
                       {selectedMaterial.mime_type.includes("pdf") ? (
                         <iframe
                           src={previewUrl}
@@ -576,7 +576,7 @@ This verified material provides high-yield coverage of fundamental principles, s
                       )}
                     </div>
                   ) : (
-                    <div className="py-12 text-center text-xs text-[#5a6660]">
+                    <div className="py-12 text-center text-xs text-muted-foreground">
                       <p>Preview unavailable. You can download the file directly.</p>
                     </div>
                   )}
@@ -590,17 +590,17 @@ This verified material provides high-yield coverage of fundamental principles, s
                       <div className="animate-breathe-zoom">
                         <SyllabossEmblem className="size-14" />
                       </div>
-                      <p className="mt-3 text-xs font-semibold text-[#00110a]">Boss AI is extracting key concepts...</p>
-                      <p className="text-[11px] text-[#5a6660]">Formulating exam pointers and definitions</p>
+                      <p className="mt-3 text-xs font-semibold text-ink">Boss AI is extracting key concepts...</p>
+                      <p className="text-[11px] text-muted-foreground">Formulating exam pointers and definitions</p>
                     </div>
                   ) : summary ? (
-                    <div className="relative rounded-xl border border-[#dce5df] bg-[#edf6f0]/50 p-5 text-xs text-[#151d1a] leading-relaxed font-sans">
+                    <div className="relative rounded-xl border border-border bg-muted/50 p-5 text-xs text-foreground leading-relaxed font-sans">
                       <button
                         type="button"
                         onClick={handleCopySummary}
-                        className="absolute top-3 right-3 flex items-center gap-1 rounded-lg border border-[#dce5df] bg-white px-2.5 py-1 text-[11px] font-medium text-[#151d1a] shadow-xs hover:bg-[#edf6f0] transition-all"
+                        className="absolute top-3 right-3 flex items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1 text-[11px] font-medium text-foreground shadow-xs hover:bg-muted transition-all"
                       >
-                        {copiedSummary ? <Check className="size-3 text-[#1b7a4e]" /> : <Copy className="size-3" />}
+                        {copiedSummary ? <Check className="size-3 text-brand" /> : <Copy className="size-3" />}
                         {copiedSummary ? "Copied" : "Copy"}
                       </button>
                       <div className="pt-6 pr-2">
@@ -613,20 +613,20 @@ This verified material provides high-yield coverage of fundamental principles, s
             </div>
 
             {/* Modal Action Buttons Footer */}
-            <div className="border-t border-[#e7f0eb] pt-4 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="border-t border-surface-container pt-4 flex flex-wrap items-center justify-between gap-2.5">
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl text-xs gap-1.5 font-semibold border-[#dce5df]"
+                className="rounded-xl text-xs gap-1.5 font-semibold border-border"
                 onClick={() => handleStudyWithAI(selectedMaterial)}
               >
-                <Bot className="size-3.5 text-[#446557]" /> Study with Boss AI
+                <Bot className="size-3.5 text-moss" /> Study with Boss AI
               </Button>
 
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  className="rounded-xl text-xs gap-1.5 font-semibold bg-[#0d281e] text-white hover:bg-[#00110a] shadow-xs"
+                  className="rounded-xl text-xs gap-1.5 font-semibold bg-forest text-white hover:bg-ink shadow-xs"
                   disabled={downloading === selectedMaterial.id}
                   onClick={() => handleDownload(selectedMaterial)}
                 >

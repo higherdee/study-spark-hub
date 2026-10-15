@@ -211,7 +211,7 @@ function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f3fbf6] animate-page-zoom-in">
+    <div className="min-h-screen bg-background animate-page-zoom-in">
       <div className="mx-auto max-w-2xl px-4 py-8 sm:py-14">
         <SyllabossLogo />
         <ol className="mt-10 grid grid-cols-3 gap-2">

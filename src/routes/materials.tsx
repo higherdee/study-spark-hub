@@ -157,10 +157,10 @@ function MaterialsPage() {
                   <div className="flex items-center gap-1.5">
                     <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{m.material_type}</span>
                     {m.rating_count && m.rating_count > 0 ? (
-                      <span className="flex items-center gap-1 text-[#a87c12] text-xs font-semibold">
-                        <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
+                      <span className="flex items-center gap-1 text-brass text-xs font-semibold">
+                        <Star className="size-3.5 fill-brass text-brass" />
                         <span>{Number(m.rating_avg || 0).toFixed(1)}</span>
-                        <span className="text-[#a87c12]/80 text-[10px]">({m.rating_count})</span>
+                        <span className="text-brass/80 text-[10px]">({m.rating_count})</span>
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-slate-400 text-xs">
@@ -172,10 +172,10 @@ function MaterialsPage() {
                 </div>
 
                 <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-3 px-3 py-1 rounded-full bg-[#edf6f0] border border-[#dce5df] text-[11px] text-[#446557] font-medium font-mono">
-                    <span className="flex items-center gap-1"><FileText className="size-3 text-[#1b7a4e]" /> {m.page_count} pgs</span>
-                    <span className="flex items-center gap-1"><Eye className="size-3 text-[#1b7a4e]" /> {m.views ?? 0} views</span>
-                    <span className="flex items-center gap-1"><Download className="size-3 text-[#1b7a4e]" /> {m.downloads ?? 0} dls</span>
+                  <div className="flex items-center gap-3 px-3 py-1 rounded-full bg-muted border border-border text-[11px] text-moss font-medium font-mono">
+                    <span className="flex items-center gap-1"><FileText className="size-3 text-brand" /> {m.page_count} pgs</span>
+                    <span className="flex items-center gap-1"><Eye className="size-3 text-brand" /> {m.views ?? 0} views</span>
+                    <span className="flex items-center gap-1"><Download className="size-3 text-brand" /> {m.downloads ?? 0} dls</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button
@@ -189,7 +189,7 @@ function MaterialsPage() {
                     </Button>
                     <Button
                       size="sm"
-                      className="gap-1.5 rounded-full text-xs h-8 px-3 bg-[#0d281e] text-white hover:bg-[#00110a]"
+                      className="gap-1.5 rounded-full text-xs h-8 px-3 bg-forest text-white hover:bg-ink"
                       disabled={downloading === m.id}
                       onClick={() => download(m.id)}
                     >

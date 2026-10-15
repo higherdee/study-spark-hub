@@ -1,757 +1,514 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useReducedMotion } from "motion/react";
+import { formatDistanceToNowStrict } from "date-fns";
 import {
+  ArrowDownLeft,
   ArrowRight,
+  ArrowUpRight,
   BookOpen,
   Bot,
-  Calendar,
-  CheckCircle2,
-  ChevronDown,
   Coins,
-  Download,
-  Eye,
-  FileText,
   Flame,
-  GraduationCap,
-  Layers,
-  MoreVertical,
-  School,
+  Pause,
+  Play,
+  Share2,
   Sparkles,
   Timer,
-  TrendingUp,
   Upload,
   Users,
-  Verified,
-  Wallet,
 } from "lucide-react";
-import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { SyllabossEmblem } from "@/components/syllaboss-logo";
 import { SyllaPlusModal } from "@/components/syllaplus-modal";
 import { CampusWrappedModal } from "@/components/scholar/campus-wrapped-modal";
+import { milestoneRemaining, useSharedStudyTimer } from "@/components/study-timer-context";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, getPointsLedger } from "@/integrations/turso/client";
 import { useProfile } from "@/lib/profile";
-import { POINTS_NAME, pointsToNaira, formatNaira } from "@/lib/constants";
+import {
+  MINIMUM_WITHDRAWAL_POINTS,
+  POINTS_NAME,
+  POINTS_PER_30_MIN_STUDY,
+  POINTS_PER_DOWNLOAD,
+  POINTS_PER_VERIFIED_UPLOAD,
+  formatNaira,
+  pointsToNaira,
+} from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard/")({
   head: () => ({
     meta: [
-      { title: "Academic Command Center — Syllaboss" },
-      { name: "description", content: "Your Ivy-standard academic command center and earnings ledger." },
+      { title: "Home — Syllaboss" },
+      { name: "description", content: "Your study day at a glance: focus timer, streak, points and activity." },
     ],
   }),
   component: HomePage,
 });
 
+type LedgerEntry = { id: string; reason: string; amount: number; created_at: string };
+
+/** Eased count-up so key figures settle into place instead of popping in. */
+function useCountUp(target: number, duration = 850) {
+  const reduce = useReducedMotion();
+  const [value, setValue] = useState(reduce ? target : 0);
+  const current = useRef(reduce ? target : 0);
+
+  useEffect(() => {
+    if (reduce) {
+      current.current = target;
+      setValue(target);
+      return;
+    }
+    const from = current.current;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 4);
+      const next = Math.round(from + (target - from) * eased);
+      current.current = next;
+      setValue(next);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, reduce]);
+
+  return value;
+}
+
+function dayKey(d: Date) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
 function HomePage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
-  const [graphMode, setGraphMode] = useState<"study" | "points">("study");
-  const [interval, setInterval] = useState<"30d" | "90d">("30d");
-  const [activeTooltip, setActiveTooltip] = useState<{ label: string; value: string } | null>(null);
-  const [showPlusModal, setShowPlusModal] = useState(false);
-  const [showCampusWrapped, setShowCampusWrapped] = useState(false);
+  const timer = useSharedStudyTimer();
+  const [showPlus, setShowPlus] = useState(false);
+  const [showWrapped, setShowWrapped] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const { data: materials = [] } = useQuery({
     queryKey: ["my-materials", user?.id],
     enabled: Boolean(user),
-    queryFn: async () => {
-      if (!user) return [];
-      return await getMaterials({ userId: user.id });
-    },
+    queryFn: async () => (user ? await getMaterials({ userId: user.id }) : []),
   });
 
   const { data: ledger = [] } = useQuery({
     queryKey: ["my-ledger", user?.id],
     enabled: Boolean(user),
-    queryFn: async () => {
-      if (!user) return [];
-      return await getPointsLedger(user.id);
-    },
+    queryFn: async () => (user ? ((await getPointsLedger(user.id)) as LedgerEntry[]) : []),
   });
+
+  const points = profile?.points ?? 0;
+  const streak = Number(profile?.current_streak || 1);
+  const studyHours = ((profile?.study_minutes ?? 0) / 60).toFixed(1);
+  const isPlus = Boolean(profile?.sylla_plus);
 
   const verified = materials.filter((m) => m.status === "verified").length;
   const pending = materials.filter((m) => m.status === "pending").length;
-  const totalDownloads = materials.reduce((acc, m) => acc + (m.downloads || 0), 0);
-  const totalViews = materials.reduce((acc, m) => acc + (m.views || 0), 0);
+  const downloads = materials.reduce((a, m) => a + (m.downloads || 0), 0);
+  const views = materials.reduce((a, m) => a + (m.views || 0), 0);
 
-  const points = profile?.points ?? 0;
-  const studyMins = profile?.study_minutes ?? 0;
-  const studyHours = (studyMins / 60).toFixed(1);
-  const isPlus = Boolean(profile?.sylla_plus);
+  const animatedPoints = useCountUp(points);
+  const toWithdraw = Math.max(0, MINIMUM_WITHDRAWAL_POINTS - points);
+  const withdrawPct = Math.min(100, (points / MINIMUM_WITHDRAWAL_POINTS) * 100);
 
-  // Time-of-day greeting
   const hour = new Date().getHours();
-  const greeting =
-    hour < 12
-      ? "Good morning"
-      : hour < 17
-      ? "Good afternoon"
-      : "Good evening";
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const firstName = profile?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "Scholar";
 
-  const firstName =
-    profile?.full_name?.split(" ")[0] ||
-    user?.email?.split("@")[0] ||
-    "Scholar";
+  const { label: timerLabel, progress: timerProgress } = milestoneRemaining(timer?.seconds ?? 0);
+  const paused = timer?.isPaused ?? false;
 
-  // Data sets for functional interactive graph
-  const studyPoints30d = [
-    { cx: 70, cy: 105, label: "01 Oct", val: "0.2 hrs" },
-    { cx: 210, cy: 92, label: "08 Oct", val: "1.4 hrs" },
-    { cx: 350, cy: 80, label: "15 Oct", val: "3.5 hrs" },
-    { cx: 490, cy: 62, label: "22 Oct", val: "8.0 hrs" },
-    { cx: 630, cy: 45, label: "Today", val: `${studyHours} hrs` },
-  ];
+  // Last 7 days of earnings, from the real ledger.
+  const week = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - (6 - i));
+      return { date: d, total: 0 };
+    });
+    const index = new Map(days.map((d, i) => [dayKey(d.date), i]));
+    for (const e of ledger) {
+      if (e.amount <= 0) continue;
+      const i = index.get(dayKey(new Date(e.created_at)));
+      if (i !== undefined) days[i].total += e.amount;
+    }
+    const max = Math.max(1, ...days.map((d) => d.total));
+    return { days, max, sum: days.reduce((a, d) => a + d.total, 0) };
+  }, [ledger]);
 
-  const pointsTrend30d = [
-    { cx: 70, cy: 100, label: "01 Oct", val: "200 pts" },
-    { cx: 210, cy: 85, label: "08 Oct", val: "250 pts" },
-    { cx: 350, cy: 70, label: "15 Oct", val: "320 pts" },
-    { cx: 490, cy: 55, label: "22 Oct", val: "410 pts" },
-    { cx: 630, cy: 38, label: "Today", val: `${points.toLocaleString()} pts` },
-  ];
-
-  const activePoints = graphMode === "study" ? studyPoints30d : pointsTrend30d;
+  const R = 52;
+  const C = 2 * Math.PI * R;
 
   return (
-    <div className="flex flex-col w-full max-w-[1400px] mx-auto space-y-6 pb-16 font-sans">
-      {/* 1. Campus & Scholar Status Top Header */}
-      <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-[#dce5df]/80">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl text-[#00110a] tracking-tight font-medium">
-              {greeting}, {firstName}
-            </h1>
-            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#e7f0eb] text-[#446557] text-xs font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1b7a4e] animate-pulse"></span>
-              Semester Session 2025/2026
-            </span>
-            {isPlus ? (
-              <span className="px-2.5 py-0.5 rounded bg-[#f3e8c9] text-[#71540f] text-[10px] tracking-widest uppercase font-bold shadow-xs">
-                SyllaPlus Active (1.3x)
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowPlusModal(true)}
-                className="px-2.5 py-0.5 rounded bg-[#f3e8c9] text-[#71540f] hover:bg-[#e7d8b0] text-[10px] tracking-widest uppercase font-bold shadow-xs transition-colors flex items-center gap-1"
-              >
-                <Sparkles className="size-3" /> Upgrade to SyllaPlus
-              </button>
-            )}
-          </div>
-          <p className="text-sm text-[#424844] flex items-center gap-2">
-            <School className="size-4 text-[#446557]" />
-            {profile?.institution ? `${profile.institution} • ${profile.course || profile.department || "Academic Scholar"}` : "Achievers University, Owo • Engineering & Science Core"}
+    <div className="stagger flex flex-col gap-6 lg:gap-7">
+      {/* Greeting */}
+      <section className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="eyebrow text-brand">
+            {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+          </p>
+          <h1 className="mt-1.5 font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[2.6rem]">
+            {greeting}, {firstName}
+          </h1>
+          <p className="mt-2 truncate text-sm text-muted-foreground">
+            {[profile?.course || profile?.department, profile?.level, profile?.institution]
+              .filter(Boolean)
+              .join(" · ") || "Complete your profile to personalise your library"}
           </p>
         </div>
-
         <div className="flex items-center gap-2.5">
-          <Button asChild variant="outline" className="rounded-full bg-white hover:bg-[#e7f0eb] text-[#151d1a] border-[#dce5df] text-xs font-semibold h-10 px-5 shadow-xs">
-            <Link to="/dashboard/library">
-              <BookOpen className="size-4 mr-1.5 text-[#446557]" />
-              Browse Library
-            </Link>
-          </Button>
-          <Button asChild className="rounded-full bg-[#0d281e] hover:bg-[#00110a] text-white text-xs font-semibold h-10 px-5 shadow-sm group">
-            <Link to="/dashboard/upload">
-              <Upload className="size-4 mr-1.5 group-hover:scale-110 transition-transform" />
-              Upload & Earn
-            </Link>
-          </Button>
-        </div>
-      </section>
-
-      {/* Campus Wrapped & Scholar Flex Card Viral Banner */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#00110a] via-[#0d281e] to-[#041d13] text-white p-5 sm:p-6 shadow-md border border-[#1b7a4e]/30">
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-[#1b7a4e]/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 left-1/3 w-40 h-40 rounded-full bg-[#eab308]/15 blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="size-11 sm:size-12 rounded-xl bg-gradient-to-br from-[#1b7a4e] to-[#0d281e] border border-[#2ef387]/40 flex items-center justify-center shrink-0 shadow-inner">
-              <Flame className="size-6 text-[#2ef387] animate-pulse" />
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-mono uppercase tracking-widest text-[#2ef387] font-bold">
-                  Campus Wrapped • Flex Card
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/90 text-[10px] font-semibold border border-white/10">
-                  ✨ WhatsApp Status & IG Story Ready
-                </span>
-              </div>
-              <h3 className="font-display text-lg sm:text-xl font-medium text-white tracking-tight">
-                Your Scholar Archetype & Department Rank are ready
-              </h3>
-              <p className="text-xs sm:text-sm text-white/70 max-w-xl">
-                See where you rank in your faculty, your battle win-rate, study flame streak, and your Spotify-style 9:16 Flex Story Card with custom QR code.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
-            <Button
+          {!isPlus && (
+            <button
               type="button"
-              onClick={() => setShowCampusWrapped(true)}
-              className="rounded-full bg-gradient-to-r from-[#2ef387] to-[#1b7a4e] text-[#00110a] hover:opacity-95 font-bold text-xs h-10 px-5 shadow-sm transition-transform active:scale-95"
+              onClick={() => setShowPlus(true)}
+              className="press hidden h-10 items-center gap-1.5 rounded-lg border border-brass/30 bg-brass-soft px-3.5 text-[13px] font-semibold text-brass-ink transition-colors hover:border-brass/55 sm:flex"
             >
-              <Sparkles className="size-3.5 mr-1.5 text-[#00110a]" />
-              View My Wrapped
-            </Button>
-          </div>
+              <Sparkles className="size-3.5" /> SyllaPlus
+            </button>
+          )}
+          <Button asChild size="lg" className="h-10 px-5">
+            <Link to="/dashboard/upload">
+              <Upload /> Upload &amp; earn
+            </Link>
+          </Button>
         </div>
       </section>
 
-      {/* 2. Upload & Rewards Hero Card (Clean Light Aesthetic) */}
-      <section className="relative overflow-hidden rounded-2xl bg-white text-[#00110a] p-6 sm:p-8 shadow-xs border border-[#dce5df]">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex flex-col gap-2.5 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-[#edf6f0] text-[#1b7a4e] text-[11px] uppercase tracking-wider font-semibold">
-                Course Materials
-              </span>
-              <span className="text-[#5a6660] text-xs font-medium">Earn SyllaPoints per verified upload</span>
-            </div>
-            <h2 className="font-display text-2xl sm:text-3xl text-[#00110a] font-medium leading-snug">
-              Share lecture notes & past questions.
-            </h2>
-            <p className="text-sm text-[#424844] leading-relaxed">
-              Help course mates prepare for exams. Upload verified materials to earn cashable SyllaPoints every time peers read, study, or download your files.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Button asChild className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] text-xs font-semibold px-6 h-10 shadow-xs">
-                <Link to="/dashboard/upload">
-                  Upload notes now
-                  <ArrowRight className="size-3.5 ml-1.5" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="rounded-full bg-white hover:bg-[#edf6f0] text-[#151d1a] border-[#dce5df] text-xs font-semibold px-5 h-10">
-                <Link to="/dashboard/assistant">
-                  <Sparkles className="size-3.5 mr-1.5 text-[#1b7a4e]" />
-                  Study with Boss AI
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick Rewards Preview */}
-          <div className="hidden xl:flex flex-col gap-2 min-w-[280px] bg-[#edf6f0]/60 p-4 rounded-xl border border-[#dce5df]">
-            <span className="text-[11px] text-[#446557] tracking-wider uppercase font-semibold">Recent Rewards</span>
-            <div className="flex items-center justify-between py-1.5 border-b border-[#dce5df] text-xs">
-              <span className="text-[#151d1a] font-medium">Lecture Notes Upload</span>
-              <span className="text-[#1b7a4e] font-mono font-semibold">+25 pts</span>
-            </div>
-            <div className="flex items-center justify-between py-1.5 border-b border-[#dce5df] text-xs">
-              <span className="text-[#151d1a] font-medium">Peer Download</span>
-              <span className="text-[#1b7a4e] font-mono font-semibold">+5 pts</span>
-            </div>
-            <div className="flex items-center justify-between py-1.5 text-xs">
-              <span className="text-[#151d1a] font-medium">30 Min Study Focus</span>
-              <span className="text-[#1b7a4e] font-mono font-semibold">+5 pts</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Main Two-Column Academic Command Hub */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (Span 8): Study Velocity & Key Metric Instruments */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          {/* Study Activity & Velocity Ledger Card */}
-          <div className="p-6 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#e7f0eb]">
-              <div className="flex items-center gap-1 p-1 rounded-full bg-[#edf6f0] max-w-max border border-[#dce5df]/60">
-                <button
-                  type="button"
-                  onClick={() => setGraphMode("study")}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 flex items-center gap-1.5",
-                    graphMode === "study"
-                      ? "bg-white text-[#151d1a] shadow-xs font-bold"
-                      : "text-[#5a6660] hover:text-[#151d1a]"
-                  )}
-                >
-                  <Timer className="size-3.5 text-[#446557]" /> Study Hours
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGraphMode("points")}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 flex items-center gap-1.5",
-                    graphMode === "points"
-                      ? "bg-white text-[#151d1a] shadow-xs font-bold"
-                      : "text-[#5a6660] hover:text-[#151d1a]"
-                  )}
-                >
-                  <Coins className="size-3.5 text-[#a87c12]" /> SyllaPoints
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#5a6660] font-medium">Interval:</span>
-                <button
-                  type="button"
-                  onClick={() => setInterval((prev) => (prev === "30d" ? "90d" : "30d"))}
-                  className="px-3 py-1 rounded-lg bg-[#e7f0eb] hover:bg-[#dce5df] text-[#151d1a] text-xs font-semibold flex items-center gap-1 transition-colors"
-                >
-                  {interval === "30d" ? "Last 30 days" : "Last 3 months"}
-                  <ChevronDown className="size-3.5 text-[#5a6660]" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-baseline gap-2">
-              <span className="font-display text-4xl sm:text-5xl text-[#00110a] tracking-tight font-medium">
-                {graphMode === "study" ? studyHours : points.toLocaleString()}
-              </span>
-              <span className="font-display text-xl text-[#5a6660] font-normal">
-                {graphMode === "study" ? "hrs" : "pts"}
-              </span>
-              <span className="ml-2 px-2.5 py-0.5 rounded-full bg-[#edf6f0] text-xs text-[#446557] font-semibold">
-                {graphMode === "study" ? "Session velocity baseline" : "Verified ledger yield"}
-              </span>
-            </div>
-
-            {/* Academic Smooth Sparkline Data Visualization (Fully Interactive) */}
-            <div className="relative w-full h-48 rounded-xl bg-[#edf6f0]/40 p-4 flex flex-col justify-end overflow-visible border border-[#dce5df]/50">
-              {activeTooltip && (
-                <div className="absolute top-3 right-4 px-3 py-1.5 rounded-lg bg-[#0d281e] text-white text-xs font-mono shadow-md z-20 flex items-center gap-2 animate-fade-in">
-                  <span className="text-[#cee9da]">{activeTooltip.label}:</span>
-                  <span className="font-bold">{activeTooltip.value}</span>
-                </div>
-              )}
-
-              <svg className="w-full h-32 overflow-visible" preserveAspectRatio="none" viewBox="0 0 700 120">
-                <defs>
-                  <linearGradient id="velocityGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#446557" stopOpacity="0.32" />
-                    <stop offset="100%" stopColor="#446557" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Fill Area */}
-                <path
-                  d={
-                    graphMode === "study"
-                      ? "M 0,110 Q 70,105 140,95 T 280,90 T 420,75 T 560,65 T 700,45 L 700,120 L 0,120 Z"
-                      : "M 0,105 Q 70,98 140,88 T 280,78 T 420,60 T 560,50 T 700,38 L 700,120 L 0,120 Z"
-                  }
-                  fill="url(#velocityGrad)"
-                  className="transition-all duration-700"
-                />
-
-                {/* Smooth Accent Stroke Line */}
-                <path
-                  d={
-                    graphMode === "study"
-                      ? "M 0,110 Q 70,105 140,95 T 280,90 T 420,75 T 560,65 T 700,45"
-                      : "M 0,105 Q 70,98 140,88 T 280,78 T 420,60 T 560,50 T 700,38"
-                  }
+      {/* Focus + balance */}
+      <section className="grid gap-4 lg:grid-cols-12 lg:gap-5">
+        {/* Focus */}
+        <div className="relative overflow-hidden rounded-3xl bg-forest p-6 text-white shadow-lift sm:p-8 lg:col-span-7">
+          <SyllabossEmblem
+            aria-hidden
+            className="pointer-events-none absolute -bottom-16 -right-10 size-72 opacity-[0.07]"
+          />
+          <div className="relative flex flex-col gap-7 sm:flex-row sm:items-center sm:gap-9">
+            <div className="relative mx-auto grid size-40 shrink-0 place-items-center sm:mx-0 sm:size-44">
+              <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90">
+                <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r={R}
                   fill="none"
-                  stroke="#446557"
+                  stroke={paused ? "rgba(255,255,255,0.35)" : "#4fd39b"}
+                  strokeWidth="6"
                   strokeLinecap="round"
-                  strokeWidth="2.5"
-                  className="transition-all duration-700"
+                  strokeDasharray={C}
+                  strokeDashoffset={C * (1 - timerProgress)}
+                  style={{ transition: "stroke-dashoffset 1s linear, stroke 300ms ease" }}
                 />
-
-                {/* Functional Interactive Data Points */}
-                {activePoints.map((pt, idx) => (
-                  <circle
-                    key={idx}
-                    cx={pt.cx}
-                    cy={pt.cy}
-                    r={idx === activePoints.length - 1 ? "5" : "4"}
-                    fill={idx === activePoints.length - 1 ? "#0d281e" : "#f3fbf6"}
-                    stroke={idx === activePoints.length - 1 ? "#c6ebd9" : "#446557"}
-                    strokeWidth="2.5"
-                    className="cursor-pointer transition-transform hover:scale-150 duration-150"
-                    onMouseEnter={() => setActiveTooltip({ label: pt.label, value: pt.val })}
-                    onMouseLeave={() => setActiveTooltip(null)}
-                  />
-                ))}
               </svg>
+              <div className="text-center">
+                <p className="tnum font-display text-[2.15rem] font-medium leading-none tracking-tight">{timerLabel}</p>
+                <p className="mt-1.5 text-[11px] font-medium text-white/60">
+                  {paused ? "paused" : `to +${POINTS_PER_30_MIN_STUDY} pts`}
+                </p>
+              </div>
+            </div>
 
-              <div className="flex justify-between items-center pt-2 font-mono text-[11px] text-[#5a6660]">
-                <span>01 Oct</span>
-                <span>08 Oct</span>
-                <span>15 Oct</span>
-                <span>22 Oct</span>
-                <span className="text-[#00110a] font-semibold">Today (Active)</span>
+            <div className="min-w-0 flex-1">
+              <p className="eyebrow !text-white/55">Focus session</p>
+              <h2 className="mt-2 font-display text-2xl font-medium leading-tight sm:text-[1.75rem]">
+                {paused ? "Your timer is paused." : "Every focused half hour pays."}
+              </h2>
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/65">
+                The timer runs while you study in Syllaboss and pauses when you step away. No tapping start.
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-2.5">
+                <Button
+                  asChild
+                  className="h-10 bg-white px-4 text-forest shadow-none hover:bg-white/90"
+                >
+                  <Link to="/dashboard/assistant">
+                    <Bot /> Study with Boss AI
+                  </Link>
+                </Button>
+                <button
+                  type="button"
+                  onClick={timer?.togglePause}
+                  className="press inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 px-4 text-[13px] font-semibold text-white/90 transition-colors hover:bg-white/10"
+                >
+                  {timer?.manualPause ? <Play className="size-3.5 fill-current" /> : <Pause className="size-3.5 fill-current" />}
+                  {timer?.manualPause ? "Resume" : "Pause"}
+                </button>
               </div>
             </div>
           </div>
 
-          {/* 3-Column Executive Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-5 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs text-[#5a6660] font-semibold uppercase tracking-wider">
-                <span>Gross Volume</span>
-                <TrendingUp className="size-4 text-[#446557]" />
-              </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="font-display text-2xl sm:text-3xl font-semibold text-[#00110a]">
-                  {points.toLocaleString()}
-                </span>
-                <span className="text-xs text-[#5a6660]">pts</span>
-              </div>
-              <p className="text-xs text-[#446557] font-medium flex items-center gap-1 mt-1">
-                <Verified className="size-3.5 text-[#1b7a4e]" />
-                Verified rewards active
+          {/* Week streak */}
+          <div className="relative mt-7 flex items-center justify-between gap-4 border-t border-white/10 pt-5">
+            <div className="flex items-center gap-2.5">
+              <Flame className="streak-flame size-5 fill-[#e9b949] text-[#e9b949]" />
+              <p className="text-sm">
+                <span className="tnum font-display text-xl font-medium">{streak}</span>{" "}
+                <span className="text-white/65">day streak</span>
               </p>
             </div>
-
-            <div className="p-5 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs text-[#5a6660] font-semibold uppercase tracking-wider">
-                <span>Net Volume</span>
-                <Wallet className="size-4 text-[#446557]" />
-              </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="font-display text-2xl sm:text-3xl font-semibold text-[#00110a]">
-                  {points.toLocaleString()}
-                </span>
-                <span className="text-xs text-[#5a6660]">pts</span>
-              </div>
-              <p className="text-xs text-[#5a6660] mt-1">
-                Available for withdrawal
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs text-[#5a6660] font-semibold uppercase tracking-wider">
-                <span>Peer Reads</span>
-                <Eye className="size-4 text-[#446557]" />
-              </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="font-display text-2xl sm:text-3xl font-semibold text-[#00110a]">
-                  {totalViews + totalDownloads}
-                </span>
-                <span className="text-xs text-[#5a6660]">reads</span>
-              </div>
-              <p className="text-xs text-[#5a6660] mt-1">
-                {totalDownloads} direct archive downloads
-              </p>
-            </div>
-          </div>
-
-          {/* Latest Archival Activity Ledger */}
-          <div className="p-6 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <h3 className="font-display text-xl text-[#00110a] font-medium">Latest Activity & Ledger Feed</h3>
-                <p className="text-xs text-[#5a6660]">Real-time reward yield transactions and archive queries</p>
-              </div>
-              <Link to="/dashboard/wallet" className="text-xs text-[#446557] hover:text-[#00110a] font-semibold flex items-center gap-1 transition-colors">
-                View wallet statements
-                <ArrowRight className="size-3.5" />
-              </Link>
-            </div>
-
-            {ledger.length === 0 ? (
-              <div className="py-8 text-center text-xs text-[#5a6660] space-y-1">
-                <p className="font-semibold text-[#151d1a]">No recent ledger transactions yet</p>
-                <p>Welcome bonuses, focus sessions, and verified upload earnings will appear here.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col divide-y divide-[#e7f0eb]">
-                {ledger.slice(0, 5).map((entry: { id: string; reason: string; amount: number; created_at: string }) => (
-                  <div key={entry.id} className="py-3 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-[#c6ebd9] flex items-center justify-center text-[#002116] shrink-0 font-semibold text-xs">
-                        <Coins className="size-4" />
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold text-[#151d1a] truncate">{entry.reason}</span>
-                          {isPlus && (
-                            <span className="px-1.5 py-0.2 rounded bg-[#f3e8c9] text-[#71540f] font-mono text-[10px] font-bold">
-                              1.3x SyllaPlus
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-[#5a6660]">
-                          {new Date(entry.created_at).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                    <span className="font-mono text-xs text-[#1b7a4e] font-bold whitespace-nowrap">
-                      +{entry.amount} pts
+            <div className="flex items-center gap-1.5" aria-label={`${Math.min(streak, 7)} of the last 7 days active`}>
+              {Array.from({ length: 7 }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (6 - i));
+                const on = 6 - i < streak;
+                return (
+                  <div key={i} className="flex flex-col items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "grid size-7 place-items-center rounded-full text-[10px] font-bold transition-colors",
+                        on ? "bg-[#e9b949] text-forest" : "bg-white/8 text-white/35",
+                        i === 6 && "ring-2 ring-white/70 ring-offset-2 ring-offset-forest",
+                      )}
+                    >
+                      {on ? "✓" : ""}
+                    </span>
+                    <span className="text-[10px] font-medium text-white/45">
+                      {d.toLocaleDateString("en-GB", { weekday: "narrow" })}
                     </span>
                   </div>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Balance */}
+        <div className="flex flex-col rounded-3xl border border-border bg-card p-6 shadow-soft sm:p-8 lg:col-span-5">
+          <div className="flex items-center justify-between">
+            <p className="eyebrow">{POINTS_NAME}</p>
+            <span className="grid size-8 place-items-center rounded-lg bg-brass-soft text-brass">
+              <Coins className="size-4" />
+            </span>
+          </div>
+          <p className="tnum mt-4 font-display text-[3.4rem] font-medium leading-none tracking-tight text-ink sm:text-[4rem]">
+            {animatedPoints.toLocaleString()}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Worth about <span className="font-semibold text-ink">{formatNaira(pointsToNaira(points))}</span>
+            {pending > 0 && (
+              <span> · {pending * POINTS_PER_VERIFIED_UPLOAD} pts in review</span>
             )}
-          </div>
-        </div>
+          </p>
 
-        {/* Right Column (Span 4): Wallet, Activity Breakdown & Semester Cadence */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          {/* Quick Academic Hub Actions (Trust Wallet pill cluster) */}
-          <div className="p-4 rounded-2xl bg-card/90 border border-border/80 shadow-xs backdrop-blur-xl flex items-center justify-between gap-2">
-            <Button asChild size="sm" variant="ghost" className="flex-1 h-9 rounded-xl text-xs font-semibold hover:bg-primary/10 hover:text-primary">
-              <Link to="/dashboard/assistant">
-                <Sparkles className="size-3.5 text-primary mr-1.5" />
-                Boss AI
-              </Link>
-            </Button>
-            <div className="w-px h-5 bg-border/60" />
-            <Button asChild size="sm" variant="ghost" className="flex-1 h-9 rounded-xl text-xs font-semibold hover:bg-primary/10 hover:text-primary">
-              <Link to="/dashboard/community">
-                <Users className="size-3.5 text-primary mr-1.5" />
-                Cohorts
-              </Link>
-            </Button>
-            <div className="w-px h-5 bg-border/60" />
-            <Button asChild size="sm" variant="ghost" className="flex-1 h-9 rounded-xl text-xs font-semibold hover:bg-primary/10 hover:text-primary">
-              <Link to="/dashboard/library">
-                <BookOpen className="size-3.5 text-primary mr-1.5" />
-                Library
-              </Link>
-            </Button>
+          <div className="mt-6">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-brand transition-[width] duration-[1100ms] ease-[cubic-bezier(0.23,1,0.32,1)]"
+                style={{ width: mounted ? `${Math.max(2, withdrawPct)}%` : "0%" }}
+              />
+            </div>
+            <p className="tnum mt-2.5 text-xs text-muted-foreground">
+              {toWithdraw === 0 ? (
+                <span className="font-semibold text-brand-deep">You can withdraw now</span>
+              ) : (
+                <>
+                  <span className="font-semibold text-ink">{toWithdraw.toLocaleString()} pts</span> to your first withdrawal
+                </>
+              )}
+            </p>
           </div>
 
-          {/* SyllaPoints Balance Card */}
-          <div className="p-6 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-4 relative overflow-hidden">
-            <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-[#c6ebd9]/40 blur-2xl pointer-events-none" />
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Coins className="size-4 text-[#446557]" />
-                <span className="text-xs uppercase tracking-wider text-[#5a6660] font-semibold">SyllaPoints Balance</span>
-              </div>
-              <span className="px-2 py-0.5 rounded bg-[#edf6f0] font-mono text-[11px] text-[#446557] font-semibold">
-                Verified
-              </span>
-            </div>
-
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-display text-4xl sm:text-5xl text-[#00110a] tracking-tight font-normal">
-                  {points.toLocaleString()}
-                </span>
-                <span className="font-display text-lg text-[#5a6660]">pts</span>
-              </div>
-              <span className="text-xs text-[#5a6660] font-mono mt-1">
-                Cashable Value: ~{formatNaira(pointsToNaira(points))} <span className="text-[#c2c8c3]">/</span> £{(pointsToNaira(points) / 2000).toFixed(2)}
-              </span>
-            </div>
-
-            {/* Balance Status Breakdown Bar */}
-            <div className="p-3 rounded-xl bg-[#edf6f0] flex flex-col gap-2">
-              <div className="flex justify-between items-center text-[11px] font-semibold">
-                <span className="text-[#446557]">Available: {points.toLocaleString()} pts</span>
-                <span className="text-[#5a6660]">Pending: {pending * 25} pts</span>
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-[#dce5df] overflow-hidden">
-                <div
-                  className="h-full bg-[#446557] rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(8, (points / 17500) * 100))}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Withdrawal Action */}
-            <div className="flex flex-col gap-2 pt-1">
-              <Button asChild className="w-full h-11 rounded-full bg-[#0d281e] hover:bg-[#00110a] text-white text-xs font-semibold shadow-xs">
-                <Link to="/dashboard/wallet">
-                  <Wallet className="size-4 mr-1.5" />
-                  Withdraw funds
-                </Link>
-              </Button>
-              <p className="text-center text-[11px] text-[#5a6660]">
-                Minimum withdrawal threshold: 17,500 pts (₦3,500)
-              </p>
-            </div>
-          </div>
-
-          {/* Activity Yields Breakdown Ledger */}
-          <div className="p-6 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg text-[#00110a] font-medium">Activity Yields</h3>
-              <Sparkles className="size-4 text-[#446557]" />
-            </div>
-
-            <div className="flex flex-col gap-2 text-xs">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#edf6f0]">
-                <div className="flex items-center gap-2.5">
-                  <Upload className="size-4 text-[#446557]" />
-                  <span className="font-medium text-[#151d1a]">Verified Uploads</span>
-                </div>
-                <span className="font-mono font-semibold text-[#00110a]">+25 pts</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#edf6f0]">
-                <div className="flex items-center gap-2.5">
-                  <Timer className="size-4 text-[#446557]" />
-                  <span className="font-medium text-[#151d1a]">Study Sessions</span>
-                </div>
-                <span className="font-mono font-semibold text-[#00110a]">+5 pts / 30m</span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#edf6f0]">
-                <div className="flex items-center gap-2.5">
-                  <Download className="size-4 text-[#446557]" />
-                  <span className="font-medium text-[#151d1a]">Peer Downloads</span>
-                </div>
-                <span className="font-mono font-semibold text-[#00110a]">+5 pts</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Semester Cadence Visual Progress (REPLACED mid term WITH ACTUAL NUMBER OF STUDY HOURS) */}
-          <div className="p-6 rounded-2xl bg-white shadow-xs border border-[#dce5df] flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg text-[#00110a] font-medium">Semester Cadence</h3>
-              <span className="font-mono text-[11px] text-[#5a6660]">2025 Semester I</span>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {/* August */}
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#5a6660] font-medium">August (0.0 hrs studied)</span>
-                  <span className="font-mono text-[#5a6660]">0 pts</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-[#e7f0eb]">
-                  <div className="h-full bg-[#c6ebd9] rounded-full" style={{ width: "0%" }} />
-                </div>
-              </div>
-
-              {/* September */}
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#5a6660] font-medium">
-                    September ({Math.max(0, Number(studyHours) * 0.4).toFixed(1)} hrs studied)
-                  </span>
-                  <span className="font-mono text-[#00110a] font-semibold">
-                    {Math.round(points * 0.35)} pts
-                  </span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-[#e7f0eb]">
-                  <div className="h-full bg-[#446557] rounded-full" style={{ width: "35%" }} />
-                </div>
-              </div>
-
-              {/* October */}
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#00110a] font-semibold">
-                    October ({studyHours} hrs studied)
-                  </span>
-                  <span className="font-mono text-[#00110a] font-bold">
-                    {points} pts
-                  </span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-[#e7f0eb]">
-                  <div className="h-full bg-[#0d281e] rounded-full" style={{ width: "100%" }} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Editorial Reference Archival Artifacts Preview Strip */}
-      <section className="p-6 rounded-2xl bg-[#edf6f0] shadow-xs border border-[#dce5df] flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <h3 className="font-display text-xl text-[#00110a] font-medium">Reference Curricula & Materials</h3>
-            <p className="text-xs text-[#5a6660]">Archived documents from verified engineering and academic cohorts</p>
-          </div>
-          <Button asChild variant="ghost" size="sm" className="text-xs text-[#446557] hover:text-[#00110a]">
-            <Link to="/dashboard/library">
-              Explore Library <ArrowRight className="size-3.5 ml-1" />
+          <Button asChild variant="outline" className="mt-auto h-11 w-full justify-between px-4 sm:mt-6">
+            <Link to="/dashboard/wallet">
+              Open wallet <ArrowRight />
             </Link>
           </Button>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Card 1 */}
-          <Link
-            to="/dashboard/library"
-            className="group overflow-hidden rounded-xl bg-white shadow-xs border border-[#dce5df] flex flex-col hover:shadow-md transition-all"
-          >
-            <div className="p-4 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded bg-[#c6ebd9] text-[#002116] font-mono text-[11px] font-bold">
-                  GET 206
-                </span>
-                <span className="px-2 py-0.5 rounded bg-[#0d281e] text-white font-mono text-[10px] font-semibold">
-                  34 Syllabi Pages
-                </span>
-              </div>
-              <h4 className="font-display text-base font-semibold text-[#00110a] group-hover:text-[#446557] transition-colors">
-                Introduction to Thermodynamics
-              </h4>
-              <p className="text-xs text-[#5a6660]">Faculty of Engineering Core • 2025</p>
-            </div>
-          </Link>
+      {/* Quick actions */}
+      <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <ActionTile to="/dashboard/library" icon={BookOpen} title="Library" sub="Notes & past questions" />
+        <ActionTile to="/dashboard/assistant" icon={Bot} title="Boss AI" sub="Ask, quiz, explain" />
+        <ActionTile to="/dashboard/community" icon={Users} title="Peers" sub="Study groups & battles" />
+        <ActionTile onClick={() => setShowWrapped(true)} icon={Share2} title="Campus Wrapped" sub="Share your rank card" />
+      </section>
 
-          {/* Card 2 */}
-          <Link
-            to="/dashboard/library"
-            className="group overflow-hidden rounded-xl bg-white shadow-xs border border-[#dce5df] flex flex-col hover:shadow-md transition-all"
-          >
-            <div className="p-4 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded bg-[#c6ebd9] text-[#002116] font-mono text-[11px] font-bold">
-                  MTH 101
-                </span>
-                <span className="px-2 py-0.5 rounded bg-[#0d281e] text-white font-mono text-[10px] font-semibold">
-                  Verified Solution
-                </span>
-              </div>
-              <h4 className="font-display text-base font-semibold text-[#00110a] group-hover:text-[#446557] transition-colors">
-                Engineering Mathematics & Calculus I
-              </h4>
-              <p className="text-xs text-[#5a6660]">100L General Engineering • 2024</p>
+      {/* Week + contribution */}
+      <section className="grid gap-4 lg:grid-cols-12 lg:gap-5">
+        <div className="rounded-3xl border border-border bg-card p-6 shadow-soft lg:col-span-7">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="eyebrow">This week</p>
+              <p className="tnum mt-2 font-display text-3xl font-medium leading-none text-ink">
+                +{week.sum.toLocaleString()} <span className="text-lg text-muted-foreground">pts</span>
+              </p>
             </div>
-          </Link>
+            <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-ink-soft">Last 7 days</span>
+          </div>
 
-          {/* Card 3 */}
-          <Link
-            to="/dashboard/library"
-            className="group overflow-hidden rounded-xl bg-white shadow-xs border border-[#dce5df] flex flex-col hover:shadow-md transition-all"
-          >
-            <div className="p-4 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded bg-[#c6ebd9] text-[#002116] font-mono text-[11px] font-bold">
-                  AGE 101
-                </span>
-                <span className="px-2 py-0.5 rounded bg-[#1b7a4e] text-white font-mono text-[10px] font-semibold">
-                  Endowment Standard
-                </span>
-              </div>
-              <h4 className="font-display text-base font-semibold text-[#00110a] group-hover:text-[#446557] transition-colors">
-                Agricultural Economics Principles
-              </h4>
-              <p className="text-xs text-[#5a6660]">Faculty of Agricultural Sciences • 2025</p>
+          <div className="mt-6 flex h-36 items-end gap-2.5 sm:gap-4" role="img" aria-label="Points earned per day over the last seven days">
+            {week.days.map((d, i) => {
+              const h = d.total === 0 ? 4 : Math.max(10, (d.total / week.max) * 100);
+              const today = i === 6;
+              return (
+                <div key={i} className="group flex h-full flex-1 flex-col items-center justify-end gap-2" title={`${d.total} pts`}>
+                  <span className="tnum text-[11px] font-semibold text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+                    {d.total}
+                  </span>
+                  <div
+                    className={cn(
+                      "w-full max-w-10 rounded-t-lg transition-[height] duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
+                      today ? "bg-brand" : d.total ? "bg-moss/35 group-hover:bg-moss/55" : "bg-muted",
+                    )}
+                    style={{ height: mounted ? `${h}%` : "4%", transitionDelay: `${i * 45}ms` }}
+                  />
+                  <span className={cn("text-[11px] font-medium", today ? "text-ink" : "text-muted-foreground")}>
+                    {d.date.toLocaleDateString("en-GB", { weekday: "short" })}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col rounded-3xl border border-border bg-card p-6 shadow-soft lg:col-span-5">
+          <div className="flex items-center justify-between">
+            <p className="eyebrow">Your contribution</p>
+            <Link to="/dashboard/materials" className="inline-flex items-center gap-1 text-xs font-semibold text-moss transition-colors hover:text-ink">
+              Manage <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
+          {materials.length === 0 ? (
+            <div className="my-auto py-6 text-center">
+              <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-accent text-forest">
+                <Upload className="size-5" />
+              </span>
+              <p className="mt-3 font-display text-lg font-semibold text-ink">Share your first material</p>
+              <p className="mx-auto mt-1 max-w-[16rem] text-sm text-muted-foreground">
+                Earn +{POINTS_PER_VERIFIED_UPLOAD} points when it's verified, then +{POINTS_PER_DOWNLOAD} for every download.
+              </p>
+              <Button asChild className="mt-4 h-10 px-5">
+                <Link to="/dashboard/upload">Upload now</Link>
+              </Button>
             </div>
-          </Link>
+          ) : (
+            <dl className="mt-5 grid flex-1 grid-cols-2 gap-3">
+              <MiniStat label="Verified" value={verified} />
+              <MiniStat label="In review" value={pending} />
+              <MiniStat label="Reads" value={views + downloads} />
+              <MiniStat label="Downloads" value={downloads} />
+            </dl>
+          )}
         </div>
       </section>
 
-      {/* SyllaPlus Upgrade Modal */}
-      <SyllaPlusModal
-        open={showPlusModal}
-        onClose={() => setShowPlusModal(false)}
-        onSuccess={() => setShowPlusModal(false)}
-      />
+      {/* Activity */}
+      <section className="rounded-3xl border border-border bg-card shadow-soft">
+        <div className="flex items-center justify-between px-6 pt-6">
+          <div>
+            <p className="eyebrow">Recent activity</p>
+            <h3 className="mt-1.5 font-display text-xl font-semibold text-ink">Your points ledger</h3>
+          </div>
+          <Link to="/dashboard/wallet" className="inline-flex items-center gap-1 text-xs font-semibold text-moss transition-colors hover:text-ink">
+            All activity <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
 
-      {/* Campus Wrapped & Scholar Flex Card Modal */}
+        {ledger.length === 0 ? (
+          <div className="px-6 pb-10 pt-8 text-center">
+            <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-muted text-moss">
+              <Timer className="size-5" />
+            </span>
+            <p className="mt-3 text-sm font-semibold text-ink">Nothing here yet</p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+              Study sessions, verified uploads and bonuses will show up here as you earn them.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-3 divide-y divide-border px-3 pb-3">
+            {ledger.slice(0, 6).map((entry) => {
+              const gain = entry.amount >= 0;
+              return (
+                <li key={entry.id} className="flex items-center gap-3.5 rounded-xl px-3 py-3 transition-colors hover:bg-muted/60">
+                  <span
+                    className={cn(
+                      "grid size-9 shrink-0 place-items-center rounded-full",
+                      gain ? "bg-accent text-forest" : "bg-muted text-ink-soft",
+                    )}
+                  >
+                    {gain ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-ink">{entry.reason}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDistanceToNowStrict(new Date(entry.created_at), { addSuffix: true })}
+                    </p>
+                  </div>
+                  <p className={cn("tnum text-sm font-bold", gain ? "text-brand-deep" : "text-ink-soft")}>
+                    {gain ? "+" : "−"}
+                    {Math.abs(entry.amount).toLocaleString()}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <SyllaPlusModal open={showPlus} onClose={() => setShowPlus(false)} onSuccess={() => setShowPlus(false)} />
       <CampusWrappedModal
-        isOpen={showCampusWrapped}
-        onClose={() => setShowCampusWrapped(false)}
+        isOpen={showWrapped}
+        onClose={() => setShowWrapped(false)}
         userId={user?.id}
         username={profile?.username || undefined}
       />
+    </div>
+  );
+}
+
+function ActionTile({
+  to,
+  onClick,
+  icon: Icon,
+  title,
+  sub,
+}: {
+  to?: string;
+  onClick?: () => void;
+  icon: typeof Bot;
+  title: string;
+  sub: string;
+}) {
+  const body = (
+    <>
+      <span className="grid size-10 place-items-center rounded-xl bg-muted text-moss transition-colors group-hover:bg-accent group-hover:text-forest">
+        <Icon className="size-5" />
+      </span>
+      <span className="mt-4 block text-[15px] font-semibold leading-tight text-ink">{title}</span>
+      <span className="mt-1 block text-xs leading-snug text-muted-foreground">{sub}</span>
+    </>
+  );
+  const cls =
+    "lift press group block rounded-2xl border border-border bg-card p-4 text-left shadow-soft sm:p-5";
+  return to ? (
+    <Link to={to} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={cls}>
+      {body}
+    </button>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl bg-muted/70 px-4 py-3.5">
+      <dt className="eyebrow">{label}</dt>
+      <dd className="tnum mt-1.5 font-display text-3xl font-medium leading-none text-ink">{value.toLocaleString()}</dd>
     </div>
   );
 }

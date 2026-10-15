@@ -458,7 +458,7 @@ Include:
         <div className="animate-breathe-zoom">
           <SyllabossEmblem className="size-16" />
         </div>
-        <p className="text-sm font-semibold text-[#1b7a4e] animate-pulse">Loading verified document...</p>
+        <p className="text-sm font-semibold text-brand animate-pulse">Loading verified document...</p>
       </div>
     );
   }
@@ -466,10 +466,10 @@ Include:
   if (!material) {
     return (
       <div className="flex h-[80vh] w-full flex-col items-center justify-center gap-4 text-center">
-        <BookOpen className="size-12 text-[#5a6660]" />
-        <h2 className="text-xl font-bold text-[#00110a]">Material Not Found</h2>
-        <p className="text-sm text-[#5a6660]">The requested study material may have been moved or removed.</p>
-        <Button asChild className="rounded-full bg-[#0d281e] text-white">
+        <BookOpen className="size-12 text-muted-foreground" />
+        <h2 className="text-xl font-bold text-ink">Material Not Found</h2>
+        <p className="text-sm text-muted-foreground">The requested study material may have been moved or removed.</p>
+        <Button asChild className="rounded-full bg-forest text-white">
           <Link to="/dashboard/library">Return to Library</Link>
         </Button>
       </div>
@@ -482,13 +482,13 @@ Include:
   return (
     <div className="flex flex-col h-[calc(100vh-68px)] max-h-screen w-full font-sans overflow-hidden">
       {/* Top Meta Bar */}
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-white border-b border-[#dce5df] z-20">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-white border-b border-border z-20">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="ghost"
             size="sm"
             asChild
-            className="rounded-full p-2 h-9 w-9 text-[#5a6660] hover:text-[#00110a] hover:bg-[#edf6f0]"
+            className="rounded-full p-2 h-9 w-9 text-muted-foreground hover:text-ink hover:bg-muted"
           >
             <Link to="/dashboard/library">
               <ArrowLeft className="size-4" />
@@ -497,13 +497,13 @@ Include:
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-bold text-[#1b7a4e] uppercase tracking-wide">
+              <span className="font-mono text-[11px] font-bold text-brand uppercase tracking-wide">
                 {material.course_code || "NUC CCMAS"}
               </span>
               <span className="text-[#c2c8c3]">·</span>
-              <span className="text-xs text-[#5a6660] truncate">{material.institution}</span>
+              <span className="text-xs text-muted-foreground truncate">{material.institution}</span>
             </div>
-            <h1 className="text-base sm:text-lg font-bold text-[#00110a] truncate leading-tight">
+            <h1 className="text-base sm:text-lg font-bold text-ink truncate leading-tight">
               {material.title}
             </h1>
           </div>
@@ -512,15 +512,15 @@ Include:
         {/* User's Exact Pills: Stats and Rating */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Metadata pill matching user's image */}
-          <div className="flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-[#edf6f0] border border-[#dce5df]/70 text-xs text-[#446557] font-medium font-mono">
+          <div className="flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-muted border border-border/70 text-xs text-moss font-medium font-mono">
             <span className="flex items-center gap-1.5">
-              <FileText className="size-3.5 text-[#1b7a4e]" /> {material.page_count} pgs
+              <FileText className="size-3.5 text-brand" /> {material.page_count} pgs
             </span>
             <span className="flex items-center gap-1.5">
-              <Eye className="size-3.5 text-[#1b7a4e]" /> {material.views ?? 0} views
+              <Eye className="size-3.5 text-brand" /> {material.views ?? 0} views
             </span>
             <span className="flex items-center gap-1.5">
-              <Download className="size-3.5 text-[#1b7a4e]" /> {material.downloads ?? 0} dls
+              <Download className="size-3.5 text-brand" /> {material.downloads ?? 0} dls
             </span>
           </div>
 
@@ -528,14 +528,14 @@ Include:
           <button
             type="button"
             onClick={() => setShowRatingModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-[#a87c12] font-semibold text-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-brass font-semibold text-xs transition-colors cursor-pointer"
             title="Click to rate this document"
           >
-            <Star className="size-3.5 fill-[#a87c12] text-[#a87c12]" />
+            <Star className="size-3.5 fill-brass text-brass" />
             {material.rating_count && material.rating_count > 0 ? (
               <>
                 <span>{Number(material.rating_avg || 0).toFixed(1)}</span>
-                <span className="text-[#a87c12]/80">({material.rating_count})</span>
+                <span className="text-brass/80">({material.rating_count})</span>
               </>
             ) : (
               <span>Rate this material</span>
@@ -543,14 +543,14 @@ Include:
           </button>
 
           {/* Action Toolbar */}
-          <div className="flex items-center gap-1.5 pl-1 border-l border-[#dce5df]">
+          <div className="flex items-center gap-1.5 pl-1 border-l border-border">
             <Button
               variant="outline"
               size="sm"
               onClick={handleSummarize}
-              className="rounded-full text-xs font-semibold h-8 gap-1.5 border-[#dce5df] bg-white hover:bg-[#edf6f0] text-[#151d1a]"
+              className="rounded-full text-xs font-semibold h-8 gap-1.5 border-border bg-white hover:bg-muted text-foreground"
             >
-              <Sparkles className="size-3.5 text-[#a87c12]" />
+              <Sparkles className="size-3.5 text-brass" />
               <span className="hidden sm:inline">Summarize</span>
             </Button>
 
@@ -558,10 +558,10 @@ Include:
               variant="outline"
               size="sm"
               onClick={() => setShowForwardModal(true)}
-              className="rounded-full text-xs font-semibold h-8 gap-1.5 border-[#dce5df] bg-white hover:bg-[#edf6f0] text-[#151d1a]"
+              className="rounded-full text-xs font-semibold h-8 gap-1.5 border-border bg-white hover:bg-muted text-foreground"
               title="Forward to peers or study groups"
             >
-              <Send className="size-3.5 text-[#1b7a4e]" />
+              <Send className="size-3.5 text-brand" />
               <span className="hidden sm:inline">Forward</span>
             </Button>
 
@@ -570,9 +570,9 @@ Include:
               size="sm"
               onClick={handleDownload}
               disabled={downloading}
-              className="rounded-full text-xs font-semibold h-8 gap-1.5 bg-[#c6ebd9] hover:bg-[#b0dfca] text-[#002116]"
+              className="rounded-full text-xs font-semibold h-8 gap-1.5 bg-accent hover:bg-[#b0dfca] text-accent-foreground"
             >
-              {downloading ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5 text-[#1b7a4e]" />}
+              {downloading ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5 text-brand" />}
               <span className="hidden sm:inline">Download</span>
             </Button>
 
@@ -583,8 +583,8 @@ Include:
               className={cn(
                 "rounded-full text-xs font-semibold h-8 gap-1.5 shadow-xs transition-all",
                 isSplit
-                  ? "bg-[#1b7a4e] text-white hover:bg-[#15633f]"
-                  : "bg-[#0d281e] text-white hover:bg-[#00110a]"
+                  ? "bg-brand text-white hover:bg-[#15633f]"
+                  : "bg-forest text-white hover:bg-ink"
               )}
             >
               <Columns className="size-3.5" />
@@ -639,9 +639,9 @@ Include:
               <button
                 type="button"
                 onClick={handleExplainSelection}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0d281e] text-white shadow-xl hover:bg-[#00110a] text-xs font-bold transition-all border border-[#1b7a4e]/40 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-forest text-white shadow-xl hover:bg-ink text-xs font-bold transition-all border border-brand/40 cursor-pointer"
               >
-                <Sparkles className="size-3.5 text-[#c6ebd9]" />
+                <Sparkles className="size-3.5 text-accent" />
                 <span>Explain with Boss AI</span>
               </button>
             </div>
@@ -654,7 +654,7 @@ Include:
             onMouseDown={handleMouseDown}
             onDoubleClick={() => setSplitRatio(50)}
             title="Drag to resize windows (Double-click to reset to 50/50)"
-            className="w-2.5 shrink-0 bg-[#dce5df] hover:bg-[#1b7a4e] cursor-col-resize flex items-center justify-center transition-colors group z-30 select-none"
+            className="w-2.5 shrink-0 bg-border hover:bg-brand cursor-col-resize flex items-center justify-center transition-colors group z-30 select-none"
           >
             <div className="w-1 h-8 rounded-full bg-[#a3b3aa] group-hover:bg-white transition-colors" />
           </div>
@@ -664,17 +664,17 @@ Include:
         {isSplit && (
           <div
             style={{ width: `${100 - splitRatio}%` }}
-            className="h-full min-w-[300px] flex flex-col bg-[#fdfefe] border-l border-[#dce5df] relative"
+            className="h-full min-w-[300px] flex flex-col bg-[#fdfefe] border-l border-border relative"
           >
             {/* Boss AI Panel Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-[#f7faf8] border-b border-[#e7f0eb]">
+            <div className="flex items-center justify-between px-4 py-3 bg-[#f7faf8] border-b border-surface-container">
               <div className="flex items-center gap-2.5">
-                <div className="grid size-8 place-items-center rounded-xl bg-[#0d281e] text-[#c6ebd9]">
+                <div className="grid size-8 place-items-center rounded-xl bg-forest text-accent">
                   <Bot className="size-4" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-[#00110a]">Boss AI Companion</h3>
-                  <p className="text-[10px] text-[#5a6660]">Context: {material.course_code || "NUC Curriculum"}</p>
+                  <h3 className="text-xs font-bold text-ink">Boss AI Companion</h3>
+                  <p className="text-[10px] text-muted-foreground">Context: {material.course_code || "NUC Curriculum"}</p>
                 </div>
               </div>
 
@@ -683,7 +683,7 @@ Include:
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsSplit(false)}
-                  className="size-7 p-0 rounded-lg text-[#5a6660] hover:text-[#00110a]"
+                  className="size-7 p-0 rounded-lg text-muted-foreground hover:text-ink"
                   title="Close AI panel"
                 >
                   <X className="size-3.5" />
@@ -692,25 +692,25 @@ Include:
             </div>
 
             {/* Quick Context Chips */}
-            <div className="px-3 py-2 bg-white border-b border-[#e7f0eb] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <div className="px-3 py-2 bg-white border-b border-surface-container flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               <button
                 type="button"
                 onClick={() => sendMessage("What are the core concepts and theorems covered in this document?")}
-                className="shrink-0 px-2.5 py-1 rounded-full bg-[#edf6f0] hover:bg-[#e2eae5] text-[11px] font-medium text-[#151d1a] transition-colors"
+                className="shrink-0 px-2.5 py-1 rounded-full bg-muted hover:bg-input text-[11px] font-medium text-foreground transition-colors"
               >
                 Core Concepts
               </button>
               <button
                 type="button"
                 onClick={() => sendMessage("Generate 3 examination practice questions with detailed answers based on this syllabus.")}
-                className="shrink-0 px-2.5 py-1 rounded-full bg-[#edf6f0] hover:bg-[#e2eae5] text-[11px] font-medium text-[#151d1a] transition-colors"
+                className="shrink-0 px-2.5 py-1 rounded-full bg-muted hover:bg-input text-[11px] font-medium text-foreground transition-colors"
               >
                 Practice Quiz
               </button>
               <button
                 type="button"
                 onClick={() => sendMessage("What are the most common exam mistakes students make on this topic?")}
-                className="shrink-0 px-2.5 py-1 rounded-full bg-[#edf6f0] hover:bg-[#e2eae5] text-[11px] font-medium text-[#151d1a] transition-colors"
+                className="shrink-0 px-2.5 py-1 rounded-full bg-muted hover:bg-input text-[11px] font-medium text-foreground transition-colors"
               >
                 Exam Traps
               </button>
@@ -730,13 +730,13 @@ Include:
                     className={cn(
                       "p-3.5 rounded-2xl shadow-xs",
                       m.role === "user"
-                        ? "bg-[#0d281e] text-white rounded-br-xs"
-                        : "bg-white dark:bg-card border border-[#dce5df] dark:border-border text-foreground rounded-bl-xs w-full"
+                        ? "bg-forest text-white rounded-br-xs"
+                        : "bg-white dark:bg-card border border-border dark:border-border text-foreground rounded-bl-xs w-full"
                     )}
                   >
                     {m.audioUrl && (
                       <div className="mb-2 p-2 rounded-xl bg-black/20 flex items-center gap-2">
-                        <Volume2 className="size-4 text-[#c6ebd9]" />
+                        <Volume2 className="size-4 text-accent" />
                         <audio src={m.audioUrl} controls className="h-7 w-48" />
                       </div>
                     )}
@@ -748,13 +748,13 @@ Include:
                       </div>
                     )}
                   </div>
-                  <span className="text-[10px] text-[#5a6660] mt-1 px-1">{m.timestamp}</span>
+                  <span className="text-[10px] text-muted-foreground mt-1 px-1">{m.timestamp}</span>
                 </div>
               ))}
 
               {aiThinking && (
-                <div className="flex items-center gap-2 p-3 rounded-2xl bg-[#edf6f0] text-xs text-[#151d1a] mr-auto w-fit">
-                  <Loader2 className="size-3.5 animate-spin text-[#1b7a4e]" />
+                <div className="flex items-center gap-2 p-3 rounded-2xl bg-muted text-xs text-foreground mr-auto w-fit">
+                  <Loader2 className="size-3.5 animate-spin text-brand" />
                   <span>Boss AI is synthesizing curriculum concepts...</span>
                 </div>
               )}
@@ -773,7 +773,7 @@ Include:
                     size="sm"
                     variant="ghost"
                     onClick={cancelRecording}
-                    className="h-7 px-2 text-xs text-[#5a6660] hover:text-red-700"
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-red-700"
                   >
                     Cancel
                   </Button>
@@ -789,8 +789,8 @@ Include:
             )}
 
             {/* Chat Input Bar with Voicenote Microphone */}
-            <div className="p-3 bg-white border-t border-[#e7f0eb]">
-              <div className="relative flex items-center bg-[#edf6f0]/70 rounded-2xl border border-[#dce5df] p-1.5 focus-within:bg-white focus-within:border-[#1b7a4e]">
+            <div className="p-3 bg-white border-t border-surface-container">
+              <div className="relative flex items-center bg-muted/70 rounded-2xl border border-border p-1.5 focus-within:bg-white focus-within:border-brand">
                 <button
                   type="button"
                   onClick={isRecording ? stopAndSendVoiceNote : startRecording}
@@ -798,7 +798,7 @@ Include:
                     "p-2 rounded-xl transition-all cursor-pointer",
                     isRecording
                       ? "bg-red-600 text-white animate-pulse"
-                      : "text-[#5a6660] hover:text-[#00110a] hover:bg-[#e2eae5]"
+                      : "text-muted-foreground hover:text-ink hover:bg-input"
                   )}
                   title={isRecording ? "Stop and send voice note" : "Record voice note for Boss AI"}
                 >
@@ -816,14 +816,14 @@ Include:
                     }
                   }}
                   placeholder="Ask a question or explain a formula..."
-                  className="flex-1 bg-transparent px-2 text-xs text-[#151d1a] placeholder:text-[#5a6660]/70 focus:outline-none"
+                  className="flex-1 bg-transparent px-2 text-xs text-foreground placeholder:text-muted-foreground/70 focus:outline-none"
                 />
 
                 <Button
                   size="sm"
                   onClick={() => sendMessage()}
                   disabled={!chatInput.trim() || aiThinking}
-                  className="size-8 p-0 rounded-xl bg-[#0d281e] text-white hover:bg-[#00110a] shrink-0 disabled:opacity-40"
+                  className="size-8 p-0 rounded-xl bg-forest text-white hover:bg-ink shrink-0 disabled:opacity-40"
                 >
                   <Send className="size-3.5" />
                 </Button>
@@ -840,36 +840,36 @@ Include:
           onClick={() => setShowSummarySheet(false)}
         >
           <div
-            className="relative w-full max-w-3xl lg:max-w-4xl max-h-[88vh] rounded-3xl bg-white dark:bg-[#111915] p-6 shadow-2xl border border-[#dce5df] dark:border-white/10 flex flex-col"
+            className="relative w-full max-w-3xl lg:max-w-4xl max-h-[88vh] rounded-3xl bg-white dark:bg-[#111915] p-6 shadow-2xl border border-border dark:border-white/10 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#e7f0eb] dark:border-white/10">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container dark:border-white/10">
               <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-[#a87c12]" />
-                <h3 className="font-display text-base font-bold text-[#00110a] dark:text-white">
+                <Sparkles className="size-4 text-brass" />
+                <h3 className="font-display text-base font-bold text-ink dark:text-white">
                   Executive Exam Summary
                 </h3>
               </div>
               <button
                 onClick={() => setShowSummarySheet(false)}
-                className="grid size-7 place-items-center rounded-full bg-[#edf6f0] dark:bg-white/5 text-[#5a6660] dark:text-slate-400 hover:text-[#00110a] dark:hover:text-white"
+                className="grid size-7 place-items-center rounded-full bg-muted dark:bg-white/5 text-muted-foreground dark:text-slate-400 hover:text-ink dark:hover:text-white"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 text-xs leading-relaxed text-[#151d1a] dark:text-slate-100">
+            <div className="flex-1 overflow-y-auto py-4 text-xs leading-relaxed text-foreground dark:text-slate-100">
               {generatingSummary ? (
                 <div className="py-20 flex flex-col items-center justify-center gap-3">
                   <div className="animate-breathe-zoom">
                     <SyllabossEmblem className="size-14" />
                   </div>
-                  <p className="font-semibold text-xs text-[#1b7a4e] dark:text-emerald-400 animate-pulse">
+                  <p className="font-semibold text-xs text-brand dark:text-emerald-400 animate-pulse">
                     Boss AI is formulating core derivations and definitions...
                   </p>
                 </div>
               ) : summaryText ? (
-                <div className="relative rounded-2xl bg-[#edf6f0]/50 dark:bg-white/[0.03] border border-[#dce5df] dark:border-white/10 p-5">
+                <div className="relative rounded-2xl bg-muted/50 dark:bg-white/[0.03] border border-border dark:border-white/10 p-5">
                   <button
                     type="button"
                     onClick={() => {
@@ -878,9 +878,9 @@ Include:
                       toast.success("Summary copied to clipboard!");
                       setTimeout(() => setCopiedSummary(false), 2000);
                     }}
-                    className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-[#dce5df] dark:border-white/10 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-[#151d1a] dark:text-slate-200 shadow-xs hover:bg-[#edf6f0] dark:hover:bg-slate-700 transition-colors"
+                    className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border dark:border-white/10 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-foreground dark:text-slate-200 shadow-xs hover:bg-muted dark:hover:bg-slate-700 transition-colors"
                   >
-                    {copiedSummary ? <Check className="size-3 text-[#1b7a4e]" /> : <Copy className="size-3" />}
+                    {copiedSummary ? <Check className="size-3 text-brand" /> : <Copy className="size-3" />}
                     {copiedSummary ? "Copied" : "Copy"}
                   </button>
                   <div className="pt-6 pr-2">
@@ -890,7 +890,7 @@ Include:
               ) : null}
             </div>
 
-            <div className="pt-3 border-t border-[#e7f0eb] dark:border-white/10 flex justify-end">
+            <div className="pt-3 border-t border-surface-container dark:border-white/10 flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -911,26 +911,26 @@ Include:
           onClick={() => setShowRatingModal(false)}
         >
           <div
-            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-[#dce5df]"
+            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-border"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#e7f0eb]">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-container">
               <div className="flex items-center gap-2">
-                <Star className="size-4 fill-[#a87c12] text-[#a87c12]" />
-                <h3 className="font-display text-base font-bold text-[#00110a]">
+                <Star className="size-4 fill-brass text-brass" />
+                <h3 className="font-display text-base font-bold text-ink">
                   Rate this Study Material
                 </h3>
               </div>
               <button
                 onClick={() => setShowRatingModal(false)}
-                className="grid size-7 place-items-center rounded-full bg-[#edf6f0] text-[#5a6660] hover:text-[#00110a]"
+                className="grid size-7 place-items-center rounded-full bg-muted text-muted-foreground hover:text-ink"
               >
                 <X className="size-4" />
               </button>
             </div>
 
             <div className="py-5 space-y-4 text-center">
-              <p className="text-xs text-[#5a6660]">
+              <p className="text-xs text-muted-foreground">
                 How useful was this document for your semester preparation?
               </p>
 
@@ -947,24 +947,24 @@ Include:
                       className={cn(
                         "size-7 transition-colors",
                         star <= ratingVal
-                          ? "fill-[#a87c12] text-[#a87c12]"
-                          : "text-[#dce5df]"
+                          ? "fill-brass text-brass"
+                          : "text-border"
                       )}
                     />
                   </button>
                 ))}
               </div>
-              <p className="text-xs font-bold text-[#a87c12]">{ratingVal} of 5 Stars</p>
+              <p className="text-xs font-bold text-brass">{ratingVal} of 5 Stars</p>
 
               <Textarea
                 value={ratingComment}
                 onChange={(e) => setRatingComment(e.target.value)}
                 placeholder="Optional review or feedback for fellow students..."
-                className="rounded-2xl border-[#dce5df] bg-[#edf6f0]/50 text-xs min-h-[75px]"
+                className="rounded-2xl border-border bg-muted/50 text-xs min-h-[75px]"
               />
             </div>
 
-            <div className="pt-3 border-t border-[#e7f0eb] flex items-center justify-end gap-2">
+            <div className="pt-3 border-t border-surface-container flex items-center justify-end gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -977,7 +977,7 @@ Include:
                 size="sm"
                 onClick={handleSubmitRating}
                 disabled={submittingRating}
-                className="rounded-full bg-[#0d281e] text-white hover:bg-[#00110a] text-xs font-semibold px-4"
+                className="rounded-full bg-forest text-white hover:bg-ink text-xs font-semibold px-4"
               >
                 {submittingRating ? <Loader2 className="size-3.5 animate-spin mr-1" /> : null}
                 Submit Rating

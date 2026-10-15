@@ -82,25 +82,25 @@ function LeaderboardPage() {
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-16 font-sans">
       {/* Header Section & Cohort Switcher */}
-      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-[#dce5df]/80 pb-4">
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-border/80 pb-4">
         <div className="flex flex-col gap-1 max-w-2xl">
-          <h1 className="font-display text-3xl sm:text-4xl text-[#00110a] tracking-tight font-medium">
+          <h1 className="font-display text-3xl sm:text-4xl text-ink tracking-tight font-medium">
             Student Leaderboard
           </h1>
-          <p className="text-sm text-[#424844] leading-relaxed">
+          <p className="text-sm text-ink-soft leading-relaxed">
             Rankings based on SyllaPoints earned through study sessions and verified course material uploads.
           </p>
         </div>
 
         {/* Actions: Cohort Switcher & Flex My Card */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="p-1 rounded-full bg-[#edf6f0] border border-[#dce5df] flex items-center gap-1">
+          <div className="p-1 rounded-full bg-muted border border-border flex items-center gap-1">
             <button
               type="button"
               onClick={() => setFilterMode("all")}
               className={cn(
                 "px-3.5 py-1 rounded-full text-xs font-semibold transition-all",
-                filterMode === "all" ? "bg-white text-[#00110a] shadow-xs font-bold" : "text-[#5a6660] hover:text-[#00110a]"
+                filterMode === "all" ? "bg-white text-ink shadow-xs font-bold" : "text-muted-foreground hover:text-ink"
               )}
             >
               All Universities
@@ -110,7 +110,7 @@ function LeaderboardPage() {
               onClick={() => setFilterMode("school")}
               className={cn(
                 "px-3.5 py-1 rounded-full text-xs font-semibold transition-all",
-                filterMode === "school" ? "bg-white text-[#00110a] shadow-xs font-bold" : "text-[#5a6660] hover:text-[#00110a]"
+                filterMode === "school" ? "bg-white text-ink shadow-xs font-bold" : "text-muted-foreground hover:text-ink"
               )}
             >
               My Institution
@@ -120,7 +120,7 @@ function LeaderboardPage() {
               onClick={() => setFilterMode("faculty")}
               className={cn(
                 "px-3.5 py-1 rounded-full text-xs font-semibold transition-all",
-                filterMode === "faculty" ? "bg-white text-[#00110a] shadow-xs font-bold" : "text-[#5a6660] hover:text-[#00110a]"
+                filterMode === "faculty" ? "bg-white text-ink shadow-xs font-bold" : "text-muted-foreground hover:text-ink"
               )}
             >
               Programme
@@ -140,16 +140,16 @@ function LeaderboardPage() {
 
       {/* Scholar Spotlight Standing Bar (Deep Ivy Emerald Elevation) */}
       {profile && (
-        <section className="relative overflow-hidden rounded-2xl bg-[#0d281e] text-white p-6 shadow-md border border-[#446557]/40">
+        <section className="relative overflow-hidden rounded-2xl bg-forest text-white p-6 shadow-md border border-moss/40">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
             {/* Identification */}
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
-                <div className="size-14 rounded-full bg-[#1b7a4e] flex items-center justify-center text-white font-display text-lg font-bold shadow-md border-2 border-white/20">
+                <div className="size-14 rounded-full bg-brand flex items-center justify-center text-white font-display text-lg font-bold shadow-md border-2 border-white/20">
                   {profile.full_name?.charAt(0) || "S"}
                 </div>
-                <span className="absolute -bottom-1 -right-1 size-6 rounded-full bg-[#c6ebd9] text-[#002116] font-mono text-xs font-bold flex items-center justify-center shadow-xs">
+                <span className="absolute -bottom-1 -right-1 size-6 rounded-full bg-accent text-accent-foreground font-mono text-xs font-bold flex items-center justify-center shadow-xs">
                   #{myRank}
                 </span>
               </div>
@@ -162,12 +162,12 @@ function LeaderboardPage() {
                     You
                   </span>
                   {profile.sylla_plus && (
-                    <span className="px-2 py-0.5 rounded-full bg-[#f3e8c9] text-[#71540f] text-[10px] tracking-widest uppercase font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-brass-soft text-brass-ink text-[10px] tracking-widest uppercase font-bold">
                       SyllaPlus Scholar
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-[#749183]">
+                <p className="text-xs text-on-primary-container">
                   {profile.institution || "Achievers University, Owo"} • {profile.course || "Faculty Core"}
                 </p>
               </div>
@@ -176,36 +176,36 @@ function LeaderboardPage() {
             {/* Metrics Ribbon */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-center bg-white/5 p-4 rounded-xl backdrop-blur-md border border-white/10">
               <div className="flex flex-col">
-                <span className="text-[10px] text-[#749183] uppercase tracking-wider font-semibold">Institutional Rank</span>
+                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">Institutional Rank</span>
                 <div className="flex items-baseline gap-1 mt-0.5">
                   <span className="font-display text-xl font-bold text-white">#{myRank}</span>
-                  <span className="font-mono text-xs text-[#749183]">of {fullList.length || 1}</span>
+                  <span className="font-mono text-xs text-on-primary-container">of {fullList.length || 1}</span>
                 </div>
               </div>
 
               <div className="flex flex-col">
-                <span className="text-[10px] text-[#749183] uppercase tracking-wider font-semibold">SyllaPoints</span>
+                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">SyllaPoints</span>
                 <div className="flex items-baseline gap-1 mt-0.5">
-                  <span className="font-display text-xl font-bold text-[#c6ebd9]">
+                  <span className="font-display text-xl font-bold text-accent">
                     {profile.points.toLocaleString()}
                   </span>
-                  <span className="font-mono text-xs text-[#c6ebd9]/80">pts</span>
+                  <span className="font-mono text-xs text-accent/80">pts</span>
                 </div>
               </div>
 
               <div className="flex flex-col">
-                <span className="text-[10px] text-[#749183] uppercase tracking-wider font-semibold">Study Time</span>
+                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">Study Time</span>
                 <div className="flex items-baseline gap-1 mt-0.5">
                   <span className="font-display text-xl font-bold text-white">
                     {(profile.study_minutes / 60).toFixed(1)}
                   </span>
-                  <span className="font-mono text-xs text-[#749183]">hrs</span>
+                  <span className="font-mono text-xs text-on-primary-container">hrs</span>
                 </div>
               </div>
 
               <div className="flex flex-col justify-center">
-                <span className="text-[10px] text-[#749183] uppercase tracking-wider font-semibold">Cash Yield</span>
-                <span className="font-mono text-xs font-semibold text-[#c6ebd9] mt-0.5">
+                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">Cash Yield</span>
+                <span className="font-mono text-xs font-semibold text-accent mt-0.5">
                   ~{formatNaira(pointsToNaira(profile.points))}
                 </span>
               </div>
@@ -217,7 +217,7 @@ function LeaderboardPage() {
       {/* Top 3 Students Podium Cards */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-2xl text-[#00110a] font-medium tracking-tight">Top Ranked Students</h2>
+          <h2 className="font-display text-2xl text-ink font-medium tracking-tight">Top Ranked Students</h2>
         </div>
 
         {isLoading ? (
@@ -225,52 +225,52 @@ function LeaderboardPage() {
             <div className="animate-breathe-zoom">
               <SyllabossEmblem className="size-14" />
             </div>
-            <p className="mt-3 text-xs font-semibold text-[#446557] animate-pulse">Calculating rankings...</p>
+            <p className="mt-3 text-xs font-semibold text-moss animate-pulse">Calculating rankings...</p>
           </div>
         ) : topThree.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             {/* Rank #2 */}
             {topThree[1] && (
-              <article className="flex flex-col rounded-2xl bg-white p-5 shadow-xs border border-[#dce5df] transition-all hover:shadow-md order-2 md:order-1">
+              <article className="flex flex-col rounded-2xl bg-white p-5 shadow-xs border border-border transition-all hover:shadow-md order-2 md:order-1">
                 <div className="flex items-center justify-between mb-3">
                   <span className="size-8 rounded-full bg-slate-100 text-slate-700 font-mono text-xs font-bold flex items-center justify-center">
                     02
                   </span>
-                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#edf6f0] text-xs font-semibold text-[#446557]">
+                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted text-xs font-semibold text-moss">
                     <Medal className="size-3.5 text-slate-500" /> 2nd Place
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mb-1">
                   {topThree[1].avatar_url ? (
-                    <img src={topThree[1].avatar_url} alt="" className="size-8 rounded-full object-cover border border-[#dce5df]" />
+                    <img src={topThree[1].avatar_url} alt="" className="size-8 rounded-full object-cover border border-border" />
                   ) : (
                     <div className="size-8 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center">
                       {(topThree[1].username || topThree[1].full_name)[0].toUpperCase()}
                     </div>
                   )}
                   <div className="truncate">
-                    <h3 className="font-display text-base font-bold text-[#00110a] truncate">
+                    <h3 className="font-display text-base font-bold text-ink truncate">
                       @{topThree[1].username || topThree[1].full_name.toLowerCase().replace(/\s+/g, "_")}
                     </h3>
-                    <p className="text-[11px] text-[#5a6660] truncate">{topThree[1].full_name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{topThree[1].full_name}</p>
                   </div>
                 </div>
-                <p className="text-xs text-[#5a6660] truncate">{topThree[1].institution}</p>
-                <p className="text-[11px] text-[#446557] truncate mt-0.5">{topThree[1].course}</p>
+                <p className="text-xs text-muted-foreground truncate">{topThree[1].institution}</p>
+                <p className="text-[11px] text-moss truncate mt-0.5">{topThree[1].course}</p>
 
-                <div className="flex flex-col gap-1.5 py-2.5 bg-[#edf6f0] rounded-xl px-3 my-3 font-mono text-xs text-[#151d1a]">
+                <div className="flex flex-col gap-1.5 py-2.5 bg-muted rounded-xl px-3 my-3 font-mono text-xs text-foreground">
                   <div className="flex justify-between items-center">
-                    <span className="text-[#5a6660]">SyllaPoints</span>
-                    <span className="font-bold text-[#00110a]">{topThree[1].points.toLocaleString()} pts</span>
+                    <span className="text-muted-foreground">SyllaPoints</span>
+                    <span className="font-bold text-ink">{topThree[1].points.toLocaleString()} pts</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[#5a6660]">Study Time</span>
-                    <span className="text-[#446557] font-semibold">{Math.round(topThree[1].study_minutes / 60)} hrs</span>
+                    <span className="text-muted-foreground">Study Time</span>
+                    <span className="text-moss font-semibold">{Math.round(topThree[1].study_minutes / 60)} hrs</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-[#5a6660] font-mono">
-                  <span className="text-[#1b7a4e] font-semibold">2nd Rank</span>
+                <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+                  <span className="text-brand font-semibold">2nd Rank</span>
                   <span>Yield: {formatNaira(pointsToNaira(topThree[1].points))}</span>
                 </div>
               </article>
@@ -279,7 +279,7 @@ function LeaderboardPage() {
             {/* Rank #1 */}
             {topThree[0] && (
               <article className="flex flex-col rounded-2xl bg-white p-6 shadow-md border-2 border-amber-300 transition-all hover:shadow-lg order-1 md:order-2 md:-mt-4 relative">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#f3e8c9] text-[#71540f] text-[10px] uppercase tracking-widest font-bold shadow-xs flex items-center gap-1">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-brass-soft text-brass-ink text-[10px] uppercase tracking-widest font-bold shadow-xs flex items-center gap-1">
                   <Trophy className="size-3 text-amber-600" /> 1st Place Rank
                 </div>
                 <div className="flex items-center justify-between mb-3 mt-1">
@@ -299,75 +299,75 @@ function LeaderboardPage() {
                     </div>
                   )}
                   <div className="truncate">
-                    <h3 className="font-display text-lg font-bold text-[#00110a] truncate">
+                    <h3 className="font-display text-lg font-bold text-ink truncate">
                       @{topThree[0].username || topThree[0].full_name.toLowerCase().replace(/\s+/g, "_")}
                     </h3>
-                    <p className="text-[11px] text-[#5a6660] truncate">{topThree[0].full_name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{topThree[0].full_name}</p>
                   </div>
                 </div>
-                <p className="text-xs text-[#5a6660] truncate">{topThree[0].institution}</p>
-                <p className="text-[11px] text-[#446557] truncate mt-0.5">{topThree[0].course}</p>
+                <p className="text-xs text-muted-foreground truncate">{topThree[0].institution}</p>
+                <p className="text-[11px] text-moss truncate mt-0.5">{topThree[0].course}</p>
 
-                <div className="flex flex-col gap-1.5 py-3 bg-[#edf6f0] rounded-xl px-3.5 my-3 font-mono text-xs text-[#151d1a]">
+                <div className="flex flex-col gap-1.5 py-3 bg-muted rounded-xl px-3.5 my-3 font-mono text-xs text-foreground">
                   <div className="flex justify-between items-center">
-                    <span className="text-[#5a6660]">SyllaPoints</span>
-                    <span className="font-display text-lg font-bold text-[#00110a]">{topThree[0].points.toLocaleString()} pts</span>
+                    <span className="text-muted-foreground">SyllaPoints</span>
+                    <span className="font-display text-lg font-bold text-ink">{topThree[0].points.toLocaleString()} pts</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[#5a6660]">Study Time</span>
-                    <span className="text-[#446557] font-semibold">{Math.round(topThree[0].study_minutes / 60)} hrs</span>
+                    <span className="text-muted-foreground">Study Time</span>
+                    <span className="text-moss font-semibold">{Math.round(topThree[0].study_minutes / 60)} hrs</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-[#5a6660] font-mono">
-                  <span className="text-[#1b7a4e] font-semibold">Top Rank</span>
-                  <span className="text-[#446557] font-bold">Yield: {formatNaira(pointsToNaira(topThree[0].points))}</span>
+                <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+                  <span className="text-brand font-semibold">Top Rank</span>
+                  <span className="text-moss font-bold">Yield: {formatNaira(pointsToNaira(topThree[0].points))}</span>
                 </div>
               </article>
             )}
 
             {/* Rank #3 */}
             {topThree[2] && (
-              <article className="flex flex-col rounded-2xl bg-white p-5 shadow-xs border border-[#dce5df] transition-all hover:shadow-md order-3">
+              <article className="flex flex-col rounded-2xl bg-white p-5 shadow-xs border border-border transition-all hover:shadow-md order-3">
                 <div className="flex items-center justify-between mb-3">
                   <span className="size-8 rounded-full bg-orange-100 text-amber-950 font-mono text-xs font-bold flex items-center justify-center">
                     03
                   </span>
-                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#edf6f0] text-xs font-semibold text-[#446557]">
+                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted text-xs font-semibold text-moss">
                     <Award className="size-3.5 text-amber-800" /> 3rd Place
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mb-1">
                   {topThree[2].avatar_url ? (
-                    <img src={topThree[2].avatar_url} alt="" className="size-8 rounded-full object-cover border border-[#dce5df]" />
+                    <img src={topThree[2].avatar_url} alt="" className="size-8 rounded-full object-cover border border-border" />
                   ) : (
                     <div className="size-8 rounded-full bg-orange-100 text-amber-950 font-bold text-xs flex items-center justify-center">
                       {(topThree[2].username || topThree[2].full_name)[0].toUpperCase()}
                     </div>
                   )}
                   <div className="truncate">
-                    <h3 className="font-display text-base font-bold text-[#00110a] truncate">
+                    <h3 className="font-display text-base font-bold text-ink truncate">
                       @{topThree[2].username || topThree[2].full_name.toLowerCase().replace(/\s+/g, "_")}
                     </h3>
-                    <p className="text-[11px] text-[#5a6660] truncate">{topThree[2].full_name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{topThree[2].full_name}</p>
                   </div>
                 </div>
-                <p className="text-xs text-[#5a6660] truncate">{topThree[2].institution}</p>
-                <p className="text-[11px] text-[#446557] truncate mt-0.5">{topThree[2].course}</p>
+                <p className="text-xs text-muted-foreground truncate">{topThree[2].institution}</p>
+                <p className="text-[11px] text-moss truncate mt-0.5">{topThree[2].course}</p>
 
-                <div className="flex flex-col gap-1.5 py-2.5 bg-[#edf6f0] rounded-xl px-3 my-3 font-mono text-xs text-[#151d1a]">
+                <div className="flex flex-col gap-1.5 py-2.5 bg-muted rounded-xl px-3 my-3 font-mono text-xs text-foreground">
                   <div className="flex justify-between items-center">
-                    <span className="text-[#5a6660]">SyllaPoints</span>
-                    <span className="font-bold text-[#00110a]">{topThree[2].points.toLocaleString()} pts</span>
+                    <span className="text-muted-foreground">SyllaPoints</span>
+                    <span className="font-bold text-ink">{topThree[2].points.toLocaleString()} pts</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[#5a6660]">Study Time</span>
-                    <span className="text-[#446557] font-semibold">{Math.round(topThree[2].study_minutes / 60)} hrs</span>
+                    <span className="text-muted-foreground">Study Time</span>
+                    <span className="text-moss font-semibold">{Math.round(topThree[2].study_minutes / 60)} hrs</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-[#5a6660] font-mono">
-                  <span className="text-[#1b7a4e] font-semibold">3rd Rank</span>
+                <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+                  <span className="text-brand font-semibold">3rd Rank</span>
                   <span>Yield: {formatNaira(pointsToNaira(topThree[2].points))}</span>
                 </div>
               </article>
@@ -377,20 +377,20 @@ function LeaderboardPage() {
       </section>
 
       {/* Full Ranked Scholars Table */}
-      <section className="flex flex-col gap-3 bg-white rounded-2xl shadow-xs border border-[#dce5df] p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#e7f0eb]">
+      <section className="flex flex-col gap-3 bg-white rounded-2xl shadow-xs border border-border p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-surface-container">
           <div>
-            <h2 className="font-display text-xl text-[#00110a] font-semibold">All Ranked Students</h2>
-            <p className="text-xs text-[#5a6660]">Students ranked by study hours and SyllaPoints.</p>
+            <h2 className="font-display text-xl text-ink font-semibold">All Ranked Students</h2>
+            <p className="text-xs text-muted-foreground">Students ranked by study hours and SyllaPoints.</p>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 size-4 text-[#5a6660]" />
+            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by student username, name, or school..."
-              className="pl-9 pr-4 py-2 rounded-full bg-[#edf6f0] text-xs text-[#151d1a] border border-[#dce5df] focus:bg-white focus:outline-none w-64"
+              className="pl-9 pr-4 py-2 rounded-full bg-muted text-xs text-foreground border border-border focus:bg-white focus:outline-none w-64"
             />
           </div>
         </div>
@@ -398,7 +398,7 @@ function LeaderboardPage() {
         <div className="w-full overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="text-[#5a6660] uppercase tracking-wider border-b border-[#e7f0eb] font-semibold">
+              <tr className="text-muted-foreground uppercase tracking-wider border-b border-surface-container font-semibold">
                 <th className="py-3 px-3 w-16">Rank</th>
                 <th className="py-3 px-3 min-w-[200px]">Student Username & Course</th>
                 <th className="py-3 px-3 min-w-[180px]">Institution</th>
@@ -407,7 +407,7 @@ function LeaderboardPage() {
                 <th className="py-3 px-3 text-right font-mono">Cash Yield</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#e7f0eb]">
+            <tbody className="divide-y divide-surface-container">
               {remainingList.map((s) => {
                 const isCurrentUser = s.id === user?.id;
                 const userDisplayHandle = s.username ? `@${s.username}` : `@${s.full_name.toLowerCase().replace(/\s+/g, "_")}`;
@@ -415,34 +415,34 @@ function LeaderboardPage() {
                   <tr
                     key={s.id}
                     className={cn(
-                      "hover:bg-[#edf6f0]/50 transition-colors",
-                      isCurrentUser ? "bg-[#c6ebd9]/20 font-semibold" : ""
+                      "hover:bg-muted/50 transition-colors",
+                      isCurrentUser ? "bg-accent/20 font-semibold" : ""
                     )}
                   >
-                    <td className="py-3.5 px-3 font-mono font-semibold text-[#00110a]">#{s.rank}</td>
+                    <td className="py-3.5 px-3 font-mono font-semibold text-ink">#{s.rank}</td>
                     <td className="py-3.5 px-3">
                       <div className="flex items-center gap-2.5">
                         {s.avatar_url ? (
-                          <img src={s.avatar_url} alt="" className="size-7 rounded-full object-cover border border-[#dce5df]" />
+                          <img src={s.avatar_url} alt="" className="size-7 rounded-full object-cover border border-border" />
                         ) : (
                           <div className="size-7 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] flex items-center justify-center">
                             {(s.username || s.full_name)[0].toUpperCase()}
                           </div>
                         )}
                         <div className="flex flex-col">
-                          <span className="font-semibold text-[#151d1a]">{userDisplayHandle}</span>
-                          <span className="text-[11px] text-[#5a6660]">{s.course}</span>
+                          <span className="font-semibold text-foreground">{userDisplayHandle}</span>
+                          <span className="text-[11px] text-muted-foreground">{s.course}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-3 text-[#5a6660]">{s.institution}</td>
-                    <td className="py-3.5 px-3 text-right font-mono text-[#446557]">
+                    <td className="py-3.5 px-3 text-muted-foreground">{s.institution}</td>
+                    <td className="py-3.5 px-3 text-right font-mono text-moss">
                       {Math.round(s.study_minutes / 60)} hrs
                     </td>
-                    <td className="py-3.5 px-3 text-right font-mono font-bold text-[#00110a]">
+                    <td className="py-3.5 px-3 text-right font-mono font-bold text-ink">
                       {s.points.toLocaleString()} pts
                     </td>
-                    <td className="py-3.5 px-3 text-right font-mono text-[#1b7a4e] font-semibold">
+                    <td className="py-3.5 px-3 text-right font-mono text-brand font-semibold">
                       {formatNaira(pointsToNaira(s.points))}
                     </td>
                   </tr>

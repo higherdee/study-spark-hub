@@ -6,21 +6,31 @@ export const CLERK_PUBLISHABLE_KEY =
   "pk_test_bW9yZS1vY3RvcHVzLTM5MTYuY2xlcmsuYWNjb3VudHMuZGV2JA";
 
 export const clerkAppearance = {
+  variables: {
+    colorPrimary: "#0b2e22",
+    colorText: "#14201b",
+    colorTextSecondary: "#66706a",
+    colorBackground: "#ffffff",
+    colorInputBackground: "#ffffff",
+    borderRadius: "0.625rem",
+    fontFamily: '"Hanken Grotesk", system-ui, sans-serif',
+  },
   elements: {
     rootBox: "w-full",
-    card: "shadow-xl border border-border/80 rounded-3xl bg-card p-6 sm:p-8",
-    headerTitle: "font-display text-2xl font-bold text-foreground text-center",
-    headerSubtitle: "text-sm text-muted-foreground text-center",
+    card: "shadow-none border-0 bg-transparent p-0 gap-6",
+    headerTitle: "font-display text-[1.75rem] font-semibold tracking-tight text-ink",
+    headerSubtitle: "text-sm text-muted-foreground",
     socialButtonsBlockButton:
-      "border border-border/80 bg-background text-foreground hover:bg-secondary rounded-xl h-11 transition-all font-medium text-sm",
-    dividerLine: "bg-border/60",
-    dividerText: "text-xs text-muted-foreground uppercase font-mono px-2",
-    formFieldLabel: "text-xs font-semibold text-foreground tracking-wide",
+      "border border-input bg-card text-foreground hover:bg-muted rounded-lg h-11 transition-colors font-semibold text-sm shadow-none",
+    dividerLine: "bg-border",
+    dividerText: "text-[11px] text-muted-foreground uppercase tracking-widest px-2",
+    formFieldLabel: "text-xs font-semibold text-foreground",
     formFieldInput:
-      "h-11 rounded-xl border border-input bg-background px-3.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+      "h-11 rounded-lg border border-input bg-card px-3.5 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:border-brand focus-visible:ring-4 focus-visible:ring-brand/15 transition-[border-color,box-shadow]",
     formButtonPrimary:
-      "bg-primary text-primary-foreground hover:bg-primary/95 rounded-xl font-semibold h-11 text-sm transition-all shadow-sm active:scale-[0.99]",
-    footerActionLink: "text-primary hover:underline font-semibold",
-    footer: "bg-transparent border-t-0 pt-4",
+      "bg-primary text-primary-foreground hover:bg-primary-container rounded-lg font-semibold h-11 text-sm transition-[background-color,transform] shadow-none active:scale-[0.98] normal-case",
+    footerActionLink: "text-brand-deep hover:underline font-semibold",
+    footer: "bg-transparent border-t-0",
+    footerAction: "justify-start",
   },
 };

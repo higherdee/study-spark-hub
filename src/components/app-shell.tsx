@@ -1,72 +1,23 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
-import {
-  Coins,
-  Sparkles,
-  Timer,
-  Play,
-  Flame,
-  Shield,
-  Bell,
-  Menu,
-  HelpCircle,
-  Bot,
-} from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Bell, Coins, Flame, LogOut, MoreHorizontal, Pause, Play, Timer } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 
-import { SyllabossLogo } from "@/components/syllaboss-logo";
-import { Button } from "@/components/ui/button";
+import { SyllabossEmblem, SyllabossLogo } from "@/components/syllaboss-logo";
 import { NotificationsDrawer } from "@/components/notifications-drawer";
-import { SideNavSheet } from "@/components/side-nav-sheet";
+import { SideNavSheet, type MoreItem } from "@/components/side-nav-sheet";
+import {
+  StudyTimerProvider,
+  milestoneRemaining,
+  useSharedStudyTimer,
+} from "@/components/study-timer-context";
 import { useAuth } from "@/hooks/use-auth";
-import { useProfile, useIsAdmin } from "@/lib/profile";
-import { useStudyTimer } from "@/hooks/use-study-timer";
-import { POINTS_NAME } from "@/lib/constants";
+import { useProfile } from "@/lib/profile";
 import { getUserNotifications } from "@/integrations/turso/client";
 import { CampusWrappedModal } from "@/components/scholar/campus-wrapped-modal";
 import { cn } from "@/lib/utils";
-
-/**
- * High-performance mobile scroll listener to auto-hide header & dock on downward scroll
- */
-function useMobileScrollHide() {
-  const [isScrolledDown, setIsScrolledDown] = useState(false);
-
-  useEffect(() => {
-    let lastY = typeof window !== "undefined" ? window.scrollY : 0;
-    let ticking = false;
-
-    const onScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentY = window.scrollY;
-          const delta = currentY - lastY;
-
-          // Stay visible near the top of the viewport
-          if (currentY < 45) {
-            setIsScrolledDown(false);
-          } else if (delta > 14) {
-            // Scrolling DOWN -> hide island and dock
-            setIsScrolledDown(true);
-          } else if (delta < -14) {
-            // Scrolling UP -> reveal smoothly
-            setIsScrolledDown(false);
-          }
-
-          lastY = currentY;
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  return isScrolledDown;
-}
 
 export type NavItem = {
   to: string;
@@ -77,25 +28,40 @@ export type NavItem = {
   hideOnMobile?: boolean;
 };
 
-export function AppShell({
-  nav,
-  title,
-  footer,
-  children,
-}: {
+type ShellProps = {
   nav: NavItem[];
+  /** Extra destinations shown beneath the main nav (desktop) and in "More" (mobile). */
+  secondary?: NavItem[];
   title: string;
   footer?: ReactNode;
   children: ReactNode;
-}) {
+};
+
+const spring = { type: "spring", duration: 0.42, bounce: 0.14 } as const;
+
+function isActivePath(path: string, item: Pick<NavItem, "to" | "exact">) {
+  return item.exact ? path === item.to : path === item.to || path.startsWith(`${item.to}/`);
+}
+
+export function AppShell(props: ShellProps) {
+  // The timer is mounted once here; everything else reads from context.
+  return (
+    <StudyTimerProvider>
+      <ShellFrame {...props} />
+    </StudyTimerProvider>
+  );
+}
+
+function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps) {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
-  const { data: isAdmin } = useIsAdmin();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const { seconds, isPaused, isInactive, togglePause } = useStudyTimer();
+  const reduce = useReducedMotion();
+
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showSideNav, setShowSideNav] = useState(false);
-  const [showCampusWrapped, setShowCampusWrapped] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [showWrapped, setShowWrapped] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["user-notifications", user?.id],
@@ -106,7 +72,6 @@ export function AppShell({
     },
     refetchInterval: 30000,
   });
-
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const name =
@@ -114,15 +79,9 @@ export function AppShell({
     profile?.full_name ??
     user?.email ??
     "Student";
-
   const points = profile?.points ?? 0;
+  const streak = Number(profile?.current_streak || 1);
   const isPlus = Boolean(profile?.sylla_plus);
-
-  // Format timer into MM:SS towards next 30m milestone
-  const remainingSecs = Math.max(0, 1800 - (seconds % 1800));
-  const timerMins = Math.floor(remainingSecs / 60);
-  const timerSecs = remainingSecs % 60;
-  const timerDisplay = `${String(timerMins).padStart(2, "0")}:${String(timerSecs).padStart(2, "0")}`;
 
   const isAssistantPage = path.startsWith("/dashboard/assistant");
   const isFullScreenAppPage =
@@ -130,214 +89,367 @@ export function AppShell({
     path.startsWith("/dashboard/community") ||
     path.startsWith("/dashboard/preview");
 
-  const isScrolledDown = useMobileScrollHide();
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-
   useEffect(() => {
-    const keyHandler = (e: any) => {
-      setIsKeyboardOpen(Boolean(e.detail?.isOpen));
+    const keyHandler = (e: Event) => {
+      setIsKeyboardOpen(Boolean((e as CustomEvent).detail?.isOpen));
     };
     window.addEventListener("syllaboss-keyboard-state", keyHandler);
-    return () => {
-      window.removeEventListener("syllaboss-keyboard-state", keyHandler);
-    };
+    return () => window.removeEventListener("syllaboss-keyboard-state", keyHandler);
   }, []);
+
+  // Close transient surfaces whenever the route changes.
+  useEffect(() => {
+    setShowMore(false);
+  }, [path]);
+
+  const tabs = useMemo(() => nav.filter((n) => !n.hideOnMobile).slice(0, 4), [nav]);
+  const moreItems: MoreItem[] = useMemo(
+    () =>
+      [...nav.filter((n) => !tabs.includes(n)), ...secondary].map((n) => ({
+        to: n.to,
+        label: n.label,
+        icon: n.icon,
+      })),
+    [nav, secondary, tabs],
+  );
+  const moreActive = moreItems.some((m) => isActivePath(path, { to: m.to }));
+
+  const currentSection =
+    [...nav, ...secondary].find((n) => isActivePath(path, n))?.label ?? title;
 
   return (
     <div
       className={cn(
-        "relative min-h-dvh bg-background text-foreground antialiased selection:bg-primary/20",
-        isFullScreenAppPage
-          ? "h-dvh max-h-dvh overflow-hidden flex flex-col"
-          : "min-h-screen"
+        "relative bg-background text-foreground antialiased",
+        isFullScreenAppPage ? "h-dvh max-h-dvh overflow-hidden" : "min-h-dvh",
       )}
     >
-      {/* Top Bar: Hidden on Mobile Boss AI, visible on Desktop */}
-      <header
-        className={cn(
-          "px-3 transition-all duration-300 ease-out sm:px-6 lg:px-8",
-          isFullScreenAppPage ? "shrink-0 py-2" : "sticky top-0 z-40 py-2.5",
-          isAssistantPage && "hidden md:block",
-          !isFullScreenAppPage && isScrolledDown && "-translate-y-28 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
-        )}
+      {/* ───────── Desktop sidebar ───────── */}
+      <aside
+        data-app-chrome
+        className="fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar-w)] flex-col border-r border-border bg-background lg:flex"
       >
-          <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 rounded-[1.35rem] border border-border/70 bg-card/90 px-3 py-2 shadow-[0_12px_32px_-18px_rgba(13,40,30,0.35)] backdrop-blur-md transition-all sm:px-4">
-            {/* Left: Hamburger menu icon opening side drop menu */}
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowSideNav(true)}
-                aria-label="Open navigation menu"
-                className="grid size-9 place-items-center rounded-full hover:bg-secondary text-foreground transition-all active:scale-90"
-              >
-                <Menu className="size-5" />
-              </button>
+        <div className="flex h-16 shrink-0 items-center px-6">
+          <Link to="/dashboard" aria-label="Syllaboss home" className="press">
+            <SyllabossLogo asDiv showPlusBadge={isPlus} />
+          </Link>
+        </div>
 
-            <Link to="/dashboard" className="hidden sm:inline-flex items-center">
-              <SyllabossLogo asDiv showPlusBadge={isPlus} />
-            </Link>
-          </div>
+        <nav aria-label="Primary" className="flex-1 overflow-y-auto px-3 pb-3 pt-2">
+          <LayoutGroup id="sidebar">
+            <p className="eyebrow px-3 pb-2">Menu</p>
+            <ul className="space-y-0.5">
+              {nav.map((item) => (
+                <SidebarLink key={item.to} item={item} active={isActivePath(path, item)} reduce={!!reduce} />
+              ))}
+            </ul>
 
-          {/* Right: Dynamic Island widgets cluster matching Screenshot 2 */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Study Streak Capsule - Click to Open Campus Wrapped Flex Card */}
-            <button
-              type="button"
-              onClick={() => setShowCampusWrapped(true)}
-              title="Daily Study Streak — Click to flex your Campus Wrapped stats"
-              className="group flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition-all duration-200 active:scale-95 shadow-xs border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20 cursor-pointer"
-            >
-              <Flame className="size-3.5 text-amber-500 fill-amber-500 transition-transform group-hover:scale-125" />
-              <span>{profile?.current_streak || 1} {Number(profile?.current_streak || 1) === 1 ? "Day" : "Days"}</span>
-            </button>
+            {secondary.length > 0 && (
+              <>
+                <p className="eyebrow px-3 pb-2 pt-6">Your space</p>
+                <ul className="space-y-0.5">
+                  {secondary.map((item) => (
+                    <SidebarLink key={item.to} item={item} active={isActivePath(path, item)} reduce={!!reduce} />
+                  ))}
+                </ul>
+              </>
+            )}
+          </LayoutGroup>
+        </nav>
 
-            {/* SyllaPoints Capsule - pure points, no Naira! */}
+        <div className="shrink-0 space-y-3 border-t border-border p-3">
+          <FocusCard />
+          {footer}
+          <div className="flex items-center gap-2.5 rounded-xl p-1.5">
             <Link
-              to="/dashboard/wallet"
-              className="flex items-center gap-1.5 rounded-full border border-border/70 bg-secondary/50 px-2.5 sm:px-3 py-1 text-xs font-semibold text-foreground transition-all hover:bg-secondary active:scale-95 shadow-2xs"
+              to="/dashboard/settings"
+              className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-muted"
             >
-              <Coins className="size-3.5 text-primary" />
-              <span>{points.toLocaleString()}</span>
-              <span className="hidden sm:inline text-muted-foreground font-normal text-[11px]">
-                pts
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-forest font-display text-sm font-semibold text-accent">
+                {name.charAt(0).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold leading-tight text-ink">{name}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">
+                  {profile?.course || profile?.institution || "Student"}
+                </span>
               </span>
             </Link>
-
-            {/* Notifications Bell */}
             <button
               type="button"
-              onClick={() => setShowNotifications(true)}
-              title="Notifications"
-              aria-label="View notifications"
-              className="relative grid size-8 place-items-center rounded-full border border-border/70 bg-card text-foreground transition-all active:scale-90 hover:bg-secondary"
+              onClick={() => signOut()}
+              aria-label="Sign out"
+              title="Sign out"
+              className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive active:scale-90"
             >
-              <Bell className="size-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 grid size-4 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground animate-scale-in">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
-
-            {/* Help / FAQ Icon (?) */}
-            <button
-              type="button"
-              onClick={() => setShowSideNav(true)}
-              title="Help & Info"
-              aria-label="Help and information"
-              className="grid size-8 place-items-center rounded-full border border-border/70 bg-card text-foreground transition-all active:scale-90 hover:bg-secondary"
-            >
-              <HelpCircle className="size-4" />
-            </button>
-
-            {/* User Avatar Circle */}
-            <button
-              type="button"
-              onClick={() => setShowSideNav(true)}
-              className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-xs transition-transform active:scale-90"
-              title={name}
-            >
-              {name.charAt(0).toUpperCase()}
+              <LogOut className="size-4" />
             </button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      {/* Main Content Area */}
-      <main
+      {/* ───────── Content column ───────── */}
+      <div
         className={cn(
-          "w-full transition-all duration-300",
-          isFullScreenAppPage
-            ? "mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 flex-1 min-h-0 overflow-hidden flex flex-col py-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-24"
-            : "mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 pb-28 sm:py-8 sm:pb-32"
+          "flex flex-col lg:pl-[var(--sidebar-w)]",
+          isFullScreenAppPage ? "h-dvh max-h-dvh overflow-hidden" : "min-h-dvh",
         )}
       >
-        {children}
-      </main>
+        <header
+          data-app-chrome
+          className={cn(
+            "z-30 shrink-0 border-b border-border/70 bg-background/85 backdrop-blur-md pt-safe",
+            isFullScreenAppPage ? "relative" : "sticky top-0",
+            isAssistantPage && "hidden lg:block",
+          )}
+        >
+          <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Link to="/dashboard" aria-label="Home" className="press lg:hidden">
+                <SyllabossEmblem className="size-8" />
+              </Link>
+              <h2 className="truncate font-display text-xl font-semibold tracking-tight text-ink lg:text-[1.35rem]">
+                {currentSection}
+              </h2>
+            </div>
 
-      {/* Notifications Drawer */}
-      <NotificationsDrawer
-        open={showNotifications}
-        onClose={() => setShowNotifications(false)}
-      />
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setShowWrapped(true)}
+                title="Your streak — tap to open Campus Wrapped"
+                className="press group flex h-9 items-center gap-1.5 rounded-full border border-brass/25 bg-brass-soft px-3 text-[13px] font-semibold text-brass-ink transition-colors hover:border-brass/45"
+              >
+                <Flame className="streak-flame size-4 fill-brass/70 text-brass" />
+                <span className="tnum">{streak}</span>
+                <span className="hidden sm:inline font-medium text-brass-ink/80">
+                  {streak === 1 ? "day" : "days"}
+                </span>
+              </button>
 
-      {/* Slide-over Side Drawer Menu */}
-      <SideNavSheet
-        open={showSideNav}
-        onClose={() => setShowSideNav(false)}
-      />
+              <Link
+                to="/dashboard/wallet"
+                className="press flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-semibold text-ink shadow-[0_1px_2px_rgba(11,46,34,0.05)] transition-colors hover:border-ink/20"
+              >
+                <Coins className="size-4 text-brass" />
+                <span className="tnum">{points.toLocaleString()}</span>
+                <span className="hidden sm:inline text-[11px] font-medium text-muted-foreground">pts</span>
+              </Link>
 
-      {/* Campus Wrapped & Scholar Flex Card Modal */}
+              <button
+                type="button"
+                onClick={() => setShowNotifications(true)}
+                aria-label={unreadCount ? `${unreadCount} unread notifications` : "Notifications"}
+                className="press relative grid size-9 place-items-center rounded-full border border-border bg-card text-ink transition-colors hover:border-ink/20"
+              >
+                <Bell className="size-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 animate-scale-in place-items-center rounded-full bg-brand px-1 text-[10px] font-bold text-white ring-2 ring-background">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main
+          className={cn(
+            "mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8",
+            isFullScreenAppPage
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-4"
+              : "flex-1 py-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:py-8 lg:pb-14",
+          )}
+        >
+          {children}
+        </main>
+      </div>
+
+      {/* ───────── Mobile tab bar ───────── */}
+      <nav
+        data-app-chrome
+        aria-label="Primary"
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 pb-safe backdrop-blur-xl lg:hidden",
+          isKeyboardOpen && "hidden",
+        )}
+      >
+        <LayoutGroup id="tabs">
+          <ul className="mx-auto grid max-w-md grid-cols-5 px-1.5">
+            {tabs.map((item) => (
+              <TabLink key={item.to} item={item} active={isActivePath(path, item)} />
+            ))}
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowMore(true)}
+                aria-label="More"
+                aria-haspopup="dialog"
+                className="press relative flex w-full flex-col items-center gap-0.5 pb-1.5 pt-2 text-[10.5px] font-semibold"
+              >
+                <span className="relative grid h-7 w-14 place-items-center">
+                  {moreActive && (
+                    <motion.span
+                      layoutId="tab-pill"
+                      className="absolute inset-0 rounded-full bg-accent"
+                      transition={reduce ? { duration: 0 } : spring}
+                    />
+                  )}
+                  <MoreHorizontal
+                    className={cn("relative size-[22px] transition-colors", moreActive ? "text-forest" : "text-muted-foreground")}
+                  />
+                </span>
+                <span className={moreActive ? "text-forest" : "text-muted-foreground"}>More</span>
+              </button>
+            </li>
+          </ul>
+        </LayoutGroup>
+      </nav>
+
+      <NotificationsDrawer open={showNotifications} onClose={() => setShowNotifications(false)} />
+      <SideNavSheet open={showMore} onClose={() => setShowMore(false)} items={moreItems} />
       <CampusWrappedModal
-        isOpen={showCampusWrapped}
-        onClose={() => setShowCampusWrapped(false)}
+        isOpen={showWrapped}
+        onClose={() => setShowWrapped(false)}
         userId={user?.id}
         username={profile?.username || undefined}
       />
-
-      {/* Bottom Floating Navigation Dock (Collapses immediately on keyboard open or scroll) */}
-      <aside
-        id="main-navigation-dock"
-        aria-label="Navigation dock"
-        className={cn(
-          "fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:bottom-6 inset-x-0 z-40 mx-auto w-fit max-w-[calc(100vw-1rem)] pointer-events-none px-1 transition-all duration-200 ease-out",
-          showSideNav && "hidden pointer-events-none opacity-0",
-          isKeyboardOpen && "hidden pointer-events-none opacity-0",
-          !isFullScreenAppPage && isScrolledDown && "translate-y-36 opacity-0 pointer-events-none md:translate-y-0 md:opacity-100 md:pointer-events-auto"
-        )}
-      >
-        <div className="pointer-events-auto flex items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-full p-1.5 sm:p-2 backdrop-blur-md bg-card/95 border border-border/80 shadow-[0_20px_50px_rgba(0,0,0,0.18)] transition-all duration-300">
-          {nav.map((item) => {
-            const active = item.exact
-              ? path === item.to
-              : path === item.to || path.startsWith(`${item.to}/`);
-
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "relative flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-all select-none active:scale-95",
-                  item.hideOnMobile && "hidden md:flex",
-                  active
-                    ? "bg-primary/10 text-primary font-bold shadow-xs border border-primary/25"
-                    : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
-                )}
-              >
-                <item.icon className={cn("size-4.5 sm:size-5 shrink-0 transition-transform", active ? "text-primary scale-110" : "text-muted-foreground")} />
-                <span
-                  className={cn(
-                    "transition-all font-semibold",
-                    active ? "inline" : "hidden md:inline"
-                  )}
-                >
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </aside>
     </div>
   );
 }
 
+/* ───────────────────────── Sidebar pieces ───────────────────────── */
+
+function SidebarLink({ item, active, reduce }: { item: NavItem; active: boolean; reduce: boolean }) {
+  const Icon = item.icon;
+  return (
+    <li>
+      <Link
+        to={item.to}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "press group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13.5px] font-semibold transition-colors",
+          active ? "text-ink" : "text-ink-soft hover:text-ink",
+        )}
+      >
+        {active ? (
+          <motion.span
+            layoutId="sidebar-active"
+            className="absolute inset-0 rounded-lg border border-border bg-card shadow-soft"
+            transition={reduce ? { duration: 0 } : spring}
+          />
+        ) : (
+          <span className="absolute inset-0 rounded-lg bg-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+        )}
+        {active && (
+          <motion.span
+            layoutId="sidebar-bar"
+            className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r-full bg-brand"
+            transition={reduce ? { duration: 0 } : spring}
+          />
+        )}
+        <Icon className={cn("relative size-[18px] transition-colors", active ? "text-brand" : "text-moss/80 group-hover:text-moss")} />
+        <span className="relative">{item.label}</span>
+      </Link>
+    </li>
+  );
+}
+
+function FocusCard() {
+  const timer = useSharedStudyTimer();
+  if (!timer) return null;
+  const { label, progress } = milestoneRemaining(timer.seconds);
+  const paused = timer.isPaused;
+  const C = 2 * Math.PI * 15;
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_1px_2px_rgba(11,46,34,0.04)]">
+      <div className="relative grid size-11 shrink-0 place-items-center">
+        <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
+          <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted" />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={C}
+            strokeDashoffset={C * (1 - progress)}
+            className={cn("transition-[stroke-dashoffset] duration-1000 ease-linear", paused ? "text-muted-foreground/50" : "text-brand")}
+            stroke="currentColor"
+          />
+        </svg>
+        <Timer className={cn("size-4", paused ? "text-muted-foreground" : "text-forest")} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow leading-none">{paused ? "Focus paused" : "Focus session"}</p>
+        <p className="tnum mt-1 font-display text-lg font-semibold leading-none text-ink">{label}</p>
+        <p className="mt-1 text-[11px] leading-none text-muted-foreground">to +5 pts</p>
+      </div>
+      <button
+        type="button"
+        onClick={timer.togglePause}
+        aria-label={paused ? "Resume focus timer" : "Pause focus timer"}
+        className="press grid size-8 shrink-0 place-items-center rounded-full bg-muted text-ink transition-colors hover:bg-surface-container-high"
+      >
+        {timer.manualPause ? <Play className="size-3.5 fill-current" /> : <Pause className="size-3.5 fill-current" />}
+      </button>
+    </div>
+  );
+}
+
+/* ───────────────────────── Mobile tab ───────────────────────── */
+
+function TabLink({ item, active }: { item: NavItem; active: boolean }) {
+  const reduce = useReducedMotion();
+  const Icon = item.icon;
+  return (
+    <li>
+      <Link
+        to={item.to}
+        aria-current={active ? "page" : undefined}
+        className="press relative flex flex-col items-center gap-0.5 pb-1.5 pt-2 text-[10.5px] font-semibold"
+      >
+        <span className="relative grid h-7 w-14 place-items-center">
+          {active && (
+            <motion.span
+              layoutId="tab-pill"
+              className="absolute inset-0 rounded-full bg-accent"
+              transition={reduce ? { duration: 0 } : spring}
+            />
+          )}
+          <Icon className={cn("relative size-[22px] transition-colors", active ? "text-forest" : "text-muted-foreground")} />
+        </span>
+        <span className={cn("transition-colors", active ? "text-forest" : "text-muted-foreground")}>{item.label}</span>
+      </Link>
+    </li>
+  );
+}
+
+/* ───────────────────────── Shared page primitives ───────────────────────── */
+
 export function PageHeader({
   eyebrow,
   title,
+  description,
   children,
 }: {
   eyebrow: string;
   title: string;
+  description?: string;
   children?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p className="font-mono text-xs uppercase tracking-wider text-primary font-semibold">{eyebrow}</p>
-        <h1 className="mt-1.5 font-display text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8">
+      <div className="min-w-0">
+        <p className="eyebrow text-brand">{eyebrow}</p>
+        <h1 className="mt-1.5 font-display text-[1.75rem] font-semibold leading-[1.1] tracking-tight text-ink sm:text-4xl">
           {title}
         </h1>
+        {description && (
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">{description}</p>
+        )}
       </div>
       {children}
     </div>
@@ -356,35 +468,34 @@ export function StatCard({
   icon: LucideIcon;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-xs backdrop-blur-sm transition-all hover:shadow-soft">
-      <div className="flex items-center justify-between text-muted-foreground">
-        <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
-        <div className="rounded-lg bg-primary/10 p-2 text-primary">
+    <div className="lift rounded-2xl border border-border bg-card p-5 shadow-soft">
+      <div className="flex items-center justify-between">
+        <span className="eyebrow">{label}</span>
+        <span className="grid size-8 place-items-center rounded-lg bg-muted text-moss">
           <Icon className="size-4" />
-        </div>
+        </span>
       </div>
-      <p className="mt-3 font-display text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
+      <p className="tnum mt-3 font-display text-[1.75rem] font-semibold leading-none tracking-tight text-ink sm:text-3xl">
         {value}
       </p>
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-2 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const tone =
-    status === "verified" || status === "paid"
-      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
-      : status === "rejected"
-      ? "bg-destructive/10 text-destructive border-destructive/20"
-      : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20";
+  const ok = status === "verified" || status === "paid";
+  const bad = status === "rejected";
   return (
     <span
       className={cn(
-        "rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
-        tone
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize",
+        ok && "border-brand/20 bg-brand/10 text-brand-deep",
+        bad && "border-destructive/20 bg-destructive/10 text-destructive",
+        !ok && !bad && "border-brass/25 bg-brass-soft text-brass-ink",
       )}
     >
+      <span className={cn("size-1.5 rounded-full", ok ? "bg-brand" : bad ? "bg-destructive" : "bg-brass")} />
       {status}
     </span>
   );

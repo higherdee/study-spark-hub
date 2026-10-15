@@ -35,6 +35,7 @@ import {
 } from "@/lib/constants";
 import { NIGERIAN_BANKS, type NigerianBank } from "@/lib/nigerian-banks";
 import { useProfile } from "@/lib/profile";
+import { cn } from "@/lib/utils";
 import { requestWithdrawalServerFn, resolveBankAccountServerFn } from "@/lib/upload.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard/wallet")({

@@ -1,202 +1,320 @@
-import { useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import {
-  X,
-  LayoutDashboard,
-  BookOpen,
-  Bot,
-  Upload,
-  FileStack,
-  Wallet,
-  Trophy,
-  Settings,
-  Shield,
+  AnimatePresence,
+  motion,
+  useDragControls,
+  useReducedMotion,
+  type PanInfo,
+} from "motion/react";
+import {
+  ChevronRight,
+  Coins,
+  Flame,
   HelpCircle,
   LogOut,
+  Shield,
   Sparkles,
-  ChevronRight,
+  X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { SyllabossLogo } from "@/components/syllaboss-logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile, useIsAdmin } from "@/lib/profile";
 import { PLAN_NAME, POINTS_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
+export type MoreItem = { to: string; label: string; icon: LucideIcon; hint?: string };
+
 interface SideNavSheetProps {
   open: boolean;
   onClose: () => void;
+  /** Destinations that don't fit on the tab bar. */
+  items?: MoreItem[];
 }
 
-export function SideNavSheet({ open, onClose }: SideNavSheetProps) {
+const SHEET_EASE = [0.32, 0.72, 0, 1] as const;
+
+/**
+ * Mobile "More" sheet. Slides up from the tab bar, can be dragged down to
+ * dismiss (velocity-aware), and closes on backdrop tap or Escape.
+ */
+export function SideNavSheet({ open, onClose, items = [] }: SideNavSheetProps) {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
-  const [showFaqModal, setShowFaqModal] = useState(false);
-  const routerState = useRouterState();
-  const currentPath = routerState.location.pathname;
+  const [showFaq, setShowFaq] = useState(false);
+  const reduce = useReducedMotion();
+  const dragControls = useDragControls();
 
-  if (!open) return null;
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onClose]);
 
   const name = profile?.full_name || user?.email?.split("@")[0] || "Student";
   const initial = name.charAt(0).toUpperCase();
 
-  const navItems = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "University Library", href: "/dashboard/library", icon: BookOpen },
-    { label: "Boss AI Study Suite", href: "/dashboard/assistant", icon: Bot },
-    { label: "Upload Material", href: "/dashboard/upload", icon: Upload },
-    { label: "My Uploads & Notes", href: "/dashboard/materials", icon: FileStack },
-    { label: "Wallet & Points", href: "/dashboard/wallet", icon: Wallet },
-    { label: "Campus Leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
-    { label: "Settings", href: "/dashboard/settings", icon: Settings },
-  ];
+  const onDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.offset.y > 110 || info.velocity.y > 520) onClose();
+  };
 
   return (
-    <div className="fixed inset-0 z-[100] flex">
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className="fixed inset-0 z-[95] bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
-      />
-
-      {/* Standard App Navigation Drawer */}
-      <div className="relative z-[100] flex w-72 sm:w-80 max-w-[85vw] shrink-0 flex-col justify-between bg-white text-[#151d1a] shadow-2xl animate-in slide-in-from-left duration-250 border-r border-[#dce5df]">
-        <div className="flex flex-col flex-1 min-h-0">
-          {/* Drawer Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-[#e7f0eb]">
-            <SyllabossLogo />
-            <button
+    <>
+      <AnimatePresence>
+        {open && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center lg:p-6">
+            <motion.div
+              key="scrim"
+              className="absolute inset-0 bg-ink/45 backdrop-blur-[2px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reduce ? 0 : 0.22 }}
               onClick={onClose}
-              className="grid size-8 place-items-center rounded-lg text-[#5a6660] hover:bg-[#edf6f0] hover:text-[#00110a] transition-colors"
-              aria-label="Close menu"
+            />
+
+            <motion.div
+              key="panel"
+              role="dialog"
+              aria-modal="true"
+              aria-label="More"
+              className="relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-border bg-background shadow-pop lg:rounded-[1.75rem]"
+              initial={{ y: reduce ? 0 : "100%", opacity: reduce ? 0 : 1 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: reduce ? 0 : "100%", opacity: reduce ? 0 : 1 }}
+              transition={{ duration: reduce ? 0.01 : 0.42, ease: SHEET_EASE }}
+              drag="y"
+              dragControls={dragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0.04, bottom: 0.6 }}
+              onDragEnd={onDragEnd}
             >
-              <X className="size-5" />
-            </button>
-          </div>
-
-          {/* User Account Snippet */}
-          <div className="p-4 bg-[#edf6f0]/60 border-b border-[#e7f0eb]">
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[#0d281e] text-[#c6ebd9] font-bold text-sm shadow-xs">
-                {initial}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-[#00110a]">{name}</p>
-                <p className="truncate text-xs text-[#5a6660]">{profile?.institution || "Nigerian University"}</p>
-              </div>
-            </div>
-
-            <div className="mt-2.5 pt-2 flex items-center justify-between text-xs border-t border-[#dce5df]/60">
-              <span className="text-[#5a6660]">Points Balance:</span>
-              <span className="font-bold text-[#1b7a4e]">{profile?.points ?? 0} {POINTS_NAME}</span>
-            </div>
-
-            {profile?.sylla_plus && (
-              <div className="mt-2 flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 w-fit">
-                <Sparkles className="size-3" /> {PLAN_NAME} Active
-              </div>
-            )}
-          </div>
-
-          {/* Main Navigation List - Basic Uniform Generic Drawer */}
-          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  onClick={onClose}
-                  className="flex items-center gap-3.5 rounded-lg px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                >
-                  <Icon className="size-4 shrink-0 text-slate-500" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-
-            <div className="my-2 border-t border-slate-200" />
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowFaqModal(true);
-              }}
-              className="w-full flex items-center gap-3.5 rounded-lg px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors text-left"
-            >
-              <HelpCircle className="size-4 text-slate-500 shrink-0" />
-              <span>Help & FAQs</span>
-            </button>
-
-            {isAdmin && (
-              <Link
-                to="/admin"
-                onClick={onClose}
-                className="flex items-center gap-3.5 rounded-lg px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              {/* Grab handle */}
+              <div
+                className="flex shrink-0 cursor-grab touch-none justify-center pt-2.5 pb-1 active:cursor-grabbing"
+                onPointerDown={(e) => dragControls.start(e)}
               >
-                <Shield className="size-4 text-slate-500 shrink-0" />
-                <span>Admin Control</span>
-              </Link>
-            )}
-          </nav>
-        </div>
+                <span className="h-1 w-10 rounded-full bg-border" />
+              </div>
 
-        {/* Drawer Footer */}
-        <div className="p-3 border-t border-[#e7f0eb] space-y-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onClose();
-              signOut();
-            }}
-            className="w-full justify-start gap-2.5 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 text-xs font-semibold h-9"
-          >
-            <LogOut className="size-4" /> Sign out
-          </Button>
-          <p className="px-2 text-[10px] text-[#5a6660] font-mono">
-            Syllaboss v2.4 · Academic Excellence
-          </p>
-        </div>
+              <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                {/* Identity */}
+                <div className="flex items-center gap-3 py-3">
+                  <div className="grid size-12 shrink-0 place-items-center rounded-full bg-forest font-display text-lg font-semibold text-accent">
+                    {initial}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-lg font-semibold leading-tight text-ink">
+                      {name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {profile?.institution || "Nigerian University"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close"
+                    className="grid size-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:scale-90"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Stat
+                    icon={<Coins className="size-4 text-brass" />}
+                    label={POINTS_NAME}
+                    value={(profile?.points ?? 0).toLocaleString()}
+                  />
+                  <Stat
+                    icon={<Flame className="size-4 text-brass" />}
+                    label="Day streak"
+                    value={String(profile?.current_streak || 1)}
+                  />
+                </div>
+
+                {profile?.sylla_plus && (
+                  <div className="mt-2.5 flex w-fit items-center gap-1.5 rounded-full border border-brass/30 bg-brass-soft px-3 py-1 text-[11px] font-semibold text-brass-ink">
+                    <Sparkles className="size-3" /> {PLAN_NAME} active
+                  </div>
+                )}
+
+                {/* Destinations */}
+                <ul className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
+                  {items.map((item, i) => (
+                    <li
+                      key={item.to}
+                      className={cn(i > 0 && "border-t border-border")}
+                      style={{
+                        animation: reduce ? undefined : `rise 0.4s var(--ease-out) ${60 + i * 35}ms both`,
+                      }}
+                    >
+                      <Link
+                        to={item.to}
+                        onClick={onClose}
+                        className="group flex items-center gap-3.5 px-4 py-3.5 transition-colors active:bg-muted hover:bg-muted/60"
+                      >
+                        <span className="grid size-9 place-items-center rounded-xl bg-muted text-moss transition-colors group-hover:bg-accent">
+                          <item.icon className="size-[18px]" />
+                        </span>
+                        <span className="flex-1 text-sm font-semibold text-foreground">
+                          {item.label}
+                        </span>
+                        <ChevronRight className="size-4 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+
+                <ul className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setShowFaq(true)}
+                      className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/60 active:bg-muted"
+                    >
+                      <span className="grid size-9 place-items-center rounded-xl bg-muted text-moss">
+                        <HelpCircle className="size-[18px]" />
+                      </span>
+                      <span className="flex-1 text-sm font-semibold text-foreground">
+                        Help &amp; FAQs
+                      </span>
+                      <ChevronRight className="size-4 text-muted-foreground/70" />
+                    </button>
+                  </li>
+                  {isAdmin && (
+                    <li className="border-t border-border">
+                      <Link
+                        to="/admin"
+                        onClick={onClose}
+                        className="group flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-muted/60 active:bg-muted"
+                      >
+                        <span className="grid size-9 place-items-center rounded-xl bg-muted text-moss">
+                          <Shield className="size-[18px]" />
+                        </span>
+                        <span className="flex-1 text-sm font-semibold text-foreground">
+                          Admin console
+                        </span>
+                        <ChevronRight className="size-4 text-muted-foreground/70" />
+                      </Link>
+                    </li>
+                  )}
+                </ul>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    signOut();
+                  }}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 py-3 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10 active:scale-[0.98]"
+                >
+                  <LogOut className="size-4" /> Sign out
+                </button>
+
+                <p className="mt-4 text-center text-[11px] text-muted-foreground">
+                  Syllaboss · Study with direction
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <FaqModal open={showFaq} onClose={() => setShowFaq(false)} />
+    </>
+  );
+}
+
+function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card px-4 py-3">
+      <div className="flex items-center gap-1.5">
+        {icon}
+        <span className="eyebrow">{label}</span>
       </div>
+      <p className="tnum mt-1 font-display text-2xl font-semibold leading-none text-ink">{value}</p>
+    </div>
+  );
+}
 
-      {/* FAQs Modal */}
-      {showFaqModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-[#dce5df]">
-            <div className="flex items-center justify-between border-b border-[#e7f0eb] pb-3">
-              <h3 className="font-display text-lg font-bold text-[#00110a]">Frequently Asked Questions</h3>
+const FAQS: Array<[string, string]> = [
+  [
+    "How do I earn SyllaPoints?",
+    "You earn +25 points per verified upload, +5 points per 30 minutes studying on the site, +5 points when a peer downloads your material, and +2 points per view.",
+  ],
+  [
+    "Can I download files directly?",
+    "Yes. Every verified material has a direct Download button that saves the document straight to your phone or laptop.",
+  ],
+  [
+    "What is the minimum withdrawal?",
+    "The minimum withdrawal is 17,500 SyllaPoints, paid directly to your Nigerian bank account.",
+  ],
+  [
+    "How does Boss AI work?",
+    "Boss AI is powered by Google Gemini. Preview study materials, chat with documents, highlight text to explain, send voice notes and generate practice quizzes.",
+  ],
+];
+
+function FaqModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const reduce = useReducedMotion();
+  return (
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div
+            className="absolute inset-0 bg-ink/50 backdrop-blur-[2px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            onClick={onClose}
+          />
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Frequently asked questions"
+            className="relative w-full max-w-lg rounded-3xl border border-border bg-card p-6 shadow-pop"
+            initial={{ opacity: 0, scale: reduce ? 1 : 0.96, y: reduce ? 0 : 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: reduce ? 1 : 0.97 }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="font-display text-xl font-semibold text-ink">
+                Frequently asked questions
+              </h3>
               <button
-                onClick={() => setShowFaqModal(false)}
-                className="grid size-7 place-items-center rounded-full bg-[#edf6f0] text-[#5a6660] hover:text-[#00110a]"
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground transition-colors hover:text-ink active:scale-90"
               >
                 <X className="size-4" />
               </button>
             </div>
-
-            <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-3.5 text-xs leading-relaxed text-[#424844] pr-1">
-              <div>
-                <strong className="text-[#00110a] text-sm block">How do I earn SyllaPoints?</strong>
-                You earn +25 points per verified upload, +5 points per 30 minutes studying on the site, +5 points when a peer downloads your material, and +2 points per view.
-              </div>
-              <div>
-                <strong className="text-[#00110a] text-sm block">Can I download files directly?</strong>
-                Yes! Every verified material has a direct Download button that saves the document straight to your phone or laptop storage.
-              </div>
-              <div>
-                <strong className="text-[#00110a] text-sm block">What is the minimum withdrawal?</strong>
-                The minimum withdrawal is 17,500 SyllaPoints, which can be withdrawn directly to your Nigerian bank account.
-              </div>
-              <div>
-                <strong className="text-[#00110a] text-sm block">How does Boss AI work?</strong>
-                Boss AI is powered by Google Gemini. You can preview study materials, split the screen to chat with documents in real time, highlight text to explain, send voicenotes, and generate practice quizzes.
-              </div>
+            <div className="mt-4 max-h-[60vh] space-y-4 overflow-y-auto pr-1">
+              {FAQS.map(([q, a]) => (
+                <div key={q}>
+                  <p className="text-sm font-semibold text-ink">{q}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-soft">{a}</p>
+                </div>
+              ))}
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
-    </div>
+    </AnimatePresence>
   );
 }

@@ -137,9 +137,9 @@ function CurriculumPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#f6faf7] text-[#00110a] font-sans">
+    <div className="min-h-screen bg-surface-container-low text-ink font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-[#e1eae3] bg-[#f6faf7]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-surface-container-high bg-surface-container-low/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <SyllabossLogo />
           <Button asChild variant="ghost" size="sm" className="gap-2 text-xs font-semibold rounded-full">
@@ -154,28 +154,28 @@ function CurriculumPage() {
       {/* Hero Header */}
       <section className="mx-auto max-w-6xl px-4 pt-12 pb-8 sm:px-6 sm:pt-16">
         <div className="text-center max-w-3xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#edf6f0] border border-[#d6e3db] text-xs font-semibold text-[#155e3e]">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-xs font-semibold text-brand-deep">
             <Layers className="size-3.5" />
             <span>NUC CCMAS National Benchmarks</span>
           </div>
-          <h1 className="font-display text-3xl sm:text-5xl font-extrabold tracking-tight text-[#00110a]">
+          <h1 className="font-display text-3xl sm:text-5xl font-extrabold tracking-tight text-ink">
             Nigerian University Academic Curriculum & Syllabus Index
           </h1>
-          <p className="text-sm text-[#3f4d45] leading-relaxed">
+          <p className="text-sm text-ink-soft leading-relaxed">
             Standard syllabus topics, theoretical concepts, and core reading references approved for undergraduate degrees across federal, state, and private Nigerian universities.
           </p>
         </div>
 
         {/* Filter Bar */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-3.5 rounded-2xl border border-[#d2e0d7] shadow-xs">
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-3.5 rounded-2xl border border-border shadow-xs">
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-2.5 size-4 text-[#526359]" />
+            <Search className="absolute left-3 top-2.5 size-4 text-ink-soft" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search course code or topic..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-[#e1eae3] text-xs focus:outline-none focus:border-[#155e3e]"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-surface-container-high text-xs focus:outline-none focus:border-brand-deep"
             />
           </div>
 
@@ -186,8 +186,8 @@ function CurriculumPage() {
                 onClick={() => setSelectedFaculty(fac)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                   selectedFaculty === fac
-                    ? "bg-[#0d281e] text-white shadow-xs"
-                    : "bg-[#edf6f0] text-[#3f4d45] hover:bg-[#dcefe4]"
+                    ? "bg-forest text-white shadow-xs"
+                    : "bg-muted text-ink-soft hover:bg-[#dcefe4]"
                 }`}
               >
                 {fac}
@@ -203,35 +203,35 @@ function CurriculumPage() {
           {filteredCourses.map((c) => (
             <article
               key={c.code}
-              className="rounded-3xl border border-[#d2e0d7] bg-white p-6 shadow-xs flex flex-col justify-between hover:border-[#155e3e] transition-all"
+              className="rounded-3xl border border-border bg-white p-6 shadow-xs flex flex-col justify-between hover:border-brand-deep transition-all"
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-[#155e3e] px-2.5 py-0.5 rounded-md bg-[#edf6f0] border border-[#d6e3db]">
+                  <span className="font-mono text-sm font-bold text-brand-deep px-2.5 py-0.5 rounded-md bg-muted border border-border">
                     {c.code}
                   </span>
-                  <span className="text-[11px] font-semibold text-[#526359]">{c.level}</span>
+                  <span className="text-[11px] font-semibold text-ink-soft">{c.level}</span>
                 </div>
 
                 <div>
-                  <h2 className="font-display text-lg font-bold text-[#00110a] leading-snug">
+                  <h2 className="font-display text-lg font-bold text-ink leading-snug">
                     {c.title}
                   </h2>
-                  <p className="text-[11px] text-[#526359] mt-0.5 font-medium">{c.faculty}</p>
+                  <p className="text-[11px] text-ink-soft mt-0.5 font-medium">{c.faculty}</p>
                 </div>
 
-                <p className="text-xs text-[#3f4d45] leading-relaxed">
+                <p className="text-xs text-ink-soft leading-relaxed">
                   {c.overview}
                 </p>
 
                 <div className="space-y-2 pt-2 border-t border-[#f0f4f1]">
-                  <span className="text-[11px] font-bold text-[#00110a] block uppercase tracking-wider">
+                  <span className="text-[11px] font-bold text-ink block uppercase tracking-wider">
                     Core Syllabus Units:
                   </span>
-                  <ul className="space-y-1 text-xs text-[#526359]">
+                  <ul className="space-y-1 text-xs text-ink-soft">
                     {c.topics.slice(0, 3).map((t) => (
                       <li key={t} className="flex items-start gap-1.5">
-                        <CheckCircle2 className="size-3.5 text-[#155e3e] shrink-0 mt-0.5" />
+                        <CheckCircle2 className="size-3.5 text-brand-deep shrink-0 mt-0.5" />
                         <span>{t}</span>
                       </li>
                     ))}
@@ -239,17 +239,17 @@ function CurriculumPage() {
                 </div>
 
                 <div className="pt-2 border-t border-[#f0f4f1]">
-                  <span className="text-[11px] font-bold text-[#00110a] block uppercase tracking-wider mb-1">
+                  <span className="text-[11px] font-bold text-ink block uppercase tracking-wider mb-1">
                     Recommended Reading:
                   </span>
-                  <p className="text-[11px] text-[#526359] italic">
+                  <p className="text-[11px] text-ink-soft italic">
                     {c.recommendedBooks[0]}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[#e1eae3]">
-                <Button asChild size="sm" className="w-full rounded-2xl bg-[#edf6f0] hover:bg-[#dcefe4] text-[#0d281e] font-bold text-xs gap-1.5 shadow-none">
+              <div className="mt-6 pt-4 border-t border-surface-container-high">
+                <Button asChild size="sm" className="w-full rounded-2xl bg-muted hover:bg-[#dcefe4] text-forest font-bold text-xs gap-1.5 shadow-none">
                   <Link to="/materials" search={{ q: c.code }}>
                     <span>Find {c.code} Lecture Notes</span>
                     <ArrowRight className="size-3.5" />
@@ -262,13 +262,13 @@ function CurriculumPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#e1eae3] bg-white py-8 text-center text-xs text-[#526359]">
+      <footer className="border-t border-surface-container-high bg-white py-8 text-center text-xs text-ink-soft">
         <div className="mx-auto max-w-5xl px-4 flex flex-wrap justify-center gap-6 mb-3">
-          <Link to="/privacy" className="hover:text-[#00110a]">Privacy Policy</Link>
-          <Link to="/terms" className="hover:text-[#00110a]">Terms of Service</Link>
-          <Link to="/about" className="hover:text-[#00110a]">About Us</Link>
-          <Link to="/contact" className="hover:text-[#00110a]">Contact Us</Link>
-          <Link to="/curriculum" className="font-semibold text-[#00110a]">Academic Curriculum</Link>
+          <Link to="/privacy" className="hover:text-ink">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-ink">Terms of Service</Link>
+          <Link to="/about" className="hover:text-ink">About Us</Link>
+          <Link to="/contact" className="hover:text-ink">Contact Us</Link>
+          <Link to="/curriculum" className="font-semibold text-ink">Academic Curriculum</Link>
         </div>
         <p>© 2026 Syllaboss Technologies. All rights reserved.</p>
       </footer>

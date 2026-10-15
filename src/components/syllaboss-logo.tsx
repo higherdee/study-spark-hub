@@ -73,7 +73,7 @@ export function SyllabossLogo({
             Syllaboss
           </span>
           {showPlusBadge && (
-            <span className="px-1.5 py-0.5 rounded bg-[#f3e8c9] text-[#71540f] text-[10px] tracking-wider uppercase font-bold shadow-[0_1px_2px_rgba(113,84,15,0.08)]">
+            <span className="px-1.5 py-0.5 rounded bg-brass-soft text-brass-ink text-[10px] tracking-wider uppercase font-bold shadow-[0_1px_2px_rgba(113,84,15,0.08)]">
               SyllaPlus
             </span>
           )}
@@ -112,22 +112,22 @@ export function PageBreathingLoader({
   message?: string;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f3fbf6] transition-all duration-300">
-      <div className="relative flex flex-col items-center gap-4">
-        {/* Breathing aura blur */}
-        <div className="absolute -inset-8 rounded-full bg-secondary-fixed/40 blur-2xl animate-pulse pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col items-center">
-          <div className="animate-breathe-zoom">
-            <SyllabossEmblem className="size-20 sm:size-24 drop-shadow-md" />
-          </div>
-          <span className="mt-4 font-headline text-2xl font-semibold tracking-tight text-primary">
-            Syllaboss
-          </span>
-          <p className="mt-2 text-xs font-medium text-secondary animate-pulse tracking-wide">
-            {message}
-          </p>
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background"
+    >
+      <div className="flex flex-col items-center">
+        <div className="animate-breathe-zoom">
+          <SyllabossEmblem className="size-20 sm:size-24" />
         </div>
+        <span className="mt-5 font-headline text-2xl font-semibold tracking-tight text-ink">
+          Syllaboss
+        </span>
+        <div className="mt-5 h-[3px] w-28 overflow-hidden rounded-full bg-border">
+          <div className="skeleton h-full w-full !rounded-full !bg-brand/70" style={{ animationDuration: "1.2s" }} />
+        </div>
+        <p className="mt-3 text-xs font-medium tracking-wide text-muted-foreground">{message}</p>
       </div>
     </div>
   );

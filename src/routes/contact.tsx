@@ -41,9 +41,9 @@ function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6faf7] text-[#00110a] font-sans">
+    <div className="min-h-screen bg-surface-container-low text-ink font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-[#e1eae3] bg-[#f6faf7]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-surface-container-high bg-surface-container-low/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
           <SyllabossLogo />
           <Button asChild variant="ghost" size="sm" className="gap-2 text-xs font-semibold rounded-full">
@@ -58,14 +58,14 @@ function ContactPage() {
       {/* Main Content */}
       <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="mb-12 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#edf6f0] border border-[#d6e3db] text-xs font-semibold text-[#155e3e] mb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-border text-xs font-semibold text-brand-deep mb-3">
             <HelpCircle className="size-3.5" />
             <span>24/7 Academic Support</span>
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-[#00110a]">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-ink">
             Get In Touch With Us
           </h1>
-          <p className="mt-2 text-sm text-[#526359] max-w-xl mx-auto">
+          <p className="mt-2 text-sm text-ink-soft max-w-xl mx-auto">
             Have questions about study materials, SyllaPoints withdrawals, campus ambassadorship, or academic partnerships? We're here to help.
           </p>
         </div>
@@ -73,48 +73,48 @@ function ContactPage() {
         <div className="grid gap-8 lg:grid-cols-5 items-start">
           {/* Contact Details Card */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="rounded-3xl border border-[#d2e0d7] bg-white p-6 sm:p-7 shadow-xs space-y-6">
-              <h2 className="font-display text-lg font-bold text-[#00110a]">
+            <div className="rounded-3xl border border-border bg-white p-6 sm:p-7 shadow-xs space-y-6">
+              <h2 className="font-display text-lg font-bold text-ink">
                 Direct Contact Desks
               </h2>
 
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="size-10 rounded-2xl bg-[#edf6f0] text-[#155e3e] flex items-center justify-center shrink-0">
+                  <div className="size-10 rounded-2xl bg-muted text-brand-deep flex items-center justify-center shrink-0">
                     <Mail className="size-5" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-[#00110a]">General & Student Help</h3>
-                    <p className="text-xs text-[#526359]">support@syllaboss.org</p>
-                    <p className="text-[11px] text-[#526359] mt-0.5">Response within 24 hours</p>
+                    <h3 className="text-xs font-bold text-ink">General & Student Help</h3>
+                    <p className="text-xs text-ink-soft">support@syllaboss.org</p>
+                    <p className="text-[11px] text-ink-soft mt-0.5">Response within 24 hours</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="size-10 rounded-2xl bg-[#edf6f0] text-[#155e3e] flex items-center justify-center shrink-0">
+                  <div className="size-10 rounded-2xl bg-muted text-brand-deep flex items-center justify-center shrink-0">
                     <MessageSquare className="size-5" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-[#00110a]">Campus Ambassadors & Reps</h3>
-                    <p className="text-xs text-[#526359]">campus@syllaboss.org</p>
-                    <p className="text-[11px] text-[#526359] mt-0.5">Faculty liaisons & university leads</p>
+                    <h3 className="text-xs font-bold text-ink">Campus Ambassadors & Reps</h3>
+                    <p className="text-xs text-ink-soft">campus@syllaboss.org</p>
+                    <p className="text-[11px] text-ink-soft mt-0.5">Faculty liaisons & university leads</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="size-10 rounded-2xl bg-[#edf6f0] text-[#155e3e] flex items-center justify-center shrink-0">
+                  <div className="size-10 rounded-2xl bg-muted text-brand-deep flex items-center justify-center shrink-0">
                     <MapPin className="size-5" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-[#00110a]">Headquarters & Innovation Hub</h3>
-                    <p className="text-xs text-[#526359]">Syllaboss Technologies Ltd.</p>
-                    <p className="text-[11px] text-[#526359]">Lagos & Abuja, Nigeria</p>
+                    <h3 className="text-xs font-bold text-ink">Headquarters & Innovation Hub</h3>
+                    <p className="text-xs text-ink-soft">Syllaboss Technologies Ltd.</p>
+                    <p className="text-[11px] text-ink-soft">Lagos & Abuja, Nigeria</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#f6faf7] border border-[#e1eae3] text-xs text-[#3f4d45] space-y-1">
-                <span className="font-bold text-[#00110a] block">Instant Study Chat:</span>
+              <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-container-high text-xs text-ink-soft space-y-1">
+                <span className="font-bold text-ink block">Instant Study Chat:</span>
                 <p>Registered students can use Boss AI inside the dashboard for real-time syllabus inquiry and study problem solving.</p>
               </div>
             </div>
@@ -122,14 +122,14 @@ function ContactPage() {
 
           {/* Contact Form */}
           <div className="lg:col-span-3">
-            <div className="rounded-3xl border border-[#d2e0d7] bg-white p-6 sm:p-8 shadow-xs">
+            <div className="rounded-3xl border border-border bg-white p-6 sm:p-8 shadow-xs">
               {submitted ? (
                 <div className="py-12 text-center space-y-3">
-                  <div className="size-14 rounded-full bg-[#edf6f0] text-[#155e3e] flex items-center justify-center mx-auto">
+                  <div className="size-14 rounded-full bg-muted text-brand-deep flex items-center justify-center mx-auto">
                     <CheckCircle2 className="size-8" />
                   </div>
-                  <h3 className="font-display text-xl font-bold text-[#00110a]">Message Received</h3>
-                  <p className="text-xs text-[#526359] max-w-sm mx-auto">
+                  <h3 className="font-display text-xl font-bold text-ink">Message Received</h3>
+                  <p className="text-xs text-ink-soft max-w-sm mx-auto">
                     A representative from our academic support team will review your message and reply to <strong>{email}</strong> shortly.
                   </p>
                   <Button
@@ -146,70 +146,70 @@ function ContactPage() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <h2 className="font-display text-lg font-bold text-[#00110a]">
+                  <h2 className="font-display text-lg font-bold text-ink">
                     Send a Support Request
                   </h2>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#00110a]">Your Full Name *</label>
+                      <label className="text-xs font-semibold text-ink">Your Full Name *</label>
                       <Input
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Chinua Achebe"
                         required
-                        className="rounded-xl border-[#d6e3db] text-xs"
+                        className="rounded-xl border-border text-xs"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#00110a]">Email Address *</label>
+                      <label className="text-xs font-semibold text-ink">Email Address *</label>
                       <Input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="e.g. student@unilag.edu.ng"
                         required
-                        className="rounded-xl border-[#d6e3db] text-xs"
+                        className="rounded-xl border-border text-xs"
                       />
                     </div>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#00110a]">University / Institution</label>
+                      <label className="text-xs font-semibold text-ink">University / Institution</label>
                       <Input
                         value={institution}
                         onChange={(e) => setInstitution(e.target.value)}
                         placeholder="e.g. University of Lagos (UNILAG)"
-                        className="rounded-xl border-[#d6e3db] text-xs"
+                        className="rounded-xl border-border text-xs"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#00110a]">Inquiry Topic</label>
+                      <label className="text-xs font-semibold text-ink">Inquiry Topic</label>
                       <Input
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
                         placeholder="e.g. Material verification, SyllaPoints, Bug"
-                        className="rounded-xl border-[#d6e3db] text-xs"
+                        className="rounded-xl border-border text-xs"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[#00110a]">Message *</label>
+                    <label className="text-xs font-semibold text-ink">Message *</label>
                     <Textarea
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Describe your question, request, or issue with as much detail as possible..."
                       rows={5}
                       required
-                      className="rounded-xl border-[#d6e3db] text-xs"
+                      className="rounded-xl border-border text-xs"
                     />
                   </div>
 
                   <Button
                     type="submit"
-                    className="w-full sm:w-auto px-6 h-11 rounded-full bg-[#0d281e] hover:bg-[#00110a] text-white text-xs font-semibold gap-2 shadow-xs"
+                    className="w-full sm:w-auto px-6 h-11 rounded-full bg-forest hover:bg-ink text-white text-xs font-semibold gap-2 shadow-xs"
                   >
                     <Send className="size-4" />
                     <span>Send Message</span>
@@ -222,13 +222,13 @@ function ContactPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#e1eae3] bg-white py-8 text-center text-xs text-[#526359]">
+      <footer className="border-t border-surface-container-high bg-white py-8 text-center text-xs text-ink-soft">
         <div className="mx-auto max-w-5xl px-4 flex flex-wrap justify-center gap-6 mb-3">
-          <Link to="/privacy" className="hover:text-[#00110a]">Privacy Policy</Link>
-          <Link to="/terms" className="hover:text-[#00110a]">Terms of Service</Link>
-          <Link to="/about" className="hover:text-[#00110a]">About Us</Link>
-          <Link to="/contact" className="font-semibold text-[#00110a]">Contact Us</Link>
-          <Link to="/curriculum" className="hover:text-[#00110a]">Academic Curriculum</Link>
+          <Link to="/privacy" className="hover:text-ink">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-ink">Terms of Service</Link>
+          <Link to="/about" className="hover:text-ink">About Us</Link>
+          <Link to="/contact" className="font-semibold text-ink">Contact Us</Link>
+          <Link to="/curriculum" className="hover:text-ink">Academic Curriculum</Link>
         </div>
         <p>© 2026 Syllaboss Technologies. All rights reserved.</p>
       </footer>
