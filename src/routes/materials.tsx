@@ -99,17 +99,26 @@ function MaterialsPage() {
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <h1 className="font-display text-4xl font-semibold">Find study materials</h1>
-        <p className="mt-2 text-muted-foreground">Every file here was checked to match its course and title.</p>
+        <div>
+          <p className="eyebrow">Academic Repository</p>
+          <h1 className="mt-1 font-display text-3xl sm:text-4xl font-medium tracking-tight text-ink">
+            University Study Repository
+          </h1>
+          <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
+            Verified course notes, past questions, and lecture handouts authenticated for Nigerian campuses.
+          </p>
+        </div>
+
         <MaterialSearchBar key={q} initial={q} className="mt-6" />
-        <div className="mt-4 flex flex-wrap gap-3">
+
+        <div className="mt-4 flex flex-wrap gap-2.5">
           <select
             value={type}
             onChange={(e) => navigate({ search: (s) => ({ ...s, type: e.target.value }) })}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            className="h-9 rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-ink focus:outline-hidden press"
             aria-label="Material type"
           >
-            <option value="">All types</option>
+            <option value="">All Document Types</option>
             {MATERIAL_TYPES.map((t) => (
               <option key={t}>{t}</option>
             ))}
@@ -117,50 +126,59 @@ function MaterialsPage() {
           <select
             value={level}
             onChange={(e) => navigate({ search: (s) => ({ ...s, level: e.target.value }) })}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            className="h-9 rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-ink focus:outline-hidden press"
             aria-label="Level"
           >
-            <option value="">All levels</option>
+            <option value="">All Academic Levels</option>
             {LEVELS.map((t) => (
               <option key={t}>{t}</option>
             ))}
           </select>
         </div>
 
-        <p className="mt-8 text-sm text-muted-foreground">
-          {isLoading ? "Searching…" : `${data.length} result${data.length === 1 ? "" : "s"}${q ? ` for “${q}”` : ""}`}
+        <p className="mt-8 text-xs text-muted-foreground font-medium">
+          {isLoading ? "Consulting repository…" : `${data.length} document${data.length === 1 ? "" : "s"}${q ? ` matching “${q}”` : ""}`}
         </p>
+
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.map((m) => (
             <article
               key={m.id}
-              className="group flex flex-col rounded-2xl border border-border/70 bg-card p-5 shadow-xs transition-all hover:border-primary/40 hover:shadow-soft"
+              className="group flex flex-col rounded-3xl border border-border bg-card p-5 shadow-xs transition-all hover:border-forest/40 hover:shadow-soft lift press"
             >
-              <div className="flex items-start gap-3 cursor-pointer" onClick={() => openPreview(m)}>
-                <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary shrink-0 transition-transform group-hover:scale-105">
+              <div className="flex items-start gap-3.5 cursor-pointer" onClick={() => openPreview(m)}>
+                <div className="grid size-10 place-items-center rounded-xl bg-forest/10 text-forest shrink-0 transition-transform group-hover:scale-105 border border-forest/20">
                   <FileText className="size-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-display text-lg font-semibold leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+                  <h2 className="font-display text-base font-semibold leading-snug line-clamp-1 group-hover:text-forest transition-colors text-ink">
                     {m.title}
                   </h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground truncate">
                     {m.course_code ? `${m.course_code} · ` : ""}
                     {m.course}
                   </p>
                 </div>
               </div>
-              {m.description && <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{m.description}</p>}
+
+              {m.description && (
+                <p className="mt-2.5 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                  {m.description}
+                </p>
+              )}
+
               <div className="mt-auto pt-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
-                  <span className="truncate max-w-[140px]">{m.institution}</span>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/80 pt-3 text-xs text-muted-foreground">
+                  <span className="truncate max-w-[140px] font-medium text-ink-soft">{m.institution}</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{m.material_type}</span>
+                    <span className="rounded-full bg-surface-container px-2.5 py-0.5 text-[10px] font-semibold text-ink-soft">
+                      {m.material_type}
+                    </span>
                     {m.rating_count && m.rating_count > 0 ? (
                       <span className="flex items-center gap-1 text-brass text-xs font-semibold">
                         <Star className="size-3.5 fill-brass text-brass" />
-                        <span>{Number(m.rating_avg || 0).toFixed(1)}</span>
-                        <span className="text-brass/80 text-[10px]">({m.rating_count})</span>
+                        <span className="tnum font-mono">{Number(m.rating_avg || 0).toFixed(1)}</span>
+                        <span className="text-brass-ink text-[10px]">({m.rating_count})</span>
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-muted-foreground text-xs">
@@ -172,35 +190,38 @@ function MaterialsPage() {
                 </div>
 
                 <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-3 px-3 py-1 rounded-full bg-muted border border-border text-[11px] text-moss font-medium font-mono">
-                    <span className="flex items-center gap-1"><FileText className="size-3 text-brand" /> {m.page_count} pgs</span>
-                    <span className="flex items-center gap-1"><Eye className="size-3 text-brand" /> {m.views ?? 0} views</span>
-                    <span className="flex items-center gap-1"><Download className="size-3 text-brand" /> {m.downloads ?? 0} dls</span>
+                  <div className="flex items-center gap-3 px-3 py-1 rounded-full bg-surface-container-low border border-border text-[11px] text-ink-soft font-mono tnum">
+                    <span className="flex items-center gap-1"><FileText className="size-3 text-forest" /> {m.page_count} pgs</span>
+                    <span className="flex items-center gap-1"><Eye className="size-3 text-forest" /> {m.views ?? 0}</span>
+                    <span className="flex items-center gap-1"><Download className="size-3 text-forest" /> {m.downloads ?? 0}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="size-8 p-0 rounded-full"
+                      className="size-8 p-0 rounded-full hover:bg-surface-container"
                       onClick={() => openPreview(m)}
                       title="Preview material"
                     >
-                      <Eye className="size-4" />
+                      <Eye className="size-4 text-ink-soft" />
                     </Button>
                     <Button
                       size="sm"
-                      className="gap-1.5 rounded-full text-xs h-8 px-3 bg-forest text-white hover:bg-ink"
+                      className="gap-1.5 rounded-full text-xs h-8 px-3.5 bg-forest text-white hover:bg-forest/90 font-semibold press shadow-xs"
                       disabled={downloading === m.id}
                       onClick={() => download(m.id)}
                     >
-                      {downloading === m.id ? <Loader2 className="animate-spin size-3.5" /> : <Download className="size-3.5" />}
-                      Download
+                      {downloading === m.id ? (
+                        <Loader2 className="animate-spin size-3.5" />
+                      ) : (
+                        <Download className="size-3.5" />
+                      )}
+                      <span>Download</span>
                     </Button>
                   </div>
                 </div>
               </div>
             </article>
-
           ))}
         </div>
 
@@ -251,23 +272,23 @@ function MaterialsPage() {
         <p>© 2026 Syllaboss Technologies. All rights reserved.</p>
       </footer>
 
-      {/* iOS Liquid Glass Material Preview Drawer / Modal */}
+      {/* Scholar Material Preview Drawer / Modal */}
       {previewMaterial && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-foreground/30 p-4 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4 backdrop-blur-xs animate-fade-in"
           onClick={() => setPreviewMaterial(null)}
         >
           <div
-            className="w-full max-w-lg rounded-3xl border border-white/40 dark:border-white/10 bg-card/90 p-6 sm:p-7 shadow-2xl backdrop-blur-2xl transition-all animate-scale-in"
+            className="w-full max-w-lg rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-2xl transition-all animate-scale-in text-ink"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+              <div className="flex items-center gap-3.5">
+                <div className="grid size-12 place-items-center rounded-2xl bg-forest/10 text-forest border border-forest/20 shrink-0">
                   <FileText className="size-6" />
                 </div>
                 <div>
-                  <h3 className="font-display text-xl font-bold leading-tight text-foreground">
+                  <h3 className="font-display text-lg sm:text-xl font-medium leading-tight text-ink">
                     {previewMaterial.title}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -279,7 +300,7 @@ function MaterialsPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full size-8"
+                className="rounded-full size-8 hover:bg-surface-container"
                 onClick={() => setPreviewMaterial(null)}
               >
                 <X className="size-4" />
@@ -287,44 +308,44 @@ function MaterialsPage() {
             </div>
 
             {previewMaterial.description && (
-              <div className="mt-4 rounded-xl bg-secondary/50 p-3.5 text-xs leading-relaxed text-foreground">
+              <div className="mt-4 rounded-2xl bg-surface-container-low border border-border p-3.5 text-xs leading-relaxed text-ink-soft">
                 {previewMaterial.description}
               </div>
             )}
 
             <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-xl border border-border/60 bg-background/50 p-3">
-                <p className="text-muted-foreground flex items-center gap-1.5">
-                  <Building2 className="size-3.5 text-primary" /> Institution
+              <div className="rounded-2xl border border-border bg-surface-container-low p-3.5">
+                <p className="eyebrow flex items-center gap-1.5">
+                  <Building2 className="size-3.5 text-forest" /> Institution
                 </p>
-                <p className="font-semibold text-foreground mt-1 truncate">{previewMaterial.institution}</p>
+                <p className="font-medium text-ink mt-1 truncate">{previewMaterial.institution}</p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-background/50 p-3">
-                <p className="text-muted-foreground flex items-center gap-1.5">
-                  <BookOpen className="size-3.5 text-primary" /> Type & Level
+              <div className="rounded-2xl border border-border bg-surface-container-low p-3.5">
+                <p className="eyebrow flex items-center gap-1.5">
+                  <BookOpen className="size-3.5 text-forest" /> Classification
                 </p>
-                <p className="font-semibold text-foreground mt-1 truncate">
-                  {previewMaterial.material_type} · {previewMaterial.level || "Any level"}
+                <p className="font-medium text-ink mt-1 truncate">
+                  {previewMaterial.material_type} · {previewMaterial.level || "All levels"}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground px-1">
-              <span className="inline-flex items-center gap-1.5"><FileText className="size-3.5" /> {previewMaterial.page_count} Pages</span>
-              <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5" /> {previewMaterial.views ?? 0} Views</span>
-              <span className="inline-flex items-center gap-1.5"><Download className="size-3.5" /> {previewMaterial.downloads} Downloads</span>
+            <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground px-1 font-mono tnum">
+              <span className="inline-flex items-center gap-1.5"><FileText className="size-3.5 text-forest" /> {previewMaterial.page_count} Pages</span>
+              <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5 text-forest" /> {previewMaterial.views ?? 0} Views</span>
+              <span className="inline-flex items-center gap-1.5"><Download className="size-3.5 text-forest" /> {previewMaterial.downloads} Downloads</span>
             </div>
 
             <div className="mt-6 flex items-center gap-3">
               <Button
                 variant="outline"
-                className="flex-1 rounded-xl h-11"
+                className="flex-1 rounded-full h-10 border-border text-xs font-semibold press"
                 onClick={() => setPreviewMaterial(null)}
               >
                 Close
               </Button>
               <Button
-                className="flex-1 rounded-xl h-11 font-medium gap-2 shadow-xs"
+                className="flex-1 rounded-full h-10 bg-forest text-white hover:bg-forest/90 font-semibold text-xs gap-2 shadow-xs press"
                 disabled={downloading === previewMaterial.id}
                 onClick={() => download(previewMaterial.id)}
               >
@@ -333,7 +354,7 @@ function MaterialsPage() {
                 ) : (
                   <Download className="size-4" />
                 )}
-                Download File
+                <span>Download Document</span>
               </Button>
             </div>
           </div>

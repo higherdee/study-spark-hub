@@ -27,6 +27,8 @@ import {
   X,
   FileText,
   AlertTriangle,
+  Award,
+  Crown,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -323,7 +325,7 @@ export function BattleArenaModal({
           groupId,
           userId: currentUserId,
           userName: currentUserName,
-          score: 0, // Score will be computed during AI grading
+          score: 0,
           answersJson: JSON.stringify(theoryAnswers),
         },
       });
@@ -331,7 +333,6 @@ export function BattleArenaModal({
       toast.success("Theory solutions submitted! Awaiting other fighters to grade.");
       refetch();
 
-      // If all submitted, trigger grading
       if (res.allSubmitted) {
         toast.info("All fighters have submitted! Boss AI is now grading...");
         handleTriggerTheoryGrading();
@@ -352,7 +353,6 @@ export function BattleArenaModal({
 
       if (res.success) {
         battleAudio.playEmeraldChime();
-        // Check if current user passed for floating points animation
         triggerFloatingAnimation();
         refetch();
       }
@@ -420,44 +420,51 @@ export function BattleArenaModal({
   const currentQ = questions[currentQIndex];
   const allFighters = participants.filter((p) => p.role === "fighter");
   const submittedFighters = allFighters.filter((p) => p.status === "submitted");
-  const allFightersSubmitted = allFighters.length > 0 && submittedFighters.length >= allFighters.length;
+  const isMcq = battle.mode === "mcq";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl p-5 border-border bg-card shadow-2xl relative">
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl p-0 border border-border bg-card shadow-2xl relative text-foreground">
         {/* Floating +10 pts Emerald Glow Animation */}
         <AnimatePresence>
           {floatingPoints.map((fp) => (
             <motion.div
               key={fp.id}
-              initial={{ opacity: 0, y: 30, scale: 0.6 }}
-              animate={{ opacity: 1, y: -40, scale: 1.2 }}
+              initial={{ opacity: 0, y: 30, scale: 0.7 }}
+              animate={{ opacity: 1, y: -45, scale: 1.15 }}
               exit={{ opacity: 0, y: -80, scale: 0.8 }}
-              transition={{ duration: 1.8, ease: "easeOut" }}
+              transition={{ duration: 1.6, ease: "easeOut" }}
               className="absolute top-1/3 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
             >
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand/20 border-2 border-brand text-brand font-black text-xl shadow-[0_0_35px_rgba(16,185,129,0.8)] backdrop-blur-md">
-                <Sparkles className="size-5 fill-current animate-spin" />
-                <span>{fp.text}</span>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-forest text-white border border-brand/50 font-bold text-lg shadow-xl backdrop-blur-md">
+                <Sparkles className="size-4 text-[#8fd9b6] animate-spin" />
+                <span className="tnum">{fp.text}</span>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
 
-        <DialogHeader className="border-b border-border/70 pb-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="size-8 rounded-xl bg-brass/20 text-brass grid place-items-center">
+        {/* Scholar's Header Docket */}
+        <DialogHeader className="border-b border-border/80 bg-surface-container-low px-6 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-brass/40 bg-brass/10 text-brass-ink">
                 <Swords className="size-4" />
-              </div>
+              </span>
               <div>
-                <DialogTitle className="text-sm sm:text-base font-black text-foreground">
+                <DialogTitle className="font-display text-base sm:text-lg font-medium text-ink leading-tight tracking-tight">
                   {battle.title}
                 </DialogTitle>
-                <p className="text-[10px] text-muted-foreground">
-                  {battle.mode === "mcq" ? "⚡ MCQ Blitz" : "🥋 Theory Showdown (Untimed)"}
-                  {" • "}Pot: <strong className="text-brass">{battle.total_pot} pts</strong>
-                </p>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-semibold text-ink-soft">
+                    {isMcq ? "MCQ Blitz" : "Theory Showdown"}
+                  </span>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1 font-semibold text-brass-ink">
+                    <Coins className="size-3 text-brass" />
+                    <span className="tnum">{battle.total_pot}</span> pts escrow
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -469,10 +476,10 @@ export function BattleArenaModal({
                   variant="outline"
                   disabled={isNudging}
                   onClick={handleNudgeSlowpokes}
-                  className="h-7 rounded-full text-[10px] font-bold border-brass/40 text-brass-ink dark:text-brass hover:bg-brass/10 gap-1"
+                  className="h-7 rounded-full text-[11px] font-semibold border-border bg-card text-ink-soft hover:bg-surface-container gap-1 press"
                 >
-                  <Bell className="size-3" />
-                  <span>Nudge Slowpokes</span>
+                  <Bell className="size-3 text-brass" />
+                  <span className="hidden sm:inline">Nudge</span>
                 </Button>
               )}
 
@@ -483,400 +490,431 @@ export function BattleArenaModal({
                   variant="outline"
                   disabled={isForceGrading}
                   onClick={handleForceGrade}
-                  className="h-7 rounded-full text-[10px] font-bold border-primary/40 text-primary hover:bg-primary/10 gap-1"
+                  className="h-7 rounded-full text-[11px] font-semibold border-forest/30 text-forest hover:bg-forest/5 gap-1 press"
                 >
-                  <Sparkles className="size-3" />
-                  <span>Force Grade</span>
+                  <Sparkles className="size-3 text-brand" />
+                  <span className="hidden sm:inline">Grade</span>
                 </Button>
               )}
 
-              <Badge variant="outline" className="text-[10px] h-6 px-2.5 font-bold">
-                {isCompleted ? "Completed 🏆" : isGrading ? "Grading..." : `Q ${currentQIndex + 1} of ${questions.length}`}
+              <Badge
+                variant="outline"
+                className="h-6 px-2.5 rounded-full border-border bg-card font-mono text-[11px] font-semibold text-ink-soft"
+              >
+                {isCompleted ? "Completed 🏆" : isGrading ? "Grading..." : `Q ${currentQIndex + 1}/${questions.length}`}
               </Badge>
             </div>
           </div>
         </DialogHeader>
 
-        {/* ========================================================================= */}
-        {/* COMPLETED VIEW: Leaderboard & Review */}
-        {/* ========================================================================= */}
-        {isCompleted ? (
-          <div className="space-y-4 py-2">
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-brass/15 via-card to-brand/15 border border-brass/40 text-center space-y-2">
-              <div className="size-12 rounded-full bg-brass text-black mx-auto grid place-items-center shadow-lg shadow-brass/30">
-                <Trophy className="size-6" />
-              </div>
-              <h3 className="text-base font-black text-foreground">Battle Completed!</h3>
-              <p className="text-xs text-muted-foreground">
-                Total Pot of <strong>{battle.total_pot} pts</strong> distributed to the winner(s)!
-              </p>
+        <div className="p-6 space-y-5">
+          {/* ========================================================================= */}
+          {/* COMPLETED VIEW: Leaderboard & Review */}
+          {/* ========================================================================= */}
+          {isCompleted ? (
+            <div className="space-y-6">
+              {/* Victory Banner */}
+              <div className="relative overflow-hidden rounded-2xl border border-brass/40 bg-surface-container-low p-6 text-center">
+                <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-brass/50 bg-brass/15 text-brass-ink shadow-sm">
+                  <Trophy className="size-6 text-brass" />
+                </span>
+                <p className="eyebrow mt-3 text-brass-ink">Session Concluded</p>
+                <h3 className="mt-1 font-display text-2xl font-medium tracking-tight text-ink">
+                  Battle Concluded
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
+                  Escrow pool of <strong className="text-ink font-semibold tnum">{battle.total_pot} points</strong> has been awarded to top scholar(s).
+                </p>
 
-              {/* Run It Back Button */}
-              {onRunItBack && (
-                <div className="pt-2">
-                  <Button
-                    type="button"
-                    onClick={() => onRunItBack(battle)}
-                    className="h-9 rounded-2xl bg-brass hover:bg-brass-ink text-black font-black text-xs gap-1.5 shadow-md shadow-brass/20"
-                  >
-                    <RotateCcw className="size-3.5" />
-                    <span>Run It Back 🔄 (Revenge Match)</span>
-                  </Button>
+                {onRunItBack && (
+                  <div className="mt-5">
+                    <Button
+                      type="button"
+                      onClick={() => onRunItBack(battle)}
+                      className="h-9 rounded-full bg-forest text-white hover:bg-forest/90 font-semibold text-xs gap-1.5 px-5 shadow-sm press"
+                    >
+                      <RotateCcw className="size-3.5 text-[#8fd9b6]" />
+                      <span>Run It Back (Revenge Match)</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Leaderboard */}
+              <div>
+                <p className="eyebrow px-1">Final Leaderboard</p>
+                <div className="mt-2 divide-y divide-border/60 rounded-2xl border border-border bg-card overflow-hidden">
+                  {allFighters
+                    .sort((a, b) => b.score - a.score)
+                    .map((fighter, rank) => {
+                      const isWinner = rank === 0;
+                      return (
+                        <div
+                          key={fighter.id}
+                          className={cn(
+                            "flex items-center justify-between p-3 text-xs transition-colors",
+                            isWinner ? "bg-brass/5 font-medium" : "hover:bg-surface-container-low"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={cn(
+                                "size-6 rounded-lg grid place-items-center font-mono text-[11px] font-bold",
+                                isWinner
+                                  ? "bg-brass text-white shadow-xs"
+                                  : "bg-surface-container text-muted-foreground"
+                              )}
+                            >
+                              {rank + 1}
+                            </span>
+                            <Avatar className="size-7 border border-border">
+                              <AvatarImage src={fighter.avatar_url || undefined} />
+                              <AvatarFallback className="text-[10px] font-semibold bg-surface-container">
+                                {fighter.user_name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate max-w-[150px] font-medium text-ink">
+                              {fighter.user_name}
+                            </span>
+                            {isWinner && (
+                              <Crown className="size-3.5 text-brass shrink-0" />
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-bold text-ink text-sm tnum">
+                              {fighter.score} pts
+                            </span>
+                            {isWinner && battle.total_pot > 0 && (
+                              <Badge className="bg-brass/15 border-brass/30 text-brass-ink font-mono text-[10px] font-bold">
+                                +{battle.total_pot} pts Won
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Question Review & Solutions */}
+              <div>
+                <p className="eyebrow px-1">Examination Solutions & Rubric</p>
+                <div className="mt-2 space-y-2.5">
+                  {questions.map((q, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-2xl border border-border bg-card text-xs space-y-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono text-muted-foreground font-semibold">
+                          Q{idx + 1}.
+                        </span>
+                        <p className="font-display font-medium text-ink text-sm leading-relaxed">
+                          {q.question}
+                        </p>
+                      </div>
+
+                      {battle.mode === "mcq" ? (
+                        <div className="mt-2 rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-[11px] font-medium text-brand-deep">
+                          Correct Answer: <strong className="font-semibold text-ink">{q.options?.[q.correctAnswer]}</strong>
+                        </div>
+                      ) : (
+                        <div className="mt-2 rounded-xl border border-border bg-surface-container-low p-2.5 text-[11px] text-muted-foreground space-y-1">
+                          <span className="eyebrow !text-ink-soft block">Model Answer & Rubric</span>
+                          <p className="text-ink leading-relaxed">
+                            {q.modelAnswer || q.explanation || "Official theoretical derivation rubric verified by academic ledger."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ========================================================================= */
+            /* ACTIVE MATCH PLAY VIEW */
+            /* ========================================================================= */
+            <div className="space-y-5">
+              {/* MCQ Countdown Progress */}
+              {isMcq && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-medium">
+                    <span className="eyebrow">Time per question</span>
+                    <span
+                      className={cn(
+                        "font-mono font-bold text-xs tnum flex items-center gap-1",
+                        timeLeft <= 5 ? "text-destructive animate-pulse" : "text-brass-ink"
+                      )}
+                    >
+                      <Clock className="size-3.5" /> {timeLeft}s remaining
+                    </span>
+                  </div>
+                  <Progress
+                    value={(timeLeft / (battle.time_per_question || 20)) * 100}
+                    className={cn(
+                      "h-1.5 rounded-full bg-surface-container",
+                      timeLeft <= 5 ? "[&>div]:bg-destructive" : "[&>div]:bg-forest"
+                    )}
+                  />
                 </div>
               )}
-            </div>
 
-            {/* Leaderboard Table */}
-            <div className="space-y-1.5">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
-                Final Leaderboard
-              </h4>
-              <div className="space-y-1">
-                {allFighters
-                  .sort((a, b) => b.score - a.score)
-                  .map((fighter, rank) => {
-                    const isWinner = rank === 0;
+              {/* Question Card */}
+              <div className="rounded-2xl border border-border bg-surface-container-low p-5 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="eyebrow">
+                    Question {currentQIndex + 1} of {questions.length}
+                  </span>
+                  {!isMcq && (
+                    <Badge variant="outline" className="text-[10px] rounded-full border-brand/30 text-brand bg-accent/30 font-semibold">
+                      Untimed Session
+                    </Badge>
+                  )}
+                </div>
+                <h3 className="font-display text-base sm:text-lg font-medium text-ink leading-relaxed">
+                  {currentQ?.question || "Exam Question Prompt"}
+                </h3>
+              </div>
+
+              {/* MCQ Choices */}
+              {isMcq && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {currentQ?.options?.map((opt: string, optIdx: number) => {
+                    const isSelected = mcqAnswers[currentQIndex] === optIdx;
                     return (
-                      <div
-                        key={fighter.id}
+                      <button
+                        key={optIdx}
+                        type="button"
+                        disabled={hasSubmitted || isSpectator}
+                        onClick={() => handleSelectOption(optIdx)}
                         className={cn(
-                          "flex items-center justify-between p-2.5 rounded-2xl border text-xs",
-                          isWinner
-                            ? "border-brass/60 bg-brass/10 font-bold"
-                            : "border-border bg-card"
+                          "p-4 rounded-2xl border text-left text-xs font-medium flex items-center justify-between gap-3 transition-all lift press",
+                          isSelected
+                            ? "border-forest bg-forest text-white shadow-sm"
+                            : "border-border bg-card hover:bg-surface-container-low text-ink"
                         )}
                       >
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-3">
                           <span
                             className={cn(
-                              "size-5 rounded-full grid place-items-center text-[10px] font-black",
-                              isWinner ? "bg-brass text-black" : "bg-secondary text-muted-foreground"
+                              "size-6 rounded-lg grid place-items-center font-mono text-xs font-bold shrink-0",
+                              isSelected
+                                ? "bg-white/20 text-white"
+                                : "bg-surface-container text-muted-foreground"
                             )}
                           >
-                            {rank + 1}
+                            {String.fromCharCode(65 + optIdx)}
                           </span>
-                          <Avatar className="size-6 border border-border">
-                            <AvatarImage src={fighter.avatar_url || undefined} />
-                            <AvatarFallback className="text-[9px]">{fighter.user_name[0]}</AvatarFallback>
+                          <span className="leading-snug">{opt}</span>
+                        </div>
+                        {isSelected && <CheckCircle2 className="size-4 shrink-0 text-[#8fd9b6]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Theory Mode: Multimodal Studio */}
+              {!isMcq && (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-border bg-card p-4 space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="eyebrow">Your Solution / Derivation</span>
+                      <div className="flex items-center gap-2">
+                        {/* Camera attachment */}
+                        <label className="h-7 px-3 rounded-full border border-border text-[11px] font-semibold flex items-center gap-1.5 text-ink-soft hover:text-ink cursor-pointer bg-surface-container-low press">
+                          <Camera className="size-3.5 text-brand" />
+                          <span>Snap Notes</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleTheoryImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {/* Voice note recorder */}
+                        {isRecordingAudio ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleStopVoiceRecording}
+                            className="h-7 px-3 rounded-full bg-destructive text-white text-[11px] font-semibold gap-1.5 animate-pulse press"
+                          >
+                            <Square className="size-2.5 fill-current" />
+                            <span>Stop ({recordingSeconds}s)</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={handleStartVoiceRecording}
+                            className="h-7 px-3 rounded-full text-[11px] font-semibold gap-1.5 text-brass-ink border-brass/40 bg-brass/5 hover:bg-brass/10 press"
+                          >
+                            <Mic className="size-3.5 text-brass" />
+                            <span>Voice Derivation</span>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Photo preview */}
+                    {theoryAnswers[currentQIndex]?.imageBase64 && (
+                      <div className="p-2.5 rounded-xl bg-accent/30 border border-brand/30 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <FileText className="size-4 text-brand" />
+                          <span className="font-medium text-brand-deep">
+                            Handwritten notes attached for AI optical verification
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setTheoryAnswers((prev) => {
+                              const cur = prev[currentQIndex];
+                              return {
+                                ...prev,
+                                [currentQIndex]: {
+                                  text: cur?.text || "",
+                                  imageBase64: undefined,
+                                  audioTranscript: cur?.audioTranscript,
+                                },
+                              };
+                            })
+                          }
+                          className="size-6 p-0 text-muted-foreground hover:text-ink"
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Voice transcript preview */}
+                    {theoryAnswers[currentQIndex]?.audioTranscript && (
+                      <div className="p-3 rounded-xl bg-brass/10 border border-brass/25 text-xs text-ink space-y-1">
+                        <span className="eyebrow !text-brass-ink block">Whisper Transcription</span>
+                        <p className="italic text-ink-soft leading-relaxed">
+                          "{theoryAnswers[currentQIndex]?.audioTranscript}"
+                        </p>
+                      </div>
+                    )}
+
+                    <textarea
+                      value={theoryAnswers[currentQIndex]?.text || ""}
+                      onChange={(e) =>
+                        setTheoryAnswers((prev) => ({
+                          ...prev,
+                          [currentQIndex]: {
+                            ...(prev[currentQIndex] || {}),
+                            text: e.target.value,
+                          },
+                        }))
+                      }
+                      placeholder="Enter derivation steps, mathematical equations, or scholarly explanations..."
+                      rows={4}
+                      disabled={hasSubmitted || isSpectator}
+                      className="w-full resize-none bg-transparent text-sm text-ink placeholder:text-muted-foreground focus:outline-hidden leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Navigation Footer */}
+                  <div className="flex items-center justify-between pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={currentQIndex === 0}
+                      onClick={() => setCurrentQIndex((i) => i - 1)}
+                      className="h-9 rounded-full text-xs font-semibold gap-1 px-4 border-border press"
+                    >
+                      <ChevronLeft className="size-3.5" /> Previous
+                    </Button>
+
+                    {currentQIndex < questions.length - 1 ? (
+                      <Button
+                        type="button"
+                        onClick={() => setCurrentQIndex((i) => i + 1)}
+                        className="h-9 rounded-full text-xs font-semibold gap-1 px-4 bg-forest text-white hover:bg-forest/90 press"
+                      >
+                        Next Question <ChevronRight className="size-3.5" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        disabled={isSubmitting || hasSubmitted || isSpectator}
+                        onClick={handleSubmitTheory}
+                        className="h-9 rounded-full bg-brand hover:bg-brand-deep text-white font-semibold text-xs gap-1.5 px-5 shadow-sm press"
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Send className="size-3.5" />
+                        )}
+                        <span>{hasSubmitted ? "Already Submitted" : "Submit All Solutions"}</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Anti-Peek Status Strip */}
+              <div className="pt-3 border-t border-border/80 space-y-2.5">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <Lock className="size-3 text-brass" />
+                    <span className="font-medium text-ink-soft">
+                      Anti-Peek Protocol: Solutions revealed once all scholars submit
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] tnum">
+                    {submittedFighters.length}/{allFighters.length} submitted
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {allFighters.map((f) => {
+                    const isUser = f.user_id === currentUserId;
+                    const isDone = f.status === "submitted";
+
+                    return (
+                      <div
+                        key={f.id}
+                        className={cn(
+                          "p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors",
+                          isDone
+                            ? "border-brand/30 bg-accent/40 text-brand-deep"
+                            : "border-border bg-card text-muted-foreground"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Avatar className="size-5 border border-border">
+                            <AvatarImage src={f.avatar_url || undefined} />
+                            <AvatarFallback className="text-[9px] font-semibold bg-surface-container">
+                              {f.user_name[0]}
+                            </AvatarFallback>
                           </Avatar>
-                          <span className="truncate max-w-[140px] text-foreground">{fighter.user_name}</span>
-                          {isWinner && <span className="text-xs">👑</span>}
+                          <span className="truncate font-medium text-ink">
+                            {isUser ? "You" : f.user_name}
+                          </span>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <span className="font-extrabold text-foreground">{fighter.score} pts</span>
-                          {isWinner && battle.total_pot > 0 && (
-                            <Badge className="bg-brass text-black text-[10px] font-black">
-                              +{battle.total_pot} pts Won!
-                            </Badge>
-                          )}
-                        </div>
+                        {isDone ? (
+                          <CheckCircle2 className="size-3.5 text-brand shrink-0" />
+                        ) : (
+                          <span className="size-2 rounded-full bg-brass animate-pulse shrink-0" />
+                        )}
                       </div>
                     );
                   })}
-              </div>
-            </div>
-
-            {/* Question Review & Solutions */}
-            <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
-                Official Exam Solutions & Rubric
-              </h4>
-              <div className="space-y-2">
-                {questions.map((q, idx) => (
-                  <div key={idx} className="p-3 rounded-2xl border border-border bg-card text-xs space-y-1.5">
-                    <p className="font-bold text-foreground">
-                      Q{idx + 1}. {q.question}
-                    </p>
-                    {battle.mode === "mcq" ? (
-                      <div className="text-[11px] text-brand dark:text-brand font-semibold bg-brand/10 p-2 rounded-xl">
-                        Correct Answer: {q.options?.[q.correctAnswer]}
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-muted-foreground bg-secondary/30 p-2 rounded-xl space-y-1">
-                        <span className="font-bold text-foreground block">Model Answer & Rubric:</span>
-                        <p>{q.modelAnswer || q.explanation || "Official theoretical derivation rubric."}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* ========================================================================= */
-          /* ACTIVE MATCH PLAY VIEW */
-          /* ========================================================================= */
-          <div className="space-y-4 py-2">
-            {/* MCQ Timer Bar */}
-            {battle.mode === "mcq" && (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-bold">
-                  <span className="text-muted-foreground">Speed Countdown</span>
-                  <span
-                    className={cn(
-                      "font-black text-xs",
-                      timeLeft <= 5 ? "text-red-500 animate-pulse" : "text-brass"
-                    )}
-                  >
-                    ⏱️ {timeLeft}s remaining
-                  </span>
-                </div>
-                <Progress
-                  value={(timeLeft / (battle.time_per_question || 20)) * 100}
-                  className={cn(
-                    "h-2 rounded-full",
-                    timeLeft <= 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-brass"
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Question Prompt Card */}
-            <div className="p-4 rounded-3xl border border-border/80 bg-secondary/15 space-y-2">
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold">
-                <span>QUESTION {currentQIndex + 1} OF {questions.length}</span>
-                {battle.mode === "theory" && <span className="text-brand">Untimed Session</span>}
-              </div>
-              <h3 className="text-sm sm:text-base font-bold text-foreground leading-relaxed">
-                {currentQ?.question || "Exam Question Prompt"}
-              </h3>
-            </div>
-
-            {/* ========================================================================= */}
-            {/* MCQ OPTIONS */}
-            {/* ========================================================================= */}
-            {battle.mode === "mcq" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {currentQ?.options?.map((opt: string, optIdx: number) => {
-                  const isSelected = mcqAnswers[currentQIndex] === optIdx;
-                  return (
-                    <button
-                      key={optIdx}
-                      type="button"
-                      disabled={hasSubmitted || isSpectator}
-                      onClick={() => handleSelectOption(optIdx)}
-                      className={cn(
-                        "p-3.5 rounded-2xl border text-left text-xs font-semibold flex items-center justify-between gap-2 transition-all active:scale-[0.98]",
-                        isSelected
-                          ? "border-primary bg-primary text-primary-foreground shadow-md"
-                          : "border-border/80 bg-card hover:bg-secondary/60 text-foreground"
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          className={cn(
-                            "size-6 rounded-lg grid place-items-center text-xs font-black",
-                            isSelected
-                              ? "bg-primary-foreground text-primary"
-                              : "bg-secondary text-muted-foreground"
-                          )}
-                        >
-                          {String.fromCharCode(65 + optIdx)}
-                        </span>
-                        <span>{opt}</span>
-                      </div>
-                      {isSelected && <CheckCircle2 className="size-4 shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* ========================================================================= */}
-            {/* THEORY SHOWDOWN INPUT (Multimodal) */}
-            {/* ========================================================================= */}
-            {battle.mode === "theory" && (
-              <div className="space-y-3">
-                <div className="p-3.5 rounded-2xl border border-border bg-card space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground">Your Solution / Derivation</span>
-                    <div className="flex items-center gap-1.5">
-                      {/* Photo / Camera button */}
-                      <label className="h-7 px-2.5 rounded-full border border-border text-[10px] font-bold flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer bg-secondary/50">
-                        <Camera className="size-3 text-brand" />
-                        <span>Snap Notes</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={handleTheoryImageUpload}
-                          className="hidden"
-                        />
-                      </label>
-
-                      {/* Voice Note Derivation button */}
-                      {isRecordingAudio ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={handleStopVoiceRecording}
-                          className="h-7 px-2.5 rounded-full bg-red-600 text-white text-[10px] font-bold gap-1 animate-pulse"
-                        >
-                          <Square className="size-2.5 fill-current" />
-                          <span>Stop ({recordingSeconds}s)</span>
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={handleStartVoiceRecording}
-                          className="h-7 px-2.5 rounded-full text-[10px] font-bold gap-1 text-brass-ink dark:text-brass border-brass/40 hover:bg-brass/10"
-                        >
-                          <Mic className="size-3" />
-                          <span>Voice Note</span>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Photo Preview if attached */}
-                  {theoryAnswers[currentQIndex]?.imageBase64 && (
-                    <div className="p-2 rounded-xl bg-secondary/40 border border-brand/40 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <FileText className="size-4 text-brand" />
-                        <span className="font-semibold text-brand-deep dark:text-brand">
-                          Handwritten notes photo attached
-                        </span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          setTheoryAnswers((prev) => {
-                            const cur = prev[currentQIndex];
-                            return {
-                              ...prev,
-                              [currentQIndex]: {
-                                text: cur?.text || "",
-                                imageBase64: undefined,
-                                audioTranscript: cur?.audioTranscript,
-                              },
-                            };
-                          })
-                        }
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="size-3" />
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Voice Transcription Preview */}
-                  {theoryAnswers[currentQIndex]?.audioTranscript && (
-                    <div className="p-2 rounded-xl bg-brass/10 border border-brass/30 text-[11px] text-foreground">
-                      <span className="font-bold text-brass block text-[9px] uppercase">Voice Derivation:</span>
-                      "{theoryAnswers[currentQIndex]?.audioTranscript}"
-                    </div>
-                  )}
-
-                  <textarea
-                    value={theoryAnswers[currentQIndex]?.text || ""}
-                    onChange={(e) =>
-                      setTheoryAnswers((prev) => ({
-                        ...prev,
-                        [currentQIndex]: {
-                          ...(prev[currentQIndex] || {}),
-                          text: e.target.value,
-                        },
-                      }))
-                    }
-                    placeholder="Type derivation steps, equations, or academic definitions..."
-                    rows={4}
-                    disabled={hasSubmitted || isSpectator}
-                    className="w-full resize-none bg-transparent text-xs text-foreground focus:outline-hidden leading-relaxed"
-                  />
-                </div>
-
-                {/* Question Navigation */}
-                <div className="flex items-center justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={currentQIndex === 0}
-                    onClick={() => setCurrentQIndex((i) => i - 1)}
-                    className="h-8 rounded-xl text-xs gap-1"
-                  >
-                    <ChevronLeft className="size-3.5" /> Previous
-                  </Button>
-
-                  {currentQIndex < questions.length - 1 ? (
-                    <Button
-                      type="button"
-                      onClick={() => setCurrentQIndex((i) => i + 1)}
-                      className="h-8 rounded-xl text-xs gap-1"
-                    >
-                      Next Question <ChevronRight className="size-3.5" />
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      disabled={isSubmitting || hasSubmitted || isSpectator}
-                      onClick={handleSubmitTheory}
-                      className="h-9 rounded-xl bg-brand hover:bg-brand-deep text-white font-bold text-xs gap-1.5 shadow-md shadow-brand/20"
-                    >
-                      <Send className="size-3.5" />
-                      <span>{hasSubmitted ? "Already Submitted" : "Submit All 5 Solutions"}</span>
-                    </Button>
-                  )}
                 </div>
               </div>
-            )}
-
-            {/* ========================================================================= */}
-            {/* ANTI-PEEK PARTICIPANT STATUS STRIP */}
-            {/* ========================================================================= */}
-            <div className="pt-2 border-t border-border/70 space-y-2">
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-                <div className="flex items-center gap-1.5">
-                  <Lock className="size-3 text-brass" />
-                  <span>Anti-Peek Protocol: Answers blurred until all fighters submit</span>
-                </div>
-                <span>
-                  {submittedFighters.length}/{allFighters.length} Submitted
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                {allFighters.map((f) => {
-                  const isUser = f.user_id === currentUserId;
-                  const isDone = f.status === "submitted";
-
-                  return (
-                    <div
-                      key={f.id}
-                      className={cn(
-                        "p-2 rounded-xl border flex items-center justify-between text-[11px]",
-                        isDone
-                          ? "border-brand/40 bg-brand/10 text-brand-deep dark:text-brand"
-                          : "border-border bg-card text-muted-foreground"
-                      )}
-                    >
-                      <div className="flex items-center gap-1.5 truncate">
-                        <Avatar className="size-5 border border-border">
-                          <AvatarImage src={f.avatar_url || undefined} />
-                          <AvatarFallback className="text-[8px]">{f.user_name[0]}</AvatarFallback>
-                        </Avatar>
-                        <span className="truncate font-semibold text-foreground">
-                          {isUser ? "You" : f.user_name}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        {isDone ? (
-                          <CheckCircle2 className="size-3.5 text-brand" />
-                        ) : (
-                          <div className="size-2 rounded-full bg-brass animate-pulse" />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

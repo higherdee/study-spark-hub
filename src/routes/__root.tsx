@@ -49,29 +49,30 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+    <div className="flex min-h-dvh items-center justify-center bg-background px-6">
+      <div className="route-enter !h-auto max-w-md text-center">
+        <p className="eyebrow text-destructive">System Ledger Notice</p>
+        <h1 className="mt-3 font-display text-4xl sm:text-5xl font-medium tracking-tight text-ink">
+          This record couldn't be loaded.
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+          An unexpected interruption occurred while reading the academic ledger. You can retry the request or return to your dashboard.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="press inline-flex h-10 items-center justify-center rounded-full bg-forest px-6 text-xs font-semibold text-white shadow-xs hover:bg-forest/90"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="press inline-flex h-10 items-center justify-center rounded-full border border-border bg-card px-6 text-xs font-semibold text-ink hover:bg-surface-container"
           >
-            Go home
+            Return Home
           </a>
         </div>
       </div>

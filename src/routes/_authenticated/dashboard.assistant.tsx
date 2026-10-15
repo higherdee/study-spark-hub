@@ -1349,21 +1349,21 @@ function AssistantPage() {
       {/* ========================================================================= */}
       {/* DESKTOP SIDEBAR: Conversations, Attached Document, & Study Tools */}
       {/* ========================================================================= */}
-      <aside className="hidden md:flex w-72 lg:w-80 flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden">
+      <aside className="hidden md:flex w-72 lg:w-80 flex-col border-r border-border bg-surface-container-low shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden">
         {/* New Chat Button */}
-        <div className="p-3 border-b border-border/70">
+        <div className="p-3 border-b border-border">
           <Button
             onClick={createNewChat}
-            className="w-full justify-start gap-2 rounded-xl font-bold text-xs h-9 shadow-xs"
+            className="w-full justify-start gap-2 rounded-full bg-forest text-white hover:bg-forest/90 font-semibold text-xs h-9 shadow-xs press"
           >
-            <MessageSquarePlus className="size-4" /> Start New Conversation
+            <MessageSquarePlus className="size-4 text-[#8fd9b6]" /> Start New Conversation
           </Button>
         </div>
 
         {/* Active Study Document Section */}
-        <div className="p-3 border-b border-border/70 space-y-2 bg-secondary/20">
+        <div className="p-3 border-b border-border space-y-2 bg-card/60">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="eyebrow">
               Study Document
             </span>
             {activeDocContext && (
@@ -1378,8 +1378,8 @@ function AssistantPage() {
           </div>
 
           {activeDocContext ? (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-xs space-y-0.5">
-              <p className="font-bold text-primary truncate">{activeDocContext.title}</p>
+            <div className="rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-xs space-y-0.5">
+              <p className="font-semibold text-brand-deep truncate">{activeDocContext.title}</p>
               <p className="text-[10px] text-muted-foreground truncate">{activeDocContext.course}</p>
             </div>
           ) : (
@@ -1389,18 +1389,18 @@ function AssistantPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsLibraryModalOpen(true)}
-                className="rounded-xl text-[11px] font-semibold h-8 border-border/80 hover:bg-primary/10 hover:text-primary"
+                className="rounded-full text-[11px] font-semibold h-8 border-border bg-card hover:bg-surface-container text-ink press"
               >
-                <BookOpen className="size-3.5 mr-1 text-primary" /> Library
+                <BookOpen className="size-3.5 mr-1 text-forest" /> Library
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="rounded-xl text-[11px] font-semibold h-8 border-border/80 hover:bg-primary/10 hover:text-primary"
+                className="rounded-full text-[11px] font-semibold h-8 border-border bg-card hover:bg-surface-container text-ink press"
               >
-                <Upload className="size-3.5 mr-1 text-primary" /> Upload
+                <Upload className="size-3.5 mr-1 text-forest" /> Upload
               </Button>
             </div>
           )}
@@ -1409,7 +1409,7 @@ function AssistantPage() {
         {/* Recent Chats list */}
         <div className="p-3 flex-1 min-h-0 flex flex-col space-y-2 overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="eyebrow">
               Recent Conversations ({threads.length})
             </span>
           </div>
@@ -1421,9 +1421,9 @@ function AssistantPage() {
                 value={threadSearch}
                 onChange={(e) => setThreadSearch(e.target.value)}
                 placeholder="Search chats..."
-                className="w-full h-7 rounded-lg border border-border/70 bg-secondary/30 px-2 pl-6 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-primary"
+                className="w-full h-8 rounded-xl border border-border bg-card px-2.5 pl-7 text-xs text-ink placeholder:text-muted-foreground focus:outline-hidden focus:border-forest"
               />
-              <Search className="size-3 text-muted-foreground absolute left-1.5 top-2" />
+              <Search className="size-3 text-muted-foreground absolute left-2 top-2.5" />
             </div>
           )}
 
@@ -1437,10 +1437,10 @@ function AssistantPage() {
                 <div
                   key={t.id}
                   className={cn(
-                    "group flex items-center justify-between gap-1.5 rounded-xl px-2.5 py-2 text-xs transition-all cursor-pointer border",
+                    "group flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs transition-all cursor-pointer border press",
                     activeThreadId === t.id
-                      ? "bg-primary/10 border-primary/40 font-semibold text-primary shadow-2xs"
-                      : "border-transparent text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                      ? "bg-forest/10 border-forest/30 font-semibold text-forest shadow-xs"
+                      : "border-transparent text-muted-foreground hover:bg-card hover:text-ink"
                   )}
                   onClick={() => {
                     if (activeThreadId !== t.id) {
@@ -1512,27 +1512,27 @@ function AssistantPage() {
             <button
               type="button"
               onClick={() => createNewChat()}
-              className="size-7.5 rounded-full grid place-items-center bg-primary text-primary-foreground shadow-xs active:scale-95 transition-all"
+              className="size-8 rounded-full grid place-items-center bg-forest text-white shadow-xs press"
               title="New Chat"
             >
-              <Plus className="size-3.5" />
+              <Plus className="size-4" />
             </button>
           </div>
         </div>
 
         {/* Desktop Chat Header */}
-        <div className="hidden md:flex items-center justify-between px-4 py-2.5 border-b border-border/70 bg-card shrink-0 relative z-20">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="size-8 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
-              <Bot className="size-4.5" />
+        <div className="hidden md:flex items-center justify-between px-5 py-3 border-b border-border bg-card shrink-0 relative z-20">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-9 rounded-xl bg-forest/10 text-forest grid place-items-center shrink-0 border border-forest/20">
+              <Bot className="size-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-xs font-bold text-foreground truncate">
+                <h2 className="font-display text-sm font-medium text-ink truncate tracking-tight">
                   {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI Study Copilot"}
                 </h2>
                 {activeDocContext && (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/25 text-primary text-[10px] font-semibold shrink-0">
+                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/40 border border-brand/30 text-brand-deep text-[11px] font-semibold shrink-0">
                     <BookOpen className="size-3" />
                     <span className="max-w-[160px] truncate">{activeDocContext.title}</span>
                     <button
@@ -1545,8 +1545,8 @@ function AssistantPage() {
                   </div>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Active University Session · Groq LLaMA 3.1 &amp; Whisper
+              <p className="text-[11px] text-muted-foreground">
+                University Study Session · Groq LLaMA 3.1 &amp; Whisper
               </p>
             </div>
           </div>
@@ -1557,7 +1557,7 @@ function AssistantPage() {
                 size="sm"
                 variant="ghost"
                 onClick={() => deleteChat(activeThreadId)}
-                className="h-8 px-2 text-[11px] text-muted-foreground hover:text-destructive gap-1"
+                className="h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive gap-1.5 press rounded-full"
                 title="Delete this conversation"
               >
                 <Trash2 className="size-3.5" />
@@ -1584,37 +1584,37 @@ function AssistantPage() {
             </div>
           ) : messages.length === 0 ? (
             <div className="grid h-full place-items-center p-4 text-center">
-              <div className="max-w-md space-y-2.5">
-                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
-                  <Bot className="size-6" />
+              <div className="max-w-md space-y-3">
+                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-forest/10 text-forest border border-forest/20 shadow-xs">
+                  <Bot className="size-6 text-forest" />
                 </div>
-                <h3 className="font-display text-lg font-bold text-foreground">
-                  Boss AI Study Copilot
+                <h3 className="font-display text-xl sm:text-2xl font-medium tracking-tight text-ink">
+                  Boss AI Academic Copilot
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Ask any academic question, attach your course notes, or tap <strong>+</strong> in the typing bar to take an MCQ Quiz, Theory Test, or create Flashcards.
+                  Ask any academic question, attach your course notes, or tap <strong>+</strong> in the input bar to take an MCQ Blitz, Theory Showdown, or 3D Flashcards.
                 </p>
 
-                <div className="grid gap-2 pt-2 sm:grid-cols-2 text-left">
+                <div className="grid gap-2 pt-3 sm:grid-cols-2 text-left">
                   <button
                     type="button"
                     onClick={() => handleSend("Explain the core exam concepts in my course step-by-step")}
-                    className="rounded-xl border border-border/80 bg-card p-2.5 text-xs font-medium hover:border-primary transition-all"
+                    className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all lift press"
                   >
                     Explain core concepts step-by-step
                   </button>
                   <button
                     type="button"
                     onClick={() => prepareStudyPrompt("mcq")}
-                    className="rounded-xl border border-border/80 bg-card p-2.5 text-xs font-medium hover:border-primary transition-all flex items-center justify-between"
+                    className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all flex items-center justify-between lift press"
                   >
                     <span>20 Practice MCQ Questions</span>
-                    <CheckCircle2 className="size-3.5 text-primary" />
+                    <CheckCircle2 className="size-3.5 text-forest" />
                   </button>
                   <button
                     type="button"
                     onClick={() => prepareStudyPrompt("flashcards")}
-                    className="rounded-xl border border-border/80 bg-card p-2.5 text-xs font-medium hover:border-primary transition-all flex items-center justify-between"
+                    className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all flex items-center justify-between lift press"
                   >
                     <span>20 Study Flashcards</span>
                     <Layers className="size-3.5 text-brand" />
@@ -1622,7 +1622,7 @@ function AssistantPage() {
                   <button
                     type="button"
                     onClick={() => setIsLibraryModalOpen(true)}
-                    className="rounded-xl border border-dashed border-primary/50 bg-primary/5 p-2.5 text-xs font-medium text-primary hover:bg-primary/10 transition-all flex items-center justify-between"
+                    className="rounded-2xl border border-dashed border-forest/40 bg-accent/30 p-3 text-xs font-semibold text-forest hover:bg-accent/60 transition-all flex items-center justify-between lift press"
                   >
                     <span>Choose from Campus Library</span>
                     <BookOpen className="size-3.5" />
@@ -1642,16 +1642,16 @@ function AssistantPage() {
                   )}
                 >
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
-                    <span>{m.role === "user" ? "You" : "Boss AI"}</span>
+                    <span className="font-semibold text-ink-soft">{m.role === "user" ? "You" : "Boss AI"}</span>
                     {isAssistant && (
                       <button
                         type="button"
                         onClick={() => speakAiResponse(m.content, m.id)}
                         title={speakingMessageId === m.id ? "Stop voice note" : "Play voice note response"}
-                        className="ml-1 text-primary hover:text-primary/80 transition-colors"
+                        className="ml-1 text-forest hover:text-forest/80 transition-colors"
                       >
                         {speakingMessageId === m.id ? (
-                          <VolumeX className="size-3 text-red-500 animate-pulse" />
+                          <VolumeX className="size-3 text-destructive animate-pulse" />
                         ) : (
                           <Volume2 className="size-3" />
                         )}
@@ -1661,21 +1661,21 @@ function AssistantPage() {
 
                   <div
                     className={cn(
-                      "rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed transition-all shadow-xs",
+                      "rounded-2xl px-4 py-3 text-xs sm:text-[13px] leading-relaxed transition-all shadow-xs",
                       m.role === "user"
-                        ? "max-w-[88%] bg-primary text-primary-foreground font-medium rounded-br-xs"
-                        : "w-full max-w-[96%] md:max-w-[92%] bg-card text-foreground border border-border/70 rounded-bl-xs"
+                        ? "max-w-[88%] bg-forest text-white font-medium rounded-br-xs"
+                        : "w-full max-w-[96%] md:max-w-[92%] bg-card text-ink border border-border rounded-bl-xs"
                     )}
                   >
                     {/* Attached material badge */}
                     {m.attachedMaterial && (
-                      <div className="mb-2 rounded-xl bg-muted/60 border border-border/80 p-2.5 text-foreground">
+                      <div className="mb-2.5 rounded-xl bg-surface-container-low border border-border p-2.5 text-ink">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-semibold text-xs flex items-center gap-1.5 text-primary">
+                          <span className="font-semibold text-xs flex items-center gap-1.5 text-forest">
                             <CheckCircle2 className="size-3.5 text-brand" />
                             Registered to Library
                           </span>
-                          <span className="rounded-full bg-brand/10 text-brand-deep px-2 py-0.5 text-[10px] font-bold">
+                          <span className="rounded-full bg-accent text-brand-deep px-2 py-0.5 text-[10px] font-bold font-mono">
                             +25 SyllaPoints
                           </span>
                         </div>
@@ -1687,7 +1687,7 @@ function AssistantPage() {
                     )}
 
                     {m.audioUrl && (
-                      <div className="mb-2 p-2 rounded-xl bg-black/15 flex items-center gap-2">
+                      <div className="mb-2.5 p-2 rounded-xl bg-surface-container border border-border flex items-center gap-2">
                         <Volume2 className="size-4 text-brand" />
                         <audio src={m.audioUrl} controls className="h-7 w-48" />
                       </div>
@@ -2004,7 +2004,7 @@ function AssistantPage() {
           )}
 
           {/* Autogrowing Typing Capsule */}
-          <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-secondary/30 dark:bg-ink/50 p-2 sm:p-2.5 shadow-xs transition-all focus-within:border-primary/50 focus-within:bg-card">
+          <div className="rounded-2xl sm:rounded-3xl border border-border bg-surface-container-low p-2 sm:p-2.5 shadow-xs transition-all focus-within:border-forest/50 focus-within:bg-card">
             <textarea
               ref={textareaRef}
               value={input}
@@ -2034,11 +2034,11 @@ function AssistantPage() {
                   : "Ask Boss AI anything or tap + for study modes..."
               }
               rows={1}
-              className="w-full resize-none bg-transparent text-xs sm:text-sm text-foreground focus:outline-hidden min-h-[28px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
+              className="w-full resize-none bg-transparent text-xs sm:text-sm text-ink placeholder:text-muted-foreground focus:outline-hidden min-h-[28px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
             />
 
             {/* Embedded Action Bar per Prototype Sketch */}
-            <div className="flex items-center justify-between pt-1 border-t border-border/40 mt-1">
+            <div className="flex items-center justify-between pt-1 border-t border-border/50 mt-1">
               <div className="flex items-center gap-1.5">
                 {/* 1. + Button: Documents Menu Popup */}
                 <button
@@ -2049,10 +2049,10 @@ function AssistantPage() {
                   }}
                   title="Attach or upload document"
                   className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all",
+                    "size-8 rounded-full grid place-items-center transition-all press",
                     showDocMenu
-                      ? "bg-primary text-primary-foreground rotate-45 shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      ? "bg-forest text-white rotate-45 shadow-xs"
+                      : "text-muted-foreground hover:text-ink hover:bg-surface-container"
                   )}
                 >
                   <Plus className="size-4" />
@@ -2067,13 +2067,13 @@ function AssistantPage() {
                   }}
                   title="Boss AI Study Modes"
                   className={cn(
-                    "h-8 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-all border",
+                    "h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-all border press",
                     showModesMenu
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "text-foreground bg-secondary/60 hover:bg-secondary border-border/60"
+                      ? "bg-forest text-white border-forest shadow-xs"
+                      : "text-ink bg-card hover:bg-surface-container border-border"
                   )}
                 >
-                  <Bot className="size-3.5 text-primary shrink-0" />
+                  <Bot className="size-3.5 text-forest shrink-0" />
                   <span>Boss AI</span>
                   <ChevronUp
                     className={cn(
@@ -2091,10 +2091,10 @@ function AssistantPage() {
                   onClick={toggleVoiceNoteInput}
                   title={isRecording ? "Stop voice note" : "Record voice note"}
                   className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all",
+                    "size-8 rounded-full grid place-items-center transition-all press",
                     isRecording
-                      ? "bg-red-600 text-white animate-pulse"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      ? "bg-destructive text-white animate-pulse"
+                      : "text-muted-foreground hover:text-ink hover:bg-surface-container"
                   )}
                 >
                   <Mic className="size-4" />
@@ -2109,8 +2109,8 @@ function AssistantPage() {
                   className={cn(
                     "size-8 rounded-full grid place-items-center transition-all",
                     input.trim() && !thinking
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs active:scale-95"
-                      : "text-muted-foreground opacity-40 cursor-not-allowed"
+                      ? "bg-forest text-white hover:bg-forest/90 shadow-xs press"
+                      : "text-muted-foreground opacity-30 cursor-not-allowed"
                   )}
                 >
                   <Send className="size-3.5" />
