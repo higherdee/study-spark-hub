@@ -8,16 +8,24 @@ import { SyllabossEmblem, SyllabossLogo } from "@/components/syllaboss-logo";
 import { useAuth } from "@/hooks/use-auth";
 import { clerkAppearance } from "@/integrations/clerk";
 
-const searchSchema = z.object({ mode: z.enum(["signin", "signup"]).catch("signin").default("signin") });
+const searchSchema = z.object({
+  mode: z.enum(["signin", "signup"]).catch("signin").default("signin"),
+});
 
 export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "Sign in or create an account — Syllaboss" },
-      { name: "description", content: "Sign in to Syllaboss or create a free account to save your study profile." },
+      {
+        name: "description",
+        content: "Sign in to Syllaboss or create a free account to save your study profile.",
+      },
       { property: "og:title", content: "Sign in or create an account — Syllaboss" },
-      { property: "og:description", content: "Save your institution, course and level with a free Syllaboss account." },
+      {
+        property: "og:description",
+        content: "Save your institution, course and level with a free Syllaboss account.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -26,9 +34,21 @@ export const Route = createFileRoute("/auth")({
 });
 
 const PERKS = [
-  { icon: BookOpen, title: "Verified notes & past questions", sub: "Searchable by school, course and level." },
-  { icon: Bot, title: "Boss AI that shows its working", sub: "Step-by-step answers, quizzes and explanations." },
-  { icon: Coins, title: "Earn while you learn", sub: "Points for studying and sharing, withdrawable to your bank." },
+  {
+    icon: BookOpen,
+    title: "Verified notes & past questions",
+    sub: "Searchable by school, course and level.",
+  },
+  {
+    icon: Bot,
+    title: "Boss AI that shows its working",
+    sub: "Step-by-step answers, quizzes and explanations.",
+  },
+  {
+    icon: Coins,
+    title: "Earn while you learn",
+    sub: "Points for studying and sharing, withdrawable to your bank.",
+  },
 ];
 
 function AuthPage() {
@@ -55,15 +75,19 @@ function AuthPage() {
           aria-hidden
           className="pointer-events-none absolute -bottom-24 -right-16 size-[34rem] opacity-[0.06]"
         />
-        <a href="/" aria-label="Syllaboss home" className="relative inline-flex items-center gap-2.5">
+        <a
+          href="/"
+          aria-label="Syllaboss home"
+          className="relative inline-flex items-center gap-2.5"
+        >
           <SyllabossEmblem className="size-9" />
           <span className="font-display text-2xl font-semibold tracking-tight">Syllaboss</span>
         </a>
 
         <div className="relative max-w-md">
-          <p className="eyebrow !text-white/50">Study with direction</p>
+          <p className="eyebrow !text-white/50">MAKE YOURSELF AT HOME</p>
           <h2 className="mt-4 font-display text-[2.75rem] font-medium leading-[1.05] tracking-tight">
-            Everything your course needs, in one quiet place.
+            Big dreams. A little direction. Your own kind of progress.
           </h2>
           <ul className="mt-9 space-y-5">
             {PERKS.map(({ icon: Icon, title, sub }, i) => (
@@ -84,7 +108,9 @@ function AuthPage() {
           </ul>
         </div>
 
-        <p className="relative text-xs text-white/40">© 2026 Syllaboss</p>
+        <p className="relative text-xs text-white/40">
+          Syllaboss · Made for the whole university journey.
+        </p>
       </aside>
 
       {/* Form */}

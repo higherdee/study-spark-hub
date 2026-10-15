@@ -114,20 +114,19 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
   );
   const moreActive = moreItems.some((m) => isActivePath(path, { to: m.to }));
 
-  const currentSection =
-    [...nav, ...secondary].find((n) => isActivePath(path, n))?.label ?? title;
+  const currentSection = [...nav, ...secondary].find((n) => isActivePath(path, n))?.label ?? title;
 
   return (
     <div
       className={cn(
-        "relative bg-background text-foreground antialiased",
+        "workspace-shell relative bg-background text-foreground antialiased",
         isFullScreenAppPage ? "h-dvh max-h-dvh overflow-hidden" : "min-h-dvh",
       )}
     >
       {/* ───────── Desktop sidebar ───────── */}
       <aside
         data-app-chrome
-        className="fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar-w)] flex-col border-r border-border bg-background lg:flex"
+        className="fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar-w)] flex-col border-r border-border bg-card lg:flex"
       >
         <div className="flex h-16 shrink-0 items-center px-6">
           <Link to="/dashboard" aria-label="Syllaboss home" className="press">
@@ -137,10 +136,15 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
 
         <nav aria-label="Primary" className="flex-1 overflow-y-auto px-3 pb-3 pt-2">
           <LayoutGroup id="sidebar">
-            <p className="eyebrow px-3 pb-2">Menu</p>
+            <p className="eyebrow px-3 pb-2">Your workspace</p>
             <ul className="space-y-0.5">
               {nav.map((item) => (
-                <SidebarLink key={item.to} item={item} active={isActivePath(path, item)} reduce={!!reduce} />
+                <SidebarLink
+                  key={item.to}
+                  item={item}
+                  active={isActivePath(path, item)}
+                  reduce={!!reduce}
+                />
               ))}
             </ul>
 
@@ -149,7 +153,12 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
                 <p className="eyebrow px-3 pb-2 pt-6">Your space</p>
                 <ul className="space-y-0.5">
                   {secondary.map((item) => (
-                    <SidebarLink key={item.to} item={item} active={isActivePath(path, item)} reduce={!!reduce} />
+                    <SidebarLink
+                      key={item.to}
+                      item={item}
+                      active={isActivePath(path, item)}
+                      reduce={!!reduce}
+                    />
                   ))}
                 </ul>
               </>
@@ -169,7 +178,9 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
                 {name.charAt(0).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-semibold leading-tight text-ink">{name}</span>
+                <span className="block truncate text-[13px] font-semibold leading-tight text-ink">
+                  {name}
+                </span>
                 <span className="block truncate text-[11px] text-muted-foreground">
                   {profile?.course || profile?.institution || "Student"}
                 </span>
@@ -233,7 +244,9 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
               >
                 <Coins className="size-4 text-brass" />
                 <span className="tnum">{points.toLocaleString()}</span>
-                <span className="hidden sm:inline text-[11px] font-medium text-muted-foreground">pts</span>
+                <span className="hidden sm:inline text-[11px] font-medium text-muted-foreground">
+                  pts
+                </span>
               </Link>
 
               <button
@@ -296,7 +309,10 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
                     />
                   )}
                   <MoreHorizontal
-                    className={cn("relative size-[22px] transition-colors", moreActive ? "text-forest" : "text-muted-foreground")}
+                    className={cn(
+                      "relative size-[22px] transition-colors",
+                      moreActive ? "text-forest" : "text-muted-foreground",
+                    )}
                   />
                 </span>
                 <span className={moreActive ? "text-forest" : "text-muted-foreground"}>More</span>
@@ -320,7 +336,15 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
 
 /* ───────────────────────── Sidebar pieces ───────────────────────── */
 
-function SidebarLink({ item, active, reduce }: { item: NavItem; active: boolean; reduce: boolean }) {
+function SidebarLink({
+  item,
+  active,
+  reduce,
+}: {
+  item: NavItem;
+  active: boolean;
+  reduce: boolean;
+}) {
   const Icon = item.icon;
   return (
     <li>
@@ -328,14 +352,14 @@ function SidebarLink({ item, active, reduce }: { item: NavItem; active: boolean;
         to={item.to}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "press group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13.5px] font-semibold transition-colors",
-          active ? "text-ink" : "text-ink-soft hover:text-ink",
+          "press group relative flex items-center gap-3 rounded-xl px-3 py-3 text-[13.5px] font-semibold transition-colors",
+          active ? "text-white" : "text-ink-soft hover:text-ink",
         )}
       >
         {active ? (
           <motion.span
             layoutId="sidebar-active"
-            className="absolute inset-0 rounded-lg border border-border bg-card shadow-soft"
+            className="absolute inset-0 rounded-lg border border-forest bg-forest shadow-soft"
             transition={reduce ? { duration: 0 } : spring}
           />
         ) : (
@@ -348,7 +372,12 @@ function SidebarLink({ item, active, reduce }: { item: NavItem; active: boolean;
             transition={reduce ? { duration: 0 } : spring}
           />
         )}
-        <Icon className={cn("relative size-[18px] transition-colors", active ? "text-brand" : "text-moss/80 group-hover:text-moss")} />
+        <Icon
+          className={cn(
+            "relative size-[18px] transition-colors",
+            active ? "text-[#d4ed92]" : "text-moss/80 group-hover:text-moss",
+          )}
+        />
         <span className="relative">{item.label}</span>
       </Link>
     </li>
@@ -366,7 +395,15 @@ function FocusCard() {
     <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_1px_2px_rgba(11,46,34,0.04)]">
       <div className="relative grid size-11 shrink-0 place-items-center">
         <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90">
-          <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted" />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            className="text-muted"
+          />
           <circle
             cx="18"
             cy="18"
@@ -376,7 +413,10 @@ function FocusCard() {
             strokeLinecap="round"
             strokeDasharray={C}
             strokeDashoffset={C * (1 - progress)}
-            className={cn("transition-[stroke-dashoffset] duration-1000 ease-linear", paused ? "text-muted-foreground/50" : "text-brand")}
+            className={cn(
+              "transition-[stroke-dashoffset] duration-1000 ease-linear",
+              paused ? "text-muted-foreground/50" : "text-brand",
+            )}
             stroke="currentColor"
           />
         </svg>
@@ -384,7 +424,9 @@ function FocusCard() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="eyebrow leading-none">{paused ? "Focus paused" : "Focus session"}</p>
-        <p className="tnum mt-1 font-display text-lg font-semibold leading-none text-ink">{label}</p>
+        <p className="tnum mt-1 font-display text-lg font-semibold leading-none text-ink">
+          {label}
+        </p>
         <p className="mt-1 text-[11px] leading-none text-muted-foreground">to +5 pts</p>
       </div>
       <button
@@ -393,7 +435,11 @@ function FocusCard() {
         aria-label={paused ? "Resume focus timer" : "Pause focus timer"}
         className="press grid size-8 shrink-0 place-items-center rounded-full bg-muted text-ink transition-colors hover:bg-surface-container-high"
       >
-        {timer.manualPause ? <Play className="size-3.5 fill-current" /> : <Pause className="size-3.5 fill-current" />}
+        {timer.manualPause ? (
+          <Play className="size-3.5 fill-current" />
+        ) : (
+          <Pause className="size-3.5 fill-current" />
+        )}
       </button>
     </div>
   );
@@ -419,9 +465,16 @@ function TabLink({ item, active }: { item: NavItem; active: boolean }) {
               transition={reduce ? { duration: 0 } : spring}
             />
           )}
-          <Icon className={cn("relative size-[22px] transition-colors", active ? "text-forest" : "text-muted-foreground")} />
+          <Icon
+            className={cn(
+              "relative size-[22px] transition-colors",
+              active ? "text-forest" : "text-muted-foreground",
+            )}
+          />
         </span>
-        <span className={cn("transition-colors", active ? "text-forest" : "text-muted-foreground")}>{item.label}</span>
+        <span className={cn("transition-colors", active ? "text-forest" : "text-muted-foreground")}>
+          {item.label}
+        </span>
       </Link>
     </li>
   );
@@ -448,7 +501,9 @@ export function PageHeader({
           {title}
         </h1>
         {description && (
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">{description}</p>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </p>
         )}
       </div>
       {children}
@@ -495,7 +550,12 @@ export function StatusBadge({ status }: { status: string }) {
         !ok && !bad && "border-brass/25 bg-brass-soft text-brass-ink",
       )}
     >
-      <span className={cn("size-1.5 rounded-full", ok ? "bg-brand" : bad ? "bg-destructive" : "bg-brass")} />
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          ok ? "bg-brand" : bad ? "bg-destructive" : "bg-brass",
+        )}
+      />
       {status}
     </span>
   );

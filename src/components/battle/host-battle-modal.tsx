@@ -21,12 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -46,13 +41,15 @@ interface HostBattleModalProps {
   groupId: string;
   groupTitle: string;
   isDirectPeer?: boolean | undefined;
-  peerUser?: {
-    id: string;
-    fullName: string;
-    username: string;
-    avatarUrl?: string | null | undefined;
-    points?: number | undefined;
-  } | undefined;
+  peerUser?:
+    | {
+        id: string;
+        fullName: string;
+        username: string;
+        avatarUrl?: string | null | undefined;
+        points?: number | undefined;
+      }
+    | undefined;
   currentUser: {
     id: string;
     fullName?: string | null | undefined;
@@ -79,14 +76,18 @@ export function HostBattleModal({
   const [mode, setMode] = useState<"mcq" | "theory">("mcq");
   const [timePerQuestion, setTimePerQuestion] = useState<number>(20);
   const [customTime, setCustomTime] = useState<string>("");
-  const [stakeAmount, setStakeAmount] = useState<number>(10);
+  const [stakeAmount, setStakeAmount] = useState<number>(0);
   const [customStake, setCustomStake] = useState<string>("");
 
   // Omni-Source State
   const [sourceType, setSourceType] = useState<SourceType>("topic");
   const [topicPrompt, setTopicPrompt] = useState("");
   const [uploadedFile, setUploadedFile] = useState<{ name: string; content: string } | null>(null);
-  const [selectedLibraryMat, setSelectedLibraryMat] = useState<{ id: string; title: string; course: string } | null>(null);
+  const [selectedLibraryMat, setSelectedLibraryMat] = useState<{
+    id: string;
+    title: string;
+    course: string;
+  } | null>(null);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -134,11 +135,10 @@ export function HostBattleModal({
   // Compute lowest balance among selected fighters
   const selectedMembers = members.filter((m) => selectedFighterIds.includes(m.id));
   const underfundedMembers = selectedMembers.filter(
-    (m) => m.id !== currentUser.id && !sponsoredFighterIds.includes(m.id) && m.points < stakeAmount
+    (m) => m.id !== currentUser.id && !sponsoredFighterIds.includes(m.id) && m.points < stakeAmount,
   );
-  const minBalance = selectedMembers.length > 0
-    ? Math.min(...selectedMembers.map((m) => m.points))
-    : 0;
+  const minBalance =
+    selectedMembers.length > 0 ? Math.min(...selectedMembers.map((m) => m.points)) : 0;
 
   // Real-time Pot calculation
   const totalPot = stakeAmount * (selectedFighterIds.length || 1);
@@ -147,14 +147,14 @@ export function HostBattleModal({
   const toggleFighter = (id: string) => {
     if (id === currentUser.id) return; // host is always included
     setSelectedFighterIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
   // Toggle Sponsor for a fighter
   const toggleSponsor = (id: string) => {
     setSponsoredFighterIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
@@ -259,7 +259,30 @@ export function HostBattleModal({
 
   // Launch Battle
   const handleLaunchBattle = async () => {
-    const finalTitle = battleTitle.trim() || (isDirectPeer ? `1v1 Challenge: ${groupTitle}` : `Study Battle: ${groupTitle}`);
+    if (isCreating) return;
+    if (
+      mode === "mcq" &&
+      (!Number.isInteger(timePerQuestion) || timePerQuestion < 5 || timePerQuestion > 300)
+    ) {
+      toast.error("Choose a whole-number time between 5 and 300 seconds.");
+      return;
+    }
+    if (!Number.isInteger(stakeAmount) || stakeAmount < 0 || stakeAmount > 10000) {
+      toast.error("Choose a whole-number stake from 0 to 10,000 points.");
+      return;
+    }
+    if (
+      (sourceType === "topic" && !topicPrompt.trim() && battleTitle.trim().length < 3) ||
+      (sourceType === "file" && !uploadedFile) ||
+      (sourceType === "library" && !selectedLibraryMat) ||
+      (sourceType === "voice" && !voiceTranscript.trim())
+    ) {
+      toast.error("Add a topic or select study material before starting.");
+      return;
+    }
+    const finalTitle =
+      battleTitle.trim() ||
+      (isDirectPeer ? `1v1 Challenge: ${groupTitle}` : `Study Battle: ${groupTitle}`);
 
     if (selectedFighterIds.length === 0) {
       toast.error("Select at least one opponent/fighter.");
@@ -300,7 +323,11 @@ export function HostBattleModal({
       });
 
       battleAudio.playBattleHorn();
-      toast.success(isDirectPeer ? "⚡ 1v1 Challenge sent to your peer!" : "⚡ Battle Challenge dropped into chat!");
+      toast.success(
+        isDirectPeer
+          ? "⚡ 1v1 Challenge sent to your peer!"
+          : "⚡ Battle Challenge dropped into chat!",
+      );
       if (onBattleCreated) onBattleCreated(battle.id);
       onClose();
     } catch (err: any) {
@@ -314,7 +341,7 @@ export function HostBattleModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[92vh] max-w-xl overflow-y-auto rounded-3xl border-border bg-card p-0 shadow-[var(--elev-3)]">
         {/* Academic Docket Header */}
-        <DialogHeader className="border-b border-border bg-forest px-6 py-5 text-white">
+        <DialogHeader className="battle-setup-header border-b border-border bg-forest px-6 py-5 pr-12 text-white">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="grid size-10 place-items-center rounded-2xl bg-white/10 text-brass-soft border border-white/10">
@@ -322,17 +349,20 @@ export function HostBattleModal({
               </div>
               <div>
                 <DialogTitle className="font-display text-xl font-normal tracking-tight text-white">
-                  {isDirectPeer ? "1v1 Scholar Challenge" : "Host Examination Showdown"}
+                  {isDirectPeer ? "Challenge your study partner" : "A little friendly competition"}
                 </DialogTitle>
                 <p className="mt-0.5 text-xs text-white/70">
                   {isDirectPeer
                     ? `Challenge @${peerUser?.username || groupTitle} to a live academic duel`
-                    : "Calibrate questions, lock buy-in stakes, and drop match challenge into chat"}
+                    : "Choose a topic, invite your people, and see what sticks."}
                 </p>
               </div>
             </div>
 
-            <Badge variant="outline" className="max-w-[36%] truncate border-white/20 bg-white/5 text-xs font-medium text-white/90">
+            <Badge
+              variant="outline"
+              className="max-w-[36%] truncate border-white/20 bg-white/5 text-xs font-medium text-white/90"
+            >
               {groupTitle}
             </Badge>
           </div>
@@ -341,9 +371,7 @@ export function HostBattleModal({
         <div className="p-6 space-y-5 text-xs text-ink">
           {/* 1. Battle Title */}
           <div>
-            <label className="eyebrow block mb-1.5 text-ink-soft">
-              Examination Topic / Subject
-            </label>
+            <label className="eyebrow block mb-1.5 text-ink-soft">1. Give it a topic</label>
             <Input
               value={battleTitle}
               onChange={(e) => setBattleTitle(e.target.value)}
@@ -355,7 +383,7 @@ export function HostBattleModal({
           {/* 2. Knowledge Source Selector */}
           <div>
             <label className="eyebrow block mb-1.5 text-ink-soft">
-              Knowledge Source (AI generates 5 certified questions)
+              2. Choose your question source
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
@@ -365,10 +393,15 @@ export function HostBattleModal({
                   "p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center lift press",
                   sourceType === "topic"
                     ? "border-forest bg-forest text-white shadow-xs font-semibold"
-                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
+                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft",
                 )}
               >
-                <Sparkles className={cn("size-4.5", sourceType === "topic" ? "text-brass-soft" : "text-brand")} />
+                <Sparkles
+                  className={cn(
+                    "size-4.5",
+                    sourceType === "topic" ? "text-brass-soft" : "text-brand",
+                  )}
+                />
                 <span className="text-xs font-medium">Topic Prompt</span>
               </button>
 
@@ -379,10 +412,15 @@ export function HostBattleModal({
                   "p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center lift press",
                   sourceType === "file"
                     ? "border-forest bg-forest text-white shadow-xs font-semibold"
-                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
+                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft",
                 )}
               >
-                <Upload className={cn("size-4.5", sourceType === "file" ? "text-brass-soft" : "text-forest")} />
+                <Upload
+                  className={cn(
+                    "size-4.5",
+                    sourceType === "file" ? "text-brass-soft" : "text-forest",
+                  )}
+                />
                 <span className="text-xs font-medium">Upload PDF/Doc</span>
               </button>
 
@@ -393,10 +431,15 @@ export function HostBattleModal({
                   "p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center lift press",
                   sourceType === "library"
                     ? "border-forest bg-forest text-white shadow-xs font-semibold"
-                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
+                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft",
                 )}
               >
-                <BookOpen className={cn("size-4.5", sourceType === "library" ? "text-brass-soft" : "text-brand")} />
+                <BookOpen
+                  className={cn(
+                    "size-4.5",
+                    sourceType === "library" ? "text-brass-soft" : "text-brand",
+                  )}
+                />
                 <span className="text-xs font-medium">Campus Library</span>
               </button>
 
@@ -407,10 +450,15 @@ export function HostBattleModal({
                   "p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center lift press",
                   sourceType === "voice"
                     ? "border-forest bg-forest text-white shadow-xs font-semibold"
-                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
+                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft",
                 )}
               >
-                <Mic className={cn("size-4.5", sourceType === "voice" ? "text-brass-soft" : "text-brass")} />
+                <Mic
+                  className={cn(
+                    "size-4.5",
+                    sourceType === "voice" ? "text-brass-soft" : "text-brass",
+                  )}
+                />
                 <span className="text-xs font-medium">Whisper Voice</span>
               </button>
             </div>
@@ -426,7 +474,12 @@ export function HostBattleModal({
                     className="h-9 rounded-xl border-border bg-background text-xs text-ink"
                   />
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {["Differential Equations", "Organic Reaction Mechanisms", "Macroeconomics Inflation", "Data Structures Trees"].map((tag) => (
+                    {[
+                      "Differential Equations",
+                      "Organic Reaction Mechanisms",
+                      "Macroeconomics Inflation",
+                      "Data Structures Trees",
+                    ].map((tag) => (
                       <button
                         key={tag}
                         type="button"
@@ -463,9 +516,18 @@ export function HostBattleModal({
                   ) : (
                     <label className="flex flex-col items-center justify-center p-5 border border-dashed border-border rounded-xl cursor-pointer hover:border-forest/60 bg-card transition-colors">
                       <Upload className="size-5 text-muted-foreground mb-1.5" />
-                      <span className="text-xs font-semibold text-ink">Select Course PDF or Past Question</span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">Extracts core concepts automatically</span>
-                      <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="hidden" />
+                      <span className="text-xs font-semibold text-ink">
+                        Select Course PDF or Past Question
+                      </span>
+                      <span className="text-[10px] text-muted-foreground mt-0.5">
+                        Extracts core concepts automatically
+                      </span>
+                      <input
+                        type="file"
+                        accept=".pdf,.docx,.txt"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
                     </label>
                   )}
                 </div>
@@ -474,27 +536,35 @@ export function HostBattleModal({
               {sourceType === "library" && (
                 <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                   {libraryMaterials.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-3 text-xs">No library materials found.</p>
+                    <p className="text-center text-muted-foreground py-3 text-xs">
+                      No library materials found.
+                    </p>
                   ) : (
                     libraryMaterials.map((mat: any) => (
                       <div
                         key={mat.id}
                         onClick={() => {
-                          setSelectedLibraryMat({ id: mat.id, title: mat.title, course: mat.course });
+                          setSelectedLibraryMat({
+                            id: mat.id,
+                            title: mat.title,
+                            course: mat.course,
+                          });
                           if (!battleTitle) setBattleTitle(mat.title);
                         }}
                         className={cn(
                           "flex items-center justify-between p-2.5 rounded-xl border cursor-pointer text-xs transition-all lift",
                           selectedLibraryMat?.id === mat.id
                             ? "border-forest bg-forest/10 text-forest font-bold"
-                            : "border-border bg-card hover:bg-surface-container-low"
+                            : "border-border bg-card hover:bg-surface-container-low",
                         )}
                       >
                         <div className="truncate">
                           <p className="font-semibold truncate text-ink">{mat.title}</p>
                           <p className="text-[10px] text-muted-foreground">{mat.course}</p>
                         </div>
-                        {selectedLibraryMat?.id === mat.id && <Check className="size-4 text-forest shrink-0" />}
+                        {selectedLibraryMat?.id === mat.id && (
+                          <Check className="size-4 text-forest shrink-0" />
+                        )}
                       </div>
                     ))
                   )}
@@ -526,8 +596,8 @@ export function HostBattleModal({
                   </div>
                   {voiceTranscript && (
                     <div className="w-full p-2.5 rounded-xl bg-card border border-border text-xs text-ink">
-                      <span className="eyebrow text-brass block mb-0.5">Transcribed Prompt</span>
-                      "{voiceTranscript}"
+                      <span className="eyebrow text-brass block mb-0.5">Transcribed Prompt</span>"
+                      {voiceTranscript}"
                     </div>
                   )}
                 </div>
@@ -538,9 +608,7 @@ export function HostBattleModal({
           {/* 3. Game Mode & Timers */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="eyebrow block mb-1.5 text-ink-soft">
-                Examination Format
-              </label>
+              <label className="eyebrow block mb-1.5 text-ink-soft">Examination Format</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -549,12 +617,21 @@ export function HostBattleModal({
                     "p-3 rounded-2xl border flex flex-col items-center gap-1 transition-all lift press",
                     mode === "mcq"
                       ? "border-forest bg-forest text-white shadow-xs font-bold"
-                      : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
+                      : "border-border bg-surface-container-low hover:bg-card text-ink-soft",
                   )}
                 >
-                  <Zap className={cn("size-4", mode === "mcq" ? "text-brass-soft" : "text-brass")} />
+                  <Zap
+                    className={cn("size-4", mode === "mcq" ? "text-brass-soft" : "text-brass")}
+                  />
                   <span className="text-xs font-semibold">MCQ Blitz</span>
-                  <span className={cn("text-[10px]", mode === "mcq" ? "text-white/70" : "text-muted-foreground")}>Speed Arena</span>
+                  <span
+                    className={cn(
+                      "text-[10px]",
+                      mode === "mcq" ? "text-white/70" : "text-muted-foreground",
+                    )}
+                  >
+                    Speed Arena
+                  </span>
                 </button>
 
                 <button
@@ -564,12 +641,21 @@ export function HostBattleModal({
                     "p-3 rounded-2xl border flex flex-col items-center gap-1 transition-all lift press",
                     mode === "theory"
                       ? "border-forest bg-forest text-white shadow-xs font-bold"
-                      : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
+                      : "border-border bg-surface-container-low hover:bg-card text-ink-soft",
                   )}
                 >
-                  <BookOpen className={cn("size-4", mode === "theory" ? "text-brass-soft" : "text-brand")} />
+                  <BookOpen
+                    className={cn("size-4", mode === "theory" ? "text-brass-soft" : "text-brand")}
+                  />
                   <span className="text-xs font-semibold">Theory Showdown</span>
-                  <span className={cn("text-[10px]", mode === "theory" ? "text-white/70" : "text-muted-foreground")}>Deep Derivations</span>
+                  <span
+                    className={cn(
+                      "text-[10px]",
+                      mode === "theory" ? "text-white/70" : "text-muted-foreground",
+                    )}
+                  >
+                    Deep Derivations
+                  </span>
                 </button>
               </div>
             </div>
@@ -592,13 +678,18 @@ export function HostBattleModal({
                         "flex-1 h-9 rounded-xl border text-xs font-bold transition-all tnum font-mono lift press",
                         timePerQuestion === sec && !customTime
                           ? "border-forest bg-forest text-white"
-                          : "border-border bg-card hover:bg-surface-container-low text-ink"
+                          : "border-border bg-card hover:bg-surface-container-low text-ink",
                       )}
                     >
                       {sec}s
                     </button>
                   ))}
                   <Input
+                    type="number"
+                    min={5}
+                    max={300}
+                    step={1}
+                    aria-label="Custom seconds per question"
                     value={customTime}
                     onChange={(e) => {
                       const val = Number(e.target.value);
@@ -612,7 +703,9 @@ export function HostBattleModal({
               ) : (
                 <div className="h-9 rounded-xl border border-brand/40 bg-brand/10 px-3 flex items-center justify-between text-brand font-bold text-xs">
                   <span>Untimed ⏱️</span>
-                  <span className="text-[10px] font-normal text-muted-foreground">Handwritten OCR or Voice</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    Handwritten OCR or Voice
+                  </span>
                 </div>
               )}
             </div>
@@ -621,12 +714,10 @@ export function HostBattleModal({
           {/* 4. Stakes & Prize Pot */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="eyebrow text-ink-soft">
-                Buy-in Stake per Fighter
-              </label>
+              <label className="eyebrow text-ink-soft">Points per player (optional)</label>
               <div className="flex items-center gap-1.5 text-xs font-bold text-brass tnum font-mono">
                 <Coins className="size-4" />
-                <span>Total Pot: {totalPot} pts</span>
+                <span>Potential pool: {totalPot} pts</span>
               </div>
             </div>
 
@@ -642,14 +733,19 @@ export function HostBattleModal({
                   className={cn(
                     "flex-1 h-9 rounded-xl border text-xs font-bold transition-all tnum font-mono lift press",
                     stakeAmount === pts && !customStake
-                      ? "border-brass bg-brass text-ink-inverted shadow-xs"
-                      : "border-border bg-card hover:bg-surface-container-low text-ink"
+                      ? "border-brass bg-brass text-white shadow-xs"
+                      : "border-border bg-card hover:bg-surface-container-low text-ink",
                   )}
                 >
                   {pts === 0 ? "Friendly" : `${pts} pts`}
                 </button>
               ))}
               <Input
+                type="number"
+                min={0}
+                max={10000}
+                step={1}
+                aria-label="Custom points per player"
                 value={customStake}
                 onChange={(e) => {
                   const val = Number(e.target.value);
@@ -698,7 +794,8 @@ export function HostBattleModal({
                   <AlertTriangle className="size-4 text-brass shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold text-ink">
-                      Wallet Notice: {underfundedMembers.length} fighter(s) hold fewer than {stakeAmount} pts
+                      Wallet Notice: {underfundedMembers.length} fighter(s) hold fewer than{" "}
+                      {stakeAmount} pts
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       Select a resolution so everyone enters the arena without friction:
@@ -742,28 +839,41 @@ export function HostBattleModal({
               {isLoadingMembers ? (
                 <div className="py-6 text-center text-muted-foreground flex items-center justify-center gap-2">
                   <Loader2 className="size-4 animate-spin text-forest" />
-                  <span>Verifying live member credentials...</span>
+                  <span>Finding your study group…</span>
                 </div>
               ) : members.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4 text-xs">No active contestants detected.</p>
+                <p className="text-center text-muted-foreground py-4 text-xs">
+                  No players yet. Invite someone to your study group first.
+                </p>
               ) : (
                 members.map((member) => {
                   const isHost = member.id === currentUser.id;
                   const isSelected = selectedFighterIds.includes(member.id);
                   const isSponsored = sponsoredFighterIds.includes(member.id);
-                  const isBroke = isSelected && !isHost && !isSponsored && member.points < stakeAmount;
+                  const isBroke =
+                    isSelected && !isHost && !isSponsored && member.points < stakeAmount;
 
                   return (
                     <div
                       key={member.id}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      tabIndex={isHost ? -1 : 0}
+                      aria-label={`${member.full_name || "Player"}${isHost ? " (host, always included)" : ""}`}
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Enter") {
+                          e.preventDefault();
+                          toggleFighter(member.id);
+                        }
+                      }}
                       onClick={() => toggleFighter(member.id)}
                       className={cn(
                         "flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all lift press",
                         isBroke
                           ? "border-brass/70 bg-brass/10"
                           : isSelected
-                          ? "border-forest/50 bg-card shadow-xs"
-                          : "border-border/60 opacity-60 hover:opacity-100 bg-background"
+                            ? "border-forest/50 bg-card shadow-xs"
+                            : "border-border/60 opacity-60 hover:opacity-100 bg-background",
                       )}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -780,7 +890,10 @@ export function HostBattleModal({
                               {member.full_name} {isHost && "(Host)"}
                             </span>
                             {isSponsored && (
-                              <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-brand/15 border-brand/40 text-brand font-bold">
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] h-4 px-1.5 bg-brand/15 border-brand/40 text-brand font-bold"
+                              >
                                 Sponsored
                               </Badge>
                             )}
@@ -798,7 +911,7 @@ export function HostBattleModal({
                             "px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 tnum font-mono",
                             member.points < stakeAmount && !isSponsored
                               ? "bg-brass/20 text-brass"
-                              : "bg-brand/15 text-brand"
+                              : "bg-brand/15 text-brand",
                           )}
                         >
                           <Coins className="size-3" />
@@ -816,7 +929,9 @@ export function HostBattleModal({
                             }}
                             className={cn(
                               "h-6 px-2 text-[10px] rounded-full",
-                              isSponsored ? "text-brand font-bold" : "text-muted-foreground hover:text-ink"
+                              isSponsored
+                                ? "text-brand font-bold"
+                                : "text-muted-foreground hover:text-ink",
                             )}
                           >
                             {isSponsored ? "Sponsoring" : "Sponsor"}
@@ -828,7 +943,7 @@ export function HostBattleModal({
                             "size-5 rounded-md grid place-items-center border",
                             isSelected
                               ? "bg-forest border-forest text-white"
-                              : "border-border text-transparent"
+                              : "border-border text-transparent",
                           )}
                         >
                           <Check className="size-3 stroke-[3]" />
@@ -841,6 +956,31 @@ export function HostBattleModal({
             </div>
           </div>
 
+          <div className="battle-review">
+            <strong>
+              {stakeAmount === 0
+                ? "Just for the learning. No points at risk."
+                : "Before you send the challenge"}
+            </strong>
+            <p>
+              5 AI-generated practice questions ·{" "}
+              {mode === "mcq"
+                ? `${timePerQuestion} seconds per question`
+                : "Untimed written answers"}{" "}
+              · {selectedFighterIds.length} invited players
+            </p>
+            {stakeAmount > 0 && (
+              <p>
+                Each joining player contributes {stakeAmount} points. Your host contribution is{" "}
+                {stakeAmount * (1 + sponsoredFighterIds.length)} points including sponsorships. The
+                final pool depends on who joins. Review before continuing.
+              </p>
+            )}
+            <small>
+              AI-generated questions and grading can be imperfect. Use this for practice, not formal
+              assessment.
+            </small>
+          </div>
           {/* Launch Button */}
           <div className="pt-2">
             <Button
@@ -852,15 +992,19 @@ export function HostBattleModal({
               {isCreating ? (
                 <>
                   <Loader2 className="size-4 animate-spin text-brass-soft" />
-                  <span>Boss AI Generating Certified Questions...</span>
+                  <span>Preparing your practice questions…</span>
                 </>
               ) : (
                 <>
                   <Swords className="size-4 text-brass-soft" />
                   <span>
                     {isDirectPeer
-                      ? `⚡ Send 1v1 Challenge (${totalPot} pts Pot)`
-                      : `⚡ Drop Match Challenge in Chat (${totalPot} pts Pot)`}
+                      ? stakeAmount === 0
+                        ? "Send friendly challenge"
+                        : `Send challenge · ${stakeAmount} pts / player`
+                      : stakeAmount === 0
+                        ? "Start a friendly battle"
+                        : `Create battle · ${stakeAmount} pts / player`}
                   </span>
                 </>
               )}

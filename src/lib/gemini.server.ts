@@ -1,0 +1,250 @@
+/**
+ * Groq Cloud & Google Gemini AI Integration Service for Syllaboss
+ * High-speed LPU inference powered by Groq Cloud (openai/gpt-oss-120b)
+ * with graceful fallback to Gemini and resilient offline processing.
+ */
+
+export interface GeminiMessage {
+  role: "user" | "model" | "system" | "assistant";
+  content: string;
+}
+
+export function getGroqApiKey(): string {
+  return process.env["GROQ_API_KEY"] || "";
+}
+
+export function getGeminiApiKey(): string {
+  return process.env["GEMINI_API_KEY"] || "";
+}
+
+// Live tested working models on Groq:
+const GROQ_MODELS = [
+  ...new Set([
+    process.env["GROQ_MODEL"] || "llama-3.3-70b-versatile",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+  ]),
+];
+
+const GEMINI_MODELS = ["gemini-flash-lite-latest", "gemini-flash-latest"];
+
+/**
+ * Multimodal vision analyzer using Google Gemini for handwritten notes, equations, and diagrams
+ */
+export async function askGeminiVisionAI(
+  prompt: string,
+  imageBase64: string,
+  mimeType: string = "image/jpeg",
+  options?: {
+    systemPrompt?: string | undefined;
+    temperature?: number | undefined;
+    responseMimeType?: string | undefined;
+  },
+): Promise<string> {
+  const geminiApiKey = getGeminiApiKey();
+  if (!geminiApiKey) {
+    throw new Error("Missing Gemini API key for vision processing.");
+  }
+
+  // Strip possible data URL prefix if passed directly
+  const cleanBase64 = imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64;
+
+  const contents = [
+    {
+      role: "user",
+      parts: [
+        {
+          inline_data: {
+            mime_type: mimeType,
+            data: cleanBase64,
+          },
+        },
+        {
+          text: prompt,
+        },
+      ],
+    },
+  ];
+
+  const payload: any = {
+    contents,
+    generationConfig: {
+      temperature: options?.temperature ?? 0.2,
+    },
+  };
+
+  if (options?.systemPrompt) {
+    payload.systemInstruction = {
+      parts: [{ text: options.systemPrompt }],
+    };
+  }
+  if (options?.responseMimeType) {
+    payload.generationConfig["responseMimeType"] = options.responseMimeType;
+  }
+
+  const visionModels = ["gemini-flash-lite-latest", "gemini-flash-latest"];
+  for (const model of visionModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(25000),
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      } else {
+        console.warn(`Gemini vision model ${model} HTTP ${res.status}`);
+      }
+    } catch (err: any) {
+      console.warn(`Gemini vision model ${model} error:`, err?.message);
+    }
+  }
+
+  throw new Error("Gemini vision analysis failed across all available models.");
+}
+
+export async function askGeminiAI(
+  promptOrMessages: string | GeminiMessage[],
+  options?:
+    | string
+    | {
+        model?: string;
+        systemPrompt?: string | undefined;
+        temperature?: number | undefined;
+        responseMimeType?: string | undefined;
+      },
+): Promise<string> {
+  const opts = typeof options === "string" ? { systemPrompt: options } : options || {};
+  const groqApiKey = getGroqApiKey();
+
+  // 1. PRIMARY ENGINE: Groq Cloud (Ultra-fast LPU inference)
+  if (groqApiKey) {
+    try {
+      // Build OpenAI-compatible messages for Groq
+      const groqMessages: Array<{ role: string; content: string }> = [];
+
+      let sys = opts.systemPrompt;
+      if (!sys && Array.isArray(promptOrMessages)) {
+        const sysMsg = promptOrMessages.find((m) => m.role === "system");
+        if (sysMsg) sys = sysMsg.content;
+      }
+      if (sys) {
+        groqMessages.push({ role: "system", content: sys });
+      }
+
+      if (typeof promptOrMessages === "string") {
+        groqMessages.push({ role: "user", content: promptOrMessages });
+      } else {
+        for (const m of promptOrMessages) {
+          if (m.role === "system") continue;
+          groqMessages.push({
+            role: m.role === "model" ? "assistant" : m.role,
+            content: m.content,
+          });
+        }
+      }
+
+      for (const groqModel of GROQ_MODELS) {
+        try {
+          const bodyPayload: any = {
+            model: groqModel,
+            messages: groqMessages,
+            temperature: opts.temperature ?? 0.6,
+          };
+          if (opts.responseMimeType === "application/json") {
+            bodyPayload.response_format = { type: "json_object" };
+          }
+
+          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${groqApiKey}`,
+            },
+            signal: AbortSignal.timeout(12000),
+            body: JSON.stringify(bodyPayload),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const text = data.choices?.[0]?.message?.content;
+            if (text) {
+              return text;
+            }
+          } else {
+            console.warn(`Groq model ${groqModel} HTTP ${res.status}`);
+          }
+        } catch (err: any) {
+          console.warn(`Groq attempt with ${groqModel} failed:`, err?.message);
+        }
+      }
+    } catch (err: any) {
+      console.warn("Groq inference error, falling back to Gemini:", err?.message);
+    }
+  }
+
+  // 2. SECONDARY ENGINE: Google Gemini fallback
+  const geminiApiKey = getGeminiApiKey();
+  if (geminiApiKey) {
+    let contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+
+    if (typeof promptOrMessages === "string") {
+      contents = [{ role: "user", parts: [{ text: promptOrMessages }] }];
+    } else {
+      contents = promptOrMessages
+        .filter((m) => m.role !== "system")
+        .map((m) => ({
+          role: m.role === "assistant" ? "model" : m.role,
+          parts: [{ text: m.content }],
+        }));
+    }
+
+    let systemInstruction: { parts: Array<{ text: string }> } | undefined = undefined;
+    if (opts.systemPrompt) {
+      systemInstruction = { parts: [{ text: opts.systemPrompt }] };
+    } else if (Array.isArray(promptOrMessages)) {
+      const sysMsg = promptOrMessages.find((m) => m.role === "system");
+      if (sysMsg) systemInstruction = { parts: [{ text: sysMsg.content }] };
+    }
+
+    const generationConfig: Record<string, any> = {
+      temperature: opts.temperature ?? 0.7,
+    };
+    if (opts.responseMimeType) {
+      generationConfig["responseMimeType"] = opts.responseMimeType;
+    }
+
+    for (const model of GEMINI_MODELS) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+        const payload: any = { contents, generationConfig };
+        if (systemInstruction) payload.systemInstruction = systemInstruction;
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(10000),
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) return text;
+        }
+      } catch (err: any) {
+        console.warn(`Gemini model ${model} error:`, err?.message);
+      }
+    }
+  }
+
+  // 3. TERTIARY RESILIENT ACADEMIC ENGINE FALLBACK
+  throw new Error(
+    "The study assistant is unavailable right now. Your question has not been answered. Please try again shortly.",
+  );
+}

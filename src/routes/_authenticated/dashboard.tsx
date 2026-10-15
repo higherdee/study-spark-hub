@@ -1,5 +1,16 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { BookOpen, FileStack, Home, Trophy, Upload, Wallet, Shield, Bot, Users, Settings } from "lucide-react";
+import {
+  BookOpen,
+  FileStack,
+  Home,
+  Trophy,
+  Upload,
+  Wallet,
+  Shield,
+  Bot,
+  Users,
+  Settings,
+} from "lucide-react";
 import { useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -10,13 +21,16 @@ import { PageBreathingLoader } from "@/components/syllaboss-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { updateStreakServerFn } from "@/lib/community.functions";
-import { autoPromptNotificationConsent, schedulePeriodicStudyReminder } from "@/lib/notifications";
+import { schedulePeriodicStudyReminder } from "@/lib/notifications";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "Dashboard — Syllaboss" },
-      { name: "description", content: "Upload materials, earn points and study with your AI assistant." },
+      {
+        name: "description",
+        content: "Upload materials, earn points and study with your AI assistant.",
+      },
       { property: "og:title", content: "Dashboard — Syllaboss" },
       { property: "og:description", content: "Your Syllaboss student dashboard." },
       { property: "og:type", content: "website" },
@@ -63,7 +77,7 @@ function DashboardLayout() {
   // Prompt device notification consent immediately on entry & schedule periodic reminders
   useEffect(() => {
     if (typeof window !== "undefined") {
-      autoPromptNotificationConsent().catch(() => {});
+      // Permission is requested from Settings, after an explicit student action.
       schedulePeriodicStudyReminder();
     }
   }, []);
@@ -75,7 +89,7 @@ function DashboardLayout() {
   }, [profile, isLoading, navigate]);
 
   if (isLoading || !profile || profile.onboarding_step < 3) {
-    return <PageBreathingLoader message="Synchronizing academic records..." />;
+    return <PageBreathingLoader message="Getting your workspace ready…" />;
   }
 
   return (

@@ -32,7 +32,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/materials")({
   head: () => ({
     meta: [
       { title: "My uploads — Syllaboss" },
-      { name: "description", content: "Track the status of your uploaded materials and points earned." },
+      {
+        name: "description",
+        content: "Track the status of your uploaded materials and points earned.",
+      },
     ],
   }),
   component: MyMaterials,
@@ -109,10 +112,14 @@ function MyMaterials() {
             My uploads
           </h1>
           <p className="mt-1.5 text-sm text-ink-soft">
-            Track verification audits, community downloads, and {POINTS_NAME} yields earned from your academic deposits.
+            See what you’ve shared, follow verification progress, and track the {POINTS_NAME} your
+            materials earn.
           </p>
         </div>
-        <Button asChild className="self-start rounded-full bg-forest text-white hover:bg-ink md:self-auto">
+        <Button
+          asChild
+          className="self-start rounded-full bg-forest text-white hover:bg-ink md:self-auto"
+        >
           <Link to="/dashboard/upload">
             <Upload className="size-4" />
             Upload new material
@@ -136,13 +143,17 @@ function MyMaterials() {
 
         <div className="surface p-4">
           <p className="eyebrow">Yield earned</p>
-          <p className="mt-1 font-display text-2xl text-brass-ink tnum">{totalPointsEarned.toLocaleString()}</p>
+          <p className="mt-1 font-display text-2xl text-brass-ink tnum">
+            {totalPointsEarned.toLocaleString()}
+          </p>
           <p className="text-[11px] text-muted-foreground">SyllaPoints</p>
         </div>
 
         <div className="surface p-4">
           <p className="eyebrow">Downloads</p>
-          <p className="mt-1 font-display text-2xl text-ink tnum">{totalDownloads.toLocaleString()}</p>
+          <p className="mt-1 font-display text-2xl text-ink tnum">
+            {totalDownloads.toLocaleString()}
+          </p>
           <p className="text-[11px] text-muted-foreground">From students</p>
         </div>
       </div>
@@ -164,7 +175,8 @@ function MyMaterials() {
           </span>
           <h3 className="mt-4 font-display text-xl text-ink">No uploads yet</h3>
           <p className="mt-1 max-w-sm text-sm text-ink-soft">
-            Share past questions, lecture summaries, or textbook chapters to help campus peers and start earning {POINTS_NAME}.
+            Share past questions, lecture summaries, or textbook chapters to help campus peers and
+            start earning {POINTS_NAME}.
           </p>
           <Button asChild className="mt-5 rounded-full bg-forest text-white hover:bg-ink">
             <Link to="/dashboard/upload">
@@ -198,7 +210,8 @@ function MyMaterials() {
 
                 {m.verification_notes && (
                   <div className="rounded-xl bg-muted/70 p-2.5 text-xs text-ink-soft border border-border">
-                    <span className="font-semibold text-ink">Audit notes:</span> {m.verification_notes}
+                    <span className="font-semibold text-ink">Audit notes:</span>{" "}
+                    {m.verification_notes}
                   </div>
                 )}
 
@@ -263,9 +276,15 @@ function MyMaterials() {
                 {data.map((m) => (
                   <tr key={m.id} className="hover:bg-muted/30 transition-colors">
                     <td className="py-3.5 px-4">
-                      <p className="font-display text-sm font-semibold text-ink line-clamp-1">{m.title}</p>
+                      <p className="font-display text-sm font-semibold text-ink line-clamp-1">
+                        {m.title}
+                      </p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {m.course_code ? <span className="font-mono font-bold text-accent-foreground mr-1">[{m.course_code}]</span> : null}
+                        {m.course_code ? (
+                          <span className="font-mono font-bold text-accent-foreground mr-1">
+                            [{m.course_code}]
+                          </span>
+                        ) : null}
                         {m.course} · {m.material_type}
                       </p>
                       {m.verification_notes && (
@@ -274,7 +293,9 @@ function MyMaterials() {
                         </p>
                       )}
                     </td>
-                    <td className="py-3.5 px-3 text-muted-foreground font-mono">{m.page_count || "—"}</td>
+                    <td className="py-3.5 px-3 text-muted-foreground font-mono">
+                      {m.page_count || "—"}
+                    </td>
                     <td className="py-3.5 px-3">
                       <StatusBadge status={m.status} />
                     </td>
@@ -366,7 +387,8 @@ function MyMaterials() {
                     className="rounded-xl text-xs bg-muted/40 focus:bg-white"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    This message is sent directly to the faculty administrative panel for manual override.
+                    This message is sent directly to the faculty administrative panel for manual
+                    override.
                   </p>
                 </div>
 

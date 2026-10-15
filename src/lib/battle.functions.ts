@@ -1,3 +1,4 @@
+import { battleConfigSchema } from "@/lib/battle-config";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
@@ -32,22 +33,10 @@ export const getGroupMembersWithBalancesServerFn = createServerFn({ method: "GET
  * Host initiates a Study Battle, generates exam questions, and drops lobby card into chat
  */
 export const createStudyBattleServerFn = createServerFn({ method: "POST" })
-  .validator((d: {
-    groupId: string;
-    hostId: string;
-    hostName: string;
-    hostAvatar?: string | null | undefined;
-    title: string;
-    mode: "mcq" | "theory";
-    sourceSummary?: string | undefined;
-    sourceContext?: string | undefined;
-    timePerQuestion?: number | null | undefined;
-    questionCount?: number | undefined;
-    stakeAmount?: number | undefined;
-    fighterIds: string[];
-    sponsoredIds?: string[] | undefined;
-  }) => d)
+  .inputValidator((d: unknown) => battleConfigSchema.parse(d))
   .handler(async ({ data }): Promise<StudyBattle> => {
+    const { requireAiSession } = await import("./ai/session.server");
+    if (await requireAiSession() !== data.hostId) throw new Error("You can only host a battle as yourself.");
     const questionCount = data.questionCount || 5;
     const modeType = data.mode === "mcq" ? "objective" : "theory";
 
@@ -56,7 +45,7 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
       data.title,
       data.sourceContext || data.title,
       modeType,
-      questionCount
+      questionCount,
     );
 
     const battleId = crypto.randomUUID();
@@ -81,9 +70,10 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
 
     // 3. Drop Interactive Battle Lobby Card into the group chat stream
     const modeLabel = data.mode === "mcq" ? "MCQ Blitz" : "Theory Showdown";
-    const stakeLabel = data.stakeAmount && data.stakeAmount > 0
-      ? ` • 💰 ${data.stakeAmount} pts Buy-in (Pot: ${battle.total_pot} pts)`
-      : " • 🎲 Friendly (0 pts)";
+    const stakeLabel =
+      data.stakeAmount && data.stakeAmount > 0
+        ? ` • 💰 ${data.stakeAmount} pts Buy-in (Pot: ${battle.total_pot} pts)`
+        : " • 🎲 Friendly (0 pts)";
 
     const battleMessage = await sendBattleAnnouncementMessage({
       targetId: data.groupId,
@@ -107,27 +97,33 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
  */
 export const getBattleDetailsServerFn = createServerFn({ method: "GET" })
   .validator((d: { battleId: string }) => d)
-  .handler(async ({ data }): Promise<{
-    battle: StudyBattle | null;
-    participants: BattleParticipant[];
-  }> => {
-    const battle = await getStudyBattle(data.battleId);
-    const participants = await getBattleParticipants(data.battleId);
-    return { battle, participants };
-  });
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      battle: StudyBattle | null;
+      participants: BattleParticipant[];
+    }> => {
+      const battle = await getStudyBattle(data.battleId);
+      const participants = await getBattleParticipants(data.battleId);
+      return { battle, participants };
+    },
+  );
 
 /**
  * Join battle with atomic escrow stake lock
  */
 export const joinBattleEscrowServerFn = createServerFn({ method: "POST" })
-  .validator((d: {
-    battleId: string;
-    groupId: string;
-    userId: string;
-    userName: string;
-    avatarUrl?: string | null | undefined;
-    role?: "fighter" | "spectator" | undefined;
-  }) => d)
+  .validator(
+    (d: {
+      battleId: string;
+      groupId: string;
+      userId: string;
+      userName: string;
+      avatarUrl?: string | null | undefined;
+      role?: "fighter" | "spectator" | undefined;
+    }) => d,
+  )
   .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
     const res = await joinBattleEscrowRecord({
       battleId: data.battleId,
@@ -155,11 +151,7 @@ export const joinBattleEscrowServerFn = createServerFn({ method: "POST" })
  * Decline battle
  */
 export const declineBattleServerFn = createServerFn({ method: "POST" })
-  .validator((d: {
-    battleId: string;
-    groupId: string;
-    userId: string;
-  }) => d)
+  .validator((d: { battleId: string; groupId: string; userId: string }) => d)
   .handler(async ({ data }): Promise<boolean> => {
     const ok = await declineBattleRecord({
       battleId: data.battleId,
@@ -182,76 +174,84 @@ export const declineBattleServerFn = createServerFn({ method: "POST" })
  * Fighter submits their battle answers
  */
 export const submitBattleAnswersServerFn = createServerFn({ method: "POST" })
-  .validator((d: {
-    battleId: string;
-    groupId: string;
-    userId: string;
-    userName: string;
-    score: number;
-    answersJson: string;
-  }) => d)
-  .handler(async ({ data }): Promise<{ allSubmitted: boolean; participantCount: number; submittedCount: number }> => {
-    const res = await submitBattleAnswersRecord({
-      battleId: data.battleId,
-      userId: data.userId,
-      score: data.score,
-      answersJson: data.answersJson,
-    });
+  .validator(
+    (d: {
+      battleId: string;
+      groupId: string;
+      userId: string;
+      userName: string;
+      score: number;
+      answersJson: string;
+    }) => d,
+  )
+  .handler(
+    async ({
+      data,
+    }): Promise<{ allSubmitted: boolean; participantCount: number; submittedCount: number }> => {
+      const res = await submitBattleAnswersRecord({
+        battleId: data.battleId,
+        userId: data.userId,
+        score: data.score,
+        answersJson: data.answersJson,
+      });
 
-    const battle = await getStudyBattle(data.battleId);
+      const battle = await getStudyBattle(data.battleId);
 
-    // If it's an MCQ battle and all have submitted, auto-conclude
-    if (battle && battle.mode === "mcq" && res.allSubmitted) {
-      const participants = await getBattleParticipants(data.battleId);
-      const fighters = participants.filter((p) => p.role === "fighter" && p.status === "submitted");
-      if (fighters.length > 0) {
-        const highestScore = Math.max(...fighters.map((f) => f.score));
-        const winners = fighters.filter((f) => f.score === highestScore).map((f) => ({ userId: f.user_id, score: f.score }));
-        await concludeBattleRecord({
-          battleId: data.battleId,
-          winners,
-        });
+      // If it's an MCQ battle and all have submitted, auto-conclude
+      if (battle && battle.mode === "mcq" && res.allSubmitted) {
+        const participants = await getBattleParticipants(data.battleId);
+        const fighters = participants.filter(
+          (p) => p.role === "fighter" && p.status === "submitted",
+        );
+        if (fighters.length > 0) {
+          const highestScore = Math.max(...fighters.map((f) => f.score));
+          const winners = fighters
+            .filter((f) => f.score === highestScore)
+            .map((f) => ({ userId: f.user_id, score: f.score }));
+          await concludeBattleRecord({
+            battleId: data.battleId,
+            winners,
+          });
 
-        // Drop conclusion receipt in chat
-        const winnerNames = fighters.filter((f) => f.score === highestScore).map((f) => f.user_name).join(", ");
-        const receiptMsg = await sendBattleAnnouncementMessage({
-          targetId: data.groupId,
-          userId: "system",
-          userName: "⚡ Boss Battle Arena",
-          userInstitution: "Campus Arena",
-          content: `🏆 [BATTLE_RECEIPT:${data.battleId}] Match Complete!\nWinner(s): ${winnerNames} (${highestScore} pts) • Pot of ${battle.total_pot} pts awarded!`,
-          materialId: data.battleId,
-          materialTitle: `🏆 Battle Solutions: ${battle.title}`,
-          materialCourseCode: "MCQ Blitz Winner",
-        });
-        await broadcastChatMessage(data.groupId, receiptMsg);
+          // Drop conclusion receipt in chat
+          const winnerNames = fighters
+            .filter((f) => f.score === highestScore)
+            .map((f) => f.user_name)
+            .join(", ");
+          const receiptMsg = await sendBattleAnnouncementMessage({
+            targetId: data.groupId,
+            userId: "system",
+            userName: "⚡ Boss Battle Arena",
+            userInstitution: "Campus Arena",
+            content: `🏆 [BATTLE_RECEIPT:${data.battleId}] Match Complete!\nWinner(s): ${winnerNames} (${highestScore} pts) • Pot of ${battle.total_pot} pts awarded!`,
+            materialId: data.battleId,
+            materialTitle: `🏆 Battle Solutions: ${battle.title}`,
+            materialCourseCode: "MCQ Blitz Winner",
+          });
+          await broadcastChatMessage(data.groupId, receiptMsg);
+        }
       }
-    }
 
-    // Broadcast submission event
-    await broadcastChatMessage(data.groupId, {
-      type: "battle_submission_update",
-      battleId: data.battleId,
-      userId: data.userId,
-      userName: data.userName,
-      allSubmitted: res.allSubmitted,
-      submittedCount: res.submittedCount,
-      participantCount: res.participantCount,
-    });
+      // Broadcast submission event
+      await broadcastChatMessage(data.groupId, {
+        type: "battle_submission_update",
+        battleId: data.battleId,
+        userId: data.userId,
+        userName: data.userName,
+        allSubmitted: res.allSubmitted,
+        submittedCount: res.submittedCount,
+        participantCount: res.participantCount,
+      });
 
-    return res;
-  });
+      return res;
+    },
+  );
 
 /**
  * Nudge slowpokes who have not yet submitted their solutions
  */
 export const nudgeSlowpokesServerFn = createServerFn({ method: "POST" })
-  .validator((d: {
-    battleId: string;
-    groupId: string;
-    hostName: string;
-    battleTitle: string;
-  }) => d)
+  .validator((d: { battleId: string; groupId: string; hostName: string; battleTitle: string }) => d)
   .handler(async ({ data }): Promise<{ count: number; slowpokes: string[] }> => {
     const slowpokes = await getSlowpokesRecord(data.battleId);
     if (slowpokes.length === 0) {
@@ -275,16 +275,15 @@ export const nudgeSlowpokesServerFn = createServerFn({ method: "POST" })
  * Grade Theory Showdown Battle via Boss AI evaluation
  */
 export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
-  .validator((d: {
-    battleId: string;
-    groupId: string;
-  }) => d)
+  .validator((d: { battleId: string; groupId: string }) => d)
   .handler(async ({ data }): Promise<{ success: boolean; winners: string[] }> => {
     const battle = await getStudyBattle(data.battleId);
     if (!battle) return { success: false, winners: [] };
 
     const participants = await getBattleParticipants(data.battleId);
-    const submittedFighters = participants.filter((p) => p.role === "fighter" && p.status === "submitted");
+    const submittedFighters = participants.filter(
+      (p) => p.role === "fighter" && p.status === "submitted",
+    );
 
     if (submittedFighters.length === 0) {
       return { success: false, winners: [] };
@@ -298,10 +297,18 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
     }
 
     // Evaluate each submitted fighter's answers
-    const fighterScores: Array<{ userId: string; userName: string; totalScore: number; evaluations: any[] }> = [];
+    const fighterScores: Array<{
+      userId: string;
+      userName: string;
+      totalScore: number;
+      evaluations: any[];
+    }> = [];
 
     for (const fighter of submittedFighters) {
-      let answers: Record<string, { text?: string; imageBase64?: string; audioTranscript?: string }> = {};
+      let answers: Record<
+        string,
+        { text?: string; imageBase64?: string; audioTranscript?: string }
+      > = {};
       try {
         answers = JSON.parse(fighter.answers_json || "{}");
       } catch {
@@ -314,11 +321,17 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const studentAns = answers[String(i)] || {};
-        const combinedText = [studentAns.text, studentAns.audioTranscript].filter(Boolean).join(" \n[Voice Derivation]: ");
+        const combinedText = [studentAns.text, studentAns.audioTranscript]
+          .filter(Boolean)
+          .join(" \n[Voice Derivation]: ");
 
         try {
           if (combinedText.trim()) {
-            const grading = await gradeTheoryAnswer(q.question, q.modelAnswer || q.explanation || "", combinedText);
+            const grading = await gradeTheoryAnswer(
+              q.question,
+              q.modelAnswer || q.explanation || "",
+              combinedText,
+            );
             totalScore += grading.score;
             evaluations.push(grading);
           } else {
@@ -348,14 +361,19 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
 
     // Find winners
     const maxScore = Math.max(...fighterScores.map((f) => f.totalScore));
-    const winners = fighterScores.filter((f) => f.totalScore === maxScore).map((f) => ({ userId: f.userId, score: f.totalScore }));
+    const winners = fighterScores
+      .filter((f) => f.totalScore === maxScore)
+      .map((f) => ({ userId: f.userId, score: f.totalScore }));
 
     await concludeBattleRecord({
       battleId: data.battleId,
       winners,
     });
 
-    const winnerNames = fighterScores.filter((f) => f.totalScore === maxScore).map((f) => f.userName).join(", ");
+    const winnerNames = fighterScores
+      .filter((f) => f.totalScore === maxScore)
+      .map((f) => f.userName)
+      .join(", ");
 
     // Drop completion receipt in chat
     const receiptMsg = await sendGroupMessage({
@@ -377,11 +395,7 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
  * Host force-grades an untimed battle even if slowpokes haven't submitted
  */
 export const forceGradeBattleServerFn = createServerFn({ method: "POST" })
-  .validator((d: {
-    battleId: string;
-    groupId: string;
-    hostId: string;
-  }) => d)
+  .validator((d: { battleId: string; groupId: string; hostId: string }) => d)
   .handler(async ({ data }): Promise<{ success: boolean }> => {
     const battle = await getStudyBattle(data.battleId);
     if (!battle || battle.host_id !== data.hostId) {
@@ -398,7 +412,9 @@ export const forceGradeBattleServerFn = createServerFn({ method: "POST" })
       const fighters = participants.filter((p) => p.role === "fighter" && p.status === "submitted");
       if (fighters.length > 0) {
         const highestScore = Math.max(...fighters.map((f) => f.score));
-        const winners = fighters.filter((f) => f.score === highestScore).map((f) => ({ userId: f.user_id, score: f.score }));
+        const winners = fighters
+          .filter((f) => f.score === highestScore)
+          .map((f) => ({ userId: f.user_id, score: f.score }));
         await concludeBattleRecord({
           battleId: data.battleId,
           winners,
@@ -407,4 +423,3 @@ export const forceGradeBattleServerFn = createServerFn({ method: "POST" })
       return { success: true };
     }
   });
-

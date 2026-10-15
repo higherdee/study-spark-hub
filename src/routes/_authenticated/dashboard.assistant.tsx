@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  ArrowRight,
   Bot,
   Send,
   Loader2,
@@ -43,12 +44,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AiMessageRenderer } from "@/components/ai-message-renderer";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
@@ -87,7 +83,11 @@ import {
   getPresignedUploadUrlServerFn,
 } from "@/lib/upload.functions";
 import { getMaterialsForChatServerFn } from "@/lib/community.functions";
-import { convertTextAndMathToSpeech, initSpeechRuleEngine, getBestNaturalVoice } from "@/lib/math-to-speech";
+import {
+  convertTextAndMathToSpeech,
+  initSpeechRuleEngine,
+  getBestNaturalVoice,
+} from "@/lib/math-to-speech";
 import { sendDeviceNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 
@@ -104,7 +104,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/assistant")({
       { title: "Boss AI Study Suite — Syllaboss" },
       {
         name: "description",
-        content: "Chat with documents, take practice quizzes, mark theory answers, and generate flashcards with Boss AI.",
+        content:
+          "Chat with documents, take practice quizzes, mark theory answers, and generate flashcards with Boss AI.",
       },
     ],
   }),
@@ -205,6 +206,7 @@ function AssistantPage() {
   const [input, setInput] = useState("");
   const [showCustomKeyboard, setShowCustomKeyboard] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [failedQuestion, setFailedQuestion] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
   // Floating scroll-to-bottom state
@@ -249,10 +251,14 @@ function AssistantPage() {
   const [mcqCount, setMcqCount] = useState<number>(5);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[] | null>(null);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
-  const [selectedObjectiveAnswers, setSelectedObjectiveAnswers] = useState<Record<number, number>>({});
+  const [selectedObjectiveAnswers, setSelectedObjectiveAnswers] = useState<Record<number, number>>(
+    {},
+  );
   const [quizScores, setQuizScores] = useState<Record<number, number>>({});
   const [isMcqSubmittedAtEnd, setIsMcqSubmittedAtEnd] = useState(false);
-  const [unansweredWarningQuestions, setUnansweredWarningQuestions] = useState<number[] | null>(null);
+  const [unansweredWarningQuestions, setUnansweredWarningQuestions] = useState<number[] | null>(
+    null,
+  );
 
   // Theory Configuration & Execution State (Up to 50 questions with marks per sketch 4)
   const [theoryMode, setTheoryMode] = useState<"as_you_go" | "at_the_end">("as_you_go");
@@ -310,9 +316,7 @@ function AssistantPage() {
   const [threadSearch, setThreadSearch] = useState("");
   const filteredThreads = useMemo(() => {
     if (!threadSearch.trim()) return threads;
-    return threads.filter((t: any) =>
-      t.title.toLowerCase().includes(threadSearch.toLowerCase())
-    );
+    return threads.filter((t: any) => t.title.toLowerCase().includes(threadSearch.toLowerCase()));
   }, [threads, threadSearch]);
 
   // Query Campus Library Materials
@@ -381,9 +385,7 @@ function AssistantPage() {
 
     // 3. Check localStorage
     const savedThreadId =
-      typeof window !== "undefined"
-        ? localStorage.getItem("syllaboss_active_chat_thread")
-        : null;
+      typeof window !== "undefined" ? localStorage.getItem("syllaboss_active_chat_thread") : null;
     if (savedThreadId && threads.some((t: any) => t.id === savedThreadId)) {
       handleSelectThread(savedThreadId);
       return;
@@ -470,8 +472,8 @@ function AssistantPage() {
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : MediaRecorder.isTypeSupported("audio/mp4")
-        ? "audio/mp4"
-        : "audio/webm";
+          ? "audio/mp4"
+          : "audio/webm";
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
 
@@ -489,7 +491,8 @@ function AssistantPage() {
       }, 1000);
 
       // Start SpeechRecognition in parallel if available
-      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const SpeechRec =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRec) {
         try {
           const rec = new SpeechRec();
@@ -590,7 +593,7 @@ function AssistantPage() {
 
           // Update user message balloon with transcribed question text
           setMessages((prev) =>
-            prev.map((m) => (m.id === voiceUserMsgId ? { ...m, content: finalQuestion } : m))
+            prev.map((m) => (m.id === voiceUserMsgId ? { ...m, content: finalQuestion } : m)),
           );
 
           try {
@@ -888,7 +891,10 @@ function AssistantPage() {
 
     // Check if Assignment Mode or prefixed with [Assignment Help]
     if (isAssignmentMode || lower.startsWith("[assignment help]")) {
-      return { type: "assignment" as const, prompt: text.replace(/^\[assignment help\]\s*/i, "").trim() };
+      return {
+        type: "assignment" as const,
+        prompt: text.replace(/^\[assignment help\]\s*/i, "").trim(),
+      };
     }
 
     // Match numbers: 50, 40, 30, 25, 20, 15, 10, 5, or any digits
@@ -903,7 +909,10 @@ function AssistantPage() {
     if (colonIdx !== -1 && colonIdx < text.length - 1) {
       const candidate = text.slice(colonIdx + 1).trim();
       if (candidate.length > 1) {
-        topic = candidate.replace(/^\[.*?\]\s*/, "").replace(/[\.\?!]+$/, "").trim();
+        topic = candidate
+          .replace(/^\[.*?\]\s*/, "")
+          .replace(/[\.\?!]+$/, "")
+          .trim();
       }
     }
 
@@ -917,9 +926,14 @@ function AssistantPage() {
 
     // 3. Fallback topic match using "on", "about", "for", "regarding", "in"
     if (!topic) {
-      const topicMatch = text.match(/(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._\-\(\)]{2,60})/i);
+      const topicMatch = text.match(
+        /(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._\-\(\)]{2,60})/i,
+      );
       if (topicMatch && topicMatch[1]) {
-        const candidate = topicMatch[1].trim().replace(/\s+(please|now|thanks).*$/i, "").replace(/[\.\?!]+$/, "");
+        const candidate = topicMatch[1]
+          .trim()
+          .replace(/\s+(please|now|thanks).*$/i, "")
+          .replace(/[\.\?!]+$/, "");
         if (candidate.length > 1) topic = candidate;
       }
     }
@@ -928,7 +942,7 @@ function AssistantPage() {
     if (
       topic &&
       /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
-        topic.trim()
+        topic.trim(),
       )
     ) {
       topic = undefined;
@@ -950,7 +964,11 @@ function AssistantPage() {
     }
 
     // MCQ / Quiz / Practice Questions
-    if (/\b(mcqs?|quiz|practice\s*questions?|exam\s*questions?|test\s*questions?|questions?)\b/i.test(lower)) {
+    if (
+      /\b(mcqs?|quiz|practice\s*questions?|exam\s*questions?|test\s*questions?|questions?)\b/i.test(
+        lower,
+      )
+    ) {
       if (
         count !== undefined ||
         /\b(give|generate|make|create|prepare|test|quiz|drill|ask|practice)\b/i.test(lower) ||
@@ -966,6 +984,7 @@ function AssistantPage() {
   // Execute standard AI query through Groq with formatting
   async function executeStandardAiQuery(queryText: string, targetThreadId: string) {
     setThinking(true);
+    setFailedQuestion(null);
     try {
       const result = await askBossAiServerFn({
         data: {
@@ -993,11 +1012,15 @@ function AssistantPage() {
 
       // Deliver device notification for completed AI answer
       sendDeviceNotification("Boss AI Response Ready", {
-        body: result.response.slice(0, 110).replace(/[#*`\n]/g, " ").trim(),
+        body: result.response
+          .slice(0, 110)
+          .replace(/[#*`\n]/g, " ")
+          .trim(),
       }).catch(() => {});
     } catch (err: any) {
       console.error("Boss AI query execution error:", err);
-      toast.error("Boss AI was unable to generate a response. Please retry.");
+      setFailedQuestion(queryText);
+      toast.error("No answer was generated. Your question is available to retry.");
     } finally {
       setThinking(false);
     }
@@ -1055,7 +1078,7 @@ function AssistantPage() {
     countOverride?: number,
     modeOverride?: "as_you_go" | "at_the_end",
     topicOverride?: string,
-    userPrompt?: string
+    userPrompt?: string,
   ) {
     setIsMcqConfigOpen(false);
     setShowDropUpMenu(false);
@@ -1077,7 +1100,7 @@ function AssistantPage() {
       const isDemonstrative =
         !topicOverride ||
         /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
-          topicOverride.trim()
+          topicOverride.trim(),
         );
 
       const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
@@ -1128,7 +1151,9 @@ function AssistantPage() {
         qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
       ]);
       refetchThreads();
-      toast.success(`${res.quizData.questions.length} Practice Questions Ready!`, { id: "mcq-gen" });
+      toast.success(`${res.quizData.questions.length} Practice Questions Ready!`, {
+        id: "mcq-gen",
+      });
     } catch (err: any) {
       console.error("MCQ generation error:", err);
       toast.error("Failed to generate quiz questions. Please retry.", { id: "mcq-gen" });
@@ -1142,7 +1167,7 @@ function AssistantPage() {
     countOverride?: number,
     modeOverride?: "as_you_go" | "at_the_end",
     topicOverride?: string,
-    userPrompt?: string
+    userPrompt?: string,
   ) {
     setIsTheoryConfigOpen(false);
     setShowDropUpMenu(false);
@@ -1152,7 +1177,9 @@ function AssistantPage() {
 
     const countToUse = countOverride || theoryCount;
     const modeToUse = modeOverride || theoryMode;
-    toast.loading(`Preparing ${countToUse} theory questions with exam marking...`, { id: "theory-gen" });
+    toast.loading(`Preparing ${countToUse} theory questions with exam marking...`, {
+      id: "theory-gen",
+    });
 
     try {
       let targetThreadId = activeThreadId;
@@ -1164,7 +1191,7 @@ function AssistantPage() {
       const isDemonstrative =
         !topicOverride ||
         /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
-          topicOverride.trim()
+          topicOverride.trim(),
         );
 
       const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
@@ -1215,7 +1242,9 @@ function AssistantPage() {
         qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
       ]);
       refetchThreads();
-      toast.success(`${res.quizData.questions.length} Theory Questions prepared!`, { id: "theory-gen" });
+      toast.success(`${res.quizData.questions.length} Theory Questions prepared!`, {
+        id: "theory-gen",
+      });
     } catch (err: any) {
       console.error("Theory generation error:", err);
       toast.error("Failed to generate theory questions. Please retry.", { id: "theory-gen" });
@@ -1229,7 +1258,7 @@ function AssistantPage() {
     countOverride?: number,
     typeOverride?: "qa" | "fill_blank",
     topicOverride?: string,
-    userPrompt?: string
+    userPrompt?: string,
   ) {
     setIsFlashcardConfigOpen(false);
     setShowDropUpMenu(false);
@@ -1251,7 +1280,7 @@ function AssistantPage() {
       const isDemonstrative =
         !topicOverride ||
         /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
-          topicOverride.trim()
+          topicOverride.trim(),
         );
 
       const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
@@ -1300,7 +1329,9 @@ function AssistantPage() {
         qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
       ]);
       refetchThreads();
-      toast.success(`${res.flashcardsData.cards.length} Flashcards ready to study!`, { id: "fc-gen" });
+      toast.success(`${res.flashcardsData.cards.length} Flashcards ready to study!`, {
+        id: "fc-gen",
+      });
     } catch (err: any) {
       console.error("Flashcards generation error:", err);
       toast.error("Could not generate flashcards. Please retry.", { id: "fc-gen" });
@@ -1325,7 +1356,9 @@ function AssistantPage() {
 
   function triggerSummarize() {
     setShowDropUpMenu(false);
-    handleSend("Please summarize the active course material into high-yield exam revision bullet points, formulas, and definitions.");
+    handleSend(
+      "Please summarize the active course material into high-yield exam revision bullet points, formulas, and definitions.",
+    );
   }
 
   return (
@@ -1363,9 +1396,7 @@ function AssistantPage() {
         {/* Active Study Document Section */}
         <div className="p-3 border-b border-border space-y-2 bg-card/60">
           <div className="flex items-center justify-between">
-            <span className="eyebrow">
-              Study Document
-            </span>
+            <span className="eyebrow">Study Document</span>
             {activeDocContext && (
               <button
                 type="button"
@@ -1380,7 +1411,9 @@ function AssistantPage() {
           {activeDocContext ? (
             <div className="rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-xs space-y-0.5">
               <p className="font-semibold text-forest truncate">{activeDocContext.title}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{activeDocContext.course}</p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {activeDocContext.course}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
@@ -1409,9 +1442,7 @@ function AssistantPage() {
         {/* Recent Chats list */}
         <div className="p-3 flex-1 min-h-0 flex flex-col space-y-2 overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="eyebrow">
-              Recent Conversations ({threads.length})
-            </span>
+            <span className="eyebrow">Recent Conversations ({threads.length})</span>
           </div>
 
           {threads.length > 4 && (
@@ -1440,7 +1471,7 @@ function AssistantPage() {
                     "group flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs transition-all cursor-pointer border press",
                     activeThreadId === t.id
                       ? "bg-forest/10 border-forest/30 font-semibold text-forest shadow-xs"
-                      : "border-transparent text-muted-foreground hover:bg-card hover:text-ink"
+                      : "border-transparent text-muted-foreground hover:bg-card hover:text-ink",
                   )}
                   onClick={() => {
                     if (activeThreadId !== t.id) {
@@ -1529,7 +1560,8 @@ function AssistantPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="font-display text-sm font-medium text-ink truncate tracking-tight">
-                  {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI Study Copilot"}
+                  {threads.find((t: any) => t.id === activeThreadId)?.title ||
+                    "Boss AI Study Copilot"}
                 </h2>
                 {activeDocContext && (
                   <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/40 border border-brand/30 text-forest text-[11px] font-semibold shrink-0">
@@ -1546,7 +1578,7 @@ function AssistantPage() {
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                University Study Session · Groq LLaMA 3.1 &amp; Whisper
+                Your patient study partner · One step at a time
               </p>
             </div>
           </div>
@@ -1566,8 +1598,6 @@ function AssistantPage() {
             )}
           </div>
         </div>
-
-
 
         {/* Messages Stream */}
         <div
@@ -1589,26 +1619,32 @@ function AssistantPage() {
                   <Bot className="size-6 text-forest" />
                 </div>
                 <h3 className="font-display text-xl sm:text-2xl font-medium tracking-tight text-ink">
-                  Boss AI Academic Copilot
+                  What shall we untangle today?
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Ask any academic question, attach your course notes, or tap <strong>+</strong> in the input bar to take an MCQ Blitz, Theory Showdown, or 3D Flashcards.
+                  Bring a tricky topic, a page of notes, or a question you’ve been sitting with.
+                  We’ll find your next lightbulb moment, together.
                 </p>
 
                 <div className="grid gap-2 pt-3 sm:grid-cols-2 text-left">
                   <button
                     type="button"
-                    onClick={() => handleSend("Explain the core exam concepts in my course step-by-step")}
+                    onClick={() =>
+                      (() => {
+                        setInput("Help me understand this concept step by step: ");
+                        textareaRef.current?.focus();
+                      })()
+                    }
                     className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all lift press"
                   >
-                    Explain core concepts step-by-step
+                    Make a concept click
                   </button>
                   <button
                     type="button"
                     onClick={() => prepareStudyPrompt("mcq")}
                     className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all flex items-center justify-between lift press"
                   >
-                    <span>20 Practice MCQ Questions</span>
+                    <span>Test what I know</span>
                     <CheckCircle2 className="size-3.5 text-forest" />
                   </button>
                   <button
@@ -1616,7 +1652,7 @@ function AssistantPage() {
                     onClick={() => prepareStudyPrompt("flashcards")}
                     className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all flex items-center justify-between lift press"
                   >
-                    <span>20 Study Flashcards</span>
+                    <span>Build my revision cards</span>
                     <Layers className="size-3.5 text-brand" />
                   </button>
                   <button
@@ -1624,7 +1660,7 @@ function AssistantPage() {
                     onClick={() => setIsLibraryModalOpen(true)}
                     className="rounded-2xl border border-dashed border-forest/40 bg-accent/30 p-3 text-xs font-semibold text-forest hover:bg-accent/60 transition-all flex items-center justify-between lift press"
                   >
-                    <span>Choose from Campus Library</span>
+                    <span>Work through my course notes</span>
                     <BookOpen className="size-3.5" />
                   </button>
                 </div>
@@ -1638,16 +1674,22 @@ function AssistantPage() {
                   key={m.id}
                   className={cn(
                     "flex flex-col space-y-1",
-                    m.role === "user" ? "items-end" : "items-start"
+                    m.role === "user" ? "items-end" : "items-start",
                   )}
                 >
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
-                    <span className="font-semibold text-ink-soft">{m.role === "user" ? "You" : "Boss AI"}</span>
+                    <span className="font-semibold text-ink-soft">
+                      {m.role === "user" ? "You" : "Boss AI"}
+                    </span>
                     {isAssistant && (
                       <button
                         type="button"
                         onClick={() => speakAiResponse(m.content, m.id)}
-                        title={speakingMessageId === m.id ? "Stop voice note" : "Play voice note response"}
+                        title={
+                          speakingMessageId === m.id
+                            ? "Stop voice note"
+                            : "Play voice note response"
+                        }
                         className="ml-1 text-forest hover:text-forest/80 transition-colors"
                       >
                         {speakingMessageId === m.id ? (
@@ -1661,10 +1703,10 @@ function AssistantPage() {
 
                   <div
                     className={cn(
-                      "rounded-2xl px-4 py-3 text-xs sm:text-[13px] leading-relaxed transition-all shadow-xs",
+                      "rounded-2xl px-4 py-3 text-sm sm:text-[14px] leading-[1.85] transition-colors shadow-xs",
                       m.role === "user"
                         ? "max-w-[88%] bg-forest text-white font-medium rounded-br-xs"
-                        : "w-full max-w-[96%] md:max-w-[92%] bg-card text-ink border border-border rounded-bl-xs"
+                        : "w-full max-w-[96%] md:max-w-[92%] bg-card text-ink border border-border/70 rounded-bl-xs",
                     )}
                   >
                     {/* Attached material badge */}
@@ -1699,7 +1741,9 @@ function AssistantPage() {
                         {m.flashcardsData && (
                           <InChatFlashcardsWidget
                             data={m.flashcardsData}
-                            onSelectCount={(c) => startFlashcards(c, undefined, m.flashcardsData?.topic)}
+                            onSelectCount={(c) =>
+                              startFlashcards(c, undefined, m.flashcardsData?.topic)
+                            }
                           />
                         )}
                         {m.quizData && m.quizData.mode === "objective" && (
@@ -1724,10 +1768,29 @@ function AssistantPage() {
             })
           )}
 
+          {failedQuestion && !thinking && (
+            <div role="alert" className="ai-recovery-panel">
+              <strong>That answer didn't come through.</strong>
+              <p>We haven't generated an answer. Check your connection and try again.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setInput(failedQuestion);
+                  setFailedQuestion(null);
+                  textareaRef.current?.focus();
+                }}
+              >
+                Edit question & retry <ArrowRight className="size-3.5" />
+              </button>
+            </div>
+          )}
           {thinking && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse p-2">
-              <Bot className="size-4 text-primary animate-bounce" />
-              <span>Boss AI is solving and formatting math with KaTeX...</span>
+            <div
+              role="status"
+              className="flex items-center gap-2 text-xs text-muted-foreground p-3"
+            >
+              <Bot className="size-4 text-primary" />
+              <span>Working through your question…</span>
             </div>
           )}
 
@@ -1740,7 +1803,7 @@ function AssistantPage() {
             type="button"
             onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
             title="Scroll to bottom"
-            className="absolute right-4 bottom-24 z-30 size-9 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-all animate-bounce"
+            className="absolute right-4 bottom-24 z-30 size-9 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-all"
           >
             <ChevronDown className="size-5" />
           </button>
@@ -1780,7 +1843,9 @@ function AssistantPage() {
           <div className="mx-3 my-1 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <BookOpen className="size-3.5 text-primary shrink-0" />
-              <span className="text-xs font-semibold text-primary truncate">{activeDocContext.title}</span>
+              <span className="text-xs font-semibold text-primary truncate">
+                {activeDocContext.title}
+              </span>
             </div>
             <button
               type="button"
@@ -1795,9 +1860,7 @@ function AssistantPage() {
         {/* ========================================================================= */}
         {/* MODERN GEMINI / CHATGPT AUTOGROWING TYPING BAR */}
         {/* ========================================================================= */}
-        <div
-          className="shrink-0 border-t border-border/60 bg-card p-2 sm:p-3 relative z-30 mb-0"
-        >
+        <div className="shrink-0 border-t border-border/60 bg-card p-2 sm:p-3 relative z-30 mb-0">
           {/* Mention Autocomplete Suggestion Pill */}
           <AnimatePresence>
             {showAssistantMention && (
@@ -1849,7 +1912,9 @@ function AssistantPage() {
                   <BookOpen className="size-4 text-primary shrink-0" />
                   <div>
                     <p className="leading-tight">Choose from Library</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Campus notes &amp; textbooks</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">
+                      Campus notes &amp; textbooks
+                    </p>
                   </div>
                 </button>
                 <button
@@ -1863,7 +1928,9 @@ function AssistantPage() {
                   <Upload className="size-4 text-primary shrink-0" />
                   <div>
                     <p className="leading-tight">Upload from Device</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">PDF, DOCX, or images</p>
+                    <p className="text-[10px] text-muted-foreground font-normal">
+                      PDF, DOCX, or images
+                    </p>
                   </div>
                 </button>
               </motion.div>
@@ -2003,6 +2070,9 @@ function AssistantPage() {
             </div>
           )}
 
+          <p className="composer-hint">
+            Boss AI can make mistakes. Check important answers against your course materials.
+          </p>
           {/* Autogrowing Typing Capsule */}
           <div className="rounded-2xl sm:rounded-3xl border border-border bg-surface-container-low p-2 sm:p-2.5 shadow-xs transition-all focus-within:border-forest/50 focus-within:bg-card">
             <textarea
@@ -2014,24 +2084,20 @@ function AssistantPage() {
                 e.target.style.height = `${Math.min(e.target.scrollHeight, 84)}px`;
               }}
               onKeyDown={(e) => {
-                if (!isMobile && e.key === "Enter" && !e.shiftKey) {
+                if (!isMobile && e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   handleSend();
                 }
               }}
-              onFocus={() => {
-                if (isMobile) setShowCustomKeyboard(true);
-              }}
-              onClick={() => {
-                if (isMobile) setShowCustomKeyboard(true);
-              }}
-              inputMode={isMobile ? "none" : "text"}
+              inputMode="text"
+              aria-label="Message Boss AI"
+              autoCapitalize="sentences"
               placeholder={
                 isAssignmentMode
                   ? "Type your assignment problem or question here for a step-by-step academic solution..."
                   : activeDocContext
-                  ? `Ask Boss AI about ${activeDocContext.title}...`
-                  : "Ask Boss AI anything or tap + for study modes..."
+                    ? `Ask Boss AI about ${activeDocContext.title}...`
+                    : "Ask Boss AI anything or tap + for study modes..."
               }
               rows={1}
               className="w-full resize-none bg-transparent text-xs sm:text-sm text-ink placeholder:text-muted-foreground focus:outline-hidden min-h-[28px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
@@ -2048,11 +2114,12 @@ function AssistantPage() {
                     setShowModesMenu(false);
                   }}
                   title="Attach or upload document"
+                  aria-label="Attach course material"
                   className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all press",
+                    "size-10 rounded-full grid place-items-center transition-all press",
                     showDocMenu
                       ? "bg-forest text-white rotate-45 shadow-xs"
-                      : "text-muted-foreground hover:text-ink hover:bg-surface-container"
+                      : "text-muted-foreground hover:text-ink hover:bg-surface-container",
                   )}
                 >
                   <Plus className="size-4" />
@@ -2070,16 +2137,13 @@ function AssistantPage() {
                     "h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-all border press",
                     showModesMenu
                       ? "bg-forest text-white border-forest shadow-xs"
-                      : "text-ink bg-card hover:bg-surface-container border-border"
+                      : "text-ink bg-card hover:bg-surface-container border-border",
                   )}
                 >
                   <Bot className="size-3.5 text-forest shrink-0" />
                   <span>Boss AI</span>
                   <ChevronUp
-                    className={cn(
-                      "size-3.5 transition-transform",
-                      showModesMenu && "rotate-180"
-                    )}
+                    className={cn("size-3.5 transition-transform", showModesMenu && "rotate-180")}
                   />
                 </button>
               </div>
@@ -2091,10 +2155,10 @@ function AssistantPage() {
                   onClick={toggleVoiceNoteInput}
                   title={isRecording ? "Stop voice note" : "Record voice note"}
                   className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all press",
+                    "size-10 rounded-full grid place-items-center transition-all press",
                     isRecording
                       ? "bg-destructive text-white animate-pulse"
-                      : "text-muted-foreground hover:text-ink hover:bg-surface-container"
+                      : "text-muted-foreground hover:text-ink hover:bg-surface-container",
                   )}
                 >
                   <Mic className="size-4" />
@@ -2106,11 +2170,12 @@ function AssistantPage() {
                   disabled={thinking || !input.trim()}
                   onClick={() => handleSend()}
                   title="Send prompt"
+                  aria-label="Send question"
                   className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all",
+                    "size-10 rounded-full grid place-items-center transition-all",
                     input.trim() && !thinking
                       ? "bg-forest text-white hover:bg-forest/90 shadow-xs press"
-                      : "text-muted-foreground opacity-30 cursor-not-allowed"
+                      : "text-muted-foreground opacity-30 cursor-not-allowed",
                   )}
                 >
                   <Send className="size-3.5" />
@@ -2213,7 +2278,7 @@ function AssistantPage() {
                         "group flex items-center justify-between gap-1 rounded-xl px-2.5 py-2 text-xs transition-colors",
                         activeThreadId === t.id
                           ? "bg-secondary font-semibold text-foreground"
-                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                       )}
                     >
                       <button
@@ -2256,7 +2321,7 @@ function AssistantPage() {
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <BookOpen className="size-4.5 text-primary" />
-              Choose from Campus Library
+              Work through my course notes
             </DialogTitle>
           </DialogHeader>
 
@@ -2280,7 +2345,7 @@ function AssistantPage() {
                   "px-2.5 py-1 rounded-lg font-semibold shrink-0 transition-all",
                   libraryFilter === ft
                     ? "bg-primary text-primary-foreground shadow-xs"
-                    : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+                    : "bg-secondary/60 text-muted-foreground hover:text-foreground",
                 )}
               >
                 {ft === "all" ? "All Materials" : ft.replace("_", " ")}
@@ -2320,7 +2385,8 @@ function AssistantPage() {
                       {mat.title}
                     </p>
                     <p className="text-[11px] text-muted-foreground truncate">
-                      {mat.course_code ? `${mat.course_code} · ` : ""}{mat.course} · {mat.institution}
+                      {mat.course_code ? `${mat.course_code} · ` : ""}
+                      {mat.course} · {mat.institution}
                     </p>
                     <span className="inline-block mt-1 text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground">
                       {mat.material_type?.replace("_", " ") || "Note"}
@@ -2363,7 +2429,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     mcqMode === "as_you_go"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Mark as you go
@@ -2375,7 +2441,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     mcqMode === "at_the_end"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Mark at the end
@@ -2397,7 +2463,7 @@ function AssistantPage() {
                       "size-8 rounded-lg font-bold border text-xs transition-all",
                       mcqCount === num
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-foreground hover:bg-secondary"
+                        : "border-border text-foreground hover:bg-secondary",
                     )}
                   >
                     {num}
@@ -2441,7 +2507,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     theoryMode === "as_you_go"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Mark as you go
@@ -2453,7 +2519,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     theoryMode === "at_the_end"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Mark at the end
@@ -2475,7 +2541,7 @@ function AssistantPage() {
                       "size-8 rounded-lg font-bold border text-xs transition-all",
                       theoryCount === num
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-foreground hover:bg-secondary"
+                        : "border-border text-foreground hover:bg-secondary",
                     )}
                   >
                     {num}
@@ -2519,7 +2585,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     flashcardType === "qa"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Q &amp; A Cards
@@ -2531,7 +2597,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     flashcardType === "fill_blank"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Fill-in-the-blank
@@ -2553,7 +2619,7 @@ function AssistantPage() {
                       "size-8 rounded-lg font-bold border text-xs transition-all",
                       flashcardCount === num
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-foreground hover:bg-secondary"
+                        : "border-border text-foreground hover:bg-secondary",
                     )}
                   >
                     {num}
@@ -2597,7 +2663,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     assignmentMode === "detailed"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Detailed Breakdown
@@ -2609,7 +2675,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     assignmentMode === "short"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Short &amp; Concise Pointers

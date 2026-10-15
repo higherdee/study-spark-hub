@@ -1,5 +1,14 @@
+import { PublicHeader } from "@/components/public-header";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Mail, MessageSquare, MapPin, Send, HelpCircle, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Mail,
+  MessageSquare,
+  MapPin,
+  Send,
+  HelpCircle,
+  CheckCircle2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SyllabossLogo } from "@/components/syllaboss-logo";
@@ -13,10 +22,14 @@ export const Route = createFileRoute("/contact")({
       { title: "Contact Us & Student Support — Syllaboss" },
       {
         name: "description",
-        content: "Get in touch with the Syllaboss academic support team, student campus ambassadors, or submit partner inquiries.",
+        content:
+          "Get in touch with the Syllaboss academic support team, student campus ambassadors, or submit partner inquiries.",
       },
       { property: "og:title", content: "Contact Us — Syllaboss" },
-      { property: "og:description", content: "Direct support and inquiry channels for students and universities." },
+      {
+        property: "og:description",
+        content: "Direct support and inquiry channels for students and universities.",
+      },
     ],
   }),
   component: ContactPage,
@@ -43,17 +56,7 @@ function ContactPage() {
   return (
     <div className="min-h-screen bg-background text-ink font-sans selection:bg-brand selection:text-white">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5 sm:px-6">
-          <SyllabossLogo />
-          <Button asChild variant="ghost" size="sm" className="gap-2 text-xs font-semibold rounded-full hover:bg-surface-container-low text-ink lift press">
-            <Link to="/">
-              <ArrowLeft className="size-3.5" />
-              <span>Back to Home</span>
-            </Link>
-          </Button>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* Main Content */}
       <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
@@ -66,7 +69,8 @@ function ContactPage() {
             Get In Touch With Our Desk
           </h1>
           <p className="mt-2 text-sm text-ink-soft max-w-xl mx-auto leading-relaxed">
-            Have questions about study materials, SyllaPoints withdrawals, campus ambassadorship, or academic partnerships? We're here to assist.
+            Have questions about study materials, SyllaPoints withdrawals, campus ambassadorship, or
+            academic partnerships? We're here to assist.
           </p>
         </div>
 
@@ -74,9 +78,7 @@ function ContactPage() {
           {/* Contact Details Card */}
           <div className="lg:col-span-2 space-y-4">
             <div className="rounded-3xl border border-border bg-card p-6 sm:p-7 shadow-[var(--elev-1)] space-y-6">
-              <h2 className="font-display text-lg font-bold text-ink">
-                Direct Contact Desks
-              </h2>
+              <h2 className="font-display text-lg font-bold text-ink">Direct Contact Desks</h2>
 
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
@@ -86,7 +88,9 @@ function ContactPage() {
                   <div>
                     <h3 className="text-xs font-bold text-ink">General & Student Help</h3>
                     <p className="text-xs text-ink-soft font-mono">support@syllaboss.org</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Response within 24 hours</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Response within 24 hours
+                    </p>
                   </div>
                 </div>
 
@@ -97,7 +101,9 @@ function ContactPage() {
                   <div>
                     <h3 className="text-xs font-bold text-ink">Campus Ambassadors & Reps</h3>
                     <p className="text-xs text-ink-soft font-mono">campus@syllaboss.org</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Faculty liaisons & university leads</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Faculty liaisons & university leads
+                    </p>
                   </div>
                 </div>
 
@@ -115,7 +121,10 @@ function ContactPage() {
 
               <div className="p-4 rounded-2xl bg-surface-container-low border border-border text-xs text-ink-soft space-y-1">
                 <span className="eyebrow text-forest block">Instant Copilot</span>
-                <p>Enrolled scholars can converse with Boss AI inside the dashboard for instant courseware inquiries and derivations.</p>
+                <p>
+                  Enrolled scholars can converse with Boss AI inside the dashboard for instant
+                  courseware inquiries and derivations.
+                </p>
               </div>
             </div>
           </div>
@@ -130,7 +139,8 @@ function ContactPage() {
                   </div>
                   <h3 className="font-display text-xl font-bold text-ink">Inquiry Dispatched</h3>
                   <p className="text-xs text-ink-soft max-w-sm mx-auto leading-relaxed">
-                    A representative from our academic support team will review your inquiry and reply to <strong className="text-ink">{email}</strong> shortly.
+                    A representative from our academic support team will review your inquiry and
+                    reply to <strong className="text-ink">{email}</strong> shortly.
                   </p>
                   <Button
                     onClick={() => {
@@ -176,7 +186,9 @@ function ContactPage() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <label className="eyebrow text-ink-soft block">University / Institution</label>
+                      <label className="eyebrow text-ink-soft block">
+                        University / Institution
+                      </label>
                       <Input
                         value={institution}
                         onChange={(e) => setInstitution(e.target.value)}
@@ -224,11 +236,21 @@ function ContactPage() {
       {/* Footer */}
       <footer className="border-t border-border bg-surface-container-lowest py-8 text-center text-xs text-ink-soft">
         <div className="mx-auto max-w-5xl px-4 flex flex-wrap justify-center gap-6 mb-3">
-          <Link to="/privacy" className="hover:text-ink">Privacy Policy</Link>
-          <Link to="/terms" className="hover:text-ink">Terms of Service</Link>
-          <Link to="/about" className="hover:text-ink">About Us</Link>
-          <Link to="/contact" className="font-semibold text-ink">Contact Us</Link>
-          <Link to="/curriculum" className="hover:text-ink">Academic Curriculum</Link>
+          <Link to="/privacy" className="hover:text-ink">
+            Privacy Policy
+          </Link>
+          <Link to="/terms" className="hover:text-ink">
+            Terms of Service
+          </Link>
+          <Link to="/about" className="hover:text-ink">
+            About Us
+          </Link>
+          <Link to="/contact" className="font-semibold text-ink">
+            Contact Us
+          </Link>
+          <Link to="/curriculum" className="hover:text-ink">
+            Academic Curriculum
+          </Link>
         </div>
         <p className="text-muted-foreground">© 2026 Syllaboss Technologies. All rights reserved.</p>
       </footer>

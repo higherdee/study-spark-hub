@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/chat")({
         if (!token) return new Response("Unauthorized", { status: 401 });
 
         const clerkSecretKey =
-          process.env['CLERK_SECRET_KEY'] || "sk_test_VNJuQRLEHxWXYBrzNbJNhCiVbVVX7n3aNS25bwC3Cg";
+          process.env['CLERK_SECRET_KEY'] || "";
 
         let userId: string;
         try {

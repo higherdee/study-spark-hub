@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Swords,
+  Volume2,
+  VolumeX,
   Zap,
   BookOpen,
   Clock,
@@ -31,12 +33,7 @@ import {
   Crown,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -74,6 +71,7 @@ export function BattleArenaModal({
   onRunItBack,
 }: BattleArenaModalProps) {
   const queryClient = useQueryClient();
+  const [soundMuted, setSoundMuted] = useState(() => battleAudio.isMuted());
 
   // Active Battle Query
   const { data, refetch } = useQuery({
@@ -100,7 +98,8 @@ export function BattleArenaModal({
   // Current User Fighter Record
   const myParticipant = participants.find((p) => p.user_id === currentUserId);
   const isHost = battle?.host_id === currentUserId;
-  const isSpectator = userRole === "spectator" || myParticipant?.role === "spectator" || !myParticipant;
+  const isSpectator =
+    userRole === "spectator" || myParticipant?.role === "spectator" || !myParticipant;
   const hasSubmitted = myParticipant?.status === "submitted";
   const isCompleted = battle?.status === "completed";
   const isGrading = battle?.status === "grading";
@@ -122,7 +121,9 @@ export function BattleArenaModal({
   const recordIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Floating Points Animation for Theory Pass (+10 pts)
-  const [floatingPoints, setFloatingPoints] = useState<Array<{ id: string; text: string; qIndex: number }>>([]);
+  const [floatingPoints, setFloatingPoints] = useState<
+    Array<{ id: string; text: string; qIndex: number }>
+  >([]);
 
   // Submitting States
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -424,7 +425,7 @@ export function BattleArenaModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl p-0 border border-border bg-card shadow-2xl relative text-foreground">
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl p-0 border border-border bg-card shadow-pop text-foreground battle-arena">
         {/* Floating +10 pts Emerald Glow Animation */}
         <AnimatePresence>
           {floatingPoints.map((fp) => (
@@ -437,7 +438,7 @@ export function BattleArenaModal({
               className="absolute top-1/3 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
             >
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-forest text-white border border-brand/50 font-bold text-lg shadow-xl backdrop-blur-md">
-                <Sparkles className="size-4 text-[#8fd9b6] animate-spin" />
+                <Sparkles className="size-4 text-[#d8ec9b]" />
                 <span className="tnum">{fp.text}</span>
               </div>
             </motion.div>
@@ -445,7 +446,7 @@ export function BattleArenaModal({
         </AnimatePresence>
 
         {/* Scholar's Header Docket */}
-        <DialogHeader className="border-b border-border/80 bg-surface-container-low px-6 py-4">
+        <DialogHeader className="border-b border-border/80 bg-surface-container-low px-6 py-4 pr-12">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-brass/40 bg-brass/10 text-brass-ink">
@@ -469,6 +470,18 @@ export function BattleArenaModal({
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label={soundMuted ? "Enable battle sounds" : "Mute battle sounds"}
+                aria-pressed={!soundMuted}
+                className="battle-sound-toggle"
+                onClick={() => {
+                  battleAudio.setMuted(!soundMuted);
+                  setSoundMuted(!soundMuted);
+                }}
+              >
+                {soundMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
               {/* Nudge Slowpokes Button */}
               {battle.mode === "theory" && !isCompleted && (
                 <Button
@@ -501,7 +514,11 @@ export function BattleArenaModal({
                 variant="outline"
                 className="h-6 px-2.5 rounded-full border-border bg-card font-mono text-[11px] font-semibold text-ink-soft"
               >
-                {isCompleted ? "Completed 🏆" : isGrading ? "Grading..." : `Q ${currentQIndex + 1}/${questions.length}`}
+                {isCompleted
+                  ? "Completed 🏆"
+                  : isGrading
+                    ? "Grading..."
+                    : `Q ${currentQIndex + 1}/${questions.length}`}
               </Badge>
             </div>
           </div>
@@ -518,12 +535,14 @@ export function BattleArenaModal({
                 <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-brass/50 bg-brass/15 text-brass-ink shadow-sm">
                   <Trophy className="size-6 text-brass" />
                 </span>
-                <p className="eyebrow mt-3 text-brass-ink">Session Concluded</p>
+                <p className="eyebrow mt-3 text-brass-ink">GOOD SESSION. KEEP GROWING.</p>
                 <h3 className="mt-1 font-display text-2xl font-medium tracking-tight text-ink">
-                  Battle Concluded
+                  A little sharper than before.
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-                  Escrow pool of <strong className="text-ink font-semibold tnum">{battle.total_pot} points</strong> has been awarded to top scholar(s).
+                  Escrow pool of{" "}
+                  <strong className="text-ink font-semibold tnum">{battle.total_pot} points</strong>{" "}
+                  has been awarded to top scholar(s).
                 </p>
 
                 {onRunItBack && (
@@ -534,7 +553,7 @@ export function BattleArenaModal({
                       className="h-9 rounded-full bg-forest text-white hover:bg-forest/90 font-semibold text-xs gap-1.5 px-5 shadow-sm press"
                     >
                       <RotateCcw className="size-3.5 text-[#8fd9b6]" />
-                      <span>Run It Back (Revenge Match)</span>
+                      <span>Another round?</span>
                     </Button>
                   </div>
                 )}
@@ -553,7 +572,7 @@ export function BattleArenaModal({
                           key={fighter.id}
                           className={cn(
                             "flex items-center justify-between p-3 text-xs transition-colors",
-                            isWinner ? "bg-brass/5 font-medium" : "hover:bg-surface-container-low"
+                            isWinner ? "bg-brass/5 font-medium" : "hover:bg-surface-container-low",
                           )}
                         >
                           <div className="flex items-center gap-3">
@@ -562,7 +581,7 @@ export function BattleArenaModal({
                                 "size-6 rounded-lg grid place-items-center font-mono text-[11px] font-bold",
                                 isWinner
                                   ? "bg-brass text-white shadow-xs"
-                                  : "bg-surface-container text-muted-foreground"
+                                  : "bg-surface-container text-muted-foreground",
                               )}
                             >
                               {rank + 1}
@@ -576,9 +595,7 @@ export function BattleArenaModal({
                             <span className="truncate max-w-[150px] font-medium text-ink">
                               {fighter.user_name}
                             </span>
-                            {isWinner && (
-                              <Crown className="size-3.5 text-brass shrink-0" />
-                            )}
+                            {isWinner && <Crown className="size-3.5 text-brass shrink-0" />}
                           </div>
 
                           <div className="flex items-center gap-3">
@@ -617,13 +634,20 @@ export function BattleArenaModal({
 
                       {battle.mode === "mcq" ? (
                         <div className="mt-2 rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-[11px] font-medium text-forest">
-                          Correct Answer: <strong className="font-semibold text-ink">{q.options?.[q.correctAnswer]}</strong>
+                          Correct Answer:{" "}
+                          <strong className="font-semibold text-ink">
+                            {q.options?.[q.correctAnswer]}
+                          </strong>
                         </div>
                       ) : (
                         <div className="mt-2 rounded-xl border border-border bg-surface-container-low p-2.5 text-[11px] text-muted-foreground space-y-1">
-                          <span className="eyebrow !text-ink-soft block">Model Answer & Rubric</span>
+                          <span className="eyebrow !text-ink-soft block">
+                            Model Answer & Rubric
+                          </span>
                           <p className="text-ink leading-relaxed">
-                            {q.modelAnswer || q.explanation || "Official theoretical derivation rubric verified by academic ledger."}
+                            {q.modelAnswer ||
+                              q.explanation ||
+                              "Official theoretical derivation rubric verified by academic ledger."}
                           </p>
                         </div>
                       )}
@@ -637,6 +661,23 @@ export function BattleArenaModal({
             /* ACTIVE MATCH PLAY VIEW */
             /* ========================================================================= */
             <div className="space-y-5">
+              <div
+                className="battle-step-track"
+                aria-label={`Question ${currentQIndex + 1} of ${questions.length}`}
+              >
+                {questions.map((_: unknown, index: number) => (
+                  <span
+                    key={index}
+                    className={
+                      index < currentQIndex
+                        ? "is-done"
+                        : index === currentQIndex
+                          ? "is-current"
+                          : ""
+                    }
+                  />
+                ))}
+              </div>
               {/* MCQ Countdown Progress */}
               {isMcq && (
                 <div className="space-y-1.5">
@@ -645,7 +686,7 @@ export function BattleArenaModal({
                     <span
                       className={cn(
                         "font-mono font-bold text-xs tnum flex items-center gap-1",
-                        timeLeft <= 5 ? "text-destructive animate-pulse" : "text-brass-ink"
+                        timeLeft <= 5 ? "text-destructive" : "text-brass-ink",
                       )}
                     >
                       <Clock className="size-3.5" /> {timeLeft}s remaining
@@ -655,7 +696,7 @@ export function BattleArenaModal({
                     value={(timeLeft / (battle.time_per_question || 20)) * 100}
                     className={cn(
                       "h-1.5 rounded-full bg-surface-container",
-                      timeLeft <= 5 ? "[&>div]:bg-destructive" : "[&>div]:bg-forest"
+                      timeLeft <= 5 ? "[&>div]:bg-destructive" : "[&>div]:bg-forest",
                     )}
                   />
                 </div>
@@ -668,12 +709,15 @@ export function BattleArenaModal({
                     Question {currentQIndex + 1} of {questions.length}
                   </span>
                   {!isMcq && (
-                    <Badge variant="outline" className="text-[10px] rounded-full border-brand/30 text-brand bg-accent/30 font-semibold">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] rounded-full border-brand/30 text-brand bg-accent/30 font-semibold"
+                    >
                       Untimed Session
                     </Badge>
                   )}
                 </div>
-                <h3 className="font-display text-base sm:text-lg font-medium text-ink leading-relaxed">
+                <h3 className="font-sans text-lg sm:text-xl font-medium text-ink leading-relaxed">
                   {currentQ?.question || "Exam Question Prompt"}
                 </h3>
               </div>
@@ -688,12 +732,13 @@ export function BattleArenaModal({
                         key={optIdx}
                         type="button"
                         disabled={hasSubmitted || isSpectator}
+                        aria-pressed={isSelected}
                         onClick={() => handleSelectOption(optIdx)}
                         className={cn(
                           "p-4 rounded-2xl border text-left text-xs font-medium flex items-center justify-between gap-3 transition-all lift press",
                           isSelected
                             ? "border-forest bg-forest text-white shadow-sm"
-                            : "border-border bg-card hover:bg-surface-container-low text-ink"
+                            : "border-border bg-card hover:bg-surface-container-low text-ink",
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -702,7 +747,7 @@ export function BattleArenaModal({
                               "size-6 rounded-lg grid place-items-center font-mono text-xs font-bold shrink-0",
                               isSelected
                                 ? "bg-white/20 text-white"
-                                : "bg-surface-container text-muted-foreground"
+                                : "bg-surface-container text-muted-foreground",
                             )}
                           >
                             {String.fromCharCode(65 + optIdx)}
@@ -781,8 +826,7 @@ export function BattleArenaModal({
                                 ...prev,
                                 [currentQIndex]: {
                                   text: cur?.text || "",
-                                  imageBase64: undefined,
-                                  audioTranscript: cur?.audioTranscript,
+                                  ...(cur?.audioTranscript ? { audioTranscript: cur.audioTranscript } : {}),
                                 },
                               };
                             })
@@ -887,7 +931,7 @@ export function BattleArenaModal({
                           "p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors",
                           isDone
                             ? "border-brand/30 bg-accent/40 text-forest"
-                            : "border-border bg-card text-muted-foreground"
+                            : "border-border bg-card text-muted-foreground",
                         )}
                       >
                         <div className="flex items-center gap-2 truncate">

@@ -46,12 +46,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import {
@@ -74,10 +69,7 @@ import {
   markDirectMessagesReadServerFn,
 } from "@/lib/community.functions";
 import { askBossAiServerFn } from "@/lib/ai/study-assistant.functions";
-import {
-  subscribeToChatChannel,
-  broadcastChatMessage,
-} from "@/lib/supabase-realtime";
+import { subscribeToChatChannel, broadcastChatMessage } from "@/lib/supabase-realtime";
 import { sendDeviceNotification } from "@/lib/notifications";
 import { StudentQrModal } from "@/components/student-qr-modal";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
@@ -93,7 +85,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/community")({
       { title: "Peers & Student Study Chats — Syllaboss" },
       {
         name: "description",
-        content: "Chat with peers, create study groups, mention Boss AI, and share academic materials.",
+        content:
+          "Chat with peers, create study groups, mention Boss AI, and share academic materials.",
       },
     ],
   }),
@@ -430,7 +423,7 @@ export function CommunityPage() {
     setEditingMessage(msg);
     setMessageInput(msg.content);
     setSelectedMessageForMenu(null);
-    setShowCustomKeyboard(true);
+    composerTextareaRef.current?.focus();
     if (composerTextareaRef.current) {
       composerTextareaRef.current.focus();
     }
@@ -453,136 +446,162 @@ export function CommunityPage() {
   }
 
   // Send or Edit Message in Active Chat
+  const [isSending, setIsSending] = useState(false);
+  const sendingRef = useRef(false);
+
   async function handleSendMessage(e?: React.FormEvent) {
     e?.preventDefault();
     if (!user || !activeChat || (!messageInput.trim() && !selectedMaterial)) return;
 
-    // Handle Editing existing message
-    if (editingMessage) {
-      const newText = messageInput.trim();
-      setEditingMessage(null);
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    setIsSending(true);
+    const draft = messageInput;
+    const draftMaterial = selectedMaterial;
+    const draftReply = replyingToMessage;
+    const draftEdit = editingMessage;
+    try {
+      // Handle Editing existing message
+      if (editingMessage) {
+        const newText = messageInput.trim();
+        setEditingMessage(null);
+        setMessageInput("");
+
+        try {
+          if (activeChat.type === "peer") {
+            await editDirectMessageServerFn({
+              data: { messageId: editingMessage.id, userId: user.id, newContent: newText },
+            });
+          } else {
+            await editGroupMessageServerFn({
+              data: { messageId: editingMessage.id, userId: user.id, newContent: newText },
+            });
+          }
+          await refetchActiveMessages();
+          toast.success("Message updated");
+        } catch (err: any) {
+          setMessageInput(draft);
+          setEditingMessage(draftEdit);
+          toast.error("Edit not saved. Your draft is ready to try again.");
+        }
+        return;
+      }
+
+      // Handle Sending new message (with optional Telegram-style reply quote)
+      let content = messageInput.trim();
+      if (replyingToMessage) {
+        const sender = replyingToMessage.sender_name || replyingToMessage.user_name || "Scholar";
+        const quoteSnippet = replyingToMessage.content.slice(0, 60);
+        content = `[Replying to ${sender}: "${quoteSnippet}"]\n${content}`;
+        setReplyingToMessage(null);
+      }
+
+      if (!content && selectedMaterial) {
+        content = `Shared document: "${selectedMaterial.title}"`;
+      }
+
+      const matId = selectedMaterial?.id;
+      const matTitle = selectedMaterial?.title;
+      const matCourse = selectedMaterial?.course;
+
       setMessageInput("");
+      setSelectedMaterial(null);
+      if (composerTextareaRef.current) {
+        composerTextareaRef.current.style.height = "auto";
+      }
 
       try {
         if (activeChat.type === "peer") {
-          await editDirectMessageServerFn({
-            data: { messageId: editingMessage.id, userId: user.id, newContent: newText },
+          const newMsg = await sendDirectMessageServerFn({
+            data: {
+              conversationId: activeChat.id,
+              senderId: user.id,
+              content,
+              materialId: matId,
+            },
           });
+          await broadcastChatMessage(activeChat.id, newMsg);
         } else {
-          await editGroupMessageServerFn({
-            data: { messageId: editingMessage.id, userId: user.id, newContent: newText },
+          const newMsg = await sendGroupMessageServerFn({
+            data: {
+              groupId: activeChat.id,
+              userId: user.id,
+              userName: profile?.username
+                ? `@${profile.username}`
+                : user.user_metadata?.full_name || "Scholar",
+              userInstitution: profile?.institution || undefined,
+              content,
+              materialId: matId,
+              materialTitle: matTitle,
+              materialCourseCode: matCourse,
+            },
           });
+          await broadcastChatMessage(activeChat.id, newMsg);
         }
+
         await refetchActiveMessages();
-        toast.success("Message updated");
-      } catch (err: any) {
-        toast.error(err?.message || "Edit failed");
-      }
-      return;
-    }
+        await refetchConversations();
 
-    // Handle Sending new message (with optional Telegram-style reply quote)
-    let content = messageInput.trim();
-    if (replyingToMessage) {
-      const sender = replyingToMessage.sender_name || replyingToMessage.user_name || "Scholar";
-      const quoteSnippet = replyingToMessage.content.slice(0, 60);
-      content = `[Replying to ${sender}: "${quoteSnippet}"]\n${content}`;
-      setReplyingToMessage(null);
-    }
+        // Requirement: When Boss AI is tagged/mentioned in a message, it should reply!
+        const isAiMentioned = /@(bossai|boss|ai)\b/i.test(content);
+        if (isAiMentioned) {
+          const aiPrompt = content.replace(/@(bossai|boss|ai)\b/gi, "").trim() || content;
+          toast.loading("Boss AI is formulating an answer...", { id: "ai-peer-reply" });
 
-    if (!content && selectedMaterial) {
-      content = `Shared document: "${selectedMaterial.title}"`;
-    }
-
-    const matId = selectedMaterial?.id;
-    const matTitle = selectedMaterial?.title;
-    const matCourse = selectedMaterial?.course;
-
-    setMessageInput("");
-    setSelectedMaterial(null);
-    if (composerTextareaRef.current) {
-      composerTextareaRef.current.style.height = "auto";
-    }
-
-    try {
-      if (activeChat.type === "peer") {
-        const newMsg = await sendDirectMessageServerFn({
-          data: {
-            conversationId: activeChat.id,
-            senderId: user.id,
-            content,
-            materialId: matId,
-          },
-        });
-        await broadcastChatMessage(activeChat.id, newMsg);
-      } else {
-        const newMsg = await sendGroupMessageServerFn({
-          data: {
-            groupId: activeChat.id,
-            userId: user.id,
-            userName: profile?.username ? `@${profile.username}` : user.user_metadata?.full_name || "Scholar",
-            userInstitution: profile?.institution || undefined,
-            content,
-            materialId: matId,
-            materialTitle: matTitle,
-            materialCourseCode: matCourse,
-          },
-        });
-        await broadcastChatMessage(activeChat.id, newMsg);
-      }
-
-      await refetchActiveMessages();
-      await refetchConversations();
-
-      // Requirement: When Boss AI is tagged/mentioned in a message, it should reply!
-      const isAiMentioned = /@(bossai|boss|ai)\b/i.test(content);
-      if (isAiMentioned) {
-        const aiPrompt = content.replace(/@(bossai|boss|ai)\b/gi, "").trim() || content;
-        toast.loading("Boss AI is formulating an answer...", { id: "ai-peer-reply" });
-
-        askBossAiServerFn({
-          data: {
-            userId: user.id,
-            query: `A student in a peer study discussion tagged @BossAI: "${aiPrompt}". Please provide a helpful, concise academic answer. Do NOT use any emojis.`,
-            taskType: "general",
-          },
-        })
-          .then(async (aiRes) => {
-            const cleanAiResponse = aiRes.response.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "");
-            const aiFormattedText = `**Boss AI**:\n${cleanAiResponse}`;
-
-            if (activeChat.type === "peer") {
-              const aiMsg = await sendDirectMessageServerFn({
-                data: {
-                  conversationId: activeChat.id,
-                  senderId: user.id,
-                  content: aiFormattedText,
-                },
-              });
-              await broadcastChatMessage(activeChat.id, aiMsg);
-            } else {
-              const aiMsg = await sendGroupMessageServerFn({
-                data: {
-                  groupId: activeChat.id,
-                  userId: "boss-ai",
-                  userName: "Boss AI",
-                  userInstitution: "Campus AI Intelligence",
-                  content: aiFormattedText,
-                },
-              });
-              await broadcastChatMessage(activeChat.id, aiMsg);
-            }
-
-            await refetchActiveMessages();
-            toast.success("Boss AI replied to the discussion!", { id: "ai-peer-reply" });
+          askBossAiServerFn({
+            data: {
+              userId: user.id,
+              query: `A student in a peer study discussion tagged @BossAI: "${aiPrompt}". Please provide a helpful, concise academic answer. Do NOT use any emojis.`,
+              taskType: "general",
+            },
           })
-          .catch((err) => {
-            console.error("Boss AI reply error:", err);
-            toast.error("Boss AI could not reply at this time.", { id: "ai-peer-reply" });
-          });
+            .then(async (aiRes) => {
+              const cleanAiResponse = aiRes.response.replace(
+                /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu,
+                "",
+              );
+              const aiFormattedText = `**Boss AI**:\n${cleanAiResponse}`;
+
+              if (activeChat.type === "peer") {
+                const aiMsg = await sendDirectMessageServerFn({
+                  data: {
+                    conversationId: activeChat.id,
+                    senderId: user.id,
+                    content: aiFormattedText,
+                  },
+                });
+                await broadcastChatMessage(activeChat.id, aiMsg);
+              } else {
+                const aiMsg = await sendGroupMessageServerFn({
+                  data: {
+                    groupId: activeChat.id,
+                    userId: "boss-ai",
+                    userName: "Boss AI",
+                    userInstitution: "Campus AI Intelligence",
+                    content: aiFormattedText,
+                  },
+                });
+                await broadcastChatMessage(activeChat.id, aiMsg);
+              }
+
+              await refetchActiveMessages();
+              toast.success("Boss AI replied to the discussion!", { id: "ai-peer-reply" });
+            })
+            .catch((err) => {
+              console.error("Boss AI reply error:", err);
+              toast.error("Boss AI could not reply at this time.", { id: "ai-peer-reply" });
+            });
+        }
+      } catch (err: any) {
+        // Never lose the student's draft or attachment after a failed delivery.
+        setMessageInput((current) => current || draft);
+        setSelectedMaterial((current) => current || draftMaterial);
+        setReplyingToMessage(draftReply);
+        toast.error("Message not sent. Your draft has been restored—please try again.");
       }
-    } catch (err: any) {
-      toast.error(err?.message || "Message delivery failed");
+    } finally {
+      sendingRef.current = false;
+      setIsSending(false);
     }
   }
 
@@ -641,9 +660,8 @@ export function CommunityPage() {
         data: { query: scannedUsername, currentUserId: user.id },
       });
       const peer =
-        peers.find(
-          (p: any) => p.username?.toLowerCase() === scannedUsername.toLowerCase()
-        ) || peers[0];
+        peers.find((p: any) => p.username?.toLowerCase() === scannedUsername.toLowerCase()) ||
+        peers[0];
 
       if (!peer) {
         toast.error(`Student @${scannedUsername} could not be found.`);
@@ -727,7 +745,7 @@ export function CommunityPage() {
           navigator.vibrate(12);
         }
         setReplyingToMessage(msg);
-        setShowCustomKeyboard(true);
+        composerTextareaRef.current?.focus();
         if (composerTextareaRef.current) {
           composerTextareaRef.current.focus();
         }
@@ -739,15 +757,15 @@ export function CommunityPage() {
   return (
     <div
       data-chat-active={Boolean(activeChat)}
-      className="flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans relative"
+      className="flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-soft font-sans relative"
     >
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: Conversations List (Telegram Style) */}
       {/* ========================================================================= */}
       <div
         className={cn(
-          "w-full md:w-[22rem] lg:w-[25rem] flex flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden",
-          activeChat ? "hidden md:flex" : "flex"
+          "w-full md:w-[19rem] lg:w-[21rem] flex flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden",
+          activeChat ? "hidden md:flex" : "flex",
         )}
       >
         {/* Top Header */}
@@ -760,7 +778,7 @@ export function CommunityPage() {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <h2 className="text-xs font-bold text-foreground truncate">Peers & Groups</h2>
+              <h2 className="text-sm font-semibold text-foreground truncate">Your people</h2>
               <p className="text-[11px] font-medium text-brand dark:text-brand truncate">
                 @{profile?.username || "student"}
               </p>
@@ -818,7 +836,7 @@ export function CommunityPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search peers and groups..."
+              placeholder="Find a person or study group…"
               className="pl-8 text-xs h-8.5 rounded-full bg-secondary/50 border-border/60"
             />
           </div>
@@ -834,7 +852,7 @@ export function CommunityPage() {
                   "px-3 py-1 rounded-full text-[11px] font-bold capitalize transition-all",
                   chatTab === tab
                     ? "bg-primary text-primary-foreground shadow-2xs"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                 )}
               >
                 {tab === "direct" ? "Peers" : tab}
@@ -880,7 +898,7 @@ export function CommunityPage() {
                   }}
                   className={cn(
                     "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors relative hover:bg-secondary/40",
-                    isSelected && "bg-secondary/70 font-semibold"
+                    isSelected && "bg-secondary/70 font-semibold",
                   )}
                 >
                   <Avatar className="size-10 shrink-0">
@@ -936,7 +954,7 @@ export function CommunityPage() {
                   }}
                   className={cn(
                     "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors relative hover:bg-secondary/40",
-                    isSelected && "bg-secondary/70 font-semibold"
+                    isSelected && "bg-secondary/70 font-semibold",
                   )}
                 >
                   <div className="size-10 rounded-full bg-brand/10 text-brand grid place-items-center font-bold text-xs shrink-0">
@@ -964,7 +982,7 @@ export function CommunityPage() {
       <div
         className={cn(
           "flex-1 flex flex-col min-h-0 h-full max-h-full bg-background overflow-hidden relative",
-          !activeChat ? "hidden md:flex" : "flex"
+          !activeChat ? "hidden md:flex" : "flex",
         )}
       >
         {activeChat ? (
@@ -1003,7 +1021,9 @@ export function CommunityPage() {
                 <Button
                   size="sm"
                   onClick={() => setIsHostBattleOpen(true)}
-                  aria-label={activeChat.type === "group" ? "Start a study battle" : "Challenge to 1v1 battle"}
+                  aria-label={
+                    activeChat.type === "group" ? "Start a study battle" : "Challenge to 1v1 battle"
+                  }
                   className="h-8 gap-1.5 rounded-full bg-forest px-3 text-xs font-semibold text-white hover:bg-ink lift press shadow-xs"
                 >
                   <Swords className="size-3.5 text-brass-soft" />
@@ -1043,12 +1063,15 @@ export function CommunityPage() {
                   </div>
                   <h4 className="text-xs font-semibold text-foreground">Start of conversation</h4>
                   <p className="text-[11px] text-muted-foreground max-w-xs mt-1">
-                    Send a message, attach documents, or tag <strong>@BossAI</strong> to get answers!
+                    Send a message, attach documents, or tag <strong>@BossAI</strong> to get
+                    answers!
                   </p>
                 </div>
               ) : (
                 chatMessages.map((msg: any) => {
-                  const battleMatch = msg.content?.match(/\[(STUDY_BATTLE|BATTLE_RECEIPT):([a-zA-Z0-9-]+)\]/);
+                  const battleMatch = msg.content?.match(
+                    /\[(STUDY_BATTLE|BATTLE_RECEIPT):([a-zA-Z0-9-]+)\]/,
+                  );
                   if (battleMatch) {
                     const battleId = battleMatch[2];
                     return (
@@ -1073,8 +1096,7 @@ export function CommunityPage() {
 
                   const isMe = msg.sender_id === user?.id || msg.user_id === user?.id;
                   const senderDisplay = msg.sender_name || msg.user_name || "Scholar";
-                  const isBossAi =
-                    senderDisplay.includes("Boss AI") || msg.user_id === "system";
+                  const isBossAi = senderDisplay.includes("Boss AI") || msg.user_id === "system";
 
                   return (
                     <div
@@ -1087,7 +1109,7 @@ export function CommunityPage() {
                       }}
                       className={cn(
                         "flex flex-col max-w-[85%] sm:max-w-[72%] transition-all",
-                        isMe ? "ml-auto items-end" : "mr-auto items-start"
+                        isMe ? "ml-auto items-end" : "mr-auto items-start",
                       )}
                     >
                       {/* Sender Tag */}
@@ -1095,7 +1117,7 @@ export function CommunityPage() {
                         <span
                           className={cn(
                             "text-[10px] font-bold mb-0.5 px-1",
-                            isBossAi ? "text-brass" : "text-brand dark:text-brand"
+                            isBossAi ? "text-brass" : "text-brand dark:text-brand",
                           )}
                         >
                           {senderDisplay}
@@ -1110,8 +1132,8 @@ export function CommunityPage() {
                           isMe
                             ? "bg-primary text-primary-foreground rounded-br-xs"
                             : isBossAi
-                            ? "bg-brass/10 border border-brass/30 text-foreground rounded-bl-xs"
-                            : "bg-card border border-border/80 text-foreground rounded-bl-xs"
+                              ? "bg-brass/10 border border-brass/30 text-foreground rounded-bl-xs"
+                              : "bg-card border border-border/80 text-foreground rounded-bl-xs",
                         )}
                       >
                         {msg.material_id && (
@@ -1139,7 +1161,7 @@ export function CommunityPage() {
                         <div
                           className={cn(
                             "flex items-center justify-end gap-1 text-[9px] pt-0.5 opacity-70",
-                            isMe ? "text-primary-foreground" : "text-muted-foreground"
+                            isMe ? "text-primary-foreground" : "text-muted-foreground",
                           )}
                         >
                           <span>
@@ -1232,12 +1254,18 @@ export function CommunityPage() {
                         <Bot className="size-3" />
                       </div>
                       <span className="font-bold text-primary">@BossAI</span>
-                      <span className="text-[10px] text-muted-foreground">· Summon AI Study Assistant</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        · Summon AI Study Assistant
+                      </span>
                     </button>
                   </div>
                 );
               })()}
 
+              <p className="composer-hint">
+                Share a thought, attach your notes, or mention <strong>@BossAI</strong> for a little
+                help.
+              </p>
               <div className="rounded-2xl border border-border/80 bg-secondary/30 p-2 shadow-xs flex flex-col gap-1 focus-within:border-primary/50 focus-within:bg-card">
                 <textarea
                   ref={composerTextareaRef}
@@ -1248,19 +1276,21 @@ export function CommunityPage() {
                     e.target.style.height = `${Math.min(e.target.scrollHeight, 84)}px`;
                   }}
                   onKeyDown={(e) => {
-                    if (!isMobile && e.key === "Enter" && !e.shiftKey) {
+                    if (
+                      !isMobile &&
+                      e.key === "Enter" &&
+                      !e.shiftKey &&
+                      !e.nativeEvent.isComposing
+                    ) {
                       e.preventDefault();
                       handleSendMessage();
                     }
                   }}
-                  onFocus={() => {
-                    if (isMobile) setShowCustomKeyboard(true);
-                  }}
-                  onClick={() => {
-                    if (isMobile) setShowCustomKeyboard(true);
-                  }}
-                  inputMode={isMobile ? "none" : "text"}
-                  placeholder={`Message ${activeChat.title} (tag @BossAI to ask AI)...`}
+                  inputMode="text"
+                  aria-label={`Message ${activeChat.title}`}
+                  disabled={isSending}
+                  autoCapitalize="sentences"
+                  placeholder={`Message ${activeChat.title}…`}
                   rows={1}
                   className="w-full resize-none bg-transparent text-xs sm:text-sm text-foreground focus:outline-hidden min-h-[26px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
                 />
@@ -1271,7 +1301,8 @@ export function CommunityPage() {
                       type="button"
                       onClick={() => setIsAttachMaterialOpen(true)}
                       title="Attach academic material from library"
-                      className="size-7.5 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      aria-label="Attach study material"
+                      className="size-10 rounded-full grid place-items-center text-muted-foreground hover:text-foreground hover:bg-secondary"
                     >
                       <Paperclip className="size-4" />
                     </button>
@@ -1279,9 +1310,13 @@ export function CommunityPage() {
                     <button
                       type="button"
                       onClick={() => setIsHostBattleOpen(true)}
-                      title={activeChat.type === "group" ? "Start a study battle" : `Challenge ${activeChat.title} to 1v1 battle`}
+                      title={
+                        activeChat.type === "group"
+                          ? "Start a study battle"
+                          : `Challenge ${activeChat.title} to 1v1 battle`
+                      }
                       aria-label="Start a study battle"
-                      className="press size-7.5 rounded-full grid place-items-center text-brass hover:bg-brass-soft transition-colors"
+                      className="press size-10 rounded-full grid place-items-center text-brass hover:bg-brass-soft transition-colors"
                     >
                       <Swords className="size-4" />
                     </button>
@@ -1290,13 +1325,20 @@ export function CommunityPage() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      disabled={!messageInput.trim() && !selectedMaterial}
+                      disabled={isSending || (!messageInput.trim() && !selectedMaterial)}
+                      aria-label={
+                        isSending
+                          ? "Sending message"
+                          : editingMessage
+                            ? "Save edited message"
+                            : "Send message"
+                      }
                       onClick={() => handleSendMessage()}
                       className={cn(
-                        "size-7.5 rounded-full grid place-items-center transition-all",
+                        "size-10 rounded-full grid place-items-center transition-all",
                         messageInput.trim() || selectedMaterial
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "text-muted-foreground opacity-40 cursor-not-allowed"
+                          : "text-muted-foreground opacity-40 cursor-not-allowed",
                       )}
                     >
                       <Send className="size-3.5" />
@@ -1333,7 +1375,8 @@ export function CommunityPage() {
             </div>
             <h3 className="text-base font-bold text-foreground">Select a peer or study group</h3>
             <p className="mt-1 text-xs text-muted-foreground max-w-sm leading-relaxed">
-              Connect with coursemates, join study groups, share documents, or tag <strong>@BossAI</strong> for instant answers.
+              Connect with coursemates, join study groups, share documents, or tag{" "}
+              <strong>@BossAI</strong> for instant answers.
             </p>
           </div>
         )}
@@ -1365,7 +1408,7 @@ export function CommunityPage() {
               onClick={() => {
                 setReplyingToMessage(selectedMessageForMenu);
                 setSelectedMessageForMenu(null);
-                setShowCustomKeyboard(true);
+                composerTextareaRef.current?.focus();
               }}
               className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
             >
@@ -1398,10 +1441,7 @@ export function CommunityPage() {
       {/* ========================================================================= */}
       {/* MODAL: Long-Press Conversation Options (Pin, Archive, Mute, Block) */}
       {/* ========================================================================= */}
-      <Dialog
-        open={Boolean(chatForContextMenu)}
-        onOpenChange={() => setChatForContextMenu(null)}
-      >
+      <Dialog open={Boolean(chatForContextMenu)} onOpenChange={() => setChatForContextMenu(null)}>
         <DialogContent className="max-w-xs rounded-3xl p-4 border-border bg-card">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold">
@@ -1416,7 +1456,7 @@ export function CommunityPage() {
               onClick={() => {
                 const id = chatForContextMenu.id;
                 setPinnedChatIds((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
                 );
                 setChatForContextMenu(null);
                 toast.success(pinnedChatIds.includes(id) ? "Chat unpinned" : "Chat pinned to top");
@@ -1433,7 +1473,7 @@ export function CommunityPage() {
               onClick={() => {
                 const id = chatForContextMenu.id;
                 setMutedChatIds((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
                 );
                 setChatForContextMenu(null);
                 toast.success(mutedChatIds.includes(id) ? "Chat unmuted" : "Chat muted");
@@ -1441,7 +1481,9 @@ export function CommunityPage() {
               className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
             >
               <VolumeX className="size-4 text-muted-foreground" />
-              {mutedChatIds.includes(chatForContextMenu?.id) ? "Unmute Notifications" : "Mute Notifications"}
+              {mutedChatIds.includes(chatForContextMenu?.id)
+                ? "Unmute Notifications"
+                : "Mute Notifications"}
             </button>
 
             {/* Block User (for direct peer chats) */}
@@ -1613,7 +1655,9 @@ export function CommunityPage() {
             </div>
 
             <div>
-              <label className="font-semibold text-muted-foreground block mb-1">Course Code (Optional)</label>
+              <label className="font-semibold text-muted-foreground block mb-1">
+                Course Code (Optional)
+              </label>
               <Input
                 value={newGroupCourse}
                 onChange={(e) => setNewGroupCourse(e.target.value)}

@@ -51,12 +51,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background px-6">
       <div className="route-enter !h-auto max-w-md text-center">
-        <p className="eyebrow text-destructive">System Ledger Notice</p>
+        <p className="eyebrow text-destructive">A small interruption</p>
         <h1 className="mt-3 font-display text-4xl sm:text-5xl font-medium tracking-tight text-ink">
-          This record couldn't be loaded.
+          Let’s give that another try.
         </h1>
         <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-          An unexpected interruption occurred while reading the academic ledger. You can retry the request or return to your dashboard.
+          Something interrupted this page. Your place is still here—try again, or head home and
+          start fresh.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button

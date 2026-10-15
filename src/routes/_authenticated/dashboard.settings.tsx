@@ -84,7 +84,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/settings")({
   head: () => ({
     meta: [
       { title: "Settings — Syllaboss" },
-      { name: "description", content: "Account settings, notifications, payout details, and academic preferences." },
+      {
+        name: "description",
+        content: "Account settings, notifications, payout details, and academic preferences.",
+      },
     ],
   }),
   component: SettingsPage,
@@ -101,7 +104,8 @@ function SettingsPage() {
   const [claimingInstall, setClaimingInstall] = useState(false);
 
   // Notification states
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission>("default");
   const [studyReminders, setStudyReminders] = useState(true);
   const [rewardAlerts, setRewardAlerts] = useState(true);
 
@@ -316,7 +320,7 @@ function SettingsPage() {
 
   const shareWhatsApp = () => {
     const text = encodeURIComponent(
-      `Join me on Syllaboss to get past questions, lecture notes and earn SyllaPoints! Use my code ${refCode} to get 200 welcome bonus points: ${refLink}`
+      `Join me on Syllaboss to get past questions, lecture notes and earn SyllaPoints! Use my code ${refCode} to get 200 welcome bonus points: ${refLink}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
   };
@@ -386,7 +390,9 @@ function SettingsPage() {
         body: "You will now receive study rewards, verification updates, and exam alerts directly on your device.",
       });
     } else {
-      toast.error("Notification permission was denied. You can re-enable it in your device settings.");
+      toast.error(
+        "Notification permission was denied. You can re-enable it in your device settings.",
+      );
     }
   };
 
@@ -459,13 +465,10 @@ function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-20">
-      <PageHeader
-        eyebrow="Preferences & Account"
-        title="Settings"
-      />
+      <PageHeader eyebrow="YOUR SPACE, YOUR WAY" title="Make yourself at home." />
 
       {/* SyllaPlus Plan Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-brass/30 bg-gradient-to-br from-brass/10 via-brass-ink/5 to-card p-6 shadow-soft">
+      <div className="relative overflow-hidden rounded-3xl border border-brass/30 bg-brass-soft/40 p-6 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
@@ -489,7 +492,9 @@ function SettingsPage() {
               disabled={upgrading}
               className="rounded-full bg-brass-ink text-white hover:bg-brass-ink shadow-md font-semibold text-xs px-5 h-9"
             >
-              {upgrading ? "Connecting Bachs..." : `Upgrade with Bachs (${formatNaira(SYLLAPLUS_PRICE_NAIRA)})`}
+              {upgrading
+                ? "Connecting Bachs..."
+                : `Upgrade with Bachs (${formatNaira(SYLLAPLUS_PRICE_NAIRA)})`}
             </Button>
           ) : (
             <span className="rounded-full bg-brass/20 border border-brass/40 px-3 py-1 text-xs font-semibold text-brass-ink">
@@ -509,7 +514,8 @@ function SettingsPage() {
             <div>
               <p className="text-sm font-medium text-foreground">Device Hardware Notifications</p>
               <p className="text-xs text-muted-foreground">
-                Show real notifications directly in your phone notification drawer or Windows/Mac desktop banner.
+                Show real notifications directly in your phone notification drawer or Windows/Mac
+                desktop banner.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -542,7 +548,9 @@ function SettingsPage() {
           <div className="flex items-center justify-between p-4 text-sm">
             <div>
               <p className="font-medium text-foreground">Study Session Focus Reminders</p>
-              <p className="text-xs text-muted-foreground">Alert you every 30 minutes of study when +5 SyllaPoints are awarded</p>
+              <p className="text-xs text-muted-foreground">
+                Alert you every 30 minutes of study when +5 SyllaPoints are awarded
+              </p>
             </div>
             <input
               type="checkbox"
@@ -550,7 +558,9 @@ function SettingsPage() {
               onChange={(e) => {
                 setStudyReminders(e.target.checked);
                 localStorage.setItem("syllaboss_study_reminders", String(e.target.checked));
-                toast.success(e.target.checked ? "Study reminders enabled." : "Study reminders disabled.");
+                toast.success(
+                  e.target.checked ? "Study reminders enabled." : "Study reminders disabled.",
+                );
               }}
               className="size-4.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
             />
@@ -559,7 +569,9 @@ function SettingsPage() {
           <div className="flex items-center justify-between p-4 text-sm">
             <div>
               <p className="font-medium text-foreground">Verification & Peer Download Alerts</p>
-              <p className="text-xs text-muted-foreground">Instant ping when your notes are verified or downloaded by students</p>
+              <p className="text-xs text-muted-foreground">
+                Instant ping when your notes are verified or downloaded by students
+              </p>
             </div>
             <input
               type="checkbox"
@@ -567,7 +579,9 @@ function SettingsPage() {
               onChange={(e) => {
                 setRewardAlerts(e.target.checked);
                 localStorage.setItem("syllaboss_reward_alerts", String(e.target.checked));
-                toast.success(e.target.checked ? "Reward alerts enabled." : "Reward alerts disabled.");
+                toast.success(
+                  e.target.checked ? "Reward alerts enabled." : "Reward alerts disabled.",
+                );
               }}
               className="size-4.5 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer"
             />
@@ -586,21 +600,33 @@ function SettingsPage() {
             <div className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
                 <span className="relative flex size-2">
-                  <span className={cn("absolute inline-flex size-full rounded-full bg-brand opacity-75", !isPaused && "animate-ping")} />
-                  <span className={cn("relative inline-flex size-2 rounded-full", isPaused ? "bg-brass" : "bg-brand")} />
+                  <span
+                    className={cn(
+                      "absolute inline-flex size-full rounded-full bg-brand opacity-75",
+                      !isPaused && "animate-ping",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "relative inline-flex size-2 rounded-full",
+                      isPaused ? "bg-brass" : "bg-brand",
+                    )}
+                  />
                 </span>
                 Active Study Session Timer
               </span>
               <div className="flex items-baseline gap-2 font-mono">
                 <span className="font-display text-3xl font-extrabold text-foreground tracking-tight">
-                  {String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}
+                  {String(Math.floor(seconds / 60)).padStart(2, "0")}:
+                  {String(seconds % 60).padStart(2, "0")}
                 </span>
                 <span className="text-xs text-muted-foreground font-medium">
                   {isPaused ? "(Paused)" : "(Tracking focus)"}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Earn <strong>+5 SyllaPoints</strong> automatically every 30 minutes of active reading!
+                Earn <strong>+5 SyllaPoints</strong> automatically every 30 minutes of active
+                reading!
               </p>
             </div>
 
@@ -626,13 +652,17 @@ function SettingsPage() {
 
           <div className="flex items-center justify-between p-4 text-sm">
             <span className="text-muted-foreground">Recorded Lifetime Study Time</span>
-            <span className="font-semibold text-foreground font-mono">{totalStudyMinutes} minutes ({(totalStudyMinutes / 60).toFixed(1)} hrs)</span>
+            <span className="font-semibold text-foreground font-mono">
+              {totalStudyMinutes} minutes ({(totalStudyMinutes / 60).toFixed(1)} hrs)
+            </span>
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 text-sm gap-2">
             <div>
               <span className="font-medium text-foreground">Daily Focus Target</span>
-              <p className="text-xs text-muted-foreground">Set your goal to stay consistent with coursework</p>
+              <p className="text-xs text-muted-foreground">
+                Set your goal to stay consistent with coursework
+              </p>
             </div>
             <select
               value={studyGoalMinutes}
@@ -672,7 +702,8 @@ function SettingsPage() {
         </p>
         <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-xs">
           <p className="text-xs text-muted-foreground">
-            Configure your default Nigerian bank account for seamless cash-outs when redeeming SyllaPoints.
+            Configure your default Nigerian bank account for seamless cash-outs when redeeming
+            SyllaPoints.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -685,13 +716,17 @@ function SettingsPage() {
               >
                 <option value="">-- Choose your Bank --</option>
                 {POPULAR_BANKS.map((b) => (
-                  <option key={b} value={b}>{b}</option>
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Account Number (10 digits)</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Account Number (10 digits)
+              </label>
               <input
                 type="text"
                 maxLength={10}
@@ -704,7 +739,9 @@ function SettingsPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Account Holder Full Name</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Account Holder Full Name
+            </label>
             <input
               type="text"
               value={savedAccountName}
@@ -762,7 +799,11 @@ function SettingsPage() {
                   title="Upload profile picture"
                   className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary text-primary-foreground shadow-md hover:scale-105 active:scale-95 transition-transform"
                 >
-                  {isUploadingAvatar ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+                  {isUploadingAvatar ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="size-3.5" />
+                  )}
                 </button>
               </div>
 
@@ -814,16 +855,27 @@ function SettingsPage() {
 
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <span className="absolute left-3 top-2 text-xs font-semibold text-muted-foreground select-none">@</span>
+                <span className="absolute left-3 top-2 text-xs font-semibold text-muted-foreground select-none">
+                  @
+                </span>
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20))}
+                  onChange={(e) =>
+                    setUsername(
+                      e.target.value
+                        .toLowerCase()
+                        .replace(/[^a-z0-9_]/g, "")
+                        .slice(0, 20),
+                    )
+                  }
                   placeholder="e.g. adekunle_01"
                   className="w-full rounded-xl border border-border bg-background pl-7 pr-12 py-1.5 text-xs font-mono font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <div className="absolute right-2.5 top-2 flex items-center">
-                  {usernameChecking && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
+                  {usernameChecking && (
+                    <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                  )}
                   {!usernameChecking && isUsernameAvailable === true && (
                     <span className="flex items-center gap-0.5 text-[10px] text-brand font-semibold bg-accent px-1.5 py-0.5 rounded-full border border-accent">
                       <Check className="size-2.5" /> Available
@@ -841,17 +893,24 @@ function SettingsPage() {
                 type="button"
                 size="sm"
                 onClick={handleSaveUsername}
-                disabled={isSavingUsername || isUsernameAvailable === false || !username.trim() || username === profile?.username}
+                disabled={
+                  isSavingUsername ||
+                  isUsernameAvailable === false ||
+                  !username.trim() ||
+                  username === profile?.username
+                }
                 className="h-8 rounded-xl text-xs gap-1 font-semibold"
               >
-                {isSavingUsername ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+                {isSavingUsername ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Save className="size-3" />
+                )}
                 Save Handle
               </Button>
             </div>
 
-            {usernameError && (
-              <p className="text-xs text-destructive">{usernameError}</p>
-            )}
+            {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
             <p className="text-[11px] text-muted-foreground">
               This username will be displayed on the Leaderboard and used by peers to message you.
             </p>
@@ -882,7 +941,9 @@ function SettingsPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Institution / University</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Institution / University
+              </label>
               <input
                 type="text"
                 value={institution}
@@ -956,8 +1017,15 @@ function SettingsPage() {
                 Share & Earn {POINTS_NAME}
               </h3>
               <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                Earn <strong className="text-foreground">+{POINTS_REFERRAL_REGISTRATION} {POINTS_NAME}</strong> when a friend registers, plus an extra{" "}
-                <strong className="text-foreground">+{POINTS_REFERRAL_UPGRADE} {POINTS_NAME}</strong> when they upgrade to {PLAN_NAME}!
+                Earn{" "}
+                <strong className="text-foreground">
+                  +{POINTS_REFERRAL_REGISTRATION} {POINTS_NAME}
+                </strong>{" "}
+                when a friend registers, plus an extra{" "}
+                <strong className="text-foreground">
+                  +{POINTS_REFERRAL_UPGRADE} {POINTS_NAME}
+                </strong>{" "}
+                when they upgrade to {PLAN_NAME}!
               </p>
             </div>
           </div>
@@ -965,7 +1033,9 @@ function SettingsPage() {
           {/* Referral Code Box */}
           <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
             <div className="flex w-full flex-1 items-center justify-between rounded-xl border border-border bg-secondary/40 px-3.5 py-2">
-              <span className="font-mono text-sm font-semibold text-foreground tracking-wider">{refCode}</span>
+              <span className="font-mono text-sm font-semibold text-foreground tracking-wider">
+                {refCode}
+              </span>
               <button
                 onClick={copyCode}
                 className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
@@ -982,7 +1052,11 @@ function SettingsPage() {
                 onClick={copyLink}
                 className="rounded-xl flex-1 sm:flex-initial text-xs h-9"
               >
-                {copiedLink ? <Check className="size-3.5 mr-1" /> : <Share2 className="size-3.5 mr-1" />}
+                {copiedLink ? (
+                  <Check className="size-3.5 mr-1" />
+                ) : (
+                  <Share2 className="size-3.5 mr-1" />
+                )}
                 Copy link
               </Button>
               <Button
@@ -1011,7 +1085,9 @@ function SettingsPage() {
             <div>
               <p className="text-sm font-medium text-foreground">Home Screen App</p>
               <p className="text-xs text-muted-foreground">
-                {profile?.app_installed ? "Install bonus already claimed" : `Install to earn +${POINTS_INSTALL_APP_BONUS} ${POINTS_NAME}`}
+                {profile?.app_installed
+                  ? "Install bonus already claimed"
+                  : `Install to earn +${POINTS_INSTALL_APP_BONUS} ${POINTS_NAME}`}
               </p>
             </div>
           </div>

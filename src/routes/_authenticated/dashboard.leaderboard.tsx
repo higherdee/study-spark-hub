@@ -31,7 +31,11 @@ export const Route = createFileRoute("/_authenticated/dashboard/leaderboard")({
   head: () => ({
     meta: [
       { title: "Academic Leaderboard & Rankings — Syllaboss" },
-      { name: "description", content: "Top students across Nigerian institutions ranked by SyllaPoints, study hours, and verified uploads." },
+      {
+        name: "description",
+        content:
+          "Top students across Nigerian institutions ranked by SyllaPoints, study hours, and verified uploads.",
+      },
     ],
   }),
   component: LeaderboardPage,
@@ -77,7 +81,7 @@ function LeaderboardPage() {
 
   // Student's own rank
   const myRankIndex = fullList.findIndex((s) => s.id === user?.id);
-  const myRank = myRankIndex !== -1 ? myRankIndex + 1 : 3;
+  const myRank = myRankIndex !== -1 ? myRankIndex + 1 : "—";
 
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-16 font-sans">
@@ -85,10 +89,11 @@ function LeaderboardPage() {
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 border-b border-border/80 pb-4">
         <div className="flex flex-col gap-1 max-w-2xl">
           <h1 className="font-display text-3xl sm:text-4xl text-ink tracking-tight font-medium">
-            Student Leaderboard
+            A little healthy competition.
           </h1>
           <p className="text-sm text-ink-soft leading-relaxed">
-            Rankings based on SyllaPoints earned through study sessions and verified course material uploads.
+            Rankings based on SyllaPoints earned through study sessions and verified course material
+            uploads.
           </p>
         </div>
 
@@ -100,7 +105,9 @@ function LeaderboardPage() {
               onClick={() => setFilterMode("all")}
               className={cn(
                 "px-3.5 py-1 rounded-full text-xs font-semibold transition-all lift press",
-                filterMode === "all" ? "bg-card text-ink shadow-xs font-bold" : "text-ink-soft hover:text-ink"
+                filterMode === "all"
+                  ? "bg-card text-ink shadow-xs font-bold"
+                  : "text-ink-soft hover:text-ink",
               )}
             >
               All Universities
@@ -110,7 +117,9 @@ function LeaderboardPage() {
               onClick={() => setFilterMode("school")}
               className={cn(
                 "px-3.5 py-1 rounded-full text-xs font-semibold transition-all lift press",
-                filterMode === "school" ? "bg-card text-ink shadow-xs font-bold" : "text-ink-soft hover:text-ink"
+                filterMode === "school"
+                  ? "bg-card text-ink shadow-xs font-bold"
+                  : "text-ink-soft hover:text-ink",
               )}
             >
               My Institution
@@ -120,7 +129,9 @@ function LeaderboardPage() {
               onClick={() => setFilterMode("faculty")}
               className={cn(
                 "px-3.5 py-1 rounded-full text-xs font-semibold transition-all lift press",
-                filterMode === "faculty" ? "bg-card text-ink shadow-xs font-bold" : "text-ink-soft hover:text-ink"
+                filterMode === "faculty"
+                  ? "bg-card text-ink shadow-xs font-bold"
+                  : "text-ink-soft hover:text-ink",
               )}
             >
               Programme
@@ -168,7 +179,8 @@ function LeaderboardPage() {
                   )}
                 </div>
                 <p className="text-xs text-on-primary-container">
-                  {profile.institution || "Achievers University, Owo"} • {profile.course || "Faculty Core"}
+                  {profile.institution || "Achievers University, Owo"} •{" "}
+                  {profile.course || "Faculty Core"}
                 </p>
               </div>
             </div>
@@ -176,15 +188,21 @@ function LeaderboardPage() {
             {/* Metrics Ribbon */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-center bg-white/5 p-4 rounded-xl backdrop-blur-md border border-white/10">
               <div className="flex flex-col">
-                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">Institutional Rank</span>
+                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">
+                  Institutional Rank
+                </span>
                 <div className="flex items-baseline gap-1 mt-0.5">
                   <span className="font-display text-xl font-bold text-white">#{myRank}</span>
-                  <span className="font-mono text-xs text-on-primary-container">of {fullList.length || 1}</span>
+                  <span className="font-mono text-xs text-on-primary-container">
+                    of {fullList.length || 1}
+                  </span>
                 </div>
               </div>
 
               <div className="flex flex-col">
-                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">SyllaPoints</span>
+                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">
+                  SyllaPoints
+                </span>
                 <div className="flex items-baseline gap-1 mt-0.5">
                   <span className="font-display text-xl font-bold text-accent">
                     {profile.points.toLocaleString()}
@@ -194,7 +212,9 @@ function LeaderboardPage() {
               </div>
 
               <div className="flex flex-col">
-                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">Study Time</span>
+                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">
+                  Study Time
+                </span>
                 <div className="flex items-baseline gap-1 mt-0.5">
                   <span className="font-display text-xl font-bold text-white">
                     {(profile.study_minutes / 60).toFixed(1)}
@@ -204,7 +224,9 @@ function LeaderboardPage() {
               </div>
 
               <div className="flex flex-col justify-center">
-                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">Cash Yield</span>
+                <span className="text-[10px] text-on-primary-container uppercase tracking-wider font-semibold">
+                  Cash Yield
+                </span>
                 <span className="font-mono text-xs font-semibold text-accent mt-0.5">
                   ~{formatNaira(pointsToNaira(profile.points))}
                 </span>
@@ -258,7 +280,9 @@ function LeaderboardPage() {
                     >
                       {idx + 1}
                     </span>
-                    <Icon className={cn("size-5", first ? "text-brass" : "text-muted-foreground")} />
+                    <Icon
+                      className={cn("size-5", first ? "text-brass" : "text-muted-foreground")}
+                    />
                   </div>
 
                   <div className="flex items-center gap-2.5">
@@ -308,7 +332,9 @@ function LeaderboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
           <div>
             <h2 className="font-display text-xl text-ink font-semibold">All Ranked Students</h2>
-            <p className="text-xs text-muted-foreground">Students ranked by study hours and SyllaPoints.</p>
+            <p className="text-xs text-muted-foreground">
+              Students ranked by study hours and SyllaPoints.
+            </p>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
@@ -337,20 +363,26 @@ function LeaderboardPage() {
             <tbody className="divide-y divide-surface-container">
               {remainingList.map((s) => {
                 const isCurrentUser = s.id === user?.id;
-                const userDisplayHandle = s.username ? `@${s.username}` : `@${s.full_name.toLowerCase().replace(/\s+/g, "_")}`;
+                const userDisplayHandle = s.username
+                  ? `@${s.username}`
+                  : `@${s.full_name.toLowerCase().replace(/\s+/g, "_")}`;
                 return (
                   <tr
                     key={s.id}
                     className={cn(
                       "hover:bg-muted/50 transition-colors",
-                      isCurrentUser ? "bg-accent/20 font-semibold" : ""
+                      isCurrentUser ? "bg-accent/20 font-semibold" : "",
                     )}
                   >
                     <td className="py-3.5 px-3 font-mono font-semibold text-ink">#{s.rank}</td>
                     <td className="py-3.5 px-3">
                       <div className="flex items-center gap-2.5">
                         {s.avatar_url ? (
-                          <img src={s.avatar_url} alt="" className="size-7 rounded-full object-cover border border-border" />
+                          <img
+                            src={s.avatar_url}
+                            alt=""
+                            className="size-7 rounded-full object-cover border border-border"
+                          />
                         ) : (
                           <div className="size-7 rounded-full bg-surface-container-high text-forest font-bold text-[11px] flex items-center justify-center">
                             {((s.username || s.full_name)[0] ?? "S").toUpperCase()}

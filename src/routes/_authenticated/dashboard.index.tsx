@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { WorkspaceStart } from "@/components/workspace-start";
 import { SyllabossEmblem } from "@/components/syllaboss-logo";
 import { SyllaPlusModal } from "@/components/syllaplus-modal";
 import { CampusWrappedModal } from "@/components/scholar/campus-wrapped-modal";
@@ -43,7 +44,10 @@ export const Route = createFileRoute("/_authenticated/dashboard/")({
   head: () => ({
     meta: [
       { title: "Home — Syllaboss" },
-      { name: "description", content: "Your study day at a glance: focus timer, streak, points and activity." },
+      {
+        name: "description",
+        content: "Your study day at a glance: focus timer, streak, points and activity.",
+      },
     ],
   }),
   component: HomePage,
@@ -158,7 +162,11 @@ function HomePage() {
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="eyebrow text-brand">
-            {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+            {new Date().toLocaleDateString("en-GB", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
           </p>
           <h1 className="mt-1.5 font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[2.6rem]">
             {greeting}, {firstName}
@@ -187,6 +195,8 @@ function HomePage() {
         </div>
       </section>
 
+      <WorkspaceStart />
+
       {/* Focus + balance */}
       <section className="grid gap-4 lg:grid-cols-12 lg:gap-5">
         {/* Focus */}
@@ -198,7 +208,14 @@ function HomePage() {
           <div className="relative flex flex-col gap-7 sm:flex-row sm:items-center sm:gap-9">
             <div className="relative mx-auto grid size-40 shrink-0 place-items-center sm:mx-0 sm:size-44">
               <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90">
-                <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r={R}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.1)"
+                  strokeWidth="6"
+                />
                 <circle
                   cx="60"
                   cy="60"
@@ -213,7 +230,9 @@ function HomePage() {
                 />
               </svg>
               <div className="text-center">
-                <p className="tnum font-display text-[2.15rem] font-medium leading-none tracking-tight">{timerLabel}</p>
+                <p className="tnum font-display text-[2.15rem] font-medium leading-none tracking-tight">
+                  {timerLabel}
+                </p>
                 <p className="mt-1.5 text-[11px] font-medium text-white/60">
                   {paused ? "paused" : `to +${POINTS_PER_30_MIN_STUDY} pts`}
                 </p>
@@ -226,7 +245,8 @@ function HomePage() {
                 {paused ? "Your timer is paused." : "Every focused half hour pays."}
               </h2>
               <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/65">
-                The timer runs while you study in Syllaboss and pauses when you step away. No tapping start.
+                The timer runs while you study in Syllaboss and pauses when you step away. No
+                tapping start.
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-2.5">
                 <Button
@@ -242,7 +262,11 @@ function HomePage() {
                   onClick={timer?.togglePause}
                   className="press inline-flex h-10 items-center gap-2 rounded-lg border border-white/20 px-4 text-[13px] font-semibold text-white/90 transition-colors hover:bg-white/10"
                 >
-                  {timer?.manualPause ? <Play className="size-3.5 fill-current" /> : <Pause className="size-3.5 fill-current" />}
+                  {timer?.manualPause ? (
+                    <Play className="size-3.5 fill-current" />
+                  ) : (
+                    <Pause className="size-3.5 fill-current" />
+                  )}
                   {timer?.manualPause ? "Resume" : "Pause"}
                 </button>
               </div>
@@ -258,7 +282,10 @@ function HomePage() {
                 <span className="text-white/65">day streak</span>
               </p>
             </div>
-            <div className="flex items-center gap-1.5" aria-label={`${Math.min(streak, 7)} of the last 7 days active`}>
+            <div
+              className="flex items-center gap-1.5"
+              aria-label={`${Math.min(streak, 7)} of the last 7 days active`}
+            >
               {Array.from({ length: 7 }, (_, i) => {
                 const d = new Date();
                 d.setDate(d.getDate() - (6 - i));
@@ -296,10 +323,9 @@ function HomePage() {
             {animatedPoints.toLocaleString()}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Worth about <span className="font-semibold text-ink">{formatNaira(pointsToNaira(points))}</span>
-            {pending > 0 && (
-              <span> · {pending * POINTS_PER_VERIFIED_UPLOAD} pts in review</span>
-            )}
+            Worth about{" "}
+            <span className="font-semibold text-ink">{formatNaira(pointsToNaira(points))}</span>
+            {pending > 0 && <span> · {pending * POINTS_PER_VERIFIED_UPLOAD} pts in review</span>}
           </p>
 
           <div className="mt-6">
@@ -314,13 +340,18 @@ function HomePage() {
                 <span className="font-semibold text-forest">You can withdraw now</span>
               ) : (
                 <>
-                  <span className="font-semibold text-ink">{toWithdraw.toLocaleString()} pts</span> to your first withdrawal
+                  <span className="font-semibold text-ink">{toWithdraw.toLocaleString()} pts</span>{" "}
+                  to your first withdrawal
                 </>
               )}
             </p>
           </div>
 
-          <Button asChild variant="outline" className="mt-auto h-11 w-full justify-between px-4 sm:mt-6">
+          <Button
+            asChild
+            variant="outline"
+            className="mt-auto h-11 w-full justify-between px-4 sm:mt-6"
+          >
             <Link to="/dashboard/wallet">
               Open wallet <ArrowRight />
             </Link>
@@ -329,11 +360,29 @@ function HomePage() {
       </section>
 
       {/* Quick actions */}
-      <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <ActionTile to="/dashboard/library" icon={BookOpen} title="Library" sub="Notes & past questions" />
+      <section
+        aria-label="Quick actions"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4"
+      >
+        <ActionTile
+          to="/dashboard/library"
+          icon={BookOpen}
+          title="Library"
+          sub="Notes & past questions"
+        />
         <ActionTile to="/dashboard/assistant" icon={Bot} title="Boss AI" sub="Ask, quiz, explain" />
-        <ActionTile to="/dashboard/community" icon={Users} title="Peers" sub="Study groups & battles" />
-        <ActionTile onClick={() => setShowWrapped(true)} icon={Share2} title="Campus Wrapped" sub="Share your rank card" />
+        <ActionTile
+          to="/dashboard/community"
+          icon={Users}
+          title="Peers"
+          sub="Study groups & battles"
+        />
+        <ActionTile
+          onClick={() => setShowWrapped(true)}
+          icon={Share2}
+          title="Campus Wrapped"
+          sub="Share your rank card"
+        />
       </section>
 
       {/* Week + contribution */}
@@ -343,29 +392,49 @@ function HomePage() {
             <div>
               <p className="eyebrow">This week</p>
               <p className="tnum mt-2 font-display text-3xl font-medium leading-none text-ink">
-                +{week.sum.toLocaleString()} <span className="text-lg text-muted-foreground">pts</span>
+                +{week.sum.toLocaleString()}{" "}
+                <span className="text-lg text-muted-foreground">pts</span>
               </p>
             </div>
-            <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-ink-soft">Last 7 days</span>
+            <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold text-ink-soft">
+              Last 7 days
+            </span>
           </div>
 
-          <div className="mt-6 flex h-36 items-end gap-2.5 sm:gap-4" role="img" aria-label="Points earned per day over the last seven days">
+          <div
+            className="mt-6 flex h-36 items-end gap-2.5 sm:gap-4"
+            role="img"
+            aria-label="Points earned per day over the last seven days"
+          >
             {week.days.map((d, i) => {
               const h = d.total === 0 ? 4 : Math.max(10, (d.total / week.max) * 100);
               const today = i === 6;
               return (
-                <div key={i} className="group flex h-full flex-1 flex-col items-center justify-end gap-2" title={`${d.total} pts`}>
+                <div
+                  key={i}
+                  className="group flex h-full flex-1 flex-col items-center justify-end gap-2"
+                  title={`${d.total} pts`}
+                >
                   <span className="tnum text-[11px] font-semibold text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
                     {d.total}
                   </span>
                   <div
                     className={cn(
                       "w-full max-w-10 rounded-t-lg transition-[height] duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
-                      today ? "bg-brand" : d.total ? "bg-moss/35 group-hover:bg-moss/55" : "bg-muted",
+                      today
+                        ? "bg-brand"
+                        : d.total
+                          ? "bg-moss/35 group-hover:bg-moss/55"
+                          : "bg-muted",
                     )}
                     style={{ height: mounted ? `${h}%` : "4%", transitionDelay: `${i * 45}ms` }}
                   />
-                  <span className={cn("text-[11px] font-medium", today ? "text-ink" : "text-muted-foreground")}>
+                  <span
+                    className={cn(
+                      "text-[11px] font-medium",
+                      today ? "text-ink" : "text-muted-foreground",
+                    )}
+                  >
                     {d.date.toLocaleDateString("en-GB", { weekday: "short" })}
                   </span>
                 </div>
@@ -377,7 +446,10 @@ function HomePage() {
         <div className="flex flex-col rounded-3xl border border-border bg-card p-6 shadow-soft lg:col-span-5">
           <div className="flex items-center justify-between">
             <p className="eyebrow">Your contribution</p>
-            <Link to="/dashboard/materials" className="inline-flex items-center gap-1 text-xs font-semibold text-moss transition-colors hover:text-ink">
+            <Link
+              to="/dashboard/materials"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-moss transition-colors hover:text-ink"
+            >
               Manage <ArrowUpRight className="size-3.5" />
             </Link>
           </div>
@@ -386,9 +458,12 @@ function HomePage() {
               <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-accent text-forest">
                 <Upload className="size-5" />
               </span>
-              <p className="mt-3 font-display text-lg font-semibold text-ink">Share your first material</p>
+              <p className="mt-3 font-display text-lg font-semibold text-ink">
+                Share your first material
+              </p>
               <p className="mx-auto mt-1 max-w-[16rem] text-sm text-muted-foreground">
-                Earn +{POINTS_PER_VERIFIED_UPLOAD} points when it's verified, then +{POINTS_PER_DOWNLOAD} for every download.
+                Earn +{POINTS_PER_VERIFIED_UPLOAD} points when it's verified, then +
+                {POINTS_PER_DOWNLOAD} for every download.
               </p>
               <Button asChild className="mt-4 h-10 px-5">
                 <Link to="/dashboard/upload">Upload now</Link>
@@ -410,9 +485,14 @@ function HomePage() {
         <div className="flex items-center justify-between px-6 pt-6">
           <div>
             <p className="eyebrow">Recent activity</p>
-            <h3 className="mt-1.5 font-display text-xl font-semibold text-ink">Your points ledger</h3>
+            <h3 className="mt-1.5 font-display text-xl font-semibold text-ink">
+              Your points ledger
+            </h3>
           </div>
-          <Link to="/dashboard/wallet" className="inline-flex items-center gap-1 text-xs font-semibold text-moss transition-colors hover:text-ink">
+          <Link
+            to="/dashboard/wallet"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-moss transition-colors hover:text-ink"
+          >
             All activity <ArrowRight className="size-3.5" />
           </Link>
         </div>
@@ -432,14 +512,21 @@ function HomePage() {
             {ledger.slice(0, 6).map((entry) => {
               const gain = entry.amount >= 0;
               return (
-                <li key={entry.id} className="flex items-center gap-3.5 rounded-xl px-3 py-3 transition-colors hover:bg-muted/60">
+                <li
+                  key={entry.id}
+                  className="flex items-center gap-3.5 rounded-xl px-3 py-3 transition-colors hover:bg-muted/60"
+                >
                   <span
                     className={cn(
                       "grid size-9 shrink-0 place-items-center rounded-full",
                       gain ? "bg-accent text-forest" : "bg-muted text-ink-soft",
                     )}
                   >
-                    {gain ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
+                    {gain ? (
+                      <ArrowDownLeft className="size-4" />
+                    ) : (
+                      <ArrowUpRight className="size-4" />
+                    )}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-ink">{entry.reason}</p>
@@ -447,7 +534,9 @@ function HomePage() {
                       {formatDistanceToNowStrict(new Date(entry.created_at), { addSuffix: true })}
                     </p>
                   </div>
-                  <p className={cn("tnum text-sm font-bold", gain ? "text-forest" : "text-ink-soft")}>
+                  <p
+                    className={cn("tnum text-sm font-bold", gain ? "text-forest" : "text-ink-soft")}
+                  >
                     {gain ? "+" : "−"}
                     {Math.abs(entry.amount).toLocaleString()}
                   </p>
@@ -458,7 +547,11 @@ function HomePage() {
         )}
       </section>
 
-      <SyllaPlusModal open={showPlus} onClose={() => setShowPlus(false)} onSuccess={() => setShowPlus(false)} />
+      <SyllaPlusModal
+        open={showPlus}
+        onClose={() => setShowPlus(false)}
+        onSuccess={() => setShowPlus(false)}
+      />
       <CampusWrappedModal
         isOpen={showWrapped}
         onClose={() => setShowWrapped(false)}
@@ -508,7 +601,9 @@ function MiniStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl bg-muted/70 px-4 py-3.5">
       <dt className="eyebrow">{label}</dt>
-      <dd className="tnum mt-1.5 font-display text-3xl font-medium leading-none text-ink">{value.toLocaleString()}</dd>
+      <dd className="tnum mt-1.5 font-display text-3xl font-medium leading-none text-ink">
+        {value.toLocaleString()}
+      </dd>
     </div>
   );
 }

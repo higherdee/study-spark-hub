@@ -1,6 +1,18 @@
+import { PublicHeader } from "@/components/public-header";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Download, Eye, FileText, Loader2, X, Sparkles, BookOpen, GraduationCap, Building2, Star } from "lucide-react";
+import {
+  Download,
+  Eye,
+  FileText,
+  Loader2,
+  X,
+  Sparkles,
+  BookOpen,
+  GraduationCap,
+  Building2,
+  Star,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -25,9 +37,15 @@ export const Route = createFileRoute("/materials")({
   head: () => ({
     meta: [
       { title: "Search study materials — Syllaboss" },
-      { name: "description", content: "Find verified lecture notes, past questions and handouts shared by students." },
+      {
+        name: "description",
+        content: "Find verified lecture notes, past questions and handouts shared by students.",
+      },
       { property: "og:title", content: "Search study materials — Syllaboss" },
-      { property: "og:description", content: "Verified notes and past questions from students across Nigerian universities." },
+      {
+        property: "og:description",
+        content: "Verified notes and past questions from students across Nigerian universities.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -92,12 +110,7 @@ function MaterialsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-background/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <SyllabossLogo />
-          <UserMenu />
-        </div>
-      </header>
+      <PublicHeader />
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <div>
           <p className="eyebrow">Academic Repository</p>
@@ -105,7 +118,8 @@ function MaterialsPage() {
             University Study Repository
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground">
-            Verified course notes, past questions, and lecture handouts authenticated for Nigerian campuses.
+            Verified course notes, past questions, and lecture handouts authenticated for Nigerian
+            campuses.
           </p>
         </div>
 
@@ -137,7 +151,9 @@ function MaterialsPage() {
         </div>
 
         <p className="mt-8 text-xs text-muted-foreground font-medium">
-          {isLoading ? "Consulting repository…" : `${data.length} document${data.length === 1 ? "" : "s"}${q ? ` matching “${q}”` : ""}`}
+          {isLoading
+            ? "Consulting repository…"
+            : `${data.length} document${data.length === 1 ? "" : "s"}${q ? ` matching “${q}”` : ""}`}
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -146,7 +162,10 @@ function MaterialsPage() {
               key={m.id}
               className="group flex flex-col rounded-3xl border border-border bg-card p-5 shadow-xs transition-all hover:border-forest/40 hover:shadow-soft lift press"
             >
-              <div className="flex items-start gap-3.5 cursor-pointer" onClick={() => openPreview(m)}>
+              <div
+                className="flex items-start gap-3.5 cursor-pointer"
+                onClick={() => openPreview(m)}
+              >
                 <div className="grid size-10 place-items-center rounded-xl bg-forest/10 text-forest shrink-0 transition-transform group-hover:scale-105 border border-forest/20">
                   <FileText className="size-5" />
                 </div>
@@ -169,7 +188,9 @@ function MaterialsPage() {
 
               <div className="mt-auto pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/80 pt-3 text-xs text-muted-foreground">
-                  <span className="truncate max-w-[140px] font-medium text-ink-soft">{m.institution}</span>
+                  <span className="truncate max-w-[140px] font-medium text-ink-soft">
+                    {m.institution}
+                  </span>
                   <div className="flex items-center gap-1.5">
                     <span className="rounded-full bg-surface-container px-2.5 py-0.5 text-[10px] font-semibold text-ink-soft">
                       {m.material_type}
@@ -177,7 +198,9 @@ function MaterialsPage() {
                     {m.rating_count && m.rating_count > 0 ? (
                       <span className="flex items-center gap-1 text-brass text-xs font-semibold">
                         <Star className="size-3.5 fill-brass text-brass" />
-                        <span className="tnum font-mono">{Number(m.rating_avg || 0).toFixed(1)}</span>
+                        <span className="tnum font-mono">
+                          {Number(m.rating_avg || 0).toFixed(1)}
+                        </span>
                         <span className="text-brass-ink text-[10px]">({m.rating_count})</span>
                       </span>
                     ) : (
@@ -191,9 +214,15 @@ function MaterialsPage() {
 
                 <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-3 px-3 py-1 rounded-full bg-surface-container-low border border-border text-[11px] text-ink-soft font-mono tnum">
-                    <span className="flex items-center gap-1"><FileText className="size-3 text-forest" /> {m.page_count} pgs</span>
-                    <span className="flex items-center gap-1"><Eye className="size-3 text-forest" /> {m.views ?? 0}</span>
-                    <span className="flex items-center gap-1"><Download className="size-3 text-forest" /> {m.downloads ?? 0}</span>
+                    <span className="flex items-center gap-1">
+                      <FileText className="size-3 text-forest" /> {m.page_count} pgs
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="size-3 text-forest" /> {m.views ?? 0}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Download className="size-3 text-forest" /> {m.downloads ?? 0}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button
@@ -232,25 +261,45 @@ function MaterialsPage() {
               {q ? `No materials found matching "${q}"` : "Explore Verified Academic Courses"}
             </h3>
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Looking for standardized lecture summaries and syllabus breakdowns? Explore our National Curriculum directory or try a common course code.
+              Looking for standardized lecture summaries and syllabus breakdowns? Explore our
+              National Curriculum directory or try a common course code.
             </p>
             <div className="pt-2 flex flex-wrap justify-center gap-2">
-              <Button asChild size="sm" className="rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+              <Button
+                asChild
+                size="sm"
+                className="rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+              >
                 <Link to="/curriculum">
                   <span>Browse NUC CCMAS Curriculum</span>
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-semibold">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs font-semibold"
+              >
                 <Link to="/materials" search={{ q: "GST", type: "", level: "" }}>
                   <span>General Studies (GST)</span>
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-semibold">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs font-semibold"
+              >
                 <Link to="/materials" search={{ q: "MTH", type: "", level: "" }}>
                   <span>Mathematics (MTH)</span>
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-semibold">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs font-semibold"
+              >
                 <Link to="/materials" search={{ q: "CSC", type: "", level: "" }}>
                   <span>Computer Science (CSC)</span>
                 </Link>
@@ -263,11 +312,21 @@ function MaterialsPage() {
       {/* Footer */}
       <footer className="border-t border-border/80 bg-card py-10 mt-16 text-center text-xs text-muted-foreground">
         <div className="mx-auto max-w-5xl px-4 flex flex-wrap justify-center gap-6 mb-3">
-          <Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link>
-          <Link to="/terms" className="hover:text-foreground">Terms of Service</Link>
-          <Link to="/about" className="hover:text-foreground">About Us</Link>
-          <Link to="/contact" className="hover:text-foreground">Contact Us</Link>
-          <Link to="/curriculum" className="hover:text-foreground">Academic Curriculum</Link>
+          <Link to="/privacy" className="hover:text-foreground">
+            Privacy Policy
+          </Link>
+          <Link to="/terms" className="hover:text-foreground">
+            Terms of Service
+          </Link>
+          <Link to="/about" className="hover:text-foreground">
+            About Us
+          </Link>
+          <Link to="/contact" className="hover:text-foreground">
+            Contact Us
+          </Link>
+          <Link to="/curriculum" className="hover:text-foreground">
+            Academic Curriculum
+          </Link>
         </div>
         <p>© 2026 Syllaboss Technologies. All rights reserved.</p>
       </footer>
@@ -331,9 +390,15 @@ function MaterialsPage() {
             </div>
 
             <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground px-1 font-mono tnum">
-              <span className="inline-flex items-center gap-1.5"><FileText className="size-3.5 text-forest" /> {previewMaterial.page_count} Pages</span>
-              <span className="inline-flex items-center gap-1.5"><Eye className="size-3.5 text-forest" /> {previewMaterial.views ?? 0} Views</span>
-              <span className="inline-flex items-center gap-1.5"><Download className="size-3.5 text-forest" /> {previewMaterial.downloads} Downloads</span>
+              <span className="inline-flex items-center gap-1.5">
+                <FileText className="size-3.5 text-forest" /> {previewMaterial.page_count} Pages
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Eye className="size-3.5 text-forest" /> {previewMaterial.views ?? 0} Views
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Download className="size-3.5 text-forest" /> {previewMaterial.downloads} Downloads
+              </span>
             </div>
 
             <div className="mt-6 flex items-center gap-3">

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   AnimatePresence,
@@ -7,16 +7,7 @@ import {
   useReducedMotion,
   type PanInfo,
 } from "motion/react";
-import {
-  ChevronRight,
-  Coins,
-  Flame,
-  HelpCircle,
-  LogOut,
-  Shield,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { ChevronRight, Coins, Flame, HelpCircle, LogOut, Shield, Sparkles, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
@@ -46,16 +37,46 @@ export function SideNavSheet({ open, onClose, items = [] }: SideNavSheetProps) {
   const [showFaq, setShowFaq] = useState(false);
   const reduce = useReducedMotion();
   const dragControls = useDragControls();
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const frame = requestAnimationFrame(() => panelRef.current?.focus());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key !== "Tab") return;
+      const elements = panelRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]',
+      );
+      const first = elements?.[0];
+      const last = elements?.[elements.length - 1];
+      if (!first || !last) {
+        e.preventDefault();
+        return;
+      }
+      if (
+        e.shiftKey &&
+        (document.activeElement === first || document.activeElement === panelRef.current)
+      ) {
+        e.preventDefault();
+        last.focus();
+      } else if (
+        !e.shiftKey &&
+        (document.activeElement === last || document.activeElement === panelRef.current)
+      ) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
+      cancelAnimationFrame(frame);
+      previousFocus?.focus();
     };
   }, [open, onClose]);
 
@@ -83,6 +104,8 @@ export function SideNavSheet({ open, onClose, items = [] }: SideNavSheetProps) {
 
             <motion.div
               key="panel"
+              ref={panelRef}
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-label="More"
@@ -156,7 +179,9 @@ export function SideNavSheet({ open, onClose, items = [] }: SideNavSheetProps) {
                       key={item.to}
                       className={cn(i > 0 && "border-t border-border")}
                       style={{
-                        animation: reduce ? undefined : `rise 0.4s var(--ease-out) ${60 + i * 35}ms both`,
+                        animation: reduce
+                          ? undefined
+                          : `rise 0.4s var(--ease-out) ${60 + i * 35}ms both`,
                       }}
                     >
                       <Link

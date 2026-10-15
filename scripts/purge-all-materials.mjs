@@ -4,7 +4,7 @@ import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/c
 
 const turso = createClient({
   url: process.env.TURSO_DATABASE_URL || "libsql://syllaboss-db-kunle.aws-us-east-2.turso.io",
-  authToken: process.env.TURSO_AUTH_TOKEN || "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3OTA5NDU2ODUsImlkIjoiMDFhMGZjYWUtNDUwMS03ZTQxLTkxNzItZGEzNzhkNmNlNDIxIiwia2lkIjoiSW1vS2lmVHNJNEZkMDFsOUVfNDJQQ01TTUtuUXkyR2pTWGhKOUZ1OEVtWSIsInJpZCI6IjQyZjEyNjgxLWZhMGMtNDYwZS04MWIyLTkwMWNjOWQ1MDcyMyJ9.eD10y_k_LzyciYuiNuCsuFRMouzlWrrYTStmQWEuR5XgbM0uWmCutRBc8mnBQSKQN5XYlBM_zpGCi0Q-X23aAQ",
+  authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
 const r2Client = new S3Client({

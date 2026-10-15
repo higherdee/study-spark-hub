@@ -83,7 +83,9 @@ export function BattleLobbyCard({
   const isGrading = battle.status === "grading";
 
   const fighters = participants.filter((p) => p.role === "fighter");
-  const joinedCount = fighters.filter((p) => p.status === "joined" || p.status === "submitted").length;
+  const joinedCount = fighters.filter(
+    (p) => p.status === "joined" || p.status === "submitted",
+  ).length;
 
   const handleJoin = async () => {
     setIsJoining(true);
@@ -132,11 +134,11 @@ export function BattleLobbyCard({
     }
   };
 
-  const statusLabel = isCompleted ? "Final" : isGrading ? "Grading" : "Lobby open";
+  const statusLabel = isCompleted ? "Final" : isGrading ? "Grading" : "Ready when you are";
   const modeLabel = battle.mode === "mcq" ? "MCQ Blitz" : "Theory Showdown";
 
   return (
-    <div className="animate-rise w-full max-w-sm overflow-hidden rounded-2xl bg-forest text-white shadow-[var(--elev-3)]">
+    <div className="animate-rise w-full max-w-sm overflow-hidden rounded-2xl bg-forest text-white shadow-soft border border-white/10">
       {/* Ticket header */}
       <div className="flex items-center justify-between gap-2 px-4 pt-4">
         <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-brass-soft">
@@ -160,7 +162,9 @@ export function BattleLobbyCard({
       </div>
 
       <div className="px-4 pt-3">
-        <h4 className="font-display text-xl leading-tight">{battle.title}</h4>
+        <h4 className="font-sans text-xl font-medium tracking-tight leading-tight">
+          {battle.title}
+        </h4>
         <p className="mt-1 text-xs text-white/60">
           Hosted by <span className="font-semibold text-white/90">{battle.host_name}</span>
           {battle.source_summary && ` · ${battle.source_summary}`}

@@ -6,8 +6,19 @@
 class BattleAudioService {
   private ctx: AudioContext | null = null;
 
+  private muted = true;
+
+  isMuted(): boolean {
+    return this.muted;
+  }
+
+  setMuted(muted: boolean) {
+    this.muted = muted;
+  }
+
   private getContext(): AudioContext | null {
-    if (typeof window === "undefined") return null;
+    // Sound is opt-in per app visit; respect quiet classrooms and headphones.
+    if (this.muted || typeof window === "undefined") return null;
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {

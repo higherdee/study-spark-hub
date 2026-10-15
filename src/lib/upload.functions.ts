@@ -204,7 +204,7 @@ export const resolveBankAccountServerFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const paystackSecret =
-      process.env['PAYSTACK_SECRET_KEY'] || "sk_test_e779bd6d22d9742889c46c992b3f6c0534d6320a";
+      process.env['PAYSTACK_SECRET_KEY'] || "";
 
     try {
       const res = await fetch(
@@ -303,7 +303,7 @@ export const createBachsCheckoutSessionServerFn = createServerFn({ method: "POST
   .handler(async ({ data }) => {
     const secretKey =
       process.env['BASCH_SECRET_KEY'] ||
-      "sk_live_73317a81_zQAtGMAe-jQhNvBk2ZMIQBIs1WJjZuSOVDArhEw42ag";
+      "";
 
     try {
       const response = await fetch("https://api.bachs.io/v1/checkouts", {

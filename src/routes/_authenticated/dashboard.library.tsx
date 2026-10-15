@@ -45,7 +45,11 @@ export const Route = createFileRoute("/_authenticated/dashboard/library")({
   head: () => ({
     meta: [
       { title: "University Library — Syllaboss" },
-      { name: "description", content: "Peer-reviewed course materials, algorithmic syllabus outlines, and high-yield dossiers." },
+      {
+        name: "description",
+        content:
+          "Peer-reviewed course materials, algorithmic syllabus outlines, and high-yield dossiers.",
+      },
     ],
   }),
   component: LibraryPage,
@@ -203,18 +207,23 @@ This verified material provides high-yield coverage of fundamental principles, s
             <Verified className="size-3.5 text-brand" /> Verified library
           </p>
           <h1 className="mt-1.5 font-display text-3xl sm:text-4xl text-ink tracking-tight">
-            Study materials
+            Your next lightbulb moment.
           </h1>
           <p className="mt-1.5 text-sm text-ink-soft">
-            Notes, past questions and outlines from students across Nigerian universities. Every
-            file is checked before it appears here.
+            Find notes, past questions and course outlines from students across Nigerian
+            universities. Search by course, topic or institution to find your starting point.
           </p>
         </div>
-        <Button asChild className="self-start md:self-auto rounded-full bg-forest text-white hover:bg-ink">
+        <Button
+          asChild
+          className="self-start md:self-auto rounded-full bg-forest text-white hover:bg-ink"
+        >
           <Link to="/dashboard/upload">
             <Upload className="size-4" />
             Upload material
-            <span className="ml-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] tnum">+25 pts</span>
+            <span className="ml-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] tnum">
+              +25 pts
+            </span>
           </Link>
         </Button>
       </header>
@@ -320,17 +329,14 @@ This verified material provides high-yield coverage of fundamental principles, s
             </span>
             <h3 className="mt-4 font-display text-xl text-ink">Nothing matches yet</h3>
             <p className="mt-1 max-w-sm text-sm text-ink-soft">
-              Try another course code or university, or clear your filters. Can't find it? Upload
-              it and earn {POINTS_NAME}.
+              Try another course code or university, or clear your filters. Can't find it? Upload it
+              and earn {POINTS_NAME}.
             </p>
           </div>
         ) : (
           <div className="stagger grid gap-4 sm:grid-cols-2">
             {materials.map((m) => (
-              <article
-                key={m.id}
-                className="surface lift group flex flex-col justify-between p-5"
-              >
+              <article key={m.id} className="surface lift group flex flex-col justify-between p-5">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
@@ -525,7 +531,9 @@ This verified material provides high-yield coverage of fundamental principles, s
                       <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
                         <Building2 className="size-3.5 text-moss" /> Institution
                       </p>
-                      <p className="font-semibold text-ink mt-1 truncate">{selectedMaterial.institution}</p>
+                      <p className="font-semibold text-ink mt-1 truncate">
+                        {selectedMaterial.institution}
+                      </p>
                     </div>
                     <div className="rounded-xl border border-border bg-white p-3.5">
                       <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
@@ -541,11 +549,15 @@ This verified material provides high-yield coverage of fundamental principles, s
                     <p className="font-semibold text-ink">Document Stats</p>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-center text-muted-foreground">
                       <div className="rounded-lg bg-muted p-2">
-                        <p className="text-base font-bold text-ink">{selectedMaterial.page_count}</p>
+                        <p className="text-base font-bold text-ink">
+                          {selectedMaterial.page_count}
+                        </p>
                         <p className="text-[10px]">Pages</p>
                       </div>
                       <div className="rounded-lg bg-muted p-2">
-                        <p className="text-base font-bold text-ink">{selectedMaterial.views ?? 0}</p>
+                        <p className="text-base font-bold text-ink">
+                          {selectedMaterial.views ?? 0}
+                        </p>
                         <p className="text-[10px]">Views</p>
                       </div>
                       <div className="rounded-lg bg-muted p-2">
@@ -564,7 +576,9 @@ This verified material provides high-yield coverage of fundamental principles, s
                       <div className="animate-breathe-zoom">
                         <SyllabossEmblem className="size-14" />
                       </div>
-                      <p className="mt-3 text-xs font-semibold text-moss animate-pulse">Loading preview reader...</p>
+                      <p className="mt-3 text-xs font-semibold text-moss animate-pulse">
+                        Loading preview reader...
+                      </p>
                     </div>
                   ) : previewUrl ? (
                     <div className="rounded-xl border border-border overflow-hidden bg-white">
@@ -599,8 +613,12 @@ This verified material provides high-yield coverage of fundamental principles, s
                       <div className="animate-breathe-zoom">
                         <SyllabossEmblem className="size-14" />
                       </div>
-                      <p className="mt-3 text-xs font-semibold text-ink">Boss AI is extracting key concepts...</p>
-                      <p className="text-[11px] text-muted-foreground">Formulating exam pointers and definitions</p>
+                      <p className="mt-3 text-xs font-semibold text-ink">
+                        Boss AI is extracting key concepts...
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Formulating exam pointers and definitions
+                      </p>
                     </div>
                   ) : summary ? (
                     <div className="relative rounded-xl border border-border bg-muted/50 p-5 text-xs text-foreground leading-relaxed font-sans">
@@ -609,7 +627,11 @@ This verified material provides high-yield coverage of fundamental principles, s
                         onClick={handleCopySummary}
                         className="absolute top-3 right-3 flex items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1 text-[11px] font-medium text-foreground shadow-xs hover:bg-muted transition-all"
                       >
-                        {copiedSummary ? <Check className="size-3 text-brand" /> : <Copy className="size-3" />}
+                        {copiedSummary ? (
+                          <Check className="size-3 text-brand" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
                         {copiedSummary ? "Copied" : "Copy"}
                       </button>
                       <div className="pt-6 pr-2">
