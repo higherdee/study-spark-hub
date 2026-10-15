@@ -45,13 +45,21 @@ interface HostBattleModalProps {
   onClose: () => void;
   groupId: string;
   groupTitle: string;
+  isDirectPeer?: boolean | undefined;
+  peerUser?: {
+    id: string;
+    fullName: string;
+    username: string;
+    avatarUrl?: string | null | undefined;
+    points?: number | undefined;
+  } | undefined;
   currentUser: {
     id: string;
-    fullName?: string | null;
-    avatarUrl?: string | null;
-    points?: number;
+    fullName?: string | null | undefined;
+    avatarUrl?: string | null | undefined;
+    points?: number | undefined;
   };
-  onBattleCreated?: (battleId: string) => void;
+  onBattleCreated?: ((battleId: string) => void) | undefined;
 }
 
 type SourceType = "topic" | "file" | "library" | "voice";
@@ -61,13 +69,15 @@ export function HostBattleModal({
   onClose,
   groupId,
   groupTitle,
+  isDirectPeer = false,
+  peerUser,
   currentUser,
   onBattleCreated,
 }: HostBattleModalProps) {
   // Battle Config State
   const [battleTitle, setBattleTitle] = useState("");
   const [mode, setMode] = useState<"mcq" | "theory">("mcq");
-  const [timePerQuestion, setTimePerQuestion] = useState<number>(20); // 10, 20, 30, 60 or custom
+  const [timePerQuestion, setTimePerQuestion] = useState<number>(20);
   const [customTime, setCustomTime] = useState<string>("");
   const [stakeAmount, setStakeAmount] = useState<number>(10);
   const [customStake, setCustomStake] = useState<string>("");
@@ -141,147 +151,132 @@ export function HostBattleModal({
     );
   };
 
-  // Toggle Sponsoring a fighter
+  // Toggle Sponsor for a fighter
   const toggleSponsor = (id: string) => {
     setSponsoredFighterIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
-  // One-tap Auto-Cap Stake
+  // Auto-Cap Stake resolution
   const handleAutoCapStake = () => {
     const capped = Math.max(0, minBalance);
     setStakeAmount(capped);
-    setCustomStake(String(capped));
-    toast.success(`Stake auto-capped to ${capped} pts to include all fighters!`);
+    setCustomStake("");
+    toast.info(`Stake auto-capped to ${capped} pts to match lowest member balance.`);
   };
 
-  // One-tap Bench broke fighters
+  // Bench Underfunded Fighters
   const handleBenchUnderfunded = () => {
-    const brokeIds = underfundedMembers.map((m) => m.id);
-    setSelectedFighterIds((prev) => prev.filter((id) => !brokeIds.includes(id)));
-    toast.info(`Benched ${brokeIds.length} members with insufficient balance.`);
+    const underfundedIds = underfundedMembers.map((m) => m.id);
+    setSelectedFighterIds((prev) => prev.filter((id) => !underfundedIds.includes(id)));
+    toast.info(`Benched ${underfundedIds.length} underfunded fighters.`);
   };
 
-  // One-tap Sponsor all broke fighters
+  // Sponsor All Underfunded
   const handleSponsorAll = () => {
-    const brokeIds = underfundedMembers.map((m) => m.id);
-    setSponsoredFighterIds((prev) => Array.from(new Set([...prev, ...brokeIds])));
-    toast.success(`You are now sponsoring ${brokeIds.length} fighters!`);
+    const underfundedIds = underfundedMembers.map((m) => m.id);
+    setSponsoredFighterIds((prev) => Array.from(new Set([...prev, ...underfundedIds])));
+    toast.success(`You are sponsoring buy-ins for ${underfundedIds.length} fighter(s)!`);
   };
 
-  // Handle File Upload
+  // File Upload Handler (Simulated OCR / Text Extractor)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type === "application/pdf" || file.name.endsWith(".pdf") || file.name.endsWith(".docx") || file.name.endsWith(".txt")) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = String(reader.result || "").slice(0, 4000);
-        setUploadedFile({ name: file.name, content: text || `Document: ${file.name}` });
-        if (!battleTitle) setBattleTitle(file.name.replace(/\.[^/.]+$/, ""));
-        toast.success(`Loaded "${file.name}" for question generation`);
-      };
-      reader.readAsText(file);
-    } else {
-      toast.error("Please upload a PDF, DOCX, or TXT file.");
-    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === "string" ? reader.result : "";
+      setUploadedFile({
+        name: file.name,
+        content: text.slice(0, 4000) || `Extracted course syllabus for ${file.name}`,
+      });
+      if (!battleTitle) setBattleTitle(file.name.replace(/\.[^/.]+$/, ""));
+      toast.success(`Loaded file: ${file.name}`);
+    };
+    reader.readAsText(file);
   };
 
-  // Voice Recording with Groq Whisper
+  // Voice Prompt Recording via MediaRecorder + Groq Whisper
   const startVoiceRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
 
-      recorder.ondataavailable = (e) => {
+      mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        setIsRecording(false);
-        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = async () => {
-          try {
-            const base64 = (reader.result as string)?.split(",")[1];
-            if (base64) {
-              toast.info("Transcribing voice note with Groq Whisper...");
-              const result = await transcribeVoiceAudioServerFn({
-                data: { audioBase64: base64, mimeType: "audio/webm" },
-              });
-              if (result?.transcript) {
-                setVoiceTranscript(result.transcript);
-                if (!battleTitle) {
-                  setBattleTitle(result.transcript.slice(0, 40));
-                }
-                toast.success("Voice transcribed into battle prompt!");
-              }
-            }
-          } catch (err: any) {
-            toast.error("Whisper transcription failed, please type topic.");
-          }
-        };
-      };
-
-      recorder.start();
+      mediaRecorder.start();
       setIsRecording(true);
       setRecordingDuration(0);
+
       timerIntervalRef.current = setInterval(() => {
         setRecordingDuration((d) => d + 1);
       }, 1000);
-    } catch (err) {
-      toast.error("Microphone access denied.");
+    } catch {
+      toast.error("Microphone access was denied or is unavailable.");
     }
   };
 
-  const stopVoiceRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
-    }
+  const stopVoiceRecording = async () => {
+    if (!mediaRecorderRef.current) return;
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    setIsRecording(false);
+
+    mediaRecorderRef.current.onstop = async () => {
+      const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Audio = reader.result as string;
+        try {
+          toast.loading("Transcribing prompt with Groq Whisper...", { id: "whisper-tx" });
+          const res = await transcribeVoiceAudioServerFn({
+            data: { audioBase64: base64Audio },
+          });
+          toast.dismiss("whisper-tx");
+          if (res?.transcript) {
+            setVoiceTranscript(res.transcript);
+            if (!battleTitle) setBattleTitle(res.transcript.slice(0, 40) + "...");
+            toast.success("Voice prompt transcribed!");
+          } else {
+            toast.error("Could not decipher audio. Please try again.");
+          }
+        } catch {
+          toast.dismiss("whisper-tx");
+          toast.error("Transcription failed.");
+        }
+      };
+      reader.readAsDataURL(audioBlob);
+    };
+
+    mediaRecorderRef.current.stop();
   };
 
-  // Launch Battle Action
+  // Launch Battle
   const handleLaunchBattle = async () => {
-    const finalTitle =
-      battleTitle.trim() ||
-      topicPrompt.trim() ||
-      uploadedFile?.name ||
-      selectedLibraryMat?.title ||
-      voiceTranscript.slice(0, 40) ||
-      "Flash Exam Battle";
+    const finalTitle = battleTitle.trim() || (isDirectPeer ? `1v1 Challenge: ${groupTitle}` : `Study Battle: ${groupTitle}`);
 
-    let sourceSummary = "";
-    let sourceContext = "";
-
-    if (sourceType === "file" && uploadedFile) {
-      sourceSummary = `Doc: ${uploadedFile.name}`;
-      sourceContext = uploadedFile.content;
-    } else if (sourceType === "library" && selectedLibraryMat) {
-      sourceSummary = `Library: ${selectedLibraryMat.title} (${selectedLibraryMat.course})`;
-      sourceContext = `University Course Material: ${selectedLibraryMat.title} for ${selectedLibraryMat.course}`;
-    } else if (sourceType === "voice" && voiceTranscript) {
-      sourceSummary = `Voice Prompt: "${voiceTranscript.slice(0, 30)}..."`;
-      sourceContext = voiceTranscript;
-    } else {
-      sourceSummary = `Topic: ${topicPrompt || finalTitle}`;
-      sourceContext = topicPrompt || finalTitle;
+    if (selectedFighterIds.length === 0) {
+      toast.error("Select at least one opponent/fighter.");
+      return;
     }
 
-    const hostBalance = currentUser.points || 0;
-    const totalHostCommitment = stakeAmount + sponsoredFighterIds.length * stakeAmount;
-    if (totalHostCommitment > hostBalance) {
-      toast.error(
-        `Insufficient points! You need ${totalHostCommitment} pts (buy-in + sponsorships), but have ${hostBalance} pts.`
-      );
-      return;
+    let sourceContext = topicPrompt;
+    let sourceSummary = "Topic Prompt: " + topicPrompt;
+    if (sourceType === "file" && uploadedFile) {
+      sourceContext = uploadedFile.content;
+      sourceSummary = "Uploaded Document: " + uploadedFile.name;
+    } else if (sourceType === "library" && selectedLibraryMat) {
+      sourceContext = selectedLibraryMat.title + " " + selectedLibraryMat.course;
+      sourceSummary = "Campus Library: " + selectedLibraryMat.title;
+    } else if (sourceType === "voice" && voiceTranscript) {
+      sourceContext = voiceTranscript;
+      sourceSummary = "Whisper Voice Prompt: " + voiceTranscript;
     }
 
     setIsCreating(true);
@@ -290,7 +285,7 @@ export function HostBattleModal({
         data: {
           groupId,
           hostId: currentUser.id,
-          hostName: currentUser.fullName || "Battle Host",
+          hostName: currentUser.fullName || "Scholar",
           hostAvatar: currentUser.avatarUrl,
           title: finalTitle,
           mode,
@@ -305,7 +300,7 @@ export function HostBattleModal({
       });
 
       battleAudio.playBattleHorn();
-      toast.success("⚡ Match Challenge dropped into group chat!");
+      toast.success(isDirectPeer ? "⚡ 1v1 Challenge sent to your peer!" : "⚡ Battle Challenge dropped into chat!");
       if (onBattleCreated) onBattleCreated(battle.id);
       onClose();
     } catch (err: any) {
@@ -317,114 +312,120 @@ export function HostBattleModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto rounded-3xl border-border bg-card p-0 shadow-[var(--elev-3)]">
-        <DialogHeader className="border-b border-border bg-forest px-5 py-4 text-white">
-          <DialogTitle className="flex items-center justify-between gap-3 font-display text-xl font-normal text-white">
-            <div className="flex items-center gap-2.5">
-              <div className="grid size-9 place-items-center rounded-xl bg-white/10 text-brass-soft">
-                <Swords className="size-4.5" />
+      <DialogContent className="max-h-[92vh] max-w-xl overflow-y-auto rounded-3xl border-border bg-card p-0 shadow-[var(--elev-3)]">
+        {/* Academic Docket Header */}
+        <DialogHeader className="border-b border-border bg-forest px-6 py-5 text-white">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="grid size-10 place-items-center rounded-2xl bg-white/10 text-brass-soft border border-white/10">
+                <Swords className="size-5" />
               </div>
-              <span>Start a battle</span>
+              <div>
+                <DialogTitle className="font-display text-xl font-normal tracking-tight text-white">
+                  {isDirectPeer ? "1v1 Scholar Challenge" : "Host Examination Showdown"}
+                </DialogTitle>
+                <p className="mt-0.5 text-xs text-white/70">
+                  {isDirectPeer
+                    ? `Challenge @${peerUser?.username || groupTitle} to a live academic duel`
+                    : "Calibrate questions, lock buy-in stakes, and drop match challenge into chat"}
+                </p>
+              </div>
             </div>
-            <Badge variant="outline" className="max-w-[40%] truncate border-white/20 text-xs font-medium text-white/80">
+
+            <Badge variant="outline" className="max-w-[36%] truncate border-white/20 bg-white/5 text-xs font-medium text-white/90">
               {groupTitle}
             </Badge>
-          </DialogTitle>
-          <p className="mt-1 text-xs text-white/60">
-            Pick a source, set the stakes, and challenge your group.
-          </p>
+          </div>
         </DialogHeader>
-        <div className="p-5 pt-0">
 
-
-        <div className="space-y-4 mt-2 text-xs">
+        <div className="p-6 space-y-5 text-xs text-ink">
           {/* 1. Battle Title */}
           <div>
-            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
-              Battle Title / Subject
+            <label className="eyebrow block mb-1.5 text-ink-soft">
+              Examination Topic / Subject
             </label>
             <Input
               value={battleTitle}
               onChange={(e) => setBattleTitle(e.target.value)}
               placeholder="e.g. Thermodynamics Carnot Cycle Blitz"
-              className="h-9 rounded-xl text-xs font-semibold"
+              className="h-10 rounded-xl border-border bg-background px-3 text-xs font-semibold text-ink placeholder:text-muted-foreground focus-visible:ring-forest"
             />
           </div>
 
-          {/* 2. Omni-Source Chips */}
+          {/* 2. Knowledge Source Selector */}
           <div>
-            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Knowledge Source (AI generates 5 questions)
+            <label className="eyebrow block mb-1.5 text-ink-soft">
+              Knowledge Source (AI generates 5 certified questions)
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => setSourceType("topic")}
                 className={cn(
-                  "p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all text-center",
+                  "p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center lift press",
                   sourceType === "topic"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                    : "border-border hover:bg-secondary text-muted-foreground"
+                    ? "border-forest bg-forest text-white shadow-xs font-semibold"
+                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
                 )}
               >
-                <Sparkles className="size-4 text-primary" />
-                <span className="text-[11px]">Topic Prompt</span>
+                <Sparkles className={cn("size-4.5", sourceType === "topic" ? "text-brass-soft" : "text-brand")} />
+                <span className="text-xs font-medium">Topic Prompt</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSourceType("file")}
                 className={cn(
-                  "p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all text-center",
+                  "p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center lift press",
                   sourceType === "file"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                    : "border-border hover:bg-secondary text-muted-foreground"
+                    ? "border-forest bg-forest text-white shadow-xs font-semibold"
+                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
                 )}
               >
-                <Upload className="size-4 text-brand" />
-                <span className="text-[11px]">Upload PDF/Doc</span>
+                <Upload className={cn("size-4.5", sourceType === "file" ? "text-brass-soft" : "text-forest")} />
+                <span className="text-xs font-medium">Upload PDF/Doc</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSourceType("library")}
                 className={cn(
-                  "p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all text-center",
+                  "p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center lift press",
                   sourceType === "library"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                    : "border-border hover:bg-secondary text-muted-foreground"
+                    ? "border-forest bg-forest text-white shadow-xs font-semibold"
+                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
                 )}
               >
-                <BookOpen className="size-4 text-brand" />
-                <span className="text-[11px]">Campus Library</span>
+                <BookOpen className={cn("size-4.5", sourceType === "library" ? "text-brass-soft" : "text-brand")} />
+                <span className="text-xs font-medium">Campus Library</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSourceType("voice")}
                 className={cn(
-                  "p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all text-center",
+                  "p-3 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center lift press",
                   sourceType === "voice"
-                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                    : "border-border hover:bg-secondary text-muted-foreground"
+                    ? "border-forest bg-forest text-white shadow-xs font-semibold"
+                    : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
                 )}
               >
-                <Mic className="size-4 text-brass" />
-                <span className="text-[11px]">Groq Voice</span>
+                <Mic className={cn("size-4.5", sourceType === "voice" ? "text-brass-soft" : "text-brass")} />
+                <span className="text-xs font-medium">Whisper Voice</span>
               </button>
             </div>
 
             {/* Omni-Source Expanded Area */}
-            <div className="mt-2 p-3 rounded-2xl bg-secondary/30 border border-border/80">
+            <div className="mt-2.5 p-3.5 rounded-2xl bg-surface-container-low border border-border">
               {sourceType === "topic" && (
                 <div className="space-y-2">
                   <Input
                     value={topicPrompt}
                     onChange={(e) => setTopicPrompt(e.target.value)}
-                    placeholder="Enter course topic or paste exam concepts..."
-                    className="h-8.5 rounded-xl text-xs bg-background"
+                    placeholder="Enter exam syllabus or course concepts..."
+                    className="h-9 rounded-xl border-border bg-background text-xs text-ink"
                   />
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
                     {["Differential Equations", "Organic Reaction Mechanisms", "Macroeconomics Inflation", "Data Structures Trees"].map((tag) => (
                       <button
                         key={tag}
@@ -433,7 +434,7 @@ export function HostBattleModal({
                           setTopicPrompt(tag);
                           if (!battleTitle) setBattleTitle(tag);
                         }}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-secondary hover:bg-primary/20 hover:text-primary transition-colors text-muted-foreground font-medium"
+                        className="text-[11px] px-2.5 py-0.5 rounded-full bg-card border border-border hover:border-forest hover:text-forest transition-colors text-ink-soft font-medium"
                       >
                         +{tag}
                       </button>
@@ -445,25 +446,25 @@ export function HostBattleModal({
               {sourceType === "file" && (
                 <div className="text-center py-2">
                   {uploadedFile ? (
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-card border border-brand/40">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-card border border-brand/40">
                       <div className="flex items-center gap-2">
                         <FileText className="size-4 text-brand" />
-                        <span className="font-semibold text-foreground text-xs">{uploadedFile.name}</span>
+                        <span className="font-semibold text-ink text-xs">{uploadedFile.name}</span>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => setUploadedFile(null)}
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-ink"
                       >
                         <X className="size-3.5" />
                       </Button>
                     </div>
                   ) : (
-                    <label className="flex flex-col items-center justify-center p-4 border border-dashed border-border rounded-xl cursor-pointer hover:border-primary/60 bg-card">
-                      <Upload className="size-5 text-muted-foreground mb-1" />
-                      <span className="text-xs font-semibold text-foreground">Select PDF or Course Syllabus</span>
-                      <span className="text-[10px] text-muted-foreground">Extracts key sections automatically</span>
+                    <label className="flex flex-col items-center justify-center p-5 border border-dashed border-border rounded-xl cursor-pointer hover:border-forest/60 bg-card transition-colors">
+                      <Upload className="size-5 text-muted-foreground mb-1.5" />
+                      <span className="text-xs font-semibold text-ink">Select Course PDF or Past Question</span>
+                      <span className="text-[10px] text-muted-foreground mt-0.5">Extracts core concepts automatically</span>
                       <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="hidden" />
                     </label>
                   )}
@@ -471,9 +472,9 @@ export function HostBattleModal({
               )}
 
               {sourceType === "library" && (
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                   {libraryMaterials.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-3 text-[11px]">No library materials found.</p>
+                    <p className="text-center text-muted-foreground py-3 text-xs">No library materials found.</p>
                   ) : (
                     libraryMaterials.map((mat: any) => (
                       <div
@@ -483,17 +484,17 @@ export function HostBattleModal({
                           if (!battleTitle) setBattleTitle(mat.title);
                         }}
                         className={cn(
-                          "flex items-center justify-between p-2 rounded-xl border cursor-pointer text-xs transition-all",
+                          "flex items-center justify-between p-2.5 rounded-xl border cursor-pointer text-xs transition-all lift",
                           selectedLibraryMat?.id === mat.id
-                            ? "border-primary bg-primary/10 text-primary font-bold"
-                            : "border-border hover:bg-secondary"
+                            ? "border-forest bg-forest/10 text-forest font-bold"
+                            : "border-border bg-card hover:bg-surface-container-low"
                         )}
                       >
                         <div className="truncate">
-                          <p className="font-semibold truncate">{mat.title}</p>
+                          <p className="font-semibold truncate text-ink">{mat.title}</p>
                           <p className="text-[10px] text-muted-foreground">{mat.course}</p>
                         </div>
-                        {selectedLibraryMat?.id === mat.id && <Check className="size-3.5 text-primary shrink-0" />}
+                        {selectedLibraryMat?.id === mat.id && <Check className="size-4 text-forest shrink-0" />}
                       </div>
                     ))
                   )}
@@ -507,7 +508,7 @@ export function HostBattleModal({
                       <Button
                         type="button"
                         onClick={stopVoiceRecording}
-                        className="h-9 rounded-full bg-red-600 hover:bg-red-700 text-white gap-2 font-bold px-4 animate-pulse"
+                        className="h-9 rounded-full bg-destructive text-white gap-2 font-bold px-4 animate-pulse"
                       >
                         <Square className="size-3.5 fill-current" />
                         <span>Stop Recording ({recordingDuration}s)</span>
@@ -516,16 +517,16 @@ export function HostBattleModal({
                       <Button
                         type="button"
                         onClick={startVoiceRecording}
-                        className="h-9 rounded-full bg-brass hover:bg-brass-ink text-black font-bold gap-2 px-4 shadow-sm"
+                        className="h-9 rounded-full bg-forest hover:bg-ink text-white font-bold gap-2 px-5 shadow-xs lift press"
                       >
-                        <Mic className="size-3.5" />
-                        <span>Record Topic Prompt (Whisper)</span>
+                        <Mic className="size-3.5 text-brass-soft" />
+                        <span>Record Voice Prompt (Whisper)</span>
                       </Button>
                     )}
                   </div>
                   {voiceTranscript && (
-                    <div className="w-full p-2 rounded-xl bg-card border border-border text-[11px] text-foreground">
-                      <span className="text-[9px] uppercase font-bold text-brass block">Transcribed:</span>
+                    <div className="w-full p-2.5 rounded-xl bg-card border border-border text-xs text-ink">
+                      <span className="eyebrow text-brass block mb-0.5">Transcribed Prompt</span>
                       "{voiceTranscript}"
                     </div>
                   )}
@@ -535,52 +536,50 @@ export function HostBattleModal({
           </div>
 
           {/* 3. Game Mode & Timers */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {/* Mode selection */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Game Mode
+              <label className="eyebrow block mb-1.5 text-ink-soft">
+                Examination Format
               </label>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setMode("mcq")}
                   className={cn(
-                    "p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all",
+                    "p-3 rounded-2xl border flex flex-col items-center gap-1 transition-all lift press",
                     mode === "mcq"
-                      ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                      : "border-border hover:bg-secondary text-muted-foreground"
+                      ? "border-forest bg-forest text-white shadow-xs font-bold"
+                      : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
                   )}
                 >
-                  <Zap className="size-4 text-brass" />
-                  <span className="text-[11px]">MCQ Blitz</span>
-                  <span className="text-[9px] text-muted-foreground">Timed Speed Battle</span>
+                  <Zap className={cn("size-4", mode === "mcq" ? "text-brass-soft" : "text-brass")} />
+                  <span className="text-xs font-semibold">MCQ Blitz</span>
+                  <span className={cn("text-[10px]", mode === "mcq" ? "text-white/70" : "text-muted-foreground")}>Speed Arena</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setMode("theory")}
                   className={cn(
-                    "p-2.5 rounded-xl border flex flex-col items-center gap-1 transition-all",
+                    "p-3 rounded-2xl border flex flex-col items-center gap-1 transition-all lift press",
                     mode === "theory"
-                      ? "border-brand bg-brand/10 text-brand dark:text-brand font-bold shadow-xs"
-                      : "border-border hover:bg-secondary text-muted-foreground"
+                      ? "border-forest bg-forest text-white shadow-xs font-bold"
+                      : "border-border bg-surface-container-low hover:bg-card text-ink-soft"
                   )}
                 >
-                  <BookOpen className="size-4 text-brand" />
-                  <span className="text-[11px]">Theory Showdown</span>
-                  <span className="text-[9px] text-muted-foreground">Untimed · Deep Derivations</span>
+                  <BookOpen className={cn("size-4", mode === "theory" ? "text-brass-soft" : "text-brand")} />
+                  <span className="text-xs font-semibold">Theory Showdown</span>
+                  <span className={cn("text-[10px]", mode === "theory" ? "text-white/70" : "text-muted-foreground")}>Deep Derivations</span>
                 </button>
               </div>
             </div>
 
-            {/* Timers (Only for MCQ) */}
             <div>
-              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                {mode === "mcq" ? "Time per Question" : "Pacing"}
+              <label className="eyebrow block mb-1.5 text-ink-soft">
+                {mode === "mcq" ? "Time per Question" : "Pacing & Evaluation"}
               </label>
               {mode === "mcq" ? (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   {[10, 20, 30, 60].map((sec) => (
                     <button
                       key={sec}
@@ -590,10 +589,10 @@ export function HostBattleModal({
                         setCustomTime("");
                       }}
                       className={cn(
-                        "flex-1 h-8 rounded-lg border text-xs font-bold transition-all",
+                        "flex-1 h-9 rounded-xl border text-xs font-bold transition-all tnum font-mono lift press",
                         timePerQuestion === sec && !customTime
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border hover:bg-secondary text-foreground"
+                          ? "border-forest bg-forest text-white"
+                          : "border-border bg-card hover:bg-surface-container-low text-ink"
                       )}
                     >
                       {sec}s
@@ -607,31 +606,31 @@ export function HostBattleModal({
                       if (val > 0) setTimePerQuestion(val);
                     }}
                     placeholder="Custom"
-                    className="w-16 h-8 text-[11px] rounded-lg text-center"
+                    className="w-16 h-9 text-xs rounded-xl text-center border-border font-mono"
                   />
                 </div>
               ) : (
-                <div className="h-8 rounded-xl border border-brand/30 bg-brand/10 px-3 flex items-center justify-between text-brand-deep dark:text-brand font-bold text-xs">
+                <div className="h-9 rounded-xl border border-brand/40 bg-brand/10 px-3 flex items-center justify-between text-brand font-bold text-xs">
                   <span>Untimed ⏱️</span>
-                  <span className="text-[10px] font-normal text-muted-foreground">Submit handwritten or voice</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">Handwritten OCR or Voice</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* 4. Stake & Pot */}
+          {/* 4. Stakes & Prize Pot */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="eyebrow text-ink-soft">
                 Buy-in Stake per Fighter
               </label>
-              <div className="flex items-center gap-1.5 text-xs font-black text-brass">
-                <Coins className="size-3.5" />
+              <div className="flex items-center gap-1.5 text-xs font-bold text-brass tnum font-mono">
+                <Coins className="size-4" />
                 <span>Total Pot: {totalPot} pts</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               {[0, 5, 10, 20, 50].map((pts) => (
                 <button
                   key={pts}
@@ -641,10 +640,10 @@ export function HostBattleModal({
                     setCustomStake("");
                   }}
                   className={cn(
-                    "flex-1 h-8 rounded-lg border text-xs font-bold transition-all",
+                    "flex-1 h-9 rounded-xl border text-xs font-bold transition-all tnum font-mono lift press",
                     stakeAmount === pts && !customStake
-                      ? "border-brass bg-brass text-black shadow-xs"
-                      : "border-border hover:bg-secondary text-foreground"
+                      ? "border-brass bg-brass text-ink-inverted shadow-xs"
+                      : "border-border bg-card hover:bg-surface-container-low text-ink"
                   )}
                 >
                   {pts === 0 ? "Friendly" : `${pts} pts`}
@@ -658,77 +657,79 @@ export function HostBattleModal({
                   if (val >= 0) setStakeAmount(val);
                 }}
                 placeholder="Custom"
-                className="w-16 h-8 text-[11px] rounded-lg text-center"
+                className="w-18 h-9 text-xs rounded-xl text-center border-border font-mono"
               />
             </div>
           </div>
 
-          {/* 5. Fighter Selection & Real-Time Wallet Scan */}
-          <div className="space-y-2">
+          {/* 5. Fighter Roster & Wallet Scan */}
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Users className="size-3.5 text-primary" />
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+              <div className="flex items-center gap-2">
+                <Users className="size-4 text-forest" />
+                <span className="eyebrow text-ink-soft">
                   Fighters ({selectedFighterIds.length}/{members.length})
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectAll) {
-                    setSelectAll(false);
-                    setSelectedFighterIds([currentUser.id]);
-                  } else {
-                    setSelectAll(true);
-                    setSelectedFighterIds(members.map((m) => m.id));
-                  }
-                }}
-                className="text-[11px] font-bold text-primary hover:underline"
-              >
-                {selectAll ? "Deselect Others" : "Select Whole Group"}
-              </button>
+              {!isDirectPeer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectAll) {
+                      setSelectAll(false);
+                      setSelectedFighterIds([currentUser.id]);
+                    } else {
+                      setSelectAll(true);
+                      setSelectedFighterIds(members.map((m) => m.id));
+                    }
+                  }}
+                  className="text-xs font-semibold text-forest hover:underline"
+                >
+                  {selectAll ? "Deselect Others" : "Select Entire Group"}
+                </button>
+              )}
             </div>
 
-            {/* Wallet Scan Alert Banner if anyone has insufficient points */}
+            {/* Wallet Scan Warning Banner */}
             {underfundedMembers.length > 0 && stakeAmount > 0 && (
               <div className="p-3 rounded-2xl bg-brass/10 border border-brass/40 text-xs space-y-2">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="size-4 text-brass-ink dark:text-brass shrink-0 mt-0.5" />
+                  <AlertTriangle className="size-4 text-brass shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold text-brass-ink dark:text-brass">
-                      Wallet Scan: {underfundedMembers.length} fighter(s) have fewer than {stakeAmount} pts
+                    <p className="font-bold text-ink">
+                      Wallet Notice: {underfundedMembers.length} fighter(s) hold fewer than {stakeAmount} pts
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Pick a quick resolution below so everyone can participate smoothly:
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Select a resolution so everyone enters the arena without friction:
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleAutoCapStake}
-                    className="h-7 text-[10px] rounded-full border-brass/50 text-brass-ink dark:text-brass hover:bg-brass/15 font-bold"
+                    className="h-7 text-[10px] rounded-full border-brass/50 text-brass hover:bg-brass/15 font-bold"
                   >
-                    📉 Auto-Cap Stake to {Math.max(0, minBalance)} pts
+                    📉 Auto-Cap to {Math.max(0, minBalance)} pts
                   </Button>
 
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleBenchUnderfunded}
-                    className="h-7 text-[10px] rounded-full border-border text-foreground hover:bg-secondary font-bold"
+                    className="h-7 text-[10px] rounded-full border-border text-ink hover:bg-surface-container-low font-bold"
                   >
-                    👤 Bench Underfunded Fighters
+                    👤 Bench Underfunded
                   </Button>
 
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleSponsorAll}
-                    className="h-7 text-[10px] rounded-full bg-brand/10 border-brand/40 text-brand-deep dark:text-brand hover:bg-brand/20 font-bold"
+                    className="h-7 text-[10px] rounded-full bg-brand/10 border-brand/40 text-brand hover:bg-brand/20 font-bold"
                   >
                     🤝 Sponsor All Underfunded
                   </Button>
@@ -736,15 +737,15 @@ export function HostBattleModal({
               </div>
             )}
 
-            {/* Member List with Live Points Badges */}
-            <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 border border-border/60 rounded-2xl p-2 bg-secondary/15">
+            {/* Member List */}
+            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 border border-border rounded-2xl p-2.5 bg-surface-container-low">
               {isLoadingMembers ? (
                 <div className="py-6 text-center text-muted-foreground flex items-center justify-center gap-2">
-                  <Loader2 className="size-4 animate-spin" />
-                  <span>Scanning member balances...</span>
+                  <Loader2 className="size-4 animate-spin text-forest" />
+                  <span>Verifying live member credentials...</span>
                 </div>
               ) : members.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4 text-xs">No members found in this study group.</p>
+                <p className="text-center text-muted-foreground py-4 text-xs">No active contestants detected.</p>
               ) : (
                 members.map((member) => {
                   const isHost = member.id === currentUser.id;
@@ -757,29 +758,29 @@ export function HostBattleModal({
                       key={member.id}
                       onClick={() => toggleFighter(member.id)}
                       className={cn(
-                        "flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-all",
+                        "flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition-all lift press",
                         isBroke
                           ? "border-brass/70 bg-brass/10"
                           : isSelected
-                          ? "border-primary/50 bg-card shadow-xs"
-                          : "border-border/60 opacity-60 hover:opacity-100 bg-secondary/20"
+                          ? "border-forest/50 bg-card shadow-xs"
+                          : "border-border/60 opacity-60 hover:opacity-100 bg-background"
                       )}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <Avatar className="size-7 border border-border">
+                        <Avatar className="size-8 border border-border">
                           <AvatarImage src={member.avatar_url || undefined} />
-                          <AvatarFallback className="text-[10px] font-bold">
+                          <AvatarFallback className="text-[10px] font-bold bg-forest text-white">
                             {member.full_name?.[0] || "S"}
                           </AvatarFallback>
                         </Avatar>
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-bold truncate text-foreground">
-                              {member.full_name} {isHost && "(You / Host)"}
+                            <span className="font-bold truncate text-ink">
+                              {member.full_name} {isHost && "(Host)"}
                             </span>
                             {isSponsored && (
-                              <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-brand/15 border-brand/40 text-brand dark:text-brand font-bold">
+                              <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-brand/15 border-brand/40 text-brand font-bold">
                                 Sponsored
                               </Badge>
                             )}
@@ -791,16 +792,16 @@ export function HostBattleModal({
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {/* Live Balance Badge */}
+                        {/* Live Balance */}
                         <div
                           className={cn(
-                            "px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1",
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 tnum font-mono",
                             member.points < stakeAmount && !isSponsored
-                              ? "bg-brass/20 text-brass-ink dark:text-brass"
-                              : "bg-brand/15 text-brand dark:text-brand"
+                              ? "bg-brass/20 text-brass"
+                              : "bg-brand/15 text-brand"
                           )}
                         >
-                          <Coins className="size-2.5" />
+                          <Coins className="size-3" />
                           <span>{member.points} pts</span>
                         </div>
 
@@ -815,7 +816,7 @@ export function HostBattleModal({
                             }}
                             className={cn(
                               "h-6 px-2 text-[10px] rounded-full",
-                              isSponsored ? "text-brand font-bold" : "text-muted-foreground hover:text-foreground"
+                              isSponsored ? "text-brand font-bold" : "text-muted-foreground hover:text-ink"
                             )}
                           >
                             {isSponsored ? "Sponsoring" : "Sponsor"}
@@ -826,7 +827,7 @@ export function HostBattleModal({
                           className={cn(
                             "size-5 rounded-md grid place-items-center border",
                             isSelected
-                              ? "bg-primary border-primary text-primary-foreground"
+                              ? "bg-forest border-forest text-white"
                               : "border-border text-transparent"
                           )}
                         >
@@ -846,22 +847,25 @@ export function HostBattleModal({
               type="button"
               disabled={isCreating || selectedFighterIds.length === 0}
               onClick={handleLaunchBattle}
-              className="w-full h-11 rounded-2xl bg-brass hover:bg-brass-ink text-black font-black text-xs sm:text-sm shadow-xl shadow-brass/20 gap-2 transition-all active:scale-[0.98]"
+              className="w-full h-11 rounded-2xl bg-forest hover:bg-ink text-white font-bold text-xs sm:text-sm shadow-md gap-2 transition-all lift press"
             >
               {isCreating ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
-                  <span>Boss AI Generating 5 Exam Questions...</span>
+                  <Loader2 className="size-4 animate-spin text-brass-soft" />
+                  <span>Boss AI Generating Certified Questions...</span>
                 </>
               ) : (
                 <>
-                  <Swords className="size-4" />
-                  <span>⚡ Drop Challenge in Group Chat ({totalPot} pts Pot)</span>
+                  <Swords className="size-4 text-brass-soft" />
+                  <span>
+                    {isDirectPeer
+                      ? `⚡ Send 1v1 Challenge (${totalPot} pts Pot)`
+                      : `⚡ Drop Match Challenge in Chat (${totalPot} pts Pot)`}
+                  </span>
                 </>
               )}
             </Button>
           </div>
-        </div>
         </div>
       </DialogContent>
     </Dialog>

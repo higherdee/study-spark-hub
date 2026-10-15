@@ -199,7 +199,7 @@ function UploadPage() {
       </header>
 
       <section className="flex items-start gap-3 rounded-2xl border border-border bg-muted/60 p-4">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-brand-deep">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand/15 text-brand">
           <ShieldCheck className="size-4.5" />
         </span>
         <p className="text-sm text-ink-soft">

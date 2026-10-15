@@ -703,9 +703,31 @@ export type GroupMemberWithBalance = {
 };
 
 /**
- * Fetch all members of a study group with their live points balance
+ * Fetch all members of a study group (or 1v1 direct conversation) with their live points balance
  */
 export async function getStudyGroupMembersWithBalances(groupId: string): Promise<GroupMemberWithBalance[]> {
+  // 1. Check if this ID belongs to a 1v1 direct conversation
+  const directRs = await turso.execute({
+    sql: `SELECT user1_id, user2_id FROM direct_conversations WHERE id = ? LIMIT 1`,
+    args: [groupId],
+  });
+
+  if (directRs.rows.length > 0) {
+    const row = directRs.rows[0] as any;
+    const pRs = await turso.execute({
+      sql: `SELECT id, full_name, username, avatar_url, points FROM profiles WHERE id IN (?, ?)`,
+      args: [String(row.user1_id), String(row.user2_id)],
+    });
+    return pRs.rows.map((r: any) => ({
+      id: String(r.id),
+      full_name: String(r.full_name || "Student"),
+      username: r.username ? String(r.username) : null,
+      avatar_url: r.avatar_url ? String(r.avatar_url) : null,
+      points: Number(r.points) || 0,
+    }));
+  }
+
+  // 2. Otherwise fetch group members from study_group_members
   const rs = await turso.execute({
     sql: `SELECT p.id, p.full_name, p.username, p.avatar_url, p.points
           FROM study_group_members sgm
@@ -723,6 +745,47 @@ export async function getStudyGroupMembersWithBalances(groupId: string): Promise
     points: Number(r.points) || 0,
   }));
 }
+
+/**
+ * Sends a battle announcement (challenge drop or conclusion receipt)
+ * into either a study group stream or a 1v1 direct peer conversation
+ */
+export async function sendBattleAnnouncementMessage(data: {
+  targetId: string;
+  userId: string;
+  userName: string;
+  userInstitution?: string | undefined;
+  content: string;
+  materialId?: string | undefined;
+  materialTitle?: string | undefined;
+  materialCourseCode?: string | undefined;
+}): Promise<any> {
+  const directRs = await turso.execute({
+    sql: `SELECT id FROM direct_conversations WHERE id = ? LIMIT 1`,
+    args: [data.targetId],
+  });
+
+  if (directRs.rows.length > 0) {
+    return await sendDirectMessage({
+      conversationId: data.targetId,
+      senderId: data.userId,
+      content: data.content,
+      materialId: data.materialId,
+    });
+  }
+
+  return await sendGroupMessage({
+    groupId: data.targetId,
+    userId: data.userId,
+    userName: data.userName,
+    userInstitution: data.userInstitution,
+    content: data.content,
+    materialId: data.materialId,
+    materialTitle: data.materialTitle,
+    materialCourseCode: data.materialCourseCode,
+  });
+}
+
 
 export type StudyBattle = {
   id: string;

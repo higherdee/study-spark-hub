@@ -130,7 +130,7 @@ function MyMaterials() {
 
         <div className="surface p-4">
           <p className="eyebrow">Approved & live</p>
-          <p className="mt-1 font-display text-2xl text-brand-deep tnum">{verifiedCount}</p>
+          <p className="mt-1 font-display text-2xl text-brand tnum">{verifiedCount}</p>
           <p className="text-[11px] text-muted-foreground">In library</p>
         </div>
 

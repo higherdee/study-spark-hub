@@ -11,6 +11,7 @@ import {
   concludeBattleRecord,
   getSlowpokesRecord,
   sendGroupMessage,
+  sendBattleAnnouncementMessage,
   type StudyBattle,
   type BattleParticipant,
   type GroupMemberWithBalance,
@@ -84,11 +85,11 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
       ? ` • 💰 ${data.stakeAmount} pts Buy-in (Pot: ${battle.total_pot} pts)`
       : " • 🎲 Friendly (0 pts)";
 
-    const battleMessage = await sendGroupMessage({
-      groupId: data.groupId,
+    const battleMessage = await sendBattleAnnouncementMessage({
+      targetId: data.groupId,
       userId: data.hostId,
       userName: data.hostName,
-      userInstitution: "Campus Study Group",
+      userInstitution: "Campus Arena",
       content: `⚡ [STUDY_BATTLE:${battle.id}] ${data.title} (${modeLabel}${stakeLabel})`,
       materialId: battle.id,
       materialTitle: `⚡ Battle Arena: ${data.title}`,
@@ -213,8 +214,8 @@ export const submitBattleAnswersServerFn = createServerFn({ method: "POST" })
 
         // Drop conclusion receipt in chat
         const winnerNames = fighters.filter((f) => f.score === highestScore).map((f) => f.user_name).join(", ");
-        const receiptMsg = await sendGroupMessage({
-          groupId: data.groupId,
+        const receiptMsg = await sendBattleAnnouncementMessage({
+          targetId: data.groupId,
           userId: "system",
           userName: "⚡ Boss Battle Arena",
           userInstitution: "Campus Arena",

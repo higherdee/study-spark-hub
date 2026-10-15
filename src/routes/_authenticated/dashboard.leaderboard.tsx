@@ -92,15 +92,15 @@ function LeaderboardPage() {
           </p>
         </div>
 
-        {/* Actions: Cohort Switcher & Flex My Card */}
+        {/* Actions: Cohort Switcher & Folio Card */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="p-1 rounded-full bg-muted border border-border flex items-center gap-1">
+          <div className="p-1 rounded-full bg-surface-container-high border border-border flex items-center gap-1">
             <button
               type="button"
               onClick={() => setFilterMode("all")}
               className={cn(
-                "px-3.5 py-1 rounded-full text-xs font-semibold transition-all",
-                filterMode === "all" ? "bg-white text-ink shadow-xs font-bold" : "text-muted-foreground hover:text-ink"
+                "px-3.5 py-1 rounded-full text-xs font-semibold transition-all lift press",
+                filterMode === "all" ? "bg-card text-ink shadow-xs font-bold" : "text-ink-soft hover:text-ink"
               )}
             >
               All Universities
@@ -109,8 +109,8 @@ function LeaderboardPage() {
               type="button"
               onClick={() => setFilterMode("school")}
               className={cn(
-                "px-3.5 py-1 rounded-full text-xs font-semibold transition-all",
-                filterMode === "school" ? "bg-white text-ink shadow-xs font-bold" : "text-muted-foreground hover:text-ink"
+                "px-3.5 py-1 rounded-full text-xs font-semibold transition-all lift press",
+                filterMode === "school" ? "bg-card text-ink shadow-xs font-bold" : "text-ink-soft hover:text-ink"
               )}
             >
               My Institution
@@ -119,8 +119,8 @@ function LeaderboardPage() {
               type="button"
               onClick={() => setFilterMode("faculty")}
               className={cn(
-                "px-3.5 py-1 rounded-full text-xs font-semibold transition-all",
-                filterMode === "faculty" ? "bg-white text-ink shadow-xs font-bold" : "text-muted-foreground hover:text-ink"
+                "px-3.5 py-1 rounded-full text-xs font-semibold transition-all lift press",
+                filterMode === "faculty" ? "bg-card text-ink shadow-xs font-bold" : "text-ink-soft hover:text-ink"
               )}
             >
               Programme
@@ -130,10 +130,10 @@ function LeaderboardPage() {
           <Button
             type="button"
             onClick={() => setIsFlexCardOpen(true)}
-            className="h-8.5 rounded-full bg-gradient-to-r from-brass to-brand hover:from-brass-ink hover:to-brand text-black font-extrabold text-xs shadow-md gap-1.5 active:scale-95 transition-all"
+            className="h-8.5 rounded-full bg-forest hover:bg-ink text-white font-semibold text-xs shadow-xs gap-1.5 lift press"
           >
-            <Sparkles className="size-3.5 fill-current" />
-            <span>Flex My Card 🚀</span>
+            <Sparkles className="size-3.5 text-brass-soft" />
+            <span>Campus Folio & Card</span>
           </Button>
         </div>
       </header>
@@ -243,7 +243,7 @@ function LeaderboardPage() {
                   className={cn(
                     "surface lift relative flex flex-col p-5",
                     first
-                      ? "order-1 border-brass/50 bg-gradient-to-b from-brass-soft/60 to-white p-6 md:order-2 md:-mt-4"
+                      ? "order-1 border-brass/50 bg-gradient-to-b from-brass-soft/60 to-card p-6 md:order-2 md:-mt-4"
                       : idx === 1
                         ? "order-2 md:order-1"
                         : "order-3",
@@ -269,7 +269,7 @@ function LeaderboardPage() {
                         className="size-10 rounded-full border border-border object-cover"
                       />
                     ) : (
-                      <div className="grid size-10 place-items-center rounded-full bg-accent text-sm font-bold text-brand-deep">
+                      <div className="grid size-10 place-items-center rounded-full bg-surface-container-high text-sm font-bold text-forest">
                         {initial}
                       </div>
                     )}
@@ -304,8 +304,8 @@ function LeaderboardPage() {
       </section>
 
       {/* Full Ranked Scholars Table */}
-      <section className="flex flex-col gap-3 bg-white rounded-2xl shadow-xs border border-border p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-surface-container">
+      <section className="flex flex-col gap-3 bg-card rounded-3xl shadow-[var(--elev-1)] border border-border p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
           <div>
             <h2 className="font-display text-xl text-ink font-semibold">All Ranked Students</h2>
             <p className="text-xs text-muted-foreground">Students ranked by study hours and SyllaPoints.</p>
@@ -352,7 +352,7 @@ function LeaderboardPage() {
                         {s.avatar_url ? (
                           <img src={s.avatar_url} alt="" className="size-7 rounded-full object-cover border border-border" />
                         ) : (
-                          <div className="size-7 rounded-full bg-accent text-brand-deep font-bold text-[11px] flex items-center justify-center">
+                          <div className="size-7 rounded-full bg-surface-container-high text-forest font-bold text-[11px] flex items-center justify-center">
                             {((s.username || s.full_name)[0] ?? "S").toUpperCase()}
                           </div>
                         )}

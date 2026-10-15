@@ -284,7 +284,7 @@ This verified material provides high-yield coverage of fundamental principles, s
                   setType("");
                   setLevel("");
                 }}
-                className="press text-xs font-semibold text-brand-deep hover:underline"
+                className="press text-xs font-semibold text-forest hover:underline"
               >
                 Clear all
               </button>

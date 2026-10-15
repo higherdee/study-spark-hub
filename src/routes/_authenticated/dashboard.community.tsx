@@ -1000,28 +1000,26 @@ export function CommunityPage() {
 
               {/* Header Actions */}
               <div className="flex items-center gap-1.5">
-                {activeChat.type === "group" && (
-                  <>
-                    <Button
-                      size="sm"
-                      onClick={() => setIsHostBattleOpen(true)}
-                      aria-label="Start a study battle"
-                      className="h-8 gap-1.5 rounded-full bg-forest px-3 text-xs font-semibold text-white hover:bg-ink"
-                    >
-                      <Swords className="size-3.5 text-brass-soft" />
-                      <span>Battle</span>
-                    </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setIsHostBattleOpen(true)}
+                  aria-label={activeChat.type === "group" ? "Start a study battle" : "Challenge to 1v1 battle"}
+                  className="h-8 gap-1.5 rounded-full bg-forest px-3 text-xs font-semibold text-white hover:bg-ink lift press shadow-xs"
+                >
+                  <Swords className="size-3.5 text-brass-soft" />
+                  <span>{activeChat.type === "group" ? "Battle" : "Challenge"}</span>
+                </Button>
 
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setIsAddMemberOpen(true)}
-                      className="h-8 rounded-full text-xs font-semibold gap-1 border-primary/40 text-primary hover:bg-primary/10"
-                    >
-                      <UserPlus className="size-3.5" />
-                      <span>Add Member</span>
-                    </Button>
-                  </>
+                {activeChat.type === "group" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsAddMemberOpen(true)}
+                    className="h-8 rounded-full text-xs font-semibold gap-1 border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <UserPlus className="size-3.5" />
+                    <span>Add Member</span>
+                  </Button>
                 )}
 
                 <Button
@@ -1278,17 +1276,15 @@ export function CommunityPage() {
                       <Paperclip className="size-4" />
                     </button>
 
-                    {activeChat.type === "group" && (
-                      <button
-                        type="button"
-                        onClick={() => setIsHostBattleOpen(true)}
-                        title="Start a study battle"
-                        aria-label="Start a study battle"
-                        className="press size-7.5 rounded-full grid place-items-center text-brass hover:bg-brass-soft transition-colors"
-                      >
-                        <Swords className="size-4" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsHostBattleOpen(true)}
+                      title={activeChat.type === "group" ? "Start a study battle" : `Challenge ${activeChat.title} to 1v1 battle`}
+                      aria-label="Start a study battle"
+                      className="press size-7.5 rounded-full grid place-items-center text-brass hover:bg-brass-soft transition-colors"
+                    >
+                      <Swords className="size-4" />
+                    </button>
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -1681,12 +1677,13 @@ export function CommunityPage() {
       </Dialog>
 
       {/* MODAL: Host Study Battle */}
-      {activeChat?.type === "group" && (
+      {activeChat && (
         <HostBattleModal
           isOpen={isHostBattleOpen}
           onClose={() => setIsHostBattleOpen(false)}
           groupId={activeChat.id}
           groupTitle={activeChat.title}
+          isDirectPeer={activeChat.type !== "group"}
           currentUser={{
             id: user?.id || "",
             fullName: profile?.full_name || "Scholar",
@@ -1701,7 +1698,7 @@ export function CommunityPage() {
       )}
 
       {/* MODAL: Battle Arena & Results */}
-      {activeBattleIdForArena && activeChat?.type === "group" && (
+      {activeBattleIdForArena && activeChat && (
         <BattleArenaModal
           isOpen={Boolean(activeBattleIdForArena)}
           onClose={() => setActiveBattleIdForArena(null)}
