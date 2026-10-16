@@ -1,9 +1,13 @@
 export const CLERK_PUBLISHABLE_KEY =
   (typeof import.meta !== "undefined" && import.meta.env?.['VITE_CLERK_PUBLISHABLE_KEY'] as string | undefined) ||
   (typeof import.meta !== "undefined" && import.meta.env?.['NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY'] as string | undefined) ||
+  (typeof process !== "undefined" && process.env?.['NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY']) ||
   (typeof process !== "undefined" && process.env?.['CLERK_PUBLISHABLE_KEY']) ||
   (typeof process !== "undefined" && process.env?.['VITE_CLERK_PUBLISHABLE_KEY']) ||
-  "pk_test_bW9yZS1vY3RvcHVzLTM5MTYuY2xlcmsuYWNjb3VudHMuZGV2JA";
+  "pk_live_Y2xlcmsuc3lsbGFib3NzLm9yZyQ";
+
+export const CLERK_SECRET_KEY =
+  (typeof process !== "undefined" && process.env?.['CLERK_SECRET_KEY']) || "";
 
 export const clerkAppearance = {
   variables: {

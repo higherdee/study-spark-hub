@@ -21,7 +21,7 @@ import {
 import { MINIMUM_WITHDRAWAL_POINTS, SYLLAPLUS_PRICE_NAIRA } from "@/lib/constants";
 
 export const getUploadUrlServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z
       .object({
         userId: z.string(),
@@ -40,7 +40,7 @@ export const getUploadUrlServerFn = createServerFn({ method: "POST" })
 export const getPresignedUploadUrlServerFn = getUploadUrlServerFn;
 
 export const createMaterialServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z
       .object({
         userId: z.string(),
@@ -78,7 +78,7 @@ export const createMaterialServerFn = createServerFn({ method: "POST" })
   });
 
 export const autoVerifyMaterialServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z
       .object({
         materialId: z.string(),
@@ -95,7 +95,7 @@ export const autoVerifyMaterialServerFn = createServerFn({ method: "POST" })
   });
 
 export const getDownloadUrlServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({ materialId: z.string(), userId: z.string().optional() }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -113,7 +113,7 @@ export const getDownloadUrlServerFn = createServerFn({ method: "POST" })
   });
 
 export const getPreviewUrlServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({ materialId: z.string() }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -121,7 +121,7 @@ export const getPreviewUrlServerFn = createServerFn({ method: "POST" })
   });
 
 export const recordMaterialViewServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({ materialId: z.string(), userId: z.string().optional() }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -130,7 +130,7 @@ export const recordMaterialViewServerFn = createServerFn({ method: "POST" })
   });
 
 export const rateMaterialServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z
       .object({
         materialId: z.string(),
@@ -146,7 +146,7 @@ export const rateMaterialServerFn = createServerFn({ method: "POST" })
   });
 
 export const getUserRatingServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({ materialId: z.string(), userId: z.string() }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -155,7 +155,7 @@ export const getUserRatingServerFn = createServerFn({ method: "POST" })
   });
 
 export const requestWithdrawalServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z
       .object({
         userId: z.string(),
@@ -178,28 +178,28 @@ export const requestWithdrawalServerFn = createServerFn({ method: "POST" })
   });
 
 export const claimAppInstallBonusServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ userId: z.string() }).parse(d))
+  .validator((d: unknown) => z.object({ userId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const claimed = await tursoClaimInstall(data.userId);
     return { claimed };
   });
 
 export const upgradeToSyllaPlusServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ userId: z.string() }).parse(d))
+  .validator((d: unknown) => z.object({ userId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     await tursoUpgradePlus(data.userId);
     return { success: true };
   });
 
 export const recordStudySessionServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ userId: z.string(), minutes: z.number().min(1) }).parse(d))
+  .validator((d: unknown) => z.object({ userId: z.string(), minutes: z.number().min(1) }).parse(d))
   .handler(async ({ data }) => {
     const res = await tursoRecordStudy(data.userId, data.minutes);
     return res;
   });
 
 export const resolveBankAccountServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({ accountNumber: z.string().length(10), bankCode: z.string().min(1) }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -237,7 +237,7 @@ export const resolveBankAccountServerFn = createServerFn({ method: "POST" })
   });
 
 export const createComplaintServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({ materialId: z.string(), userId: z.string(), complaintText: z.string().min(5) }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -246,7 +246,7 @@ export const createComplaintServerFn = createServerFn({ method: "POST" })
   });
 
 export const replyToComplaintServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z
       .object({
         complaintId: z.string(),
@@ -261,7 +261,7 @@ export const replyToComplaintServerFn = createServerFn({ method: "POST" })
   });
 
 export const createAnnouncementServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z
       .object({
         title: z.string().min(3),
@@ -277,7 +277,7 @@ export const createAnnouncementServerFn = createServerFn({ method: "POST" })
   });
 
 export const markNotificationReadServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ notificationId: z.string() }).parse(d))
+  .validator((d: unknown) => z.object({ notificationId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     await tursoMarkNotificationRead(data.notificationId);
     return { success: true };
@@ -291,7 +291,7 @@ export const getLeaderboardServerFn = createServerFn({ method: "GET" })
   });
 
 export const createBachsCheckoutSessionServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z
       .object({
         userId: z.string(),

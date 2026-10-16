@@ -160,7 +160,7 @@ Rules:
 
 // 1. Create or get study thread
 export const createStudyThreadServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({
       userId: z.string(),
       title: z.string().default("New Conversation"),
@@ -177,7 +177,7 @@ export const createStudyThreadServerFn = createServerFn({ method: "POST" })
 
 // 2. Fetch user's study threads
 export const getStudyThreadsServerFn = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => z.object({ userId: z.string() }).parse(d))
+  .validator((d: unknown) => z.object({ userId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const rs = await turso.execute({
       sql: "SELECT id, title, updated_at FROM chat_threads WHERE user_id = ? ORDER BY updated_at DESC",
@@ -192,7 +192,7 @@ export const getStudyThreadsServerFn = createServerFn({ method: "GET" })
 
 // 3. Delete study thread
 export const deleteStudyThreadServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ threadId: z.string() }).parse(d))
+  .validator((d: unknown) => z.object({ threadId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     await turso.batch([
       { sql: "DELETE FROM chat_threads WHERE id = ?", args: [data.threadId] },
@@ -203,7 +203,7 @@ export const deleteStudyThreadServerFn = createServerFn({ method: "POST" })
 
 // 4. Fetch study messages for a thread
 export const getStudyMessagesServerFn = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => z.object({ threadId: z.string() }).parse(d))
+  .validator((d: unknown) => z.object({ threadId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const rs = await turso.execute({
       sql: "SELECT id, message_id, role, parts, created_at FROM chat_messages WHERE thread_id = ? ORDER BY created_at ASC, rowid ASC",
@@ -249,7 +249,7 @@ export const getStudyMessagesServerFn = createServerFn({ method: "GET" })
 
 // 5. Send message and run AI via Groq Cloud
 export const askBossAiServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({
       userId: z.string(),
       threadId: z.string().optional(),
@@ -478,7 +478,7 @@ ${
 
 // 6. Save arbitrary study message (e.g. uploaded doc notification or voice note)
 export const saveStudyMessageServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({
       threadId: z.string(),
       userId: z.string(),
@@ -516,7 +516,7 @@ export const saveStudyMessageServerFn = createServerFn({ method: "POST" })
 
 // 7. Update thread title
 export const updateStudyThreadTitleServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({
       threadId: z.string(),
       title: z.string(),
@@ -532,7 +532,7 @@ export const updateStudyThreadTitleServerFn = createServerFn({ method: "POST" })
 
 // 7b. Generate AI Smart Title for Thread
 export const generateSmartThreadTitleServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({
       threadId: z.string(),
       query: z.string(),
@@ -574,7 +574,7 @@ export const generateSmartThreadTitleServerFn = createServerFn({ method: "POST" 
 
 // 8. Fetch material by ID for context
 export const getStudyMaterialByIdServerFn = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
+  .validator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const rs = await turso.execute({
       sql: "SELECT id, title, course, institution, department, level, description FROM materials WHERE id = ? LIMIT 1",
@@ -673,7 +673,7 @@ export const transcribeVoiceAudioServerFn = createServerFn({ method: "POST" })
 
 // 10. Generate Study Quiz (MCQ or Theory) with Guaranteed Exact Question Count
 export const generateStudyQuizServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({
       userId: z.string(),
       threadId: z.string(),
@@ -997,7 +997,7 @@ ${
 
 // 11. Generate Study Flashcards with Guaranteed Exact Count
 export const generateStudyFlashcardsServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({
       userId: z.string(),
       threadId: z.string(),
@@ -1262,7 +1262,7 @@ Constraints:
 
 // 12. Grade Theory Answer using Multimodal Gemini Vision (for handwritten photos) or Groq LPU
 export const gradeTheoryAnswerServerFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
+  .validator((d: unknown) =>
     z.object({
       question: z.string(),
       modelAnswer: z.string(),

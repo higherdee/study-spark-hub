@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 export const verifyMaterial = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
+  .validator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
   .handler(async ({ data }) => {
     const { getMaterialById, setMaterialStatus, turso } = await import("@/integrations/turso/client");
     const { getFromR2 } = await import("@/integrations/r2/client");

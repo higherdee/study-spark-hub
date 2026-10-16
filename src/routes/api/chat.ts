@@ -7,6 +7,8 @@ import { turso, getProfile } from "@/integrations/turso/client";
 import { CHAT_MODEL, createGateway, reasoningOptions } from "@/lib/ai/gateway.server";
 import { getLovableAiGatewayRunId, withLovableAiGatewayRunIdHeader } from "@/lib/ai/run-id";
 
+import { CLERK_SECRET_KEY } from "@/integrations/clerk";
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
@@ -14,8 +16,7 @@ export const Route = createFileRoute("/api/chat")({
         const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
         if (!token) return new Response("Unauthorized", { status: 401 });
 
-        const clerkSecretKey =
-          process.env['CLERK_SECRET_KEY'] || "sk_test_VNJuQRLEHxWXYBrzNbJNhCiVbVVX7n3aNS25bwC3Cg";
+        const clerkSecretKey = CLERK_SECRET_KEY;
 
         let userId: string;
         try {

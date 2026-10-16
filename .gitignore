@@ -37,3 +37,28 @@ scratch/
 scripts/*.pfx
 scripts/*.cer
 scripts/*.exe
+
+# Local scratch & test scripts
+scripts/test-*
+scripts/inspect-*
+scripts/list-*
+scripts/dump-*
+scripts/check-*
+scripts/find-*
+scripts/export-*
+scripts/purge-*
+scripts/verify-*
+scripts/tokenize-*
+scripts/count-hex.mjs
+scripts/parse-xml.mjs
+scripts/hydrate-existing-materials.mjs
+scripts/generate-academic-pdf.mjs
+scripts/init-harvester-db.mjs
+scripts/build-signed-apk.mjs
+scripts/build-syllaboss-msi.ps1
+
+# Local AI agent configs & models
+.claude/
+agent/
+models.txt
+

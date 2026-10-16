@@ -17,8 +17,6 @@ import {
   Sparkles,
   Trophy,
   RotateCcw,
-  Eye,
-  EyeOff,
   Bell,
   Lock,
   ChevronRight,
@@ -29,6 +27,8 @@ import {
   AlertTriangle,
   Award,
   Crown,
+  Check,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -75,7 +75,7 @@ export function BattleArenaModal({
 }: BattleArenaModalProps) {
   const queryClient = useQueryClient();
 
-  // Active Battle Query
+  // Active Battle Query with live sync
   const { data, refetch } = useQuery({
     queryKey: ["battle-arena", battleId],
     enabled: isOpen && Boolean(battleId),
@@ -88,7 +88,7 @@ export function BattleArenaModal({
   const battle = data?.battle;
   const participants = data?.participants || [];
 
-  // Parse Questions
+  // Parse Questions safely
   const questions: any[] = (() => {
     try {
       return JSON.parse(battle?.questions_json || "[]");
@@ -178,7 +178,7 @@ export function BattleArenaModal({
 
     setMcqAnswers((prev) => ({ ...prev, [currentQIndex]: optionIndex }));
 
-    // Move to next question or auto-submit
+    // Move to next question or auto-submit with smooth delay
     if (currentQIndex < questions.length - 1) {
       setTimeout(() => {
         setCurrentQIndex((idx) => idx + 1);
@@ -274,7 +274,7 @@ export function BattleArenaModal({
           try {
             const base64 = (reader.result as string)?.split(",")[1];
             if (base64) {
-              toast.info("Transcribing voice derivation with Groq Whisper...");
+              toast.info("Transcribing derivation with Whisper...");
               const res = await transcribeVoiceAudioServerFn({
                 data: { audioBase64: base64, mimeType: "audio/webm" },
               });
@@ -290,7 +290,7 @@ export function BattleArenaModal({
               }
             }
           } catch {
-            toast.error("Whisper transcription failed, please type your answer.");
+            toast.error("Transcription failed, please type your derivation.");
           }
         };
       };
@@ -302,7 +302,7 @@ export function BattleArenaModal({
         setRecordingSeconds((s) => s + 1);
       }, 1000);
     } catch {
-      toast.error("Microphone access required.");
+      toast.error("Microphone access is required.");
     }
   };
 
@@ -334,7 +334,7 @@ export function BattleArenaModal({
       refetch();
 
       if (res.allSubmitted) {
-        toast.info("All fighters have submitted! Boss AI is now grading...");
+        toast.info("All scholars have submitted! Boss AI is now grading...");
         handleTriggerTheoryGrading();
       }
     } catch (err: any) {
@@ -361,7 +361,7 @@ export function BattleArenaModal({
     }
   };
 
-  // Floating Points Animation for Passing Grades (+10 pts with emerald glow)
+  // Floating Points Animation for Passing Grades
   const triggerFloatingAnimation = () => {
     const id = crypto.randomUUID();
     battleAudio.playEmeraldChime();
@@ -384,9 +384,9 @@ export function BattleArenaModal({
         },
       });
       if (res.count > 0) {
-        toast.success(`Nudged ${res.count} slowpoke(s) in group chat!`);
+        toast.success(`Nudged ${res.count} scholar(s) in group chat!`);
       } else {
-        toast.info("All fighters have submitted!");
+        toast.info("All scholars have submitted!");
       }
     } catch {
       toast.error("Failed to nudge.");
@@ -406,7 +406,7 @@ export function BattleArenaModal({
           hostId: currentUserId,
         },
       });
-      toast.success("Force-grade completed! Solutions and winners unlocked.");
+      toast.success("Force-grade completed! Winners unlocked.");
       refetch();
     } catch (err: any) {
       toast.error(err?.message || "Force grade failed.");
@@ -424,496 +424,534 @@ export function BattleArenaModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto rounded-3xl p-0 border border-border bg-card shadow-2xl relative text-foreground">
-        {/* Floating +10 pts Emerald Glow Animation */}
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-hidden rounded-[2rem] p-1.5 sm:p-2 border border-border/80 bg-surface-container-low shadow-[var(--elev-3)]">
+        
+        {/* Floating Points Animation */}
         <AnimatePresence>
           {floatingPoints.map((fp) => (
             <motion.div
               key={fp.id}
-              initial={{ opacity: 0, y: 30, scale: 0.7 }}
-              animate={{ opacity: 1, y: -45, scale: 1.15 }}
-              exit={{ opacity: 0, y: -80, scale: 0.8 }}
-              transition={{ duration: 1.6, ease: "easeOut" }}
+              initial={{ opacity: 0, y: 30, scale: 0.8 }}
+              animate={{ opacity: 1, y: -50, scale: 1.1 }}
+              exit={{ opacity: 0, y: -90, scale: 0.9 }}
+              transition={{ duration: 1.6, ease: [0.23, 1, 0.32, 1] }}
               className="absolute top-1/3 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
             >
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-forest text-white border border-brand/50 font-bold text-lg shadow-xl backdrop-blur-md">
-                <Sparkles className="size-4 text-[#8fd9b6] animate-spin" />
-                <span className="tnum">{fp.text}</span>
+              <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-forest text-white border border-brand/50 font-bold text-base shadow-lift backdrop-blur-md">
+                <Sparkles className="size-4 text-brass-soft animate-spin" />
+                <span className="tnum font-mono">{fp.text}</span>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
 
-        {/* Scholar's Header Docket */}
-        <DialogHeader className="border-b border-border/80 bg-surface-container-low px-6 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-brass/40 bg-brass/10 text-brass-ink">
-                <Swords className="size-4" />
-              </span>
-              <div>
-                <DialogTitle className="font-display text-base sm:text-lg font-medium text-ink leading-tight tracking-tight">
-                  {battle.title}
-                </DialogTitle>
-                <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-semibold text-ink-soft">
-                    {isMcq ? "MCQ Blitz" : "Theory Showdown"}
+        {/* Double-Bezel Inner Core */}
+        <div className="flex flex-col max-h-[calc(92vh-1rem)] bg-card rounded-[calc(2rem-0.375rem)] border border-border/60 overflow-hidden">
+          
+          {/* Header Docket */}
+          <div className="px-6 py-4 border-b border-border/70 bg-surface-container-low/60 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="size-9 rounded-xl bg-forest text-brass-soft flex items-center justify-center shrink-0 shadow-xs border border-forest/80">
+                <Swords className="size-4.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="eyebrow text-forest font-bold">
+                    {isMcq ? "MCQ Blitz Arena" : "Theory Derivation Studio"}
                   </span>
-                  <span>•</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-brass-ink">
+                  <span className="text-border">•</span>
+                  <span className="font-mono text-xs text-brass-ink font-semibold flex items-center gap-1 tnum">
                     <Coins className="size-3 text-brass" />
-                    <span className="tnum">{battle.total_pot}</span> pts escrow
+                    <span>{battle.total_pot} pts pot</span>
                   </span>
                 </div>
+                <DialogTitle className="font-display text-lg sm:text-xl font-normal text-ink tracking-tight truncate">
+                  {battle.title}
+                </DialogTitle>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Nudge Slowpokes Button */}
+            {/* Top Bar Actions & Progress Indicator */}
+            <div className="flex items-center gap-2 shrink-0">
               {battle.mode === "theory" && !isCompleted && (
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={isNudging}
                   onClick={handleNudgeSlowpokes}
-                  className="h-7 rounded-full text-[11px] font-semibold border-border bg-card text-ink-soft hover:bg-surface-container gap-1 press"
+                  className="h-8 rounded-full text-xs font-semibold border-border bg-card text-ink hover:bg-surface-container gap-1.5 px-3 cursor-pointer active:scale-[0.98]"
                 >
                   <Bell className="size-3 text-brass" />
-                  <span className="hidden sm:inline">Nudge</span>
+                  <span className="hidden sm:inline">Nudge Slowpokes</span>
                 </Button>
               )}
 
-              {/* Host Force Grade Button */}
               {isHost && !isCompleted && (
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={isForceGrading}
                   onClick={handleForceGrade}
-                  className="h-7 rounded-full text-[11px] font-semibold border-forest/30 text-forest hover:bg-forest/5 gap-1 press"
+                  className="h-8 rounded-full text-xs font-semibold border-forest/40 bg-card text-forest hover:bg-forest/5 gap-1.5 px-3 cursor-pointer active:scale-[0.98]"
                 >
                   <Sparkles className="size-3 text-brand" />
-                  <span className="hidden sm:inline">Grade</span>
+                  <span className="hidden sm:inline">Force Grade</span>
                 </Button>
               )}
 
-              <Badge
-                variant="outline"
-                className="h-6 px-2.5 rounded-full border-border bg-card font-mono text-[11px] font-semibold text-ink-soft"
-              >
-                {isCompleted ? "Completed 🏆" : isGrading ? "Grading..." : `Q ${currentQIndex + 1}/${questions.length}`}
-              </Badge>
+              {/* Step indicator */}
+              <div className="h-8 px-3 rounded-full bg-surface-container border border-border/80 font-mono text-xs font-semibold text-ink-soft flex items-center gap-1">
+                {isCompleted ? "Concluded 🏆" : isGrading ? "Grading..." : `Q ${currentQIndex + 1}/${questions.length}`}
+              </div>
             </div>
           </div>
-        </DialogHeader>
 
-        <div className="p-6 space-y-5">
-          {/* ========================================================================= */}
-          {/* COMPLETED VIEW: Leaderboard & Review */}
-          {/* ========================================================================= */}
-          {isCompleted ? (
-            <div className="space-y-6">
-              {/* Victory Banner */}
-              <div className="relative overflow-hidden rounded-2xl border border-brass/40 bg-surface-container-low p-6 text-center">
-                <span className="mx-auto grid size-12 place-items-center rounded-2xl border border-brass/50 bg-brass/15 text-brass-ink shadow-sm">
-                  <Trophy className="size-6 text-brass" />
-                </span>
-                <p className="eyebrow mt-3 text-brass-ink">Session Concluded</p>
-                <h3 className="mt-1 font-display text-2xl font-medium tracking-tight text-ink">
-                  Battle Concluded
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-                  Escrow pool of <strong className="text-ink font-semibold tnum">{battle.total_pot} points</strong> has been awarded to top scholar(s).
-                </p>
+          {/* Main Body */}
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 text-ink">
+            
+            {/* ========================================================================= */}
+            {/* COMPLETED VIEW: Podium, Leaderboard & Rubric Solutions */}
+            {/* ========================================================================= */}
+            {isCompleted ? (
+              <div className="space-y-6">
+                
+                {/* Victory Banner */}
+                <div className="relative overflow-hidden rounded-2xl border border-brass/40 bg-surface-container-low/60 p-6 text-center">
+                  <div className="mx-auto size-12 rounded-2xl bg-brass/15 text-brass-ink flex items-center justify-center border border-brass/40 shadow-xs">
+                    <Trophy className="size-6 text-brass" />
+                  </div>
+                  <span className="eyebrow block mt-3 text-brass-ink font-bold tracking-[0.14em]">
+                    Match Finalized
+                  </span>
+                  <h3 className="font-display text-2xl font-normal text-ink tracking-tight mt-0.5">
+                    Battle Arena Concluded
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                    The escrow pot of <strong className="font-mono text-brass-ink font-bold tnum">{battle.total_pot} points</strong> has been awarded to the top scholar(s).
+                  </p>
 
-                {onRunItBack && (
-                  <div className="mt-5">
-                    <Button
-                      type="button"
-                      onClick={() => onRunItBack(battle)}
-                      className="h-9 rounded-full bg-forest text-white hover:bg-forest/90 font-semibold text-xs gap-1.5 px-5 shadow-sm press"
-                    >
-                      <RotateCcw className="size-3.5 text-[#8fd9b6]" />
-                      <span>Run It Back (Revenge Match)</span>
-                    </Button>
+                  {onRunItBack && (
+                    <div className="mt-4">
+                      <Button
+                        type="button"
+                        onClick={() => onRunItBack(battle)}
+                        className="h-10 rounded-full bg-forest text-white hover:bg-forest/90 font-semibold text-xs gap-2 px-6 shadow-lift active:scale-[0.98]"
+                      >
+                        <RotateCcw className="size-3.5 text-brass-soft" />
+                        <span>Run It Back (Revenge Duel)</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Ranked Leaderboard */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="eyebrow text-ink-soft">
+                      Final Standings
+                    </span>
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      {allFighters.length} Contestants
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-border/60 rounded-2xl border border-border/80 bg-surface-container-low/30 overflow-hidden">
+                    {allFighters
+                      .sort((a, b) => b.score - a.score)
+                      .map((fighter, rank) => {
+                        const isWinner = rank === 0;
+                        return (
+                          <div
+                            key={fighter.id}
+                            className={cn(
+                              "flex items-center justify-between p-3.5 text-xs transition-colors",
+                              isWinner ? "bg-brass/10 font-medium" : "hover:bg-surface-container-low"
+                            )}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span
+                                className={cn(
+                                  "size-6 rounded-lg grid place-items-center font-mono text-xs font-bold shrink-0",
+                                  isWinner
+                                    ? "bg-brass text-white shadow-xs"
+                                    : "bg-surface-container text-muted-foreground"
+                                )}
+                              >
+                                {rank + 1}
+                              </span>
+
+                              <Avatar className="size-8 border border-border shrink-0">
+                                <AvatarImage src={fighter.avatar_url || undefined} />
+                                <AvatarFallback className="text-[10px] font-semibold bg-forest text-white">
+                                  {fighter.user_name[0]}
+                                </AvatarFallback>
+                              </Avatar>
+
+                              <div className="truncate">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold text-ink truncate">
+                                    {fighter.user_name}
+                                  </span>
+                                  {isWinner && <Crown className="size-3.5 text-brass shrink-0" />}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground font-mono block">
+                                  {fighter.status === "submitted" ? "Completed" : "Active"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="font-mono font-bold text-ink text-sm tnum">
+                                {fighter.score} pts
+                              </span>
+                              {isWinner && battle.total_pot > 0 && (
+                                <Badge className="bg-brass/20 border-brass/40 text-brass-ink font-mono text-[10px] font-bold">
+                                  +{battle.total_pot} pts Won
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* Examination Solutions & Official Rubric */}
+                <div className="space-y-3">
+                  <span className="eyebrow text-ink-soft px-1 block">
+                    Examination Solutions & AI Rubric
+                  </span>
+
+                  <div className="space-y-3">
+                    {questions.map((q, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface-container-low/40 space-y-2.5"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <span className="font-mono text-xs text-muted-foreground font-semibold mt-0.5">
+                            Q{idx + 1}.
+                          </span>
+                          <p className="font-display font-medium text-ink text-sm sm:text-base leading-relaxed">
+                            {q.question}
+                          </p>
+                        </div>
+
+                        {battle.mode === "mcq" ? (
+                          <div className="rounded-xl border border-brand/30 bg-card p-3 text-xs flex items-center justify-between">
+                            <span className="text-muted-foreground">Certified Answer:</span>
+                            <span className="font-semibold text-forest">
+                              {q.options?.[q.correctAnswer]}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-border bg-card p-3.5 text-xs text-muted-foreground space-y-1">
+                            <span className="eyebrow block text-brass-ink">Model Derivation & Grading Rubric</span>
+                            <p className="text-ink leading-relaxed">
+                              {q.modelAnswer || q.explanation || "Official theoretical derivation rubric verified by academic ledger."}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              /* ========================================================================= */
+              /* ACTIVE MATCH PLAY VIEW */
+              /* ========================================================================= */
+              <div className="space-y-5">
+                
+                {/* MCQ Timer Bar */}
+                {isMcq && (
+                  <div className="space-y-1.5 p-3 rounded-2xl bg-surface-container-low/60 border border-border/80">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="eyebrow text-ink-soft">Pacing Timer</span>
+                      <span
+                        className={cn(
+                          "font-mono font-bold text-xs tnum flex items-center gap-1.5",
+                          timeLeft <= 4 ? "text-destructive animate-pulse" : "text-forest"
+                        )}
+                      >
+                        <Clock className="size-3.5" />
+                        <span>{timeLeft}s remaining</span>
+                      </span>
+                    </div>
+
+                    <Progress
+                      value={(timeLeft / (battle.time_per_question || 20)) * 100}
+                      className={cn(
+                        "h-1.5 rounded-full bg-surface-container overflow-hidden",
+                        timeLeft <= 4 ? "[&>div]:bg-destructive" : "[&>div]:bg-forest"
+                      )}
+                    />
                   </div>
                 )}
-              </div>
 
-              {/* Leaderboard */}
-              <div>
-                <p className="eyebrow px-1">Final Leaderboard</p>
-                <div className="mt-2 divide-y divide-border/60 rounded-2xl border border-border bg-card overflow-hidden">
-                  {allFighters
-                    .sort((a, b) => b.score - a.score)
-                    .map((fighter, rank) => {
-                      const isWinner = rank === 0;
+                {/* Question Docket Card */}
+                <div className="rounded-2xl border border-border/80 bg-surface-container-low/40 p-5 sm:p-6 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="eyebrow text-forest">
+                      Question {currentQIndex + 1} of {questions.length}
+                    </span>
+                    {!isMcq && (
+                      <Badge variant="outline" className="text-[10px] rounded-full border-border bg-card text-ink-soft">
+                        Untimed Session
+                      </Badge>
+                    )}
+                  </div>
+                  <h3 className="font-display text-xl sm:text-2xl font-normal text-ink leading-relaxed">
+                    {currentQ?.question || "Exam Question Prompt"}
+                  </h3>
+                </div>
+
+                {/* MCQ Choices (Tactile Cards) */}
+                {isMcq && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {currentQ?.options?.map((opt: string, optIdx: number) => {
+                      const isSelected = mcqAnswers[currentQIndex] === optIdx;
                       return (
-                        <div
-                          key={fighter.id}
+                        <button
+                          key={optIdx}
+                          type="button"
+                          disabled={hasSubmitted || isSpectator}
+                          onClick={() => handleSelectOption(optIdx)}
                           className={cn(
-                            "flex items-center justify-between p-3 text-xs transition-colors",
-                            isWinner ? "bg-brass/5 font-medium" : "hover:bg-surface-container-low"
+                            "p-4 rounded-2xl border text-left text-xs sm:text-sm font-medium flex items-center justify-between gap-3 transition-all cursor-pointer active:scale-[0.98]",
+                            isSelected
+                              ? "border-forest bg-forest text-white shadow-lift"
+                              : "border-border/80 bg-card hover:bg-surface-container-low text-ink"
                           )}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <span
                               className={cn(
-                                "size-6 rounded-lg grid place-items-center font-mono text-[11px] font-bold",
-                                isWinner
-                                  ? "bg-brass text-white shadow-xs"
-                                  : "bg-surface-container text-muted-foreground"
+                                "size-7 rounded-xl grid place-items-center font-mono text-xs font-bold shrink-0 border",
+                                isSelected
+                                  ? "bg-white/20 border-white/30 text-white"
+                                  : "bg-surface-container border-border/80 text-muted-foreground"
                               )}
                             >
-                              {rank + 1}
+                              {String.fromCharCode(65 + optIdx)}
                             </span>
-                            <Avatar className="size-7 border border-border">
-                              <AvatarImage src={fighter.avatar_url || undefined} />
-                              <AvatarFallback className="text-[10px] font-semibold bg-surface-container">
-                                {fighter.user_name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="truncate max-w-[150px] font-medium text-ink">
-                              {fighter.user_name}
-                            </span>
-                            {isWinner && (
-                              <Crown className="size-3.5 text-brass shrink-0" />
-                            )}
+                            <span className="leading-snug truncate">{opt}</span>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono font-bold text-ink text-sm tnum">
-                              {fighter.score} pts
-                            </span>
-                            {isWinner && battle.total_pot > 0 && (
-                              <Badge className="bg-brass/15 border-brass/30 text-brass-ink font-mono text-[10px] font-bold">
-                                +{battle.total_pot} pts Won
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+                          {isSelected && (
+                            <CheckCircle2 className="size-4.5 shrink-0 text-brass-soft" />
+                          )}
+                        </button>
                       );
                     })}
-                </div>
-              </div>
+                  </div>
+                )}
 
-              {/* Question Review & Solutions */}
-              <div>
-                <p className="eyebrow px-1">Examination Solutions & Rubric</p>
-                <div className="mt-2 space-y-2.5">
-                  {questions.map((q, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 rounded-2xl border border-border bg-card text-xs space-y-2"
-                    >
-                      <div className="flex items-start gap-2">
-                        <span className="font-mono text-muted-foreground font-semibold">
-                          Q{idx + 1}.
-                        </span>
-                        <p className="font-display font-medium text-ink text-sm leading-relaxed">
-                          {q.question}
-                        </p>
+                {/* Theory Studio (Multimodal workspace) */}
+                {!isMcq && (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-border/80 bg-surface-container-low/40 p-4 sm:p-5 space-y-3.5 shadow-xs">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="eyebrow text-ink-soft">Your Theoretical Derivation</span>
+                        
+                        <div className="flex items-center gap-2">
+                          {/* Snap Notes Camera */}
+                          <label className="h-8 px-3 rounded-full border border-border bg-card text-xs font-semibold flex items-center gap-1.5 text-ink hover:bg-surface-container cursor-pointer transition-colors active:scale-[0.97]">
+                            <Camera className="size-3.5 text-forest" />
+                            <span>Snap Notes</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              onChange={handleTheoryImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+
+                          {/* Whisper Voice Note */}
+                          {isRecordingAudio ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleStopVoiceRecording}
+                              className="h-8 px-3.5 rounded-full bg-destructive text-white text-xs font-semibold gap-1.5 animate-pulse"
+                            >
+                              <Square className="size-3 fill-current" />
+                              <span>Stop ({recordingSeconds}s)</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={handleStartVoiceRecording}
+                              className="h-8 px-3 rounded-full text-xs font-semibold gap-1.5 border-border bg-card text-ink hover:bg-surface-container cursor-pointer active:scale-[0.97]"
+                            >
+                              <Mic className="size-3.5 text-brass" />
+                              <span>Voice Derivation</span>
+                            </Button>
+                          )}
+                        </div>
                       </div>
 
-                      {battle.mode === "mcq" ? (
-                        <div className="mt-2 rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-[11px] font-medium text-forest">
-                          Correct Answer: <strong className="font-semibold text-ink">{q.options?.[q.correctAnswer]}</strong>
+                      {/* Photo attachment preview */}
+                      {theoryAnswers[currentQIndex]?.imageBase64 && (
+                        <div className="p-3 rounded-xl bg-card border border-brand/40 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <FileText className="size-4 text-brand" />
+                            <span className="font-semibold text-forest">
+                              Handwritten solution notes attached for AI optical verification
+                            </span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setTheoryAnswers((prev) => {
+                                const cur = prev[currentQIndex];
+                                return {
+                                  ...prev,
+                                  [currentQIndex]: {
+                                    text: cur?.text || "",
+                                    imageBase64: undefined,
+                                    audioTranscript: cur?.audioTranscript,
+                                  },
+                                };
+                              })
+                            }
+                            className="size-7 p-0 rounded-full text-muted-foreground hover:text-ink"
+                          >
+                            <X className="size-3.5" />
+                          </Button>
                         </div>
-                      ) : (
-                        <div className="mt-2 rounded-xl border border-border bg-surface-container-low p-2.5 text-[11px] text-muted-foreground space-y-1">
-                          <span className="eyebrow !text-ink-soft block">Model Answer & Rubric</span>
-                          <p className="text-ink leading-relaxed">
-                            {q.modelAnswer || q.explanation || "Official theoretical derivation rubric verified by academic ledger."}
+                      )}
+
+                      {/* Audio transcription preview */}
+                      {theoryAnswers[currentQIndex]?.audioTranscript && (
+                        <div className="p-3 rounded-xl bg-card border border-brass/30 text-xs text-ink space-y-1">
+                          <span className="eyebrow block text-brass-ink">Whisper Transcription</span>
+                          <p className="italic text-ink-soft leading-relaxed">
+                            "{theoryAnswers[currentQIndex]?.audioTranscript}"
                           </p>
                         </div>
                       )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* ========================================================================= */
-            /* ACTIVE MATCH PLAY VIEW */
-            /* ========================================================================= */
-            <div className="space-y-5">
-              {/* MCQ Countdown Progress */}
-              {isMcq && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="eyebrow">Time per question</span>
-                    <span
-                      className={cn(
-                        "font-mono font-bold text-xs tnum flex items-center gap-1",
-                        timeLeft <= 5 ? "text-destructive animate-pulse" : "text-brass-ink"
-                      )}
-                    >
-                      <Clock className="size-3.5" /> {timeLeft}s remaining
-                    </span>
-                  </div>
-                  <Progress
-                    value={(timeLeft / (battle.time_per_question || 20)) * 100}
-                    className={cn(
-                      "h-1.5 rounded-full bg-surface-container",
-                      timeLeft <= 5 ? "[&>div]:bg-destructive" : "[&>div]:bg-forest"
-                    )}
-                  />
-                </div>
-              )}
 
-              {/* Question Card */}
-              <div className="rounded-2xl border border-border bg-surface-container-low p-5 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="eyebrow">
-                    Question {currentQIndex + 1} of {questions.length}
-                  </span>
-                  {!isMcq && (
-                    <Badge variant="outline" className="text-[10px] rounded-full border-brand/30 text-brand bg-accent/30 font-semibold">
-                      Untimed Session
-                    </Badge>
-                  )}
-                </div>
-                <h3 className="font-display text-base sm:text-lg font-medium text-ink leading-relaxed">
-                  {currentQ?.question || "Exam Question Prompt"}
-                </h3>
-              </div>
-
-              {/* MCQ Choices */}
-              {isMcq && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {currentQ?.options?.map((opt: string, optIdx: number) => {
-                    const isSelected = mcqAnswers[currentQIndex] === optIdx;
-                    return (
-                      <button
-                        key={optIdx}
-                        type="button"
+                      {/* Derivation Textarea */}
+                      <textarea
+                        value={theoryAnswers[currentQIndex]?.text || ""}
+                        onChange={(e) =>
+                          setTheoryAnswers((prev) => ({
+                            ...prev,
+                            [currentQIndex]: {
+                              ...(prev[currentQIndex] || {}),
+                              text: e.target.value,
+                            },
+                          }))
+                        }
+                        placeholder="Write derivation steps, equations, or scholarly explanations..."
+                        rows={5}
                         disabled={hasSubmitted || isSpectator}
-                        onClick={() => handleSelectOption(optIdx)}
-                        className={cn(
-                          "p-4 rounded-2xl border text-left text-xs font-medium flex items-center justify-between gap-3 transition-all lift press",
-                          isSelected
-                            ? "border-forest bg-forest text-white shadow-sm"
-                            : "border-border bg-card hover:bg-surface-container-low text-ink"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={cn(
-                              "size-6 rounded-lg grid place-items-center font-mono text-xs font-bold shrink-0",
-                              isSelected
-                                ? "bg-white/20 text-white"
-                                : "bg-surface-container text-muted-foreground"
-                            )}
-                          >
-                            {String.fromCharCode(65 + optIdx)}
-                          </span>
-                          <span className="leading-snug">{opt}</span>
-                        </div>
-                        {isSelected && <CheckCircle2 className="size-4 shrink-0 text-[#8fd9b6]" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Theory Mode: Multimodal Studio */}
-              {!isMcq && (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-border bg-card p-4 space-y-3 shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="eyebrow">Your Solution / Derivation</span>
-                      <div className="flex items-center gap-2">
-                        {/* Camera attachment */}
-                        <label className="h-7 px-3 rounded-full border border-border text-[11px] font-semibold flex items-center gap-1.5 text-ink-soft hover:text-ink cursor-pointer bg-surface-container-low press">
-                          <Camera className="size-3.5 text-brand" />
-                          <span>Snap Notes</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={handleTheoryImageUpload}
-                            className="hidden"
-                          />
-                        </label>
-
-                        {/* Voice note recorder */}
-                        {isRecordingAudio ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={handleStopVoiceRecording}
-                            className="h-7 px-3 rounded-full bg-destructive text-white text-[11px] font-semibold gap-1.5 animate-pulse press"
-                          >
-                            <Square className="size-2.5 fill-current" />
-                            <span>Stop ({recordingSeconds}s)</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={handleStartVoiceRecording}
-                            className="h-7 px-3 rounded-full text-[11px] font-semibold gap-1.5 text-brass-ink border-brass/40 bg-brass/5 hover:bg-brass/10 press"
-                          >
-                            <Mic className="size-3.5 text-brass" />
-                            <span>Voice Derivation</span>
-                          </Button>
-                        )}
-                      </div>
+                        className="w-full resize-none rounded-xl border border-border bg-card p-3 text-xs sm:text-sm text-ink placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-forest leading-relaxed font-sans"
+                      />
                     </div>
 
-                    {/* Photo preview */}
-                    {theoryAnswers[currentQIndex]?.imageBase64 && (
-                      <div className="p-2.5 rounded-xl bg-accent/30 border border-brand/30 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <FileText className="size-4 text-brand" />
-                          <span className="font-medium text-forest">
-                            Handwritten notes attached for AI optical verification
-                          </span>
-                        </div>
+                    {/* Stepper Navigation */}
+                    <div className="flex items-center justify-between pt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={currentQIndex === 0}
+                        onClick={() => setCurrentQIndex((i) => i - 1)}
+                        className="h-10 rounded-full text-xs font-semibold gap-1.5 px-4 border-border bg-card cursor-pointer active:scale-[0.98]"
+                      >
+                        <ChevronLeft className="size-3.5" /> Previous
+                      </Button>
+
+                      {currentQIndex < questions.length - 1 ? (
                         <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setTheoryAnswers((prev) => {
-                              const cur = prev[currentQIndex];
-                              return {
-                                ...prev,
-                                [currentQIndex]: {
-                                  text: cur?.text || "",
-                                  imageBase64: undefined,
-                                  audioTranscript: cur?.audioTranscript,
-                                },
-                              };
-                            })
-                          }
-                          className="size-6 p-0 text-muted-foreground hover:text-ink"
+                          type="button"
+                          onClick={() => setCurrentQIndex((i) => i + 1)}
+                          className="h-10 rounded-full text-xs font-semibold gap-1.5 px-5 bg-forest text-white hover:bg-forest/90 cursor-pointer active:scale-[0.98]"
                         >
-                          <X className="size-3.5" />
+                          Next Question <ChevronRight className="size-3.5" />
                         </Button>
-                      </div>
-                    )}
-
-                    {/* Voice transcript preview */}
-                    {theoryAnswers[currentQIndex]?.audioTranscript && (
-                      <div className="p-3 rounded-xl bg-brass/10 border border-brass/25 text-xs text-ink space-y-1">
-                        <span className="eyebrow !text-brass-ink block">Whisper Transcription</span>
-                        <p className="italic text-ink-soft leading-relaxed">
-                          "{theoryAnswers[currentQIndex]?.audioTranscript}"
-                        </p>
-                      </div>
-                    )}
-
-                    <textarea
-                      value={theoryAnswers[currentQIndex]?.text || ""}
-                      onChange={(e) =>
-                        setTheoryAnswers((prev) => ({
-                          ...prev,
-                          [currentQIndex]: {
-                            ...(prev[currentQIndex] || {}),
-                            text: e.target.value,
-                          },
-                        }))
-                      }
-                      placeholder="Enter derivation steps, mathematical equations, or scholarly explanations..."
-                      rows={4}
-                      disabled={hasSubmitted || isSpectator}
-                      className="w-full resize-none bg-transparent text-sm text-ink placeholder:text-muted-foreground focus:outline-hidden leading-relaxed"
-                    />
+                      ) : (
+                        <Button
+                          type="button"
+                          disabled={isSubmitting || hasSubmitted || isSpectator}
+                          onClick={handleSubmitTheory}
+                          className="h-10 rounded-full bg-forest hover:bg-forest/90 text-white font-semibold text-xs gap-2 px-6 shadow-lift cursor-pointer active:scale-[0.98]"
+                        >
+                          {isSubmitting ? (
+                            <Loader2 className="size-3.5 animate-spin text-brass-soft" />
+                          ) : (
+                            <Send className="size-3.5 text-brass-soft" />
+                          )}
+                          <span>{hasSubmitted ? "Already Submitted" : "Submit All Solutions"}</span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
+                )}
 
-                  {/* Navigation Footer */}
-                  <div className="flex items-center justify-between pt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={currentQIndex === 0}
-                      onClick={() => setCurrentQIndex((i) => i - 1)}
-                      className="h-9 rounded-full text-xs font-semibold gap-1 px-4 border-border press"
-                    >
-                      <ChevronLeft className="size-3.5" /> Previous
-                    </Button>
-
-                    {currentQIndex < questions.length - 1 ? (
-                      <Button
-                        type="button"
-                        onClick={() => setCurrentQIndex((i) => i + 1)}
-                        className="h-9 rounded-full text-xs font-semibold gap-1 px-4 bg-forest text-white hover:bg-forest/90 press"
-                      >
-                        Next Question <ChevronRight className="size-3.5" />
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        disabled={isSubmitting || hasSubmitted || isSpectator}
-                        onClick={handleSubmitTheory}
-                        className="h-9 rounded-full bg-brand hover:bg-brand/90 text-white font-semibold text-xs gap-1.5 px-5 shadow-sm press"
-                      >
-                        {isSubmitting ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Send className="size-3.5" />
-                        )}
-                        <span>{hasSubmitted ? "Already Submitted" : "Submit All Solutions"}</span>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Anti-Peek Status Strip */}
-              <div className="pt-3 border-t border-border/80 space-y-2.5">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <Lock className="size-3 text-brass" />
-                    <span className="font-medium text-ink-soft">
-                      Anti-Peek Protocol: Solutions revealed once all scholars submit
+                {/* Anti-Peek Status Strip */}
+                <div className="pt-4 border-t border-border/80 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Lock className="size-3.5 text-brass" />
+                      <span className="font-semibold text-ink-soft">
+                        Anti-Peek Protocol: Solutions revealed once all scholars submit
+                      </span>
+                    </div>
+                    <span className="font-mono text-xs tnum">
+                      {submittedFighters.length} of {allFighters.length} submitted
                     </span>
                   </div>
-                  <span className="font-mono text-[11px] tnum">
-                    {submittedFighters.length}/{allFighters.length} submitted
-                  </span>
-                </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {allFighters.map((f) => {
-                    const isUser = f.user_id === currentUserId;
-                    const isDone = f.status === "submitted";
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {allFighters.map((f) => {
+                      const isUser = f.user_id === currentUserId;
+                      const isDone = f.status === "submitted";
 
-                    return (
-                      <div
-                        key={f.id}
-                        className={cn(
-                          "p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors",
-                          isDone
-                            ? "border-brand/30 bg-accent/40 text-forest"
-                            : "border-border bg-card text-muted-foreground"
-                        )}
-                      >
-                        <div className="flex items-center gap-2 truncate">
-                          <Avatar className="size-5 border border-border">
-                            <AvatarImage src={f.avatar_url || undefined} />
-                            <AvatarFallback className="text-[9px] font-semibold bg-surface-container">
-                              {f.user_name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate font-medium text-ink">
-                            {isUser ? "You" : f.user_name}
-                          </span>
+                      return (
+                        <div
+                          key={f.id}
+                          className={cn(
+                            "p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors",
+                            isDone
+                              ? "border-brand/40 bg-card text-forest shadow-xs"
+                              : "border-border/80 bg-surface-container-low/40 text-muted-foreground"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <Avatar className="size-5 border border-border">
+                              <AvatarImage src={f.avatar_url || undefined} />
+                              <AvatarFallback className="text-[9px] font-semibold bg-forest text-white">
+                                {f.user_name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate font-semibold text-ink">
+                              {isUser ? "You" : f.user_name}
+                            </span>
+                          </div>
+
+                          {isDone ? (
+                            <CheckCircle2 className="size-3.5 text-brand shrink-0" />
+                          ) : (
+                            <span className="size-2 rounded-full bg-brass animate-pulse shrink-0" />
+                          )}
                         </div>
-
-                        {isDone ? (
-                          <CheckCircle2 className="size-3.5 text-brand shrink-0" />
-                        ) : (
-                          <span className="size-2 rounded-full bg-brass animate-pulse shrink-0" />
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
+
               </div>
-            </div>
-          )}
+            )}
+
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>
