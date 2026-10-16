@@ -120,10 +120,10 @@ function LibraryPage() {
     try {
       const summaryText = `## Executive Summary: ${m.title}
 **Course:** ${m.course_code ? `${m.course_code} - ` : ""}${m.course}
-**Institution:** ${m.institution} · **Level:** ${m.level || "University Level"}
+**Institution:** ${m.institution}
 
 ### Core Focus & Concepts
-This verified material provides high-yield coverage of fundamental principles, step-by-step mathematical or theoretical derivations, and real-world applications tailored for semester examinations.
+This verified material provides high-yield coverage of fundamental principles, step-by-step mathematical or theoretical derivations, and real-world applications tailored for examinations and academic mastery.
 
 ### Key Takeaways & Exam Pointers
 1. **Fundamental Theorems & Definitions:** Make sure you can state and write down the foundational laws and formulas without hesitation.
@@ -263,19 +263,6 @@ This verified material provides high-yield coverage of fundamental principles, s
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-              aria-label="Filter by level"
-              className="h-9 cursor-pointer rounded-xl border border-border bg-white px-3 text-xs font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">All levels</option>
-              {LEVELS.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
             {hasFilters && (
               <button
                 type="button"
@@ -529,10 +516,10 @@ This verified material provides high-yield coverage of fundamental principles, s
                     </div>
                     <div className="rounded-xl border border-border bg-white p-3.5">
                       <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                        <GraduationCap className="size-3.5 text-moss" /> Level & Type
+                        <GraduationCap className="size-3.5 text-moss" /> Material Category
                       </p>
                       <p className="font-semibold text-ink mt-1 truncate">
-                        {selectedMaterial.level || "Any level"} · {selectedMaterial.material_type}
+                        {selectedMaterial.material_type}
                       </p>
                     </div>
                   </div>

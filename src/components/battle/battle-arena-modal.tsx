@@ -168,7 +168,13 @@ export function BattleArenaModal({
     if (hasSubmitted || isCompleted || isSpectator) return;
 
     const currentQ = questions[currentQIndex];
-    const isCorrect = optionIndex === currentQ?.correctAnswer;
+    const correctIdx =
+      typeof currentQ?.correctOptionIndex === "number"
+        ? currentQ.correctOptionIndex
+        : typeof currentQ?.correctAnswer === "number"
+        ? currentQ.correctAnswer
+        : 0;
+    const isCorrect = optionIndex === correctIdx;
 
     if (isCorrect) {
       battleAudio.playEmeraldChime();
@@ -197,11 +203,19 @@ export function BattleArenaModal({
     setIsSubmitting(true);
 
     let score = 0;
+    const ptsPerQ = questions.length > 0 ? 100 / questions.length : 20;
     questions.forEach((q, idx) => {
-      if (finalAnswers[idx] === q.correctAnswer) {
-        score += 20; // 5 questions * 20 = 100 max
+      const correctIdx =
+        typeof q.correctOptionIndex === "number"
+          ? q.correctOptionIndex
+          : typeof q.correctAnswer === "number"
+          ? q.correctAnswer
+          : 0;
+      if (finalAnswers[idx] === correctIdx) {
+        score += ptsPerQ;
       }
     });
+    score = Math.round(score);
 
     try {
       await submitBattleAnswersServerFn({
@@ -638,11 +652,31 @@ export function BattleArenaModal({
                         </div>
 
                         {battle.mode === "mcq" ? (
-                          <div className="rounded-xl border border-brand/30 bg-card p-3 text-xs flex items-center justify-between">
-                            <span className="text-muted-foreground">Certified Answer:</span>
-                            <span className="font-semibold text-forest">
-                              {q.options?.[q.correctAnswer]}
-                            </span>
+                          <div className="rounded-xl border border-brand/30 bg-card p-3 text-xs flex flex-col gap-1.5">
+                            {(() => {
+                              const correctIdx =
+                                typeof q.correctOptionIndex === "number"
+                                  ? q.correctOptionIndex
+                                  : typeof q.correctAnswer === "number"
+                                  ? q.correctAnswer
+                                  : 0;
+                              const optionText = q.options?.[correctIdx] || q.modelAnswer || "Correct Answer";
+                              return (
+                                <>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground font-medium">Certified Answer:</span>
+                                    <span className="font-semibold text-forest">
+                                      {q.options ? `Option ${String.fromCharCode(65 + correctIdx)}: ${optionText}` : optionText}
+                                    </span>
+                                  </div>
+                                  {q.explanation && (
+                                    <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                                      <span className="font-medium text-ink">Pedagogical Derivation: </span>{q.explanation}
+                                    </p>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <div className="rounded-xl border border-border bg-card p-3.5 text-xs text-muted-foreground space-y-1">

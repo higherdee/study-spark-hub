@@ -951,13 +951,21 @@ export async function requestWithdrawal(
   points: number,
   bankName: string,
   accountNumber: string,
-  accountName: string
+  accountName: string,
+  payoutMethod: "bank" | "card" | "giftcard" = "bank"
 ): Promise<string> {
   const profile = await getProfile(userId);
   if (!profile) throw new Error("Profile not found");
   if (profile.suspended) throw new Error("Account suspended");
+
+  // Enforce weekend-only withdrawal rule (Saturday - Sunday)
+  const day = new Date().getDay();
+  if (day !== 0 && day !== 6) {
+    throw new Error("Withdrawals are processed exclusively on weekends (Saturday - Sunday). Your balance remains safe and active.");
+  }
+
   if (points < MINIMUM_WITHDRAWAL_POINTS) {
-    throw new Error(`Minimum withdrawal is ${MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} SyllaPoints (₦${formatNaira(pointsToNaira(MINIMUM_WITHDRAWAL_POINTS))})`);
+    throw new Error(`Minimum withdrawal is ${MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} SyllaPoints`);
   }
   if (profile.points < points) throw new Error("Insufficient SyllaPoints balance");
 

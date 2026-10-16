@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/leaderboard")({
   head: () => ({
     meta: [
       { title: "Academic Leaderboard & Rankings — Syllaboss" },
-      { name: "description", content: "Top students across Nigerian institutions ranked by SyllaPoints, study hours, and verified uploads." },
+      { name: "description", content: "Top students across global institutions ranked by SyllaPoints, study hours, and verified uploads." },
     ],
   }),
   component: LeaderboardPage,
@@ -156,7 +156,7 @@ function LeaderboardPage() {
               <div className="flex flex-col gap-0.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-display text-xl text-white font-semibold tracking-tight">
-                    {profile.full_name || "Scholar Fellow"}
+                    {profile.username ? `@${profile.username}` : "Scholar"}
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-white/15 text-white text-[11px] font-medium backdrop-blur-md">
                     You
@@ -275,7 +275,6 @@ function LeaderboardPage() {
                     )}
                     <div className="min-w-0">
                       <h3 className="truncate font-display text-lg text-ink">@{handle}</h3>
-                      <p className="truncate text-xs text-muted-foreground">{s.full_name}</p>
                     </div>
                   </div>
 

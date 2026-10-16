@@ -44,7 +44,7 @@ import {
   SYLLAPLUS_PRICE_NAIRA,
 } from "@/lib/constants";
 import { useProfile } from "@/lib/profile";
-import { useStudyTimer } from "@/hooks/use-study-timer";
+import { useSharedStudyTimer } from "@/components/study-timer-context";
 import { StudentQrModal } from "@/components/student-qr-modal";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
 import {
@@ -141,8 +141,12 @@ function SettingsPage() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
 
-  // Active study timer hook (Relocated from Header)
-  const { seconds, isPaused, togglePause, totalStudyMinutes } = useStudyTimer();
+  // Active study timer hook (Synchronized across the entire app via StudyTimerContext)
+  const sharedTimer = useSharedStudyTimer();
+  const seconds = sharedTimer?.seconds ?? 0;
+  const isPaused = sharedTimer?.isPaused ?? false;
+  const togglePause = sharedTimer?.togglePause ?? (() => {});
+  const totalStudyMinutes = sharedTimer?.totalStudyMinutes ?? 0;
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -672,7 +676,7 @@ function SettingsPage() {
         </p>
         <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-xs">
           <p className="text-xs text-muted-foreground">
-            Configure your default Nigerian bank account for seamless cash-outs when redeeming SyllaPoints.
+            Configure your default bank account or payout destination for seamless cash-outs when redeeming SyllaPoints.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -912,22 +916,6 @@ function SettingsPage() {
                 placeholder="e.g. Physical Sciences"
                 className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Academic Level</label>
-              <select
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="100 Level">100 Level</option>
-                <option value="200 Level">200 Level</option>
-                <option value="300 Level">300 Level</option>
-                <option value="400 Level">400 Level</option>
-                <option value="500 Level">500 Level</option>
-                <option value="Postgraduate">Postgraduate</option>
-              </select>
             </div>
           </div>
 

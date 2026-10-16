@@ -52,6 +52,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { AiMessageRenderer } from "@/components/ai-message-renderer";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import {
@@ -323,25 +324,29 @@ export function CommunityPage() {
     if (!hasInitializedDesktopChatRef.current && !activeChat) {
       if (directConversations.length > 0) {
         const first = directConversations[0];
-        setActiveChat({
-          type: "peer",
-          id: first.id,
-          title: first.peer.full_name,
-          subtitle: `@${first.peer.username}`,
-          avatarUrl: first.peer.avatar_url,
-          peerId: first.peer.id,
-        });
-        hasInitializedDesktopChatRef.current = true;
+        if (first) {
+          setActiveChat({
+            type: "peer",
+            id: first.id,
+            title: first.peer.full_name,
+            subtitle: `@${first.peer.username}`,
+            avatarUrl: first.peer.avatar_url,
+            peerId: first.peer.id,
+          });
+          hasInitializedDesktopChatRef.current = true;
+        }
       } else if (studyGroups.length > 0) {
         const first = studyGroups[0];
-        setActiveChat({
-          type: "group",
-          id: first.id,
-          title: first.name,
-          subtitle: `${first.member_count} members`,
-          memberCount: first.member_count,
-        });
-        hasInitializedDesktopChatRef.current = true;
+        if (first) {
+          setActiveChat({
+            type: "group",
+            id: first.id,
+            title: first.name,
+            subtitle: `${first.member_count} members`,
+            memberCount: first.member_count,
+          });
+          hasInitializedDesktopChatRef.current = true;
+        }
       }
     }
   }, [directConversations, studyGroups]);
@@ -1058,7 +1063,7 @@ export function CommunityPage() {
                           groupId={activeChat.id}
                           currentUserId={user?.id || ""}
                           currentUserName={profile?.full_name || "Scholar"}
-                          currentUserAvatar={profile?.avatar_url}
+                          currentUserAvatar={profile?.avatar_url ?? null}
                           onOpenArena={(bId, role) => {
                             setActiveBattleIdForArena(bId);
                             setBattleArenaRole(role);
@@ -1134,7 +1139,11 @@ export function CommunityPage() {
                           </div>
                         )}
 
-                        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                        {isBossAi ? (
+                          <AiMessageRenderer content={msg.content} className="text-xs [&_p]:mb-1 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs" />
+                        ) : (
+                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                        )}
 
                         <div
                           className={cn(

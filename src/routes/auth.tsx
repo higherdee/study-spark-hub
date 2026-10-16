@@ -39,13 +39,9 @@ function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      if (isSignup) {
-        navigate({ to: "/onboarding" });
-      } else {
-        navigate({ to: "/dashboard" });
-      }
+      navigate({ to: "/dashboard" });
     }
-  }, [user, isSignup, navigate]);
+  }, [user, navigate]);
 
   return (
     <div className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
@@ -111,8 +107,8 @@ function AuthPage() {
                 appearance={clerkAppearance}
                 routing="virtual"
                 signInUrl="/auth?mode=signin"
-                forceRedirectUrl="/onboarding"
-                fallbackRedirectUrl="/onboarding"
+                forceRedirectUrl="/dashboard"
+                fallbackRedirectUrl="/dashboard"
               />
             ) : (
               <SignIn

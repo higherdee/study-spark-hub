@@ -132,7 +132,21 @@ export function BattleLobbyCard({
     }
   };
 
-  const statusLabel = isCompleted ? "Final" : isGrading ? "Grading" : "Lobby open";
+  const createdAtMs = new Date(battle.created_at).getTime();
+  const fiveMinMs = 5 * 60 * 1000;
+  const msElapsed = Date.now() - createdAtMs;
+  const isTimedOut = battle.status === "lobby" && msElapsed > fiveMinMs;
+  const remainingSec = Math.max(0, Math.floor((fiveMinMs - msElapsed) / 1000));
+  const remainingMins = Math.floor(remainingSec / 60);
+  const remainingSecsDisplay = String(remainingSec % 60).padStart(2, "0");
+
+  const statusLabel = isCompleted
+    ? "Final"
+    : isTimedOut
+    ? "Disbanded"
+    : isGrading
+    ? "Grading"
+    : `Lobby (${remainingMins}:${remainingSecsDisplay})`;
   const modeLabel = battle.mode === "mcq" ? "MCQ Blitz" : "Theory Showdown";
 
   return (
@@ -240,7 +254,11 @@ export function BattleLobbyCard({
 
       {/* Actions */}
       <div className="flex items-center gap-2 p-4 pt-4">
-        {isInvited && !isCompleted ? (
+        {isTimedOut ? (
+          <div className="w-full text-center py-2 text-xs font-semibold text-white/60 bg-white/5 rounded-xl border border-white/10">
+            Lobby expired & disbanded after 5 minutes
+          </div>
+        ) : isInvited && !isCompleted ? (
           <>
             <Button
               type="button"

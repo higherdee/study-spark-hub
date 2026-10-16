@@ -88,6 +88,8 @@ export function HostBattleModal({
   const [mode, setMode] = useState<"mcq" | "theory">("mcq");
   const [timePerQuestion, setTimePerQuestion] = useState<number>(20);
   const [customTime, setCustomTime] = useState<string>("");
+  const [questionCount, setQuestionCount] = useState<number>(5);
+  const [customQuestionCount, setCustomQuestionCount] = useState<string>("");
   const [stakeAmount, setStakeAmount] = useState<number>(10);
   const [customStake, setCustomStake] = useState<string>("");
 
@@ -301,7 +303,10 @@ export function HostBattleModal({
           sourceSummary,
           sourceContext,
           timePerQuestion: mode === "mcq" ? timePerQuestion : null,
-          questionCount: 5,
+          questionCount:
+            customQuestionCount && Number(customQuestionCount) > 0
+              ? Number(customQuestionCount)
+              : questionCount,
           stakeAmount,
           fighterIds: selectedFighterIds,
           sponsoredIds: sponsoredFighterIds,
@@ -664,6 +669,48 @@ export function HostBattleModal({
                       <span className="text-[10px]">Photo / Audio / Text</span>
                     </div>
                   )}
+                </div>
+
+                {/* Question Count Selection */}
+                <div className="pt-1 border-t border-border/50">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      AI Question Count
+                    </span>
+                    <span className="text-[10px] font-mono text-forest font-semibold">
+                      {customQuestionCount ? `${customQuestionCount} Qs` : `${questionCount} Qs`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {[5, 10, 15, 20].map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => {
+                          setQuestionCount(count);
+                          setCustomQuestionCount("");
+                        }}
+                        className={cn(
+                          "flex-1 h-8 rounded-lg border text-xs font-mono font-semibold transition-all cursor-pointer active:scale-[0.97]",
+                          questionCount === count && !customQuestionCount
+                            ? "border-forest bg-forest text-white shadow-xs"
+                            : "border-border bg-card hover:bg-surface-container text-ink"
+                        )}
+                      >
+                        {count} Qs
+                      </button>
+                    ))}
+                    <Input
+                      value={customQuestionCount}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setCustomQuestionCount(e.target.value);
+                        if (val > 0) setQuestionCount(val);
+                      }}
+                      placeholder="Custom"
+                      className="w-16 h-8 text-xs rounded-lg text-center border-border font-mono bg-card"
+                    />
+                  </div>
                 </div>
               </div>
 

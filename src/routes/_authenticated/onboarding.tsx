@@ -391,22 +391,6 @@ function Onboarding() {
                   value={course}
                   onChange={setCourse}
                 />
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="lvl" className="text-xs font-semibold text-ink">Academic Level</Label>
-                  <select
-                    id="lvl"
-                    value={level}
-                    onChange={(e) => setLevel(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-border bg-surface-container-low px-3.5 text-sm text-ink focus:outline-hidden"
-                  >
-                    {LEVELS.map((l) => (
-                      <option key={l} value={l}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
             </div>
           )}

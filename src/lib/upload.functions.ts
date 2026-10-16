@@ -161,8 +161,9 @@ export const requestWithdrawalServerFn = createServerFn({ method: "POST" })
         userId: z.string(),
         points: z.number().int().min(MINIMUM_WITHDRAWAL_POINTS),
         bankName: z.string().min(1),
-        accountNumber: z.string().min(10),
+        accountNumber: z.string().min(3),
         accountName: z.string().min(1),
+        payoutMethod: z.enum(["bank", "card", "giftcard"]).optional().default("bank"),
       })
       .parse(d)
   )
@@ -172,7 +173,8 @@ export const requestWithdrawalServerFn = createServerFn({ method: "POST" })
       data.points,
       data.bankName,
       data.accountNumber,
-      data.accountName
+      data.accountName,
+      data.payoutMethod
     );
     return { withdrawalId: id };
   });

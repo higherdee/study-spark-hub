@@ -13,7 +13,10 @@ import {
   Clock,
   Upload,
   Zap,
-  TrendingUp,
+  CreditCard,
+  Gift,
+  Globe,
+  Calendar,
 } from "lucide-react";
 import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
@@ -27,11 +30,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { getPointsLedger, getWithdrawals } from "@/integrations/turso/client";
 import {
   formatNaira,
+  formatUsd,
   POINTS_NAME,
-  POINTS_PER_NAIRA,
   MINIMUM_WITHDRAWAL_POINTS,
   MINIMUM_WITHDRAWAL_NAIRA,
+  MINIMUM_WITHDRAWAL_USD,
   pointsToNaira,
+  pointsToUsd,
+  isWeekendWithdrawalWindow,
 } from "@/lib/constants";
 import { NIGERIAN_BANKS, type NigerianBank } from "@/lib/nigerian-banks";
 import { useProfile } from "@/lib/profile";
@@ -41,12 +47,19 @@ import { requestWithdrawalServerFn, resolveBankAccountServerFn } from "@/lib/upl
 export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
   head: () => ({
     meta: [
-      { title: "SyllaPoints & Cash Out — Syllaboss" },
-      { name: "description", content: "Convert your SyllaPoints to Naira." },
+      { title: "SyllaPoints & Global Cash Out — Syllaboss" },
+      { name: "description", content: "Convert your SyllaPoints to local currency or international card disbursement." },
     ],
   }),
   component: WalletPage,
 });
+
+const GIFT_CARD_BRANDS = [
+  { id: "amazon", name: "Amazon Gift Card", icon: "📦" },
+  { id: "apple", name: "Apple App Store & iTunes", icon: "🍎" },
+  { id: "visa", name: "Visa Virtual Prepaid Card", icon: "💳" },
+  { id: "steam", name: "Steam Digital Wallet Code", icon: "🎮" },
+];
 
 function WalletPage() {
   const { user } = useAuth();
@@ -57,6 +70,9 @@ function WalletPage() {
   const [showPlusModal, setShowPlusModal] = useState(false);
 
   const [amount, setAmount] = useState(MINIMUM_WITHDRAWAL_POINTS);
+  const [payoutMethod, setPayoutMethod] = useState<"bank" | "card" | "giftcard">("bank");
+
+  // Bank payout states
   const [bankQuery, setBankQuery] = useState("");
   const [selectedBank, setSelectedBank] = useState<NigerianBank | null>(null);
   const [showBankDropdown, setShowBankDropdown] = useState(false);
@@ -65,19 +81,32 @@ function WalletPage() {
   const [isResolving, setIsResolving] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
+
+  // Card payout states (Capitalist)
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardHolder, setCardHolder] = useState("");
+
+  // Gift Card states
+  const [selectedGiftCard, setSelectedGiftCard] = useState(GIFT_CARD_BRANDS[0].name);
+  const [giftCardEmail, setGiftCardEmail] = useState(user?.email ?? "");
+
   const [busy, setBusy] = useState(false);
   const [activityTab, setActivityTab] = useState<"all" | "withdrawals" | "earnings">("all");
 
-  // Filtered Nigerian banks for autocomplete
+  const isWeekend = isWeekendWithdrawalWindow();
+
+  // Filtered banks for bank tab
   const filteredBanks = NIGERIAN_BANKS.filter((b) =>
     b.name.toLowerCase().includes(bankQuery.toLowerCase())
   ).slice(0, 10);
 
-  // Auto-resolve account name with Paystack when bank and 10 digits are filled
+  // Auto-resolve account name with Paystack/Bachs when bank and 10 digits are filled
   useEffect(() => {
-    if (!selectedBank || acct.length !== 10) {
-      setIsVerified(false);
-      setResolveError(null);
+    if (payoutMethod !== "bank" || !selectedBank || acct.length !== 10) {
+      if (payoutMethod === "bank") {
+        setIsVerified(false);
+        setResolveError(null);
+      }
       return;
     }
 
@@ -90,7 +119,7 @@ function WalletPage() {
         const res = await resolveBankAccountServerFn({
           data: {
             accountNumber: acct,
-            bankCode: selectedBank!.code,
+            bankCode: selectedBank?.code ?? "",
           },
         });
         if (!isCurrent) return;
@@ -103,7 +132,7 @@ function WalletPage() {
           setIsVerified(false);
           setResolveError(res.error || "Unable to match account name. Please verify account number.");
         }
-      } catch (err) {
+      } catch {
         if (!isCurrent) return;
         setIsVerified(false);
         setResolveError("Verification service temporarily unavailable.");
@@ -116,7 +145,7 @@ function WalletPage() {
     return () => {
       isCurrent = false;
     };
-  }, [selectedBank, acct]);
+  }, [payoutMethod, selectedBank, acct]);
 
   const ledger = useQuery({
     queryKey: ["ledger", user?.id],
@@ -147,17 +176,46 @@ function WalletPage() {
       toast.error(`Insufficient balance. You have ${points.toLocaleString()} ${POINTS_NAME}`);
       return;
     }
-    if (!selectedBank) {
-      toast.error("Please select your bank from the list.");
-      return;
-    }
-    if (acct.length !== 10) {
-      toast.error("Please enter a valid 10-digit account number.");
-      return;
-    }
-    if (!name.trim()) {
-      toast.error("Account name could not be resolved. Please verify details.");
-      return;
+
+    let finalBankName = "Bank Transfer";
+    let finalAccountNumber = acct.trim();
+    let finalAccountName = name.trim();
+
+    if (payoutMethod === "bank") {
+      if (!selectedBank) {
+        toast.error("Please select your bank from the list.");
+        return;
+      }
+      if (acct.length !== 10) {
+        toast.error("Please enter a valid 10-digit account number.");
+        return;
+      }
+      if (!name.trim()) {
+        toast.error("Account name could not be resolved. Please verify details.");
+        return;
+      }
+      finalBankName = selectedBank.name;
+    } else if (payoutMethod === "card") {
+      const cleanCard = cardNumber.replace(/\s+/g, "");
+      if (cleanCard.length < 15 || cleanCard.length > 19) {
+        toast.error("Please enter a valid 16-digit debit/credit card number.");
+        return;
+      }
+      if (!cardHolder.trim()) {
+        toast.error("Please enter the cardholder's legal name.");
+        return;
+      }
+      finalBankName = "Capitalist Global Card Disbursement";
+      finalAccountNumber = `CARD-${cleanCard.slice(-4)}`;
+      finalAccountName = cardHolder.trim();
+    } else if (payoutMethod === "giftcard") {
+      if (!giftCardEmail || !giftCardEmail.includes("@")) {
+        toast.error("Please enter a valid delivery email for your gift card.");
+        return;
+      }
+      finalBankName = `Gift Card (${selectedGiftCard})`;
+      finalAccountNumber = giftCardEmail.trim();
+      finalAccountName = profile?.full_name || user.email || "Valued Student";
     }
 
     setBusy(true);
@@ -166,12 +224,17 @@ function WalletPage() {
         data: {
           userId: user.id,
           points: amount,
-          bankName: selectedBank.name,
-          accountNumber: acct.trim(),
-          accountName: name.trim(),
+          bankName: finalBankName,
+          accountNumber: finalAccountNumber,
+          accountName: finalAccountName,
+          payoutMethod,
         },
       });
-      toast.success("Withdrawal requested! Payout will be sent to your verified bank account.");
+      toast.success(
+        isWeekend
+          ? "Withdrawal requested! Processing your weekend payout."
+          : "Withdrawal queued! Payouts are dispatched during the weekend window (Saturday & Sunday)."
+      );
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
       qc.invalidateQueries({ queryKey: ["withdrawals"] });
@@ -179,6 +242,8 @@ function WalletPage() {
       setSelectedBank(null);
       setAcct("");
       setName("");
+      setCardNumber("");
+      setCardHolder("");
       setIsVerified(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Withdrawal request failed");
@@ -193,13 +258,13 @@ function WalletPage() {
 
   return (
     <div className="stagger space-y-6">
-      {/* Balance */}
+      {/* Balance Card */}
       <section className="relative overflow-hidden rounded-3xl bg-forest p-6 text-white shadow-[var(--elev-3)] sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">
               <Coins className="size-3.5 text-brass-soft" />
-              {POINTS_NAME} wallet
+              {POINTS_NAME} Global Wallet
             </span>
             {isPlus && (
               <span className="rounded-full bg-brass/25 px-2.5 py-1 text-[11px] font-semibold text-brass-soft">
@@ -207,19 +272,33 @@ function WalletPage() {
               </span>
             )}
           </div>
-          <span className="text-xs text-white/60 tnum">
-            1 naira = {POINTS_PER_NAIRA} {POINTS_NAME}
-          </span>
+          <div className="flex items-center gap-3 text-xs text-white/70 tnum">
+            <span>1 pt = ₦0.83 (Regional)</span>
+            <span>·</span>
+            <span>1 pt = $0.004 (Global)</span>
+          </div>
         </div>
 
-        <p className="mt-7 text-xs font-medium uppercase tracking-[0.12em] text-white/60">
-          Cash value
-        </p>
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <h1 className="font-display text-5xl tracking-tight tnum sm:text-6xl">
-            {formatNaira(pointsToNaira(points))}
-          </h1>
-          <span className="text-sm text-white/70 tnum">{points.toLocaleString()} pts</span>
+        <div className="mt-7 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/60">
+              Regional Value (Africa / Asia)
+            </p>
+            <h1 className="mt-0.5 font-display text-4xl tracking-tight tnum sm:text-5xl">
+              {formatNaira(pointsToNaira(points))}
+            </h1>
+          </div>
+          <div className="border-l border-white/15 pl-6">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/60">
+              International Value (USD)
+            </p>
+            <h2 className="mt-0.5 font-display text-3xl tracking-tight tnum text-white/90 sm:text-4xl">
+              {formatUsd(pointsToUsd(points))}
+            </h2>
+          </div>
+          <span className="text-sm text-white/70 font-mono tnum self-end pb-1">
+            {points.toLocaleString()} total pts
+          </span>
         </div>
 
         <div className="mt-7 flex flex-wrap items-center gap-2.5">
@@ -229,7 +308,7 @@ function WalletPage() {
           >
             <a href="#withdraw-form">
               <ArrowUpRight className="size-4" />
-              Withdraw to bank
+              Cash out points
             </a>
           </Button>
           {!isPlus && (
@@ -254,6 +333,36 @@ function WalletPage() {
         </div>
       </section>
 
+      {/* Weekend Payout Status Banner */}
+      <div className={cn(
+        "flex items-center justify-between gap-3 p-4 rounded-2xl border text-xs leading-relaxed",
+        isWeekend
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+          : "border-brass/30 bg-brass/10 text-brass-ink dark:text-brass"
+      )}>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-xl",
+            isWeekend ? "bg-emerald-500/20 text-emerald-600" : "bg-brass/20 text-brass"
+          )}>
+            <Calendar className="size-4" />
+          </div>
+          <div>
+            <p className="font-bold">
+              {isWeekend ? "Weekend Payout Window Active" : "Scheduled Weekend Payout Protocol"}
+            </p>
+            <p className="text-[11px] opacity-80">
+              {isWeekend
+                ? "Withdrawals requested today are reviewed and dispatched in real-time throughout Saturday and Sunday."
+                : "All student cashouts are processed during the weekend window (Saturday & Sunday). You can queue your request now."}
+            </p>
+          </div>
+        </div>
+        <span className="font-mono font-bold text-[11px] shrink-0 uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/40 dark:bg-black/20">
+          {isWeekend ? "Active Now" : "Queued"}
+        </span>
+      </div>
+
       {/* Metrics */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="surface flex items-center gap-4 p-5">
@@ -262,8 +371,10 @@ function WalletPage() {
           </div>
           <div className="min-w-0">
             <p className="eyebrow">Total cashed out</p>
-            <p className="mt-0.5 font-display text-2xl text-ink tnum">{formatNaira(paid)}</p>
-            <p className="text-[11px] text-muted-foreground">Paid to your bank account</p>
+            <p className="mt-0.5 font-display text-2xl text-ink tnum">
+              {formatNaira(paid)} <span className="text-sm font-sans text-muted-foreground">({formatUsd(paid / 1400)})</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground">Verified payouts across all methods</p>
           </div>
         </div>
 
@@ -272,24 +383,26 @@ function WalletPage() {
             <Clock className="size-5" />
           </div>
           <div className="min-w-0">
-            <p className="eyebrow">Pending payouts</p>
+            <p className="eyebrow">Pending cash-outs</p>
             <p className="mt-0.5 font-display text-2xl text-ink tnum">
               {(withdrawals.data ?? []).filter((w) => w.status === "pending").length} requests
             </p>
-            <p className="text-[11px] text-muted-foreground">Processed every weekday</p>
+            <p className="text-[11px] text-muted-foreground">Dispatched every Saturday & Sunday</p>
           </div>
         </div>
       </div>
 
       <div id="withdraw-form" className="mt-8 grid gap-6 xl:grid-cols-2">
+        {/* Cash-Out Form with Multi-Method Tabs */}
         <form onSubmit={onSubmit} className="space-y-4 rounded-3xl border border-border/80 bg-card p-6 shadow-xs">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-semibold">Withdraw to bank</h2>
+            <h2 className="font-display text-xl font-semibold">Redeem SyllaPoints</h2>
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
               Min: {MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} {POINTS_NAME}
             </span>
           </div>
 
+          {/* Amount input */}
           <div className="space-y-2">
             <Label htmlFor="amt">{POINTS_NAME} to cash out</Label>
             <Input
@@ -299,122 +412,260 @@ function WalletPage() {
               step={100}
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              className="h-11 rounded-xl"
+              className="h-11 rounded-xl font-mono text-sm"
             />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>You will receive: <strong className="text-foreground">{formatNaira(pointsToNaira(amount))}</strong></span>
-              <span>Min withdrawal: {formatNaira(MINIMUM_WITHDRAWAL_NAIRA)}</span>
+            <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground gap-1">
+              <span>
+                Estimated payout: <strong className="text-foreground">{formatNaira(pointsToNaira(amount))}</strong> (or <strong className="text-foreground">{formatUsd(pointsToUsd(amount))}</strong>)
+              </span>
+              <span>Min: {MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} pts</span>
             </div>
           </div>
 
-          {/* Searchable Bank Selector with Nigerian Banks Autofill */}
-          <div className="relative space-y-2">
-            <Label htmlFor="bk">Select Nigerian Bank</Label>
-            <div className="relative">
-              <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                id="bk"
-                required
-                value={selectedBank ? selectedBank.name : bankQuery}
-                onChange={(e) => {
-                  setBankQuery(e.target.value);
-                  setSelectedBank(null);
-                  setShowBankDropdown(true);
-                  setIsVerified(false);
-                }}
-                onFocus={() => setShowBankDropdown(true)}
-                placeholder="Type your bank (e.g. OPay, GTBank, Kuda, Zenith...)"
-                className="h-11 rounded-xl pl-10"
-              />
-            </div>
+          {/* Payout Method Tabs */}
+          <div className="space-y-2 pt-1">
+            <Label>Select Payout Method</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setPayoutMethod("bank")}
+                className={cn(
+                  "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
+                  payoutMethod === "bank"
+                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <Building2 className="size-4" />
+                <span className="text-[11px] leading-tight">Bank (Bachs / NGN)</span>
+              </button>
 
-            {/* Bank dropdown list */}
-            {showBankDropdown && !selectedBank && filteredBanks.length > 0 && (
-              <div className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-2xl border border-border bg-card p-1.5 shadow-xl backdrop-blur-md">
-                {filteredBanks.map((b) => (
-                  <button
-                    key={b.code}
-                    type="button"
-                    onClick={() => {
-                      setSelectedBank(b);
-                      setBankQuery(b.name);
-                      setShowBankDropdown(false);
+              <button
+                type="button"
+                onClick={() => setPayoutMethod("card")}
+                className={cn(
+                  "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
+                  payoutMethod === "card"
+                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <CreditCard className="size-4" />
+                <span className="text-[11px] leading-tight">Card (Capitalist)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPayoutMethod("giftcard")}
+                className={cn(
+                  "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
+                  payoutMethod === "giftcard"
+                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <Gift className="size-4" />
+                <span className="text-[11px] leading-tight">Digital Gift Cards</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Method 1: Bank Transfer (Bachs / Paystack) */}
+          {payoutMethod === "bank" && (
+            <div className="space-y-4 pt-1 animate-fade-in">
+              <div className="relative space-y-2">
+                <Label htmlFor="bk">Select Bank</Label>
+                <div className="relative">
+                  <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    id="bk"
+                    required
+                    value={selectedBank ? selectedBank.name : bankQuery}
+                    onChange={(e) => {
+                      setBankQuery(e.target.value);
+                      setSelectedBank(null);
+                      setShowBankDropdown(true);
+                      setIsVerified(false);
                     }}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-secondary/70 transition-colors"
-                  >
-                    <span>{b.name}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">Bank</span>
-                  </button>
-                ))}
+                    onFocus={() => setShowBankDropdown(true)}
+                    placeholder="Search bank (e.g. OPay, GTBank, Kuda, Zenith...)"
+                    className="h-11 rounded-xl pl-10"
+                  />
+                </div>
+
+                {showBankDropdown && !selectedBank && filteredBanks.length > 0 && (
+                  <div className="absolute z-30 mt-1 max-h-56 w-full overflow-y-auto rounded-2xl border border-border bg-card p-1.5 shadow-xl backdrop-blur-md">
+                    {filteredBanks.map((b) => (
+                      <button
+                        key={b.code}
+                        type="button"
+                        onClick={() => {
+                          setSelectedBank(b);
+                          setBankQuery(b.name);
+                          setShowBankDropdown(false);
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-secondary/70 transition-colors"
+                      >
+                        <span>{b.name}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">Bank</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="ac">Account number (10 digits)</Label>
-              <Input
-                id="ac"
-                inputMode="numeric"
-                required
-                maxLength={10}
-                value={acct}
-                onChange={(e) => setAcct(e.target.value.replace(/\D/g, ""))}
-                placeholder="0123456789"
-                className="h-11 rounded-xl font-mono text-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="an">Account holder name</Label>
-              <Input
-                id="an"
-                readOnly
-                value={name}
-                placeholder={isResolving ? "Verifying with Paystack..." : "Auto-verified name"}
-                className={`h-11 rounded-xl font-medium ${isVerified ? "bg-brand/10 text-brand font-semibold" : ""}`}
-              />
-            </div>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="ac">Account number (10 digits)</Label>
+                  <Input
+                    id="ac"
+                    inputMode="numeric"
+                    required
+                    maxLength={10}
+                    value={acct}
+                    onChange={(e) => setAcct(e.target.value.replace(/\D/g, ""))}
+                    placeholder="0123456789"
+                    className="h-11 rounded-xl font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="an">Account holder name</Label>
+                  <Input
+                    id="an"
+                    readOnly
+                    value={name}
+                    placeholder={isResolving ? "Verifying account..." : "Auto-verified name"}
+                    className={`h-11 rounded-xl font-medium ${isVerified ? "bg-brand/10 text-brand font-semibold" : ""}`}
+                  />
+                </div>
+              </div>
 
-          {/* Real-time Paystack Verification Status Banner */}
-          {isResolving && (
-            <div className="flex items-center gap-2 rounded-xl bg-secondary/60 p-3 text-xs text-muted-foreground animate-pulse">
-              <Loader2 className="size-4 animate-spin text-primary" />
-              <span>Verifying account details with Paystack API...</span>
+              {isResolving && (
+                <div className="flex items-center gap-2 rounded-xl bg-secondary/60 p-3 text-xs text-muted-foreground animate-pulse">
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <span>Verifying account details with banking network...</span>
+                </div>
+              )}
+
+              {isVerified && (
+                <div className="flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 p-3 text-xs text-brand">
+                  <CheckCircle2 className="size-4 shrink-0 text-brand" />
+                  <span>Verified Account: <strong>{name}</strong></span>
+                </div>
+              )}
+
+              {resolveError && (
+                <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span>{resolveError}</span>
+                </div>
+              )}
             </div>
           )}
 
-          {isVerified && (
-            <div className="flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 p-3 text-xs text-brand">
-              <CheckCircle2 className="size-4 shrink-0 text-brand" />
-              <span>Verified Account Holder: <strong>{name}</strong></span>
+          {/* Method 2: International Card (Capitalist) */}
+          {payoutMethod === "card" && (
+            <div className="space-y-4 pt-1 animate-fade-in">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 font-semibold text-foreground">
+                  <Globe className="size-4 text-primary" />
+                  <span>Capitalist Global Card Disbursement</span>
+                </div>
+                <p className="mt-1 text-[11px] leading-relaxed">
+                  Direct payout to your international Visa or Mastercard in USD. Disbursed securely through Capitalist card payout gateway.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="cnum">16-Digit Card Number</Label>
+                <Input
+                  id="cnum"
+                  required
+                  placeholder="4000 1234 5678 9010"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  className="h-11 rounded-xl font-mono text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="chold">Cardholder Legal Name</Label>
+                <Input
+                  id="chold"
+                  required
+                  placeholder="e.g. John Doe"
+                  value={cardHolder}
+                  onChange={(e) => setCardHolder(e.target.value)}
+                  className="h-11 rounded-xl font-medium"
+                />
+              </div>
             </div>
           )}
 
-          {resolveError && (
-            <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-              <AlertCircle className="size-4 shrink-0" />
-              <span>{resolveError}</span>
+          {/* Method 3: Digital Gift Cards */}
+          {payoutMethod === "giftcard" && (
+            <div className="space-y-4 pt-1 animate-fade-in">
+              <div className="space-y-2">
+                <Label>Choose Brand</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {GIFT_CARD_BRANDS.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setSelectedGiftCard(b.name)}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all flex items-center gap-2.5",
+                        selectedGiftCard === b.name
+                          ? "border-primary bg-primary/10 text-foreground font-semibold"
+                          : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                      )}
+                    >
+                      <span className="text-xl">{b.icon}</span>
+                      <span className="text-xs">{b.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gemail">Delivery Email Address</Label>
+                <Input
+                  id="gemail"
+                  type="email"
+                  required
+                  value={giftCardEmail}
+                  onChange={(e) => setGiftCardEmail(e.target.value)}
+                  placeholder="Where should we send your digital code?"
+                  className="h-11 rounded-xl"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  The gift card redemption code and instructions will be delivered to this inbox upon weekend payout approval.
+                </p>
+              </div>
             </div>
           )}
 
           <Button
             type="submit"
-            disabled={busy || points < MINIMUM_WITHDRAWAL_POINTS || !isVerified}
+            disabled={
+              busy ||
+              points < MINIMUM_WITHDRAWAL_POINTS ||
+              (payoutMethod === "bank" && !isVerified) ||
+              (payoutMethod === "card" && !cardNumber.trim()) ||
+              (payoutMethod === "giftcard" && !giftCardEmail.includes("@"))
+            }
             className="w-full h-11 rounded-xl font-medium shadow-xs transition-all active:scale-[0.98] mt-2"
           >
             {busy && <Loader2 className="animate-spin size-4 mr-2" />}
             {points < MINIMUM_WITHDRAWAL_POINTS
               ? `Earn ${MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} ${POINTS_NAME} to cash out`
-              : !selectedBank
-              ? "Select your bank to proceed"
-              : !isVerified
-              ? "Verify account number first"
-              : "Request Withdrawal"}
+              : payoutMethod === "bank" && !isVerified
+              ? "Verify bank account number"
+              : "Request Cash Out"}
           </Button>
         </form>
 
-        {/* Recent Transactions & Activity Stream */}
+        {/* Activity Ledger */}
         <section className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs flex flex-col">
           <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-border/60">
             <h2 className="font-display text-lg font-bold">Activity Ledger</h2>
@@ -459,7 +710,6 @@ function WalletPage() {
           </div>
 
           <div className="mt-4 flex-1 overflow-y-auto max-h-[440px] pr-1 space-y-2">
-            {/* Withdrawals items */}
             {(activityTab === "all" || activityTab === "withdrawals") &&
               (withdrawals.data ?? []).map((w) => (
                 <div
@@ -472,7 +722,7 @@ function WalletPage() {
                     </div>
                     <div>
                       <p className="font-bold text-xs text-foreground">
-                        Withdrawal: {formatNaira(w.amount_naira)}
+                        Cash Out: {formatNaira(w.amount_naira)} ({formatUsd(w.amount_naira / 1400)})
                       </p>
                       <p className="text-[11px] text-muted-foreground">
                         {w.bank_name} ••{w.account_number.slice(-4)} · {new Date(w.created_at).toLocaleDateString()}
@@ -488,7 +738,6 @@ function WalletPage() {
                 </div>
               ))}
 
-            {/* Earnings items */}
             {(activityTab === "all" || activityTab === "earnings") &&
               (ledger.data ?? []).map((l) => (
                 <div
@@ -496,10 +745,12 @@ function WalletPage() {
                   className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-border/60 bg-secondary/15 hover:bg-secondary/30 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "grid size-9 place-items-center rounded-xl shrink-0",
-                      l.amount > 0 ? "bg-brand/10 text-brand" : "bg-red-500/10 text-red-600"
-                    )}>
+                    <div
+                      className={cn(
+                        "grid size-9 place-items-center rounded-xl shrink-0",
+                        l.amount > 0 ? "bg-brand/10 text-brand" : "bg-red-500/10 text-red-600"
+                      )}
+                    >
                       {l.amount > 0 ? (
                         <ArrowDownLeft className="size-4" />
                       ) : (
@@ -515,19 +766,22 @@ function WalletPage() {
                       </p>
                     </div>
                   </div>
-                  <span className={cn(
-                    "font-mono text-xs font-bold shrink-0",
-                    l.amount > 0 ? "text-brand dark:text-brand" : "text-muted-foreground"
-                  )}>
+                  <span
+                    className={cn(
+                      "font-mono text-xs font-bold shrink-0",
+                      l.amount > 0 ? "text-brand dark:text-brand" : "text-muted-foreground"
+                    )}
+                  >
                     {l.amount > 0 ? `+${l.amount.toLocaleString()}` : l.amount.toLocaleString()} pts
                   </span>
                 </div>
               ))}
 
-            {/* Empty state */}
             {((activityTab === "withdrawals" && (withdrawals.data ?? []).length === 0) ||
               (activityTab === "earnings" && (ledger.data ?? []).length === 0) ||
-              (activityTab === "all" && (withdrawals.data ?? []).length === 0 && (ledger.data ?? []).length === 0)) && (
+              (activityTab === "all" &&
+                (withdrawals.data ?? []).length === 0 &&
+                (ledger.data ?? []).length === 0)) && (
               <div className="py-12 text-center text-xs text-muted-foreground">
                 No transaction activity found.
               </div>
@@ -536,7 +790,6 @@ function WalletPage() {
         </section>
       </div>
 
-      {/* SyllaPlus Modal */}
       <SyllaPlusModal
         open={showPlusModal}
         onClose={() => setShowPlusModal(false)}

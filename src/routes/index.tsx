@@ -112,15 +112,15 @@ const SHOWCASE_TABS = [
   {
     id: "rewards",
     title: "SyllaPoints Cash Rewards",
-    badge: "Direct Bank Payouts",
+    badge: "Direct Cash Outs",
     description:
-      "Earn 25 SyllaPoints every time you share verified lecture summaries or past question solutions. Convert accumulated points directly to Naira with payouts to any Nigerian bank.",
-    metric: "₦3,000 Min. Payout",
+      "Earn SyllaPoints every time you share verified lecture summaries or past question solutions. Convert accumulated points directly to local currency, international cards, or digital gift cards.",
+    metric: "5,700 Min. Pts",
     icon: Coins,
     highlights: [
       "+25 SyllaPoints per approved academic upload",
       "Daily rewards for consistent 30-minute study streaks",
-      "Zero hidden fees — automated transfer to your bank",
+      "Weekend cash-outs via bank transfer, card, or gift cards",
     ],
   },
 ];
@@ -143,8 +143,8 @@ const FAQ = [
     "Boss AI is powered by an advanced academic reasoning engine configured with KaTeX. It automatically renders Greek variables, matrices, loop-closure kinematics, integrals, and physics equations in clean, publication-grade mathematical typography.",
   ],
   [
-    "How do SyllaPoints rewards work and how do I withdraw to my bank?",
-    `Students earn +${POINTS_PER_VERIFIED_UPLOAD} SyllaPoints per verified academic upload, plus bonus points for study streaks. Every 100 points equals ₦${100 / POINTS_PER_NAIRA}. Once your balance reaches ₦${MINIMUM_WITHDRAWAL_NAIRA}, you can request an instant bank transfer to any Nigerian bank.`,
+    "How do SyllaPoints rewards work and how do I cash out?",
+    `Students earn +${POINTS_PER_VERIFIED_UPLOAD} SyllaPoints per verified academic upload, plus bonus points for study streaks. For regional students (Africa, India, Pakistan, Nepal), 1 pt = ₦0.83. For international students, 1 pt = $0.004 USD. Once your balance reaches 5,700 points, cash out via bank transfer, international debit/credit card, or digital gift cards during weekend payout windows.`,
   ],
 ];
 
@@ -262,7 +262,7 @@ export function HomePage() {
             {/* Social Proof Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-white/10 border border-black/[0.06] dark:border-white/10 shadow-xs text-emerald-800 dark:text-emerald-300 text-xs font-semibold mb-6 animate-v2-enter">
               <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>The Academic Companion You Control · 200+ Nigerian Universities</span>
+              <span>The Academic Companion You Control · Global & Regional Universities</span>
             </div>
 
             {/* Main Headline with Tight Tracking */}
@@ -833,7 +833,7 @@ export function HomePage() {
               Ready to master your syllabus with complete clarity?
             </h2>
             <p className="mt-4 max-w-[540px] text-sm sm:text-base text-emerald-100/80 leading-relaxed">
-              Join thousands of Nigerian undergraduates preparing for first-class academic honors with
+              Join thousands of undergraduates preparing for first-class academic honors with
               Syllaboss and Boss AI.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center gap-3">
@@ -867,8 +867,7 @@ export function HomePage() {
             <div className="col-span-2 space-y-4">
               <SyllabossLogo />
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
-                The premier verified study and courseware companion for Nigerian university students,
-                benchmarked against NUC CCMAS academic standards. Instant offline PWA, zero installers.
+                The premier verified study and courseware companion for university students worldwide. Instant offline PWA, zero installers.
               </p>
               <div className="flex items-center gap-2 pt-1 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
                 <span className="relative flex h-2 w-2">
@@ -999,7 +998,7 @@ export function HomePage() {
           {/* Bottom Row */}
           <div className="pt-8 border-t border-slate-200/80 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
             <p>
-              &copy; {new Date().getFullYear()} Syllaboss Technologies Ltd. All rights reserved. Built for Nigerian tertiary excellence.
+              &copy; {new Date().getFullYear()} Syllaboss Technologies Ltd. All rights reserved. Built for academic excellence worldwide.
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <Link to="/privacy" className="hover:text-slate-900 dark:hover:text-white transition-colors">

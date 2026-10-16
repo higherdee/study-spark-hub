@@ -1,9 +1,12 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { BookOpen, FileStack, Home, Trophy, Upload, Wallet, Shield, Bot, Users, Settings } from "lucide-react";
-import { useEffect } from "react";
+import { BookOpen, FileStack, Home, Trophy, Upload, Wallet, Shield, Bot, Users, Settings, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
 import { useIsAdmin, useProfile } from "@/lib/profile";
+import { Button } from "@/components/ui/button";
+import { DashboardOnboardingModal } from "@/components/onboarding/dashboard-onboarding-modal";
+import { AppWalkthroughGuide } from "@/components/onboarding/app-walkthrough-guide";
 
 import { PageBreathingLoader } from "@/components/syllaboss-logo";
 
@@ -45,9 +48,21 @@ function DashboardLayout() {
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const { data: isAdmin } = useIsAdmin();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Onboarding Modal & Walkthrough Guide States
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+
+  // Auto-prompt onboarding modal on dashboard if profile is incomplete
+  useEffect(() => {
+    if (!isLoading && profile) {
+      if (profile.onboarding_step < 3) {
+        setShowOnboardingModal(true);
+      }
+    }
+  }, [isLoading, profile?.id, profile?.onboarding_step]);
 
   // Auto-activate streak as soon as student enters the app (no manual check-in needed)
   useEffect(() => {
@@ -68,49 +83,93 @@ function DashboardLayout() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!isLoading && (!profile || profile.onboarding_step < 3)) {
-      navigate({ to: "/onboarding" });
-    }
-  }, [profile, isLoading, navigate]);
-
-  if (isLoading || !profile || profile.onboarding_step < 3) {
+  if (isLoading || !profile) {
     return <PageBreathingLoader message="Synchronizing academic records..." />;
   }
 
+  const needsOnboarding = profile.onboarding_step < 3;
+
   return (
-    <AppShell
-      nav={nav}
-      secondary={secondary}
-      title="Student"
-      footer={
-        isAdmin ? (
-          <Link
-            to="/admin"
-            className="press flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-[13px] font-semibold text-ink transition-colors hover:bg-muted"
-          >
-            <Shield className="size-4 text-brand" /> Admin console
-          </Link>
-        ) : null
-      }
-    >
-      {profile.suspended && (
-        <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm font-medium text-destructive">
-          Your account is suspended. You can't upload or cash out until an admin restores it.
-        </div>
-      )}
-      <div
-        key={pathname}
-        className={
-          pathname.startsWith("/dashboard/assistant") ||
-          pathname.startsWith("/dashboard/community") ||
-          pathname.startsWith("/dashboard/preview")
-            ? "route-enter overflow-hidden"
-            : "route-enter"
+    <>
+      <AppShell
+        nav={nav}
+        secondary={secondary}
+        title="Student"
+        footer={
+          isAdmin ? (
+            <Link
+              to="/admin"
+              className="press flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-[13px] font-semibold text-ink transition-colors hover:bg-muted"
+            >
+              <Shield className="size-4 text-brand" /> Admin console
+            </Link>
+          ) : null
         }
       >
-        <Outlet />
-      </div>
-    </AppShell>
+        {/* Incomplete Onboarding Announcement Banner */}
+        {needsOnboarding && (
+          <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-brass/40 bg-gradient-to-r from-brass/15 via-brass/10 to-surface-container-low p-4 text-ink shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="size-9 rounded-xl bg-brass/20 text-brass-ink flex items-center justify-center shrink-0 border border-brass/40">
+                <AlertCircle className="size-5 text-brass" />
+              </div>
+              <div className="text-xs">
+                <p className="font-semibold text-ink">Action Required: Complete Your Academic Profile</p>
+                <p className="text-muted-foreground mt-0.5">
+                  Set your university, course, and username to enable study battles, library customization, and weekend withdrawals.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setShowOnboardingModal(true)}
+              className="h-8.5 rounded-xl bg-forest text-white hover:bg-forest/90 font-semibold text-xs px-4 shrink-0 shadow-xs active:scale-[0.98]"
+            >
+              Complete Setup
+            </Button>
+          </div>
+        )}
+
+        {profile.suspended && (
+          <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm font-medium text-destructive">
+            Your account is suspended. You can't upload or cash out until an admin restores it.
+          </div>
+        )}
+        <div
+          key={pathname}
+          className={
+            pathname.startsWith("/dashboard/assistant") ||
+            pathname.startsWith("/dashboard/community") ||
+            pathname.startsWith("/dashboard/preview")
+              ? "route-enter overflow-hidden"
+              : "route-enter"
+          }
+        >
+          <Outlet />
+        </div>
+      </AppShell>
+
+      {/* Pop-up Modal for Onboarding Details */}
+      {profile && (
+        <DashboardOnboardingModal
+          isOpen={showOnboardingModal}
+          profile={profile}
+          onClose={() => {
+            setShowOnboardingModal(false);
+            setShowGuide(true);
+          }}
+          onComplete={() => {
+            setShowOnboardingModal(false);
+            setShowGuide(true);
+          }}
+        />
+      )}
+
+      {/* 10-Step Interactive App Tour */}
+      <AppWalkthroughGuide
+        isOpen={showGuide}
+        onClose={() => setShowGuide(false)}
+      />
+    </>
   );
 }

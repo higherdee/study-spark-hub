@@ -143,7 +143,7 @@ function HomePage() {
     for (const e of ledger) {
       if (e.amount <= 0) continue;
       const i = index.get(dayKey(new Date(e.created_at)));
-      if (i !== undefined) days[i].total += e.amount;
+      if (i !== undefined && days[i]) days[i]!.total += e.amount;
     }
     const max = Math.max(1, ...days.map((d) => d.total));
     return { days, max, sum: days.reduce((a, d) => a + d.total, 0) };
@@ -164,7 +164,7 @@ function HomePage() {
             {greeting}, {firstName}
           </h1>
           <p className="mt-2 truncate text-sm text-muted-foreground">
-            {[profile?.course || profile?.department, profile?.level, profile?.institution]
+            {[profile?.course || profile?.department, profile?.institution]
               .filter(Boolean)
               .join(" · ") || "Complete your profile to personalise your library"}
           </p>

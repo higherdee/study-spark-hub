@@ -7,23 +7,62 @@ export const PLAN_NAME = "SyllaPlus";
 
 // SyllaPlus 1.3x Earning Multiplier
 export const SYLLAPLUS_EARNINGS_MULTIPLIER = 1.3;
-export const SYLLAPLUS_PRICE_NAIRA = 1500;
-export const PAYSTACK_PUBLIC_KEY =
-  (typeof import.meta !== "undefined" && import.meta.env?.['VITE_PAYSTACK_PUBLIC_KEY'] as string | undefined) ||
-  (typeof process !== "undefined" && process.env?.['VITE_PAYSTACK_PUBLIC_KEY']) ||
-  "pk_test_dce9deb490b95d717f302454b656a2450d83da4d";
+export const SYLLAPLUS_PRICE_NAIRA = 7999;
 
-// Economics: 1 Naira = 5 SyllaPoints
-export const POINTS_PER_NAIRA = 5;
-export const pointsToNaira = (points: number) => Math.floor(points / POINTS_PER_NAIRA);
-export const nairaToPoints = (naira: number) => Math.floor(naira * POINTS_PER_NAIRA);
+// Regional & International Pricing Models
+export const REGIONAL_COUNTRIES = [
+  // Africa
+  "Nigeria", "Ghana", "Kenya", "South Africa", "Egypt", "Rwanda", "Uganda", "Tanzania",
+  "Ethiopia", "Cameroon", "Senegal", "Ivory Coast", "Morocco", "Algeria", "Tunisia",
+  // South Asia
+  "India", "Pakistan", "Nepal"
+];
+
+export const SYLLAPLUS_PRICING = {
+  regional: {
+    currency: "NGN",
+    symbol: "₦",
+    weekly: 2499,
+    monthly: 7999,
+    yearly: 80000,
+  },
+  international: {
+    currency: "USD",
+    symbol: "$",
+    monthly: 13.99,
+    yearly: 119.99,
+  },
+};
+
+// Economics:
+// Regional (Africa, India, Pakistan, Nepal): 1 SyllaPoint = 0.83 NGN
+// International: 1 SyllaPoint = $0.004 USD (0.4 cent)
+export const POINT_VALUE_NAIRA = 0.83;
+export const POINT_VALUE_USD = 0.004;
+export const POINTS_PER_NAIRA = 1.2;
+
+export const pointsToNaira = (points: number) => Math.round(points * POINT_VALUE_NAIRA);
+export const nairaToPoints = (naira: number) => Math.round(naira / POINT_VALUE_NAIRA);
+
+export const pointsToUsd = (points: number) => Number((points * POINT_VALUE_USD).toFixed(2));
+export const usdToPoints = (usd: number) => Math.round(usd / POINT_VALUE_USD);
 
 export const formatNaira = (n: number) =>
   new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
 
-// Minimum withdrawal: 17,500 SyllaPoints = ₦3,500
-export const MINIMUM_WITHDRAWAL_POINTS = 17500;
-export const MINIMUM_WITHDRAWAL_NAIRA = pointsToNaira(MINIMUM_WITHDRAWAL_POINTS);
+export const formatUsd = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
+
+// Minimum withdrawal: 5,700 SyllaPoints for all students
+export const MINIMUM_WITHDRAWAL_POINTS = 5700;
+export const MINIMUM_WITHDRAWAL_NAIRA = pointsToNaira(MINIMUM_WITHDRAWAL_POINTS); // ₦4,731
+export const MINIMUM_WITHDRAWAL_USD = pointsToUsd(MINIMUM_WITHDRAWAL_POINTS); // $22.80
+
+// Weekend-only withdrawals enforcement (Saturdays and Sundays only)
+export function isWeekendWithdrawalWindow(): boolean {
+  const day = new Date().getDay(); // 0 = Sunday, 6 = Saturday
+  return day === 0 || day === 6;
+}
 
 // Reward Milestones (Standard)
 export const POINTS_REGISTRATION_BONUS = 200;
@@ -48,7 +87,7 @@ export const STUDY_INACTIVITY_LIMIT_MS = 60 * 60 * 1000; // 1 hour inactivity th
 export const POINTS_REFERRAL_REGISTRATION = 40;
 export const POINTS_REFERRAL_UPGRADE = 200;
 
-export const LEVELS = ["100 Level", "200 Level", "300 Level", "400 Level", "500 Level", "600 Level", "Postgraduate"];
+export const LEVELS: string[] = [];
 export const MATERIAL_TYPES = [
   "Lecture notes",
   "Past questions",

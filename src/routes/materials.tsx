@@ -25,9 +25,9 @@ export const Route = createFileRoute("/materials")({
   head: () => ({
     meta: [
       { title: "Search study materials — Syllaboss" },
-      { name: "description", content: "Find verified lecture notes, past questions and handouts shared by students." },
+      { name: "description", content: "Find verified lecture notes, past questions and handouts shared by students globally." },
       { property: "og:title", content: "Search study materials — Syllaboss" },
-      { property: "og:description", content: "Verified notes and past questions from students across Nigerian universities." },
+      { property: "og:description", content: "Verified notes and past questions from students across global universities." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -63,7 +63,7 @@ function MaterialsPage() {
     }
     setPreviewMaterial(m);
     try {
-      await recordMaterialViewServerFn({ data: { materialId: m.id, userId: user?.id } });
+      await recordMaterialViewServerFn({ data: { materialId: m.id } });
       qc.invalidateQueries({ queryKey: ["search-materials"] });
     } catch (e) {
       console.warn("View record failed", e);
@@ -120,17 +120,6 @@ function MaterialsPage() {
           >
             <option value="">All Document Types</option>
             {MATERIAL_TYPES.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-          <select
-            value={level}
-            onChange={(e) => navigate({ search: (s) => ({ ...s, level: e.target.value }) })}
-            className="h-9 rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-ink focus:outline-hidden press"
-            aria-label="Level"
-          >
-            <option value="">All Academic Levels</option>
-            {LEVELS.map((t) => (
               <option key={t}>{t}</option>
             ))}
           </select>

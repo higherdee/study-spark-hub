@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { getProfile, upsertProfile, isUserAdmin, type Profile } from "@/integrations/turso/client";
 
+export { upsertProfile, type Profile };
+
 export function useProfile() {
   const { user } = useAuth();
   return useQuery<Profile | null>({

@@ -272,41 +272,22 @@ function UploadPage() {
               onChange={setInst}
             />
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="l" className="text-xs font-semibold text-ink-soft">
-                  Level <span className="text-destructive">*</span>
-                </Label>
-                <select
-                  id="l"
-                  value={level}
-                  onChange={(e) => setLevel(e.target.value)}
-                  className="flex h-11 w-full cursor-pointer rounded-xl border border-border bg-muted/50 px-3 text-sm focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {LEVELS.map((lvl) => (
-                    <option key={lvl} value={lvl}>
-                      {lvl}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="ty" className="text-xs font-semibold text-ink-soft">
-                  Type <span className="text-destructive">*</span>
-                </Label>
-                <select
-                  id="ty"
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="flex h-11 w-full cursor-pointer rounded-xl border border-border bg-muted/50 px-3 text-sm focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {MATERIAL_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="ty" className="text-xs font-semibold text-ink-soft">
+                Type <span className="text-destructive">*</span>
+              </Label>
+              <select
+                id="ty"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="flex h-11 w-full cursor-pointer rounded-xl border border-border bg-muted/50 px-3 text-sm focus:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {MATERIAL_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -319,7 +300,7 @@ function UploadPage() {
                 maxLength={300}
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
-                placeholder="Topics covered, lecturer, semester…"
+                placeholder="Key syllabus concepts, topics covered, lecturer/professor…"
                 className="resize-none rounded-xl bg-muted/50 text-sm focus:bg-white"
                 rows={3}
               />

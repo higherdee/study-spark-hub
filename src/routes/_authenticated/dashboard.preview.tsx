@@ -246,12 +246,11 @@ function DocumentPreviewPage() {
     setAiThinking(true);
 
     try {
-      const systemPrompt = `You are Boss AI, an elite Nigerian university academic tutor.
+      const systemPrompt = `You are Boss AI, an elite global university academic tutor.
 You are currently helping a student study this document:
 Title: "${material?.title || "Study Material"}"
 Course: "${material?.course_code ? `${material.course_code} - ` : ""}${material?.course || ""}"
-Institution: "${material?.institution || "National Curriculum (NUC CCMAS)"}"
-Level: "${material?.level || "Undergraduate"}"
+Institution: "${material?.institution || "University Curriculum"}"
 Syllabus / Scope: "${material?.description || ""}"
 
 Formatting Guidelines:
