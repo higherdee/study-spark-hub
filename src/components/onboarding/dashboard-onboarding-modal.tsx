@@ -31,6 +31,7 @@ interface DashboardOnboardingModalProps {
   onClose: () => void;
   profile: Profile;
   onComplete: () => void;
+  onOpenGuide?: () => void;
 }
 
 export function DashboardOnboardingModal({
@@ -38,6 +39,7 @@ export function DashboardOnboardingModal({
   onClose,
   profile,
   onComplete,
+  onOpenGuide,
 }: DashboardOnboardingModalProps) {
   const qc = useQueryClient();
 
@@ -204,6 +206,13 @@ export function DashboardOnboardingModal({
 
   const handleClose = () => {
     onClose();
+  };
+
+  const handleDismissToGuide = () => {
+    onClose();
+    if (onOpenGuide) {
+      onOpenGuide();
+    }
   };
 
   return (

@@ -162,6 +162,10 @@ function DashboardLayout() {
           onComplete={() => {
             setShowOnboardingModal(false);
           }}
+          onOpenGuide={() => {
+            setShowOnboardingModal(false);
+            setShowGuide(true);
+          }}
         />
       )}
 
