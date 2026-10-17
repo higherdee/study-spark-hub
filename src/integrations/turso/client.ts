@@ -207,12 +207,17 @@ function mapMaterial(row: Record<string, unknown>): Material {
 // Safe helper methods for Turso Database
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  const rs = await turso.execute({
-    sql: "SELECT * FROM profiles WHERE id = ? LIMIT 1",
-    args: [userId],
-  });
-  if (rs.rows.length === 0 || !rs.rows[0]) return null;
-  return mapProfile(rs.rows[0] as unknown as Record<string, unknown>);
+  try {
+    const rs = await turso.execute({
+      sql: "SELECT * FROM profiles WHERE id = ? LIMIT 1",
+      args: [userId],
+    });
+    if (rs.rows.length === 0 || !rs.rows[0]) return null;
+    return mapProfile(rs.rows[0] as unknown as Record<string, unknown>);
+  } catch (err) {
+    console.warn("getProfile network exception:", err);
+    return null;
+  }
 }
 
 export async function upsertProfile(data: {
@@ -999,19 +1004,29 @@ export async function requestWithdrawal(
 }
 
 export async function getPointsLedger(userId: string): Promise<PointsLedgerEntry[]> {
-  const rs = await turso.execute({
-    sql: "SELECT * FROM points_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
-    args: [userId],
-  });
-  return rs.rows as unknown as PointsLedgerEntry[];
+  try {
+    const rs = await turso.execute({
+      sql: "SELECT * FROM points_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+      args: [userId],
+    });
+    return (rs.rows as unknown as PointsLedgerEntry[]) || [];
+  } catch (err) {
+    console.warn("getPointsLedger network exception:", err);
+    return [];
+  }
 }
 
 export async function getWithdrawals(userId: string): Promise<Withdrawal[]> {
-  const rs = await turso.execute({
-    sql: "SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC",
-    args: [userId],
-  });
-  return rs.rows as unknown as Withdrawal[];
+  try {
+    const rs = await turso.execute({
+      sql: "SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC",
+      args: [userId],
+    });
+    return (rs.rows as unknown as Withdrawal[]) || [];
+  } catch (err) {
+    console.warn("getWithdrawals network exception:", err);
+    return [];
+  }
 }
 
 export async function isUserAdmin(userId: string): Promise<boolean> {

@@ -246,10 +246,12 @@ function WalletPage() {
     let finalAccountNumber = acct.trim();
     let finalAccountName = name.trim();
 
+    const activeDenom = selectedDenomination || giftCardOptions[1] || giftCardOptions[0];
+
     if (payoutMethod === "giftcard") {
-      pointsToWithdraw = selectedDenomination.points;
+      pointsToWithdraw = activeDenom.points;
       if (points < pointsToWithdraw) {
-        toast.error(`Insufficient balance for the ${selectedDenomination.label} card (${pointsToWithdraw.toLocaleString()} pts required).`);
+        toast.error(`Insufficient balance for the ${activeDenom.label} card (${pointsToWithdraw.toLocaleString()} pts required).`);
         return;
       }
       if (!giftCardEmail || !giftCardEmail.includes("@")) {
@@ -257,7 +259,7 @@ function WalletPage() {
         return;
       }
       const brand = GIFT_CARD_BRANDS.find((b) => b.id === selectedBrandId);
-      finalBankName = `Digital Gift Card: ${brand?.name || "Gift Card"} (${selectedDenomination.label}${isRegional ? ` · ${selectedDenomination.localLabel}` : ""})`;
+      finalBankName = `Digital Gift Card: ${brand?.name || "Gift Card"} (${activeDenom.label}${isRegional ? ` · ${activeDenom.localLabel}` : ""})`;
       finalAccountNumber = giftCardEmail.trim();
       finalAccountName = profile?.full_name || user.email || "Scholar";
     } else if (payoutMethod === "bank") {
@@ -341,6 +343,7 @@ function WalletPage() {
   }
 
   const selectedBrand = GIFT_CARD_BRANDS.find((b) => b.id === selectedBrandId) || GIFT_CARD_BRANDS[0];
+  const activeDenom = selectedDenomination || giftCardOptions[1] || giftCardOptions[0];
 
   const paid = (withdrawals.data ?? [])
     .filter((w) => w.status === "paid")
@@ -775,7 +778,7 @@ function WalletPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {giftCardOptions.map((d) => {
-                    const isSelected = selectedDenomination.amountUsd === d.amountUsd;
+                    const isSelected = activeDenom?.amountUsd === d.amountUsd;
                     return (
                       <button
                         key={d.amountUsd}
@@ -828,11 +831,11 @@ function WalletPage() {
                     <p className="text-[9px] uppercase tracking-wider opacity-60">Redeemable Value</p>
                     <div className="flex items-baseline gap-2">
                       <p className="text-xl font-bold font-mono tracking-tight text-white">
-                        {selectedDenomination.label}
+                        {activeDenom?.label ?? "$10 Gift Card"}
                       </p>
-                      {isRegional && (
+                      {isRegional && activeDenom?.localLabel && (
                         <span className="text-xs font-semibold text-white/80">
-                          ({selectedDenomination.localLabel})
+                          ({activeDenom.localLabel})
                         </span>
                       )}
                     </div>
@@ -840,7 +843,7 @@ function WalletPage() {
                   <div className="text-right">
                     <p className="text-[9px] uppercase tracking-wider opacity-60">Exchange Rate</p>
                     <p className="text-xs font-mono font-bold text-white/90">
-                      {selectedDenomination.points.toLocaleString()} pts
+                      {activeDenom?.points ? activeDenom.points.toLocaleString() : "12,500"} pts
                     </p>
                     {isRegional && (
                       <p className="text-[9px] text-white/70">

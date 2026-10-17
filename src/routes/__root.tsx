@@ -42,22 +42,32 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
-  console.error(error);
+  console.error("TanStack Root Error:", error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-6">
-      <div className="route-enter !h-auto max-w-md text-center">
-        <p className="eyebrow text-destructive">System Ledger Notice</p>
-        <h1 className="mt-3 font-display text-4xl sm:text-5xl font-medium tracking-tight text-ink">
-          This record couldn't be loaded.
+    <div className="flex min-h-dvh items-center justify-center bg-background px-6 py-12">
+      <div className="route-enter !h-auto max-w-lg text-center">
+        <p className="eyebrow text-destructive font-semibold tracking-wider">System Recovery</p>
+        <h1 className="mt-3 font-display text-3xl sm:text-4xl font-medium tracking-tight text-ink">
+          Something interrupted this view.
         </h1>
         <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-          An unexpected interruption occurred while reading the academic ledger. You can retry the request or return to your dashboard.
+          An unexpected interruption occurred. You can retry immediately, return to your dashboard, or reload the page.
         </p>
+
+        {errorMessage && errorMessage !== "undefined" && (
+          <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-left">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-destructive font-bold">Error Details</p>
+            <p className="mt-1 text-xs font-mono text-muted-foreground break-all">{errorMessage}</p>
+          </div>
+        )}
+
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => {
@@ -69,11 +79,17 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
             Try again
           </button>
           <a
-            href="/"
-            className="press inline-flex h-10 items-center justify-center rounded-full border border-border bg-card px-6 text-xs font-semibold text-ink hover:bg-surface-container"
+            href="/dashboard"
+            className="press inline-flex h-10 items-center justify-center rounded-full bg-primary px-6 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
           >
-            Return Home
+            Dashboard
           </a>
+          <button
+            onClick={() => window.location.reload()}
+            className="press inline-flex h-10 items-center justify-center rounded-full border border-border bg-card px-5 text-xs font-semibold text-ink hover:bg-surface-container"
+          >
+            Reload page
+          </button>
         </div>
       </div>
     </div>

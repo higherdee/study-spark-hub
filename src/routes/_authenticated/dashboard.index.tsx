@@ -140,10 +140,17 @@ function HomePage() {
       return { date: d, total: 0 };
     });
     const index = new Map(days.map((d, i) => [dayKey(d.date), i]));
-    for (const e of ledger) {
-      if (e.amount <= 0) continue;
-      const i = index.get(dayKey(new Date(e.created_at)));
-      if (i !== undefined && days[i]) days[i]!.total += e.amount;
+    const safeLedger = Array.isArray(ledger) ? ledger : [];
+    for (const e of safeLedger) {
+      if (!e || typeof e.amount !== "number" || e.amount <= 0 || !e.created_at) continue;
+      try {
+        const dt = new Date(e.created_at);
+        if (isNaN(dt.getTime())) continue;
+        const i = index.get(dayKey(dt));
+        if (i !== undefined && days[i]) days[i]!.total += e.amount;
+      } catch {
+        // Skip invalid date entry
+      }
     }
     const max = Math.max(1, ...days.map((d) => d.total));
     return { days, max, sum: days.reduce((a, d) => a + d.total, 0) };
