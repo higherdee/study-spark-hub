@@ -9,8 +9,8 @@ export type SearchOption = {
 };
 
 type SearchSelectProps = {
-  id: string;
-  label: string;
+  id?: string;
+  label?: string;
   placeholder: string;
   options: SearchOption[];
   value: SearchOption | null;
@@ -59,9 +59,11 @@ export function SearchSelect({
 
   return (
     <div ref={rootRef} className="relative min-w-0">
-      <label htmlFor={id} className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={id} className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
+          {label}
+        </label>
+      )}
       <div className="relative">
         <Search aria-hidden="true" className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input

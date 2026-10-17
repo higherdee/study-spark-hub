@@ -17,7 +17,7 @@ import {
   ShieldCheck,
   Check,
 } from "lucide-react";
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useMemo, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/app-shell";
@@ -37,6 +37,8 @@ import {
   pointsToNaira,
   pointsToUsd,
   isWeekendWithdrawalWindow,
+  getGiftCardOptions,
+  type GiftCardDenomination,
 } from "@/lib/constants";
 import { NIGERIAN_BANKS, type NigerianBank } from "@/lib/nigerian-banks";
 import { useProfile } from "@/lib/profile";
@@ -102,12 +104,6 @@ const GIFT_CARD_BRANDS: GiftCardBrandConfig[] = [
   },
 ];
 
-const GIFT_CARD_DENOMINATIONS = [
-  { amountUsd: 5, points: 1250, label: "$5 USD" },
-  { amountUsd: 10, points: 2500, label: "$10 USD" },
-  { amountUsd: 20, points: 5000, label: "$20 USD" },
-];
-
 function WalletPage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
@@ -116,6 +112,9 @@ function WalletPage() {
   const points = profile?.points ?? 0;
   const isPlus = Boolean(profile?.sylla_plus);
   const [showPlusModal, setShowPlusModal] = useState(false);
+
+  // Dynamic Gift Card Options ($5, $10, $20) converted based on local currency rate
+  const giftCardOptions = useMemo(() => getGiftCardOptions(isRegional), [isRegional]);
 
   // Amount in points to cash out
   const [amount, setAmount] = useState(MINIMUM_WITHDRAWAL_POINTS);
@@ -150,8 +149,18 @@ function WalletPage() {
 
   // Gift Card states ($5, $10, $20)
   const [selectedBrandId, setSelectedBrandId] = useState<GiftCardBrandId>("amazon");
-  const [selectedDenomination, setSelectedDenomination] = useState(GIFT_CARD_DENOMINATIONS[1]); // $10 default
+  const [selectedDenomination, setSelectedDenomination] = useState<GiftCardDenomination>(
+    () => giftCardOptions[1] || giftCardOptions[0]
+  );
   const [giftCardEmail, setGiftCardEmail] = useState(user?.email ?? "");
+
+  // Keep selectedDenomination in sync when region loads
+  useEffect(() => {
+    setSelectedDenomination((prev) => {
+      const match = giftCardOptions.find((o) => o.amountUsd === prev?.amountUsd);
+      return match || giftCardOptions[1] || giftCardOptions[0];
+    });
+  }, [giftCardOptions]);
 
   const [busy, setBusy] = useState(false);
   const [activityTab, setActivityTab] = useState<"all" | "withdrawals" | "earnings">("all");
@@ -248,7 +257,7 @@ function WalletPage() {
         return;
       }
       const brand = GIFT_CARD_BRANDS.find((b) => b.id === selectedBrandId);
-      finalBankName = `Digital Gift Card: ${brand?.name || "Gift Card"} (${selectedDenomination.label})`;
+      finalBankName = `Digital Gift Card: ${brand?.name || "Gift Card"} (${selectedDenomination.label}${isRegional ? ` · ${selectedDenomination.localLabel}` : ""})`;
       finalAccountNumber = giftCardEmail.trim();
       finalAccountName = profile?.full_name || user.email || "Scholar";
     } else if (payoutMethod === "bank") {
@@ -756,11 +765,16 @@ function WalletPage() {
                 </div>
               </div>
 
-              {/* Denomination Selector ($5, $10, $20) */}
+              {/* Denomination Selector ($5, $10, $20) with Local Currency Conversion */}
               <div className="space-y-2">
-                <Label>Choose Denomination</Label>
+                <div className="flex items-center justify-between text-xs">
+                  <Label>Choose Denomination</Label>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {isRegional ? "Exchange: $1 = ₦1,500 · 1 pt = ₦0.83" : "Rate: 1 pt = $0.004 USD"}
+                  </span>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {GIFT_CARD_DENOMINATIONS.map((d) => {
+                  {giftCardOptions.map((d) => {
                     const isSelected = selectedDenomination.amountUsd === d.amountUsd;
                     return (
                       <button
@@ -768,14 +782,21 @@ function WalletPage() {
                         type="button"
                         onClick={() => setSelectedDenomination(d)}
                         className={cn(
-                          "p-2.5 rounded-2xl border text-center transition-all",
+                          "p-2.5 rounded-2xl border text-center transition-all flex flex-col justify-between",
                           isSelected
-                            ? "border-primary bg-primary/10 shadow-xs font-bold"
+                            ? "border-primary bg-primary/10 shadow-xs font-bold ring-1 ring-primary/30"
                             : "border-border/70 bg-card hover:bg-secondary/40"
                         )}
                       >
-                        <div className="text-sm font-bold text-foreground">{d.label}</div>
-                        <div className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                        <div>
+                          <div className="text-sm font-bold text-foreground">{d.label}</div>
+                          {isRegional && (
+                            <div className="text-[11px] font-semibold text-primary mt-0.5">
+                              {d.localLabel}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-[10px] font-mono text-muted-foreground mt-1">
                           {d.points.toLocaleString()} pts
                         </div>
                       </button>
@@ -805,15 +826,27 @@ function WalletPage() {
                 <div className="mt-6 flex items-end justify-between">
                   <div>
                     <p className="text-[9px] uppercase tracking-wider opacity-60">Redeemable Value</p>
-                    <p className="text-xl font-bold font-mono tracking-tight text-white">
-                      {selectedDenomination.label}
-                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-xl font-bold font-mono tracking-tight text-white">
+                        {selectedDenomination.label}
+                      </p>
+                      {isRegional && (
+                        <span className="text-xs font-semibold text-white/80">
+                          ({selectedDenomination.localLabel})
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-[9px] uppercase tracking-wider opacity-60">Exchange Rate</p>
                     <p className="text-xs font-mono font-bold text-white/90">
                       {selectedDenomination.points.toLocaleString()} pts
                     </p>
+                    {isRegional && (
+                      <p className="text-[9px] text-white/70">
+                        (SyllaPoints → ₦ → $)
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

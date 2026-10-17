@@ -44,7 +44,7 @@ import {
   SYLLAPLUS_PRICE_NAIRA,
 } from "@/lib/constants";
 import { useProfile } from "@/lib/profile";
-import { useSharedStudyTimer } from "@/components/study-timer-context";
+import { milestoneRemaining, useSharedStudyTimer } from "@/components/study-timer-context";
 import { StudentQrModal } from "@/components/student-qr-modal";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
 import {
@@ -144,6 +144,7 @@ function SettingsPage() {
   // Active study timer hook (Synchronized across the entire app via StudyTimerContext)
   const sharedTimer = useSharedStudyTimer();
   const seconds = sharedTimer?.seconds ?? 0;
+  const { label: timerLabel, progress: timerProgress } = milestoneRemaining(seconds);
   const isPaused = sharedTimer?.isPaused ?? false;
   const togglePause = sharedTimer?.togglePause ?? (() => {});
   const totalStudyMinutes = sharedTimer?.totalStudyMinutes ?? 0;
@@ -597,14 +598,14 @@ function SettingsPage() {
               </span>
               <div className="flex items-baseline gap-2 font-mono">
                 <span className="font-display text-3xl font-extrabold text-foreground tracking-tight">
-                  {String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}
+                  {timerLabel}
                 </span>
                 <span className="text-xs text-muted-foreground font-medium">
-                  {isPaused ? "(Paused)" : "(Tracking focus)"}
+                  {isPaused ? "(Paused)" : "(Time to next +5 pts)"}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Earn <strong>+5 SyllaPoints</strong> automatically every 30 minutes of active reading!
+                Earn <strong>+5 SyllaPoints</strong> every 30 minutes. Current session active time: <strong>{String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}</strong>
               </p>
             </div>
 

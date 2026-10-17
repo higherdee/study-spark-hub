@@ -53,6 +53,47 @@ export const formatNaira = (n: number) =>
 export const formatUsd = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
 
+export const USD_TO_NAIRA_EXCHANGE_RATE = 1500;
+
+export interface GiftCardDenomination {
+  amountUsd: number;
+  localAmount: number;
+  localCurrency: string;
+  points: number;
+  label: string;
+  localLabel: string;
+}
+
+export function getGiftCardOptions(isRegional: boolean): GiftCardDenomination[] {
+  const tiers = [5, 10, 20];
+  return tiers.map((usd) => {
+    if (isRegional) {
+      // Points convert to Naira (1 pt = 0.83 NGN), Naira converts to USD Gift Card ($1 = 1,500 NGN)
+      const localNaira = usd * USD_TO_NAIRA_EXCHANGE_RATE;
+      const pts = Math.round(localNaira / POINT_VALUE_NAIRA);
+      return {
+        amountUsd: usd,
+        localAmount: localNaira,
+        localCurrency: "NGN",
+        points: pts,
+        label: `$${usd} USD`,
+        localLabel: formatNaira(localNaira),
+      };
+    } else {
+      // International: 1 pt = $0.004 USD
+      const pts = Math.round(usd / POINT_VALUE_USD);
+      return {
+        amountUsd: usd,
+        localAmount: usd,
+        localCurrency: "USD",
+        points: pts,
+        label: `$${usd} USD`,
+        localLabel: formatUsd(usd),
+      };
+    }
+  });
+}
+
 // Minimum withdrawal: 5,700 SyllaPoints for all students
 export const MINIMUM_WITHDRAWAL_POINTS = 5700;
 export const MINIMUM_WITHDRAWAL_NAIRA = pointsToNaira(MINIMUM_WITHDRAWAL_POINTS); // ₦4,731

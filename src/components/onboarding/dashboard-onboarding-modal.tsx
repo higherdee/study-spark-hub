@@ -65,6 +65,19 @@ export function DashboardOnboardingModal({
   const [upgrading, setUpgrading] = useState(false);
   const { isRegional, countryName } = useGeo();
 
+  // Ensure that every time the modal is opened, it always presents the fresh setup form
+  useEffect(() => {
+    if (isOpen) {
+      setStage("form");
+      if (profile.full_name) setFullName(profile.full_name);
+      if (profile.username && !profile.username.startsWith("student_")) setUsername(profile.username);
+      if (profile.institution) setInstitution({ label: profile.institution });
+      if (profile.course) setCourse({ label: profile.course });
+      if (profile.department) setDepartment(profile.department);
+      if (profile.referral_source) setReferralCode(profile.referral_source);
+    }
+  }, [isOpen, profile.id]);
+
   // Generate suggested handle if username is default student_...
   useEffect(() => {
     if (!username || username.startsWith("student_")) {
@@ -189,19 +202,16 @@ export function DashboardOnboardingModal({
     }
   };
 
-  const handleDismissToGuide = () => {
-    onComplete();
+  const handleClose = () => {
     onClose();
   };
 
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-md animate-fade-in"
-      onClick={handleDismissToGuide}
     >
       <div
         className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] border border-white/20 bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-2xl animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Glow ambient background */}
         <div className="absolute -top-20 -right-20 size-56 rounded-full bg-gradient-to-br from-forest/20 via-brand/15 to-brass/20 blur-3xl pointer-events-none" />
@@ -228,7 +238,7 @@ export function DashboardOnboardingModal({
 
               <button
                 type="button"
-                onClick={handleDismissToGuide}
+                onClick={handleClose}
                 aria-label="Skip for now"
                 className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all"
               >
@@ -542,10 +552,13 @@ export function DashboardOnboardingModal({
 
               <button
                 type="button"
-                onClick={handleDismissToGuide}
+                onClick={() => {
+                  onComplete();
+                  onClose();
+                }}
                 className="text-xs text-muted-foreground hover:text-ink font-semibold py-1.5 cursor-pointer"
               >
-                Continue with Free Plan & View App Guide
+                Continue with Free Plan
               </button>
             </div>
           </div>

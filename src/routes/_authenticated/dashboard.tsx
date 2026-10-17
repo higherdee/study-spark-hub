@@ -158,11 +158,9 @@ function DashboardLayout() {
           profile={profile}
           onClose={() => {
             setShowOnboardingModal(false);
-            setShowGuide(true);
           }}
           onComplete={() => {
             setShowOnboardingModal(false);
-            setShowGuide(true);
           }}
         />
       )}
