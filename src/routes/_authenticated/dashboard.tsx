@@ -7,6 +7,8 @@ import { useIsAdmin, useProfile } from "@/lib/profile";
 import { Button } from "@/components/ui/button";
 import { DashboardOnboardingModal } from "@/components/onboarding/dashboard-onboarding-modal";
 import { AppWalkthroughGuide } from "@/components/onboarding/app-walkthrough-guide";
+import { AntiVpnShield } from "@/components/security/anti-vpn-shield";
+import { useGeo } from "@/lib/geo";
 
 import { PageBreathingLoader } from "@/components/syllaboss-logo";
 
@@ -48,6 +50,7 @@ function DashboardLayout() {
   const { user } = useAuth();
   const { data: profile, isLoading } = useProfile();
   const { data: isAdmin } = useIsAdmin();
+  const { geo, isVpnOrProxy, vpnReason } = useGeo();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -57,12 +60,10 @@ function DashboardLayout() {
 
   // Auto-prompt onboarding modal on dashboard if profile is incomplete
   useEffect(() => {
-    if (!isLoading && profile) {
-      if (profile.onboarding_step < 3) {
-        setShowOnboardingModal(true);
-      }
+    if (profile && profile.onboarding_step < 3) {
+      setShowOnboardingModal(true);
     }
-  }, [isLoading, profile?.id, profile?.onboarding_step]);
+  }, [profile?.id, profile?.onboarding_step]);
 
   // Auto-activate streak as soon as student enters the app (no manual check-in needed)
   useEffect(() => {
@@ -83,11 +84,12 @@ function DashboardLayout() {
     }
   }, []);
 
-  if (isLoading || !profile) {
-    return <PageBreathingLoader message="Synchronizing academic records..." />;
+  // Instant dashboard entry - only show loader if auth user is not yet known
+  if (!user && isLoading) {
+    return <PageBreathingLoader message="Entering workspace..." />;
   }
 
-  const needsOnboarding = profile.onboarding_step < 3;
+  const needsOnboarding = (profile?.onboarding_step ?? 0) < 3;
 
   return (
     <>
@@ -130,11 +132,11 @@ function DashboardLayout() {
           </div>
         )}
 
-        {profile.suspended && (
+        {profile?.suspended ? (
           <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm font-medium text-destructive">
             Your account is suspended. You can't upload or cash out until an admin restores it.
           </div>
-        )}
+        ) : null}
         <div
           key={pathname}
           className={
@@ -169,6 +171,16 @@ function DashboardLayout() {
       <AppWalkthroughGuide
         isOpen={showGuide}
         onClose={() => setShowGuide(false)}
+      />
+
+      {/* Anti-VPN & Anti-Proxy Security Shield */}
+      <AntiVpnShield
+        isOpen={isVpnOrProxy}
+        ip={geo.ip}
+        reason={vpnReason}
+        onRecheck={() => {
+          window.location.reload();
+        }}
       />
     </>
   );

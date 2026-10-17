@@ -181,7 +181,7 @@ export async function createStudyGroup(data: {
         crypto.randomUUID(),
         id,
         data.institution || "Syllaboss",
-        `🎉 Study group "${data.name}" created! Welcome fellow students to discuss course topics and share academic materials.`,
+        `Study group "${data.name}" created! Welcome fellow students to discuss course topics and share academic materials.`,
         now,
       ],
     },

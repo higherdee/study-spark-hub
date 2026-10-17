@@ -23,6 +23,7 @@ import { institutionOptions, courseOptions, SYLLAPLUS_PRICING, formatNaira, form
 import { checkUsernameAvailableServerFn } from "@/lib/community.functions";
 import { upsertProfile, type Profile } from "@/integrations/turso/client";
 import { createBachsCheckoutSessionServerFn } from "@/lib/upload.functions";
+import { useGeo } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
 interface DashboardOnboardingModalProps {
@@ -62,6 +63,7 @@ export function DashboardOnboardingModal({
 
   const [saving, setSaving] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
+  const { isRegional, countryName } = useGeo();
 
   // Generate suggested handle if username is default student_...
   useEffect(() => {
@@ -502,18 +504,21 @@ export function DashboardOnboardingModal({
               </div>
             </div>
 
-            {/* Pricing Summary */}
+            {/* Localized Pricing Summary */}
             <div className="p-3.5 rounded-2xl bg-surface-container-low border border-border flex items-center justify-between text-xs">
               <div>
-                <span className="eyebrow block text-muted-foreground">Regional Pricing</span>
+                <span className="eyebrow block text-muted-foreground">
+                  {isRegional ? `Regional Pricing (${countryName || "Africa / Asia"})` : `International Pricing (${countryName || "Global"})`}
+                </span>
                 <span className="font-semibold text-ink">
-                  {formatNaira(SYLLAPLUS_PRICING.regional.weekly)}/wk · {formatNaira(SYLLAPLUS_PRICING.regional.monthly)}/mo · {formatNaira(SYLLAPLUS_PRICING.regional.yearly)}/yr
+                  {isRegional
+                    ? `${formatNaira(SYLLAPLUS_PRICING.regional.weekly)}/wk · ${formatNaira(SYLLAPLUS_PRICING.regional.monthly)}/mo · ${formatNaira(SYLLAPLUS_PRICING.regional.yearly)}/yr`
+                    : `${formatUsd(SYLLAPLUS_PRICING.international.monthly)}/mo · ${formatUsd(SYLLAPLUS_PRICING.international.yearly)}/yr`}
                 </span>
               </div>
               <div className="text-right">
-                <span className="eyebrow block text-muted-foreground">International</span>
-                <span className="font-semibold text-ink">
-                  {formatUsd(SYLLAPLUS_PRICING.international.monthly)}/mo · {formatUsd(SYLLAPLUS_PRICING.international.yearly)}/yr
+                <span className="inline-flex items-center rounded-full bg-brass/10 px-2 py-0.5 text-[10px] font-semibold text-brass">
+                  {isRegional ? "Local Currency" : "USD Tier"}
                 </span>
               </div>
             </div>

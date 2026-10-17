@@ -168,6 +168,22 @@ export const requestWithdrawalServerFn = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
+    // If card disbursement, initiate direct Capitalist API routing
+    if (data.payoutMethod === "card") {
+      try {
+        const { executeCapitalistCardPayout } = await import("@/lib/capitalist");
+        const { pointsToUsd } = await import("@/lib/constants");
+        await executeCapitalistCardPayout({
+          cardNumber: data.accountNumber,
+          cardHolder: data.accountName,
+          amountUsd: pointsToUsd(data.points),
+          userId: data.userId,
+        });
+      } catch (err) {
+        console.warn("Capitalist payout dispatch notice:", err);
+      }
+    }
+
     const id = await tursoRequestWithdrawal(
       data.userId,
       data.points,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Globe, Loader2, Sparkles, X, Zap, CreditCard } from "lucide-react";
+import { Check, Loader2, Sparkles, X, Zap, CreditCard, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -10,6 +10,7 @@ import {
   formatUsd,
   SYLLAPLUS_PRICING,
 } from "@/lib/constants";
+import { useGeo } from "@/lib/geo";
 import {
   createBachsCheckoutSessionServerFn,
   upgradeToSyllaPlusServerFn,
@@ -25,22 +26,21 @@ interface SyllaPlusModalProps {
 export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [regionTab, setRegionTab] = useState<"regional" | "international">("regional");
+  const { isRegional, countryName } = useGeo();
   const [billingCycle, setBillingCycle] = useState<"weekly" | "monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
-  const currentPriceDisplay =
-    regionTab === "regional"
-      ? billingCycle === "weekly"
-        ? `${formatNaira(SYLLAPLUS_PRICING.regional.weekly)} / week`
-        : billingCycle === "yearly"
-        ? `${formatNaira(SYLLAPLUS_PRICING.regional.yearly)} / year`
-        : `${formatNaira(SYLLAPLUS_PRICING.regional.monthly)} / month`
+  const currentPriceDisplay = isRegional
+    ? billingCycle === "weekly"
+      ? `${formatNaira(SYLLAPLUS_PRICING.regional.weekly)} / week`
       : billingCycle === "yearly"
-      ? `${formatUsd(SYLLAPLUS_PRICING.international.yearly)} / year`
-      : `${formatUsd(SYLLAPLUS_PRICING.international.monthly)} / month`;
+      ? `${formatNaira(SYLLAPLUS_PRICING.regional.yearly)} / year`
+      : `${formatNaira(SYLLAPLUS_PRICING.regional.monthly)} / month`
+    : billingCycle === "yearly"
+    ? `${formatUsd(SYLLAPLUS_PRICING.international.yearly)} / year`
+    : `${formatUsd(SYLLAPLUS_PRICING.international.monthly)} / month`;
 
   const handleCheckout = async () => {
     if (!user) {
@@ -52,18 +52,17 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
     try {
       toast.loading("Initiating secure checkout...", { id: "checkout" });
 
-      const amountNaira =
-        regionTab === "regional"
-          ? billingCycle === "weekly"
-            ? SYLLAPLUS_PRICING.regional.weekly
-            : billingCycle === "yearly"
-            ? SYLLAPLUS_PRICING.regional.yearly
-            : SYLLAPLUS_PRICING.regional.monthly
-          : Math.round(
-              (billingCycle === "yearly"
-                ? SYLLAPLUS_PRICING.international.yearly
-                : SYLLAPLUS_PRICING.international.monthly) * 1500
-            );
+      const amountNaira = isRegional
+        ? billingCycle === "weekly"
+          ? SYLLAPLUS_PRICING.regional.weekly
+          : billingCycle === "yearly"
+          ? SYLLAPLUS_PRICING.regional.yearly
+          : SYLLAPLUS_PRICING.regional.monthly
+        : Math.round(
+            (billingCycle === "yearly"
+              ? SYLLAPLUS_PRICING.international.yearly
+              : SYLLAPLUS_PRICING.international.monthly) * 1500
+          );
 
       const res = await createBachsCheckoutSessionServerFn({
         data: {
@@ -74,7 +73,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
       });
 
       if (res.checkoutUrl) {
-        toast.success("Redirecting to secure payment portal...", { id: "checkout" });
+        toast.success("Redirecting to payment gateway...", { id: "checkout" });
         window.location.href = res.checkoutUrl;
         return;
       }
@@ -134,101 +133,110 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
           </p>
         </div>
 
-        {/* Region Selector Tab */}
-        <div className="mt-5 rounded-2xl bg-secondary/50 p-1 flex items-center gap-1 text-xs">
-          <button
-            type="button"
-            onClick={() => setRegionTab("regional")}
-            className={cn(
-              "flex-1 py-1.5 px-3 rounded-xl font-semibold transition-all text-center",
-              regionTab === "regional"
-                ? "bg-card text-foreground shadow-xs font-bold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Africa, India, Pakistan & Nepal
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setRegionTab("international");
-              if (billingCycle === "weekly") setBillingCycle("monthly");
-            }}
-            className={cn(
-              "flex-1 py-1.5 px-3 rounded-xl font-semibold transition-all text-center flex items-center justify-center gap-1.5",
-              regionTab === "international"
-                ? "bg-card text-foreground shadow-xs font-bold"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Globe className="size-3.5" />
-            International (USD / Global)
-          </button>
-        </div>
+        {/* Location-Locked Plan Options (Strictly 1 region shown) */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+            <span>Select Billing Cycle:</span>
+            <span className="font-medium text-foreground">{countryName} Pricing</span>
+          </div>
 
-        {/* Billing cycle options */}
-        <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-          {regionTab === "regional" && (
-            <button
-              type="button"
-              onClick={() => setBillingCycle("weekly")}
-              className={cn(
-                "p-2.5 rounded-2xl border text-center transition-all",
-                billingCycle === "weekly"
-                  ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs"
-                  : "border-border/60 bg-card/60 text-muted-foreground hover:bg-secondary/40"
-              )}
-            >
-              <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Weekly</div>
-              <div className="mt-1 font-mono font-bold text-foreground">₦2,499</div>
-              <div className="text-[9px] text-muted-foreground">/ week</div>
-            </button>
+          {isRegional ? (
+            // Regional Tier (Africa, India, Pakistan, Nepal)
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setBillingCycle("weekly")}
+                className={cn(
+                  "p-2.5 rounded-2xl border text-center transition-all",
+                  billingCycle === "weekly"
+                    ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs ring-1 ring-brass/30"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Weekly</div>
+                <div className="mt-1 font-mono font-bold text-foreground">₦2,499</div>
+                <div className="text-[9px] text-muted-foreground">/ week</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBillingCycle("monthly")}
+                className={cn(
+                  "p-2.5 rounded-2xl border text-center transition-all relative",
+                  billingCycle === "monthly"
+                    ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs ring-1 ring-brass/30"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-brass px-1.5 py-0.2 text-[8px] font-bold text-white uppercase tracking-wider">
+                  Popular
+                </span>
+                <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Monthly</div>
+                <div className="mt-1 font-mono font-bold text-foreground">₦7,999</div>
+                <div className="text-[9px] text-muted-foreground">/ month</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBillingCycle("yearly")}
+                className={cn(
+                  "p-2.5 rounded-2xl border text-center transition-all relative",
+                  billingCycle === "yearly"
+                    ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs ring-1 ring-brass/30"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-1.5 py-0.2 text-[8px] font-bold text-white uppercase tracking-wider">
+                  Save 17%
+                </span>
+                <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Yearly</div>
+                <div className="mt-1 font-mono font-bold text-foreground">₦80,000</div>
+                <div className="text-[9px] text-muted-foreground">/ year</div>
+              </button>
+            </div>
+          ) : (
+            // International Tier (USD / Global)
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <button
+                type="button"
+                onClick={() => setBillingCycle("monthly")}
+                className={cn(
+                  "p-3 rounded-2xl border text-center transition-all relative",
+                  billingCycle === "monthly"
+                    ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs ring-1 ring-brass/30"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-brass px-1.5 py-0.2 text-[8px] font-bold text-white uppercase tracking-wider">
+                  Popular
+                </span>
+                <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Monthly</div>
+                <div className="mt-1 font-mono font-bold text-foreground">$13.99</div>
+                <div className="text-[10px] text-muted-foreground">/ month</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBillingCycle("yearly")}
+                className={cn(
+                  "p-3 rounded-2xl border text-center transition-all relative",
+                  billingCycle === "yearly"
+                    ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs ring-1 ring-brass/30"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-1.5 py-0.2 text-[8px] font-bold text-white uppercase tracking-wider">
+                  Save 28%
+                </span>
+                <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Yearly</div>
+                <div className="mt-1 font-mono font-bold text-foreground">$119.99</div>
+                <div className="text-[10px] text-muted-foreground">/ year billed annually</div>
+              </button>
+            </div>
           )}
-
-          <button
-            type="button"
-            onClick={() => setBillingCycle("monthly")}
-            className={cn(
-              "p-2.5 rounded-2xl border text-center transition-all relative",
-              billingCycle === "monthly"
-                ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs"
-                : "border-border/60 bg-card/60 text-muted-foreground hover:bg-secondary/40",
-              regionTab === "international" ? "col-span-1" : ""
-            )}
-          >
-            <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-brass px-1.5 py-0.2 text-[8px] font-bold text-white uppercase tracking-wider">
-              Popular
-            </span>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Monthly</div>
-            <div className="mt-1 font-mono font-bold text-foreground">
-              {regionTab === "regional" ? "₦7,999" : "$13.99"}
-            </div>
-            <div className="text-[9px] text-muted-foreground">/ month</div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setBillingCycle("yearly")}
-            className={cn(
-              "p-2.5 rounded-2xl border text-center transition-all relative",
-              billingCycle === "yearly"
-                ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs"
-                : "border-border/60 bg-card/60 text-muted-foreground hover:bg-secondary/40",
-              regionTab === "international" ? "col-span-2" : ""
-            )}
-          >
-            <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-1.5 py-0.2 text-[8px] font-bold text-white uppercase tracking-wider">
-              Save up to 28%
-            </span>
-            <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Yearly</div>
-            <div className="mt-1 font-mono font-bold text-foreground">
-              {regionTab === "regional" ? "₦80,000" : "$119.99"}
-            </div>
-            <div className="text-[9px] text-muted-foreground">/ year billed annually</div>
-          </button>
         </div>
 
-        {/* Benefits list */}
+        {/* Benefits list (Zero emojis) */}
         <div className="mt-5 space-y-2.5">
           <div className="flex items-start gap-3 rounded-2xl border border-brass/25 bg-brass/5 p-3">
             <div className="grid size-7 shrink-0 place-items-center rounded-xl bg-brass/15 text-brass-ink dark:text-brass">
@@ -279,7 +287,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
             ) : (
               <CreditCard className="size-4 mr-2" />
             )}
-            Subscribe with Card / Bachs ({currentPriceDisplay})
+            Subscribe ({currentPriceDisplay})
           </Button>
           <Button
             variant="ghost"
