@@ -6,7 +6,7 @@ import {
 } from "@clerk/clerk-react";
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { CLERK_PUBLISHABLE_KEY } from "@/integrations/clerk";
-import { upsertProfile } from "@/integrations/turso/client";
+import { upsertProfileServerFn } from "@/lib/profile.functions";
 
 export type AuthUser = {
   id: string;
@@ -53,10 +53,12 @@ function AuthInternalProvider({ children }: { children: ReactNode }) {
   // Sync profile into Turso database on sign in
   useEffect(() => {
     if (authUser && user) {
-      upsertProfile({
-        id: authUser.id,
-        email: authUser.email,
-        full_name: authUser.user_metadata.full_name,
+      upsertProfileServerFn({
+        data: {
+          id: authUser.id,
+          email: authUser.email,
+          full_name: authUser.user_metadata.full_name,
+        },
       }).catch((err) => {
         console.error("Failed to sync profile to Turso:", err);
       });

@@ -21,7 +21,8 @@ import { Label } from "@/components/ui/label";
 import { SearchSelect, type SearchOption } from "@/components/search-select";
 import { institutionOptions, courseOptions, SYLLAPLUS_PRICING, formatNaira, formatUsd } from "@/lib/constants";
 import { checkUsernameAvailableServerFn } from "@/lib/community.functions";
-import { upsertProfile, type Profile } from "@/integrations/turso/client";
+import { upsertProfileServerFn } from "@/lib/profile.functions";
+import type { Profile } from "@/integrations/turso/client";
 import { createBachsCheckoutSessionServerFn } from "@/lib/upload.functions";
 import { useGeo } from "@/lib/geo";
 import { cn } from "@/lib/utils";
@@ -155,15 +156,17 @@ export function DashboardOnboardingModal({
 
     setSaving(true);
     try {
-      await upsertProfile({
-        id: profile.id,
-        full_name: fullName.trim(),
-        username: username.trim().toLowerCase(),
-        institution: institution.label,
-        course: course.label,
-        department: department.trim() || course.label,
-        referral_source: referralCode.trim() || undefined,
-        onboarding_step: 3,
+      await upsertProfileServerFn({
+        data: {
+          id: profile.id,
+          full_name: fullName.trim(),
+          username: username.trim().toLowerCase(),
+          institution: institution.label,
+          course: course.label,
+          department: department.trim() || course.label,
+          referral_source: referralCode.trim() || undefined,
+          onboarding_step: 3,
+        },
       });
 
       await qc.invalidateQueries({ queryKey: ["profile"] });

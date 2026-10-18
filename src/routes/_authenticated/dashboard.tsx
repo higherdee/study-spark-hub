@@ -48,7 +48,7 @@ const secondary: NavItem[] = [
 
 function DashboardLayout() {
   const { user } = useAuth();
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile, isLoading, isFetched } = useProfile();
   const { data: isAdmin } = useIsAdmin();
   const { geo, isVpnOrProxy, vpnReason } = useGeo();
   const queryClient = useQueryClient();
@@ -58,12 +58,12 @@ function DashboardLayout() {
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
 
-  // Auto-prompt onboarding modal on dashboard if profile is incomplete
+  // Auto-prompt onboarding modal on dashboard ONLY after real profile is fetched from server and incomplete
   useEffect(() => {
-    if (profile && profile.onboarding_step < 3) {
+    if (isFetched && profile && profile.onboarding_step < 3) {
       setShowOnboardingModal(true);
     }
-  }, [profile?.id, profile?.onboarding_step]);
+  }, [isFetched, profile?.id, profile?.onboarding_step]);
 
   // Auto-activate streak as soon as student enters the app (no manual check-in needed)
   useEffect(() => {
