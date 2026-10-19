@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
+import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { GA_MEASUREMENT_ID, trackGAPageView } from "@/lib/analytics";
@@ -221,11 +222,13 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <AuthProvider>
-          <Outlet />
-          <Toaster richColors position="top-center" />
-        </AuthProvider>
+        <SmoothScrollProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <AuthProvider>
+            <Outlet />
+            <Toaster richColors position="top-center" />
+          </AuthProvider>
+        </SmoothScrollProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

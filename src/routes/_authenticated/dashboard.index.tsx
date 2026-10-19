@@ -25,6 +25,9 @@ import { SyllaPlusModal } from "@/components/syllaplus-modal";
 import { CampusWrappedModal } from "@/components/scholar/campus-wrapped-modal";
 import { milestoneRemaining, useSharedStudyTimer } from "@/components/study-timer-context";
 import { Button } from "@/components/ui/button";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
+import { Magnetic } from "@/components/ui/magnetic";
+import { GsapReveal } from "@/components/ui/gsap-reveal";
 import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, getPointsLedger } from "@/integrations/turso/client";
 import { useProfile } from "@/lib/profile";
@@ -160,39 +163,45 @@ function HomePage() {
   const C = 2 * Math.PI * R;
 
   return (
-    <div className="stagger flex flex-col gap-6 lg:gap-7">
+    <div className="flex flex-col gap-6 lg:gap-7">
       {/* Greeting */}
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="eyebrow text-brand">
-            {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
-          </p>
-          <h1 className="mt-1.5 font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[2.6rem]">
-            {greeting}, {firstName}
-          </h1>
-          <p className="mt-2 truncate text-sm text-muted-foreground">
-            {[profile?.course || profile?.department, profile?.institution]
-              .filter(Boolean)
-              .join(" · ") || "Complete your profile to personalise your library"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {!isPlus && (
-            <button
-              type="button"
-              onClick={() => setShowPlus(true)}
-              className="press hidden h-10 items-center gap-1.5 rounded-lg border border-brass/30 bg-brass-soft px-3.5 text-[13px] font-semibold text-brass-ink transition-colors hover:border-brass/55 sm:flex"
-            >
-              <Sparkles className="size-3.5" /> SyllaPlus
-            </button>
-          )}
-          <Button asChild size="lg" className="h-10 px-5">
-            <Link to="/dashboard/upload">
-              <Upload /> Upload &amp; earn
-            </Link>
-          </Button>
-        </div>
-      </section>
+      <GsapReveal yOffset={12}>
+        <section className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="eyebrow text-brand">
+              {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+            <h1 className="mt-1.5 font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-ink sm:text-[2.6rem]">
+              {greeting}, {firstName}
+            </h1>
+            <p className="mt-2 truncate text-sm text-muted-foreground">
+              {[profile?.course || profile?.department, profile?.institution]
+                .filter(Boolean)
+                .join(" · ") || "Complete your profile to personalise your library"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5">
+            {!isPlus && (
+              <Magnetic intensity={0.2}>
+                <button
+                  type="button"
+                  onClick={() => setShowPlus(true)}
+                  className="press hidden h-10 items-center gap-1.5 rounded-xl border border-brass/30 bg-brass-soft px-3.5 text-[13px] font-semibold text-brass-ink transition-colors hover:border-brass/55 sm:flex cursor-pointer"
+                >
+                  <Sparkles className="size-3.5" /> SyllaPlus
+                </button>
+              </Magnetic>
+            )}
+            <Magnetic intensity={0.25}>
+              <Button asChild size="lg" className="h-10 px-5 rounded-xl shadow-lift">
+                <Link to="/dashboard/upload">
+                  <Upload /> Upload &amp; earn
+                </Link>
+              </Button>
+            </Magnetic>
+          </div>
+        </section>
+      </GsapReveal>
 
       {/* Focus + balance */}
       <section className="grid gap-4 lg:grid-cols-12 lg:gap-5">
@@ -336,12 +345,14 @@ function HomePage() {
       </section>
 
       {/* Quick actions */}
-      <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <ActionTile to="/dashboard/library" icon={BookOpen} title="Library" sub="Notes & past questions" />
-        <ActionTile to="/dashboard/assistant" icon={Bot} title="Boss AI" sub="Ask, quiz, explain" />
-        <ActionTile to="/dashboard/community" icon={Users} title="Peers" sub="Study groups & battles" />
-        <ActionTile onClick={() => setShowWrapped(true)} icon={Share2} title="Campus Wrapped" sub="Share your rank card" />
-      </section>
+      <GsapReveal delay={0.15}>
+        <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          <ActionTile to="/dashboard/library" icon={BookOpen} title="Library" sub="Notes & past questions" />
+          <ActionTile to="/dashboard/assistant" icon={Bot} title="Boss AI" sub="Ask, quiz, explain" />
+          <ActionTile to="/dashboard/community" icon={Users} title="Peers" sub="Study groups & battles" />
+          <ActionTile onClick={() => setShowWrapped(true)} icon={Share2} title="Campus Wrapped" sub="Share your rank card" />
+        </section>
+      </GsapReveal>
 
       {/* Week + contribution */}
       <section className="grid gap-4 lg:grid-cols-12 lg:gap-5">
@@ -489,24 +500,23 @@ function ActionTile({
   title: string;
   sub: string;
 }) {
-  const body = (
-    <>
+  const content = (
+    <SpotlightCard className="p-4 sm:p-5 h-full transition-all duration-300 hover:scale-[1.02] border-border/70 hover:border-brand/40 group cursor-pointer">
       <span className="grid size-10 place-items-center rounded-xl bg-muted text-moss transition-colors group-hover:bg-accent group-hover:text-forest">
         <Icon className="size-5" />
       </span>
       <span className="mt-4 block text-[15px] font-semibold leading-tight text-ink">{title}</span>
       <span className="mt-1 block text-xs leading-snug text-muted-foreground">{sub}</span>
-    </>
+    </SpotlightCard>
   );
-  const cls =
-    "lift press group block rounded-2xl border border-border bg-card p-4 text-left shadow-soft sm:p-5";
+
   return to ? (
-    <Link to={to} className={cls}>
-      {body}
+    <Link to={to} className="block h-full press">
+      {content}
     </Link>
   ) : (
-    <button type="button" onClick={onClick} className={cls}>
-      {body}
+    <button type="button" onClick={onClick} className="block w-full text-left h-full press cursor-pointer">
+      {content}
     </button>
   );
 }

@@ -81,8 +81,8 @@ function DashboardLayout() {
     }
   }, []);
 
-  // Instant dashboard entry - only show loader if auth or initial profile is resolving
-  if (isLoading || (!profile && !isFetched)) {
+  // Instant dashboard entry - only show loader if auth user is not yet known
+  if (!user) {
     return <PageBreathingLoader message="Entering workspace..." />;
   }
 
