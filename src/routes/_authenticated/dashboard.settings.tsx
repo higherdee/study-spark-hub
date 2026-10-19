@@ -4,6 +4,7 @@ import {
   Bell,
   Building,
   Check,
+  Compass,
   CreditCard,
   Download,
   GraduationCap,
@@ -33,6 +34,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuide } from "@/components/onboarding/guide-context";
 import {
   formatNaira,
   PLAN_NAME,
@@ -143,6 +145,7 @@ function SettingsPage() {
 
   // Active study timer hook (Synchronized across the entire app via StudyTimerContext)
   const sharedTimer = useSharedStudyTimer();
+  const { openGuide } = useGuide();
   const seconds = sharedTimer?.seconds ?? 0;
   const { label: timerLabel, progress: timerProgress } = milestoneRemaining(seconds);
   const isPaused = sharedTimer?.isPaused ?? false;
@@ -984,6 +987,33 @@ function SettingsPage() {
               </Button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* 10-Step Interactive App Tour */}
+      <div className="space-y-2">
+        <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <Compass className="size-3.5 text-forest" /> Student Knowledge & Tour
+        </p>
+        <div className="rounded-2xl border border-forest/30 bg-gradient-to-r from-forest/10 via-card to-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="grid size-9 place-items-center rounded-xl bg-forest/20 text-forest shrink-0">
+              <Compass className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">10-Step Interactive App Tour</p>
+              <p className="text-xs text-muted-foreground">
+                Revisit the complete walkthrough: study timers, upload royalties, study battles, and cash payouts.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={openGuide}
+            className="rounded-xl text-xs h-9 font-semibold bg-forest text-white hover:bg-forest/90 shrink-0 cursor-pointer"
+          >
+            Launch Tour
+          </Button>
         </div>
       </div>
 

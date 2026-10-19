@@ -10,6 +10,7 @@ import {
 import {
   ChevronRight,
   Coins,
+  Compass,
   Flame,
   HelpCircle,
   LogOut,
@@ -31,6 +32,7 @@ interface SideNavSheetProps {
   onClose: () => void;
   /** Destinations that don't fit on the tab bar. */
   items?: MoreItem[];
+  onOpenGuide?: () => void;
 }
 
 const SHEET_EASE = [0.32, 0.72, 0, 1] as const;
@@ -177,7 +179,27 @@ export function SideNavSheet({ open, onClose, items = [] }: SideNavSheetProps) {
                 </ul>
 
                 <ul className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
-                  <li>
+                  {onOpenGuide && (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onOpenGuide();
+                        }}
+                        className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-forest/10 active:bg-forest/15"
+                      >
+                        <span className="grid size-9 place-items-center rounded-xl bg-forest/10 text-forest">
+                          <Compass className="size-[18px]" />
+                        </span>
+                        <span className="flex-1 text-sm font-semibold text-foreground">
+                          Student Guide (10 Steps)
+                        </span>
+                        <ChevronRight className="size-4 text-muted-foreground/70" />
+                      </button>
+                    </li>
+                  )}
+                  <li className={cn(onOpenGuide && "border-t border-border")}>
                     <button
                       type="button"
                       onClick={() => setShowFaq(true)}

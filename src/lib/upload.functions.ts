@@ -320,36 +320,46 @@ export const createBachsCheckoutSessionServerFn = createServerFn({ method: "POST
   )
   .handler(async ({ data }) => {
     const secretKey =
+      process.env['BACHS_SECRET_KEY'] ||
       process.env['BASCH_SECRET_KEY'] ||
-      "sk_live_73317a81_zQAtGMAe-jQhNvBk2ZMIQBIs1WJjZuSOVDArhEw42ag";
+      "sk_live_139a7b0b_HiZH6DnskIpOrNEHtzpuyHQJ_53y7ItOeY3R4b3PGEk";
+
+    const rawUrl = process.env['APP_URL'] || "https://syllaboss.org";
+    const publicAppUrl = rawUrl.includes("localhost") ? "https://syllaboss.org" : rawUrl;
 
     try {
-      const response = await fetch("https://api.bachs.io/v1/checkouts", {
+      const response = await fetch("https://api.bachs.io/v1/checkout-sessions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${secretKey}`,
         },
         body: JSON.stringify({
-          amount: data.amountNaira * 100,
-          currency: "NGN",
-          customer_email: data.email,
-          title: "SyllaPlus Membership",
-          description: "1.3x Earning multiplier & unlimited downloads",
+          pricing: {
+            amount: String(data.amountNaira),
+            currency: "NGN",
+          },
+          customer: {
+            email: data.email,
+          },
           metadata: {
-            user_id: data.userId,
+            userId: data.userId,
             plan: "syllaplus",
           },
-          success_url: `${process.env['APP_URL'] || "http://localhost:3000"}/dashboard?upgraded=true`,
+          success_url: `${publicAppUrl}/dashboard?upgraded=true`,
+          cancel_url: `${publicAppUrl}/dashboard`,
         }),
       });
 
       if (response.ok) {
         const json = await response.json();
         return {
-          checkoutUrl: json.checkout_url || json.url || json.data?.checkout_url || null,
-          sessionId: json.id || json.data?.id || `bachs_${data.userId}_${Date.now()}`,
+          checkoutUrl: json.checkout_url || null,
+          sessionId: json.checkout_id || `bachs_${data.userId}_${Date.now()}`,
         };
+      } else {
+        const errJson = await response.json().catch(() => null);
+        console.warn("Bachs checkout error response:", response.status, errJson);
       }
     } catch (err) {
       console.warn("Bachs checkout API request error:", err);

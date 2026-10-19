@@ -7,6 +7,7 @@ import { isProfileComplete, useIsAdmin, useProfile } from "@/lib/profile";
 import { Button } from "@/components/ui/button";
 import { DashboardOnboardingModal } from "@/components/onboarding/dashboard-onboarding-modal";
 import { AppWalkthroughGuide } from "@/components/onboarding/app-walkthrough-guide";
+import { GuideContext } from "@/components/onboarding/guide-context";
 import { AntiVpnShield } from "@/components/security/anti-vpn-shield";
 import { useGeo } from "@/lib/geo";
 
@@ -15,7 +16,9 @@ import { PageBreathingLoader } from "@/components/syllaboss-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { updateStreakServerFn } from "@/lib/community.functions";
+import { upgradeToSyllaPlusServerFn } from "@/lib/upload.functions";
 import { autoPromptNotificationConsent, schedulePeriodicStudyReminder } from "@/lib/notifications";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -53,6 +56,7 @@ function DashboardLayout() {
   const { geo, isVpnOrProxy, vpnReason } = useGeo();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const search = useRouterState({ select: (s) => s.location.search }) as { upgraded?: string; tour?: string };
 
   // Onboarding Modal & Walkthrough Guide States
   const [manualSetupOpen, setManualSetupOpen] = useState(false);
@@ -61,6 +65,34 @@ function DashboardLayout() {
   const profileComplete = isProfileComplete(profile);
   const needsOnboarding = isFetched && Boolean(profile) && !profileComplete;
   const isModalOpen = needsOnboarding || manualSetupOpen;
+
+  // Handle successful Bachs payment redirect (?upgraded=true) or tour (?tour=true)
+  useEffect(() => {
+    if (search?.upgraded === "true" && user?.id) {
+      upgradeToSyllaPlusServerFn({ data: { userId: user.id } })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["profile"] });
+          queryClient.invalidateQueries({ queryKey: ["ledger"] });
+          toast.success("Welcome to SyllaPlus! +300 points added & 1.3x multiplier unlocked!", {
+            id: "bachs-upgrade-success",
+            duration: 6000,
+          });
+          // Clean URL param
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("upgraded");
+            window.history.replaceState({}, "", url.pathname + url.search);
+          }
+        })
+        .catch((err) => {
+          console.error("Auto upgrade check failed:", err);
+        });
+    }
+
+    if (search?.tour === "true") {
+      setShowGuide(true);
+    }
+  }, [search?.upgraded, search?.tour, user?.id, queryClient]);
 
   // Auto-activate streak ONLY after scholar has completed their profile
   useEffect(() => {
@@ -87,7 +119,13 @@ function DashboardLayout() {
   }
 
   return (
-    <>
+    <GuideContext.Provider
+      value={{
+        isOpen: showGuide,
+        openGuide: () => setShowGuide(true),
+        closeGuide: () => setShowGuide(false),
+      }}
+    >
       <AppShell
         nav={nav}
         secondary={secondary}
@@ -180,6 +218,6 @@ function DashboardLayout() {
           window.location.reload();
         }}
       />
-    </>
+    </GuideContext.Provider>
   );
 }

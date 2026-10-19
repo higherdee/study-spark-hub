@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Loader2, Sparkles, X, Zap, CreditCard, ShieldCheck } from "lucide-react";
+import { Check, Loader2, Sparkles, X, Zap, CreditCard, ShieldCheck, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -296,6 +296,10 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
           >
             Continue with Free Account
           </Button>
+          <p className="text-[10px] text-center text-muted-foreground flex items-center justify-center gap-1 mt-1">
+            <Shield className="size-3 text-brass" />
+            <span>Secure 256-bit payment via Bachs gateway</span>
+          </p>
         </div>
       </div>
     </div>

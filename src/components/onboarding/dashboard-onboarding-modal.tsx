@@ -12,6 +12,7 @@ import {
   Check,
   Target,
   ShieldCheck,
+  Compass,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -587,15 +588,31 @@ export function DashboardOnboardingModal({
                 )}
               </Button>
 
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  onComplete();
+                  onClose();
+                  if (onOpenGuide) {
+                    onOpenGuide();
+                  }
+                }}
+                className="h-10 w-full rounded-xl text-xs font-semibold border-forest/30 text-forest hover:bg-forest/10 hover:text-forest flex items-center justify-center gap-2"
+              >
+                <Compass className="size-3.5" />
+                <span>Take 10-Step Interactive Tour</span>
+              </Button>
+
               <button
                 type="button"
                 onClick={() => {
                   onComplete();
                   onClose();
                 }}
-                className="text-xs text-muted-foreground hover:text-ink font-semibold py-1.5 cursor-pointer"
+                className="text-xs text-muted-foreground hover:text-ink font-semibold py-1 cursor-pointer"
               >
-                Continue with Free Plan & Enter Dashboard
+                Skip Tour & Enter Dashboard
               </button>
             </div>
           </div>

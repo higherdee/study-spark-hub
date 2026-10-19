@@ -1,9 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Coins, Flame, LogOut, MoreHorizontal, Pause, Play, Timer } from "lucide-react";
+import { Bell, Coins, Compass, Flame, LogOut, MoreHorizontal, Pause, Play, Timer } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
+import { useGuide } from "@/components/onboarding/guide-context";
 
 import { SyllabossEmblem, SyllabossLogo } from "@/components/syllaboss-logo";
 import { NotificationsDrawer } from "@/components/notifications-drawer";
@@ -62,6 +63,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
   const [showMore, setShowMore] = useState(false);
   const [showWrapped, setShowWrapped] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const { openGuide } = useGuide();
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["user-notifications", user?.id],
@@ -158,6 +160,14 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
         </nav>
 
         <div className="shrink-0 space-y-3 border-t border-border p-3">
+          <button
+            type="button"
+            onClick={openGuide}
+            className="press flex w-full items-center gap-2.5 rounded-xl border border-forest/25 bg-forest/5 px-3 py-2 text-[12px] font-semibold text-forest transition-colors hover:bg-forest/15 hover:border-forest/40"
+          >
+            <Compass className="size-4 shrink-0 text-forest" />
+            <span className="truncate">Student Guide (10 Steps)</span>
+          </button>
           <FocusCard />
           {footer}
           <div className="flex items-center gap-2.5 rounded-xl p-1.5">
@@ -249,6 +259,16 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
                   </span>
                 )}
               </button>
+
+              <button
+                type="button"
+                onClick={openGuide}
+                aria-label="Student Guide"
+                title="10-step platform guide & tour"
+                className="press relative grid size-9 place-items-center rounded-full border border-forest/30 bg-forest/10 text-forest transition-colors hover:bg-forest/20 hover:border-forest/50"
+              >
+                <Compass className="size-4 text-forest" />
+              </button>
             </div>
           </div>
         </header>
@@ -307,7 +327,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
       </nav>
 
       <NotificationsDrawer open={showNotifications} onClose={() => setShowNotifications(false)} />
-      <SideNavSheet open={showMore} onClose={() => setShowMore(false)} items={moreItems} />
+      <SideNavSheet open={showMore} onClose={() => setShowMore(false)} items={moreItems} onOpenGuide={openGuide} />
       <CampusWrappedModal
         isOpen={showWrapped}
         onClose={() => setShowWrapped(false)}
