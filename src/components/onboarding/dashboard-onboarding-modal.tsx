@@ -33,6 +33,7 @@ interface DashboardOnboardingModalProps {
   profile: Profile;
   onComplete: () => void;
   onOpenGuide?: () => void;
+  isMandatory?: boolean;
 }
 
 export function DashboardOnboardingModal({
@@ -41,6 +42,7 @@ export function DashboardOnboardingModal({
   profile,
   onComplete,
   onOpenGuide,
+  isMandatory = false,
 }: DashboardOnboardingModalProps) {
   const qc = useQueryClient();
 
@@ -68,16 +70,15 @@ export function DashboardOnboardingModal({
   const [upgrading, setUpgrading] = useState(false);
   const { isRegional, countryName } = useGeo();
 
-  // Ensure that every time the modal is opened, it always presents the fresh setup form
+  // Sync profile data on open, but never reset stage if user is already on welcome or upsell
   useEffect(() => {
     if (isOpen) {
-      setStage("form");
-      if (profile.full_name) setFullName(profile.full_name);
-      if (profile.username && !profile.username.startsWith("student_")) setUsername(profile.username);
-      if (profile.institution) setInstitution({ label: profile.institution });
-      if (profile.course) setCourse({ label: profile.course });
-      if (profile.department) setDepartment(profile.department);
-      if (profile.referral_source) setReferralCode(profile.referral_source);
+      if (profile.full_name && !fullName) setFullName(profile.full_name);
+      if (profile.username && !profile.username.startsWith("student_") && !username) setUsername(profile.username);
+      if (profile.institution && !institution) setInstitution({ label: profile.institution });
+      if (profile.course && !course) setCourse({ label: profile.course });
+      if (profile.department && !department) setDepartment(profile.department);
+      if (profile.referral_source && !referralCode) setReferralCode(profile.referral_source);
     }
   }, [isOpen, profile.id]);
 
@@ -145,12 +146,14 @@ export function DashboardOnboardingModal({
       toast.error("Please choose a valid available username handle.");
       return;
     }
-    if (!institution?.label) {
-      toast.error("Please select or specify your university or institution.");
+    const finalInstitution = institution?.label?.trim() || "";
+    if (!finalInstitution) {
+      toast.error("Please select or type your university or institution.");
       return;
     }
-    if (!course?.label) {
-      toast.error("Please select or specify your course or major.");
+    const finalCourse = course?.label?.trim() || "";
+    if (!finalCourse) {
+      toast.error("Please select or type your course or academic programme.");
       return;
     }
 
@@ -161,9 +164,9 @@ export function DashboardOnboardingModal({
           id: profile.id,
           full_name: fullName.trim(),
           username: username.trim().toLowerCase(),
-          institution: institution.label,
-          course: course.label,
-          department: department.trim() || course.label,
+          institution: finalInstitution,
+          course: finalCourse,
+          department: department.trim() || finalCourse,
           referral_source: referralCode.trim() || undefined,
           onboarding_step: 3,
         },
@@ -208,10 +211,12 @@ export function DashboardOnboardingModal({
   };
 
   const handleClose = () => {
+    if (isMandatory) return;
     onClose();
   };
 
   const handleDismissToGuide = () => {
+    if (isMandatory) return;
     onClose();
     if (onOpenGuide) {
       onOpenGuide();
@@ -220,7 +225,13 @@ export function DashboardOnboardingModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-lg animate-fade-in"
+      onClick={(e) => {
+        // Prevent backdrop dismiss if mandatory
+        if (e.target === e.currentTarget && !isMandatory) {
+          handleClose();
+        }
+      }}
     >
       <div
         className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] border border-white/20 bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-2xl animate-scale-in"
@@ -244,18 +255,22 @@ export function DashboardOnboardingModal({
                   Calibrate Your Academic Folio
                 </h2>
                 <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Personalize your courseware, configure your username handle, and activate your study wallet.
+                  {isMandatory
+                    ? "Academic registration is required before accessing study materials and AI tools."
+                    : "Personalize your courseware, configure your username handle, and activate your study wallet."}
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleClose}
-                aria-label="Skip for now"
-                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all"
-              >
-                <X className="size-4" />
-              </button>
+              {!isMandatory && (
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  aria-label="Skip for now"
+                  className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </div>
 
             {/* Form */}
@@ -378,14 +393,16 @@ export function DashboardOnboardingModal({
               </div>
 
               {/* Actions */}
-              <div className="pt-3 flex items-center justify-between gap-3 border-t border-border/60">
-                <button
-                  type="button"
-                  onClick={handleDismissToGuide}
-                  className="text-xs font-semibold text-muted-foreground hover:text-ink transition-colors cursor-pointer"
-                >
-                  Skip for now
-                </button>
+              <div className={cn("pt-3 flex items-center gap-3 border-t border-border/60", isMandatory ? "justify-end" : "justify-between")}>
+                {!isMandatory && (
+                  <button
+                    type="button"
+                    onClick={handleDismissToGuide}
+                    className="text-xs font-semibold text-muted-foreground hover:text-ink transition-colors cursor-pointer"
+                  >
+                    Skip for now
+                  </button>
+                )}
 
                 <Button
                   type="submit"
@@ -441,7 +458,7 @@ export function DashboardOnboardingModal({
             <div className="pt-2 flex flex-col gap-2">
               <Button
                 onClick={() => setStage("syllaplus_upsell")}
-                className="h-11 w-full rounded-xl text-xs font-semibold bg-forest text-white hover:bg-forest/90 shadow-lift gap-2"
+                className="h-11 w-full rounded-xl text-xs font-semibold bg-forest text-white hover:bg-forest/90 shadow-lift gap-2 cursor-pointer"
               >
                 <span>Continue to SyllaPlus Privileges</span>
                 <ArrowRight className="size-4" />
@@ -449,10 +466,13 @@ export function DashboardOnboardingModal({
 
               <button
                 type="button"
-                onClick={handleDismissToGuide}
+                onClick={() => {
+                  onComplete();
+                  onClose();
+                }}
                 className="text-xs text-muted-foreground hover:text-ink font-semibold py-1.5 cursor-pointer"
               >
-                Skip & View App Guide
+                Enter Dashboard Now
               </button>
             </div>
           </div>
@@ -477,14 +497,19 @@ export function DashboardOnboardingModal({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleDismissToGuide}
-                aria-label="Skip SyllaPlus"
-                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all"
-              >
-                <X className="size-4" />
-              </button>
+              {!isMandatory && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onComplete();
+                    onClose();
+                  }}
+                  aria-label="Skip SyllaPlus"
+                  className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </div>
 
             {/* Benefits Cards */}
@@ -570,7 +595,7 @@ export function DashboardOnboardingModal({
                 }}
                 className="text-xs text-muted-foreground hover:text-ink font-semibold py-1.5 cursor-pointer"
               >
-                Continue with Free Plan
+                Continue with Free Plan & Enter Dashboard
               </button>
             </div>
           </div>

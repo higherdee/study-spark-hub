@@ -3,7 +3,7 @@ import { BookOpen, FileStack, Home, Trophy, Upload, Wallet, Shield, Bot, Users, 
 import { useState, useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
-import { useIsAdmin, useProfile } from "@/lib/profile";
+import { isProfileComplete, useIsAdmin, useProfile } from "@/lib/profile";
 import { Button } from "@/components/ui/button";
 import { DashboardOnboardingModal } from "@/components/onboarding/dashboard-onboarding-modal";
 import { AppWalkthroughGuide } from "@/components/onboarding/app-walkthrough-guide";
@@ -55,26 +55,23 @@ function DashboardLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   // Onboarding Modal & Walkthrough Guide States
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [manualSetupOpen, setManualSetupOpen] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
 
-  // Auto-prompt onboarding modal on dashboard ONLY after real profile is fetched from server and incomplete
-  useEffect(() => {
-    if (isFetched && profile && profile.onboarding_step < 3) {
-      setShowOnboardingModal(true);
-    }
-  }, [isFetched, profile?.id, profile?.onboarding_step]);
+  const profileComplete = isProfileComplete(profile);
+  const needsOnboarding = isFetched && Boolean(profile) && !profileComplete;
+  const isModalOpen = needsOnboarding || manualSetupOpen;
 
-  // Auto-activate streak as soon as student enters the app (no manual check-in needed)
+  // Auto-activate streak ONLY after scholar has completed their profile
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && profileComplete) {
       updateStreakServerFn({ data: { userId: user.id } })
         .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["profile"] });
+          queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
         })
         .catch(() => {});
     }
-  }, [user?.id, queryClient]);
+  }, [user?.id, profileComplete, queryClient]);
 
   // Prompt device notification consent immediately on entry & schedule periodic reminders
   useEffect(() => {
@@ -84,12 +81,10 @@ function DashboardLayout() {
     }
   }, []);
 
-  // Instant dashboard entry - only show loader if auth user is not yet known
-  if (!user && isLoading) {
+  // Instant dashboard entry - only show loader if auth or initial profile is resolving
+  if (isLoading || (!profile && !isFetched)) {
     return <PageBreathingLoader message="Entering workspace..." />;
   }
-
-  const needsOnboarding = (profile?.onboarding_step ?? 0) < 3;
 
   return (
     <>
@@ -124,8 +119,8 @@ function DashboardLayout() {
             </div>
             <Button
               size="sm"
-              onClick={() => setShowOnboardingModal(true)}
-              className="h-8.5 rounded-xl bg-forest text-white hover:bg-forest/90 font-semibold text-xs px-4 shrink-0 shadow-xs active:scale-[0.98]"
+              onClick={() => setManualSetupOpen(true)}
+              className="h-8.5 rounded-xl bg-forest text-white hover:bg-forest/90 font-semibold text-xs px-4 shrink-0 shadow-xs active:scale-[0.98] cursor-pointer"
             >
               Complete Setup
             </Button>
@@ -154,16 +149,17 @@ function DashboardLayout() {
       {/* Pop-up Modal for Onboarding Details */}
       {profile && (
         <DashboardOnboardingModal
-          isOpen={showOnboardingModal}
+          isOpen={isModalOpen}
+          isMandatory={needsOnboarding}
           profile={profile}
           onClose={() => {
-            setShowOnboardingModal(false);
+            setManualSetupOpen(false);
           }}
           onComplete={() => {
-            setShowOnboardingModal(false);
+            setManualSetupOpen(false);
           }}
           onOpenGuide={() => {
-            setShowOnboardingModal(false);
+            setManualSetupOpen(false);
             setShowGuide(true);
           }}
         />
