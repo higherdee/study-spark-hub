@@ -29,10 +29,63 @@ export const SYLLAPLUS_PRICING = {
   international: {
     currency: "USD",
     symbol: "$",
+    weekly: 4.99,
     monthly: 13.99,
     yearly: 119.99,
   },
 };
+
+export interface SubscriptionPlanRule {
+  id: "weekly" | "monthly" | "yearly";
+  name: string;
+  durationDays: number;
+  gracePeriodDays: number; // 6 days for weekly, 12 days for monthly
+  noticeBeforeExpiryDays: number; // 2 days for weekly, 4 days for monthly
+  noticeBeforeCutoffDays: number; // 1 day for weekly, 2 days for monthly
+}
+
+export const SUBSCRIPTION_RULES: Record<"weekly" | "monthly" | "yearly", SubscriptionPlanRule> = {
+  weekly: {
+    id: "weekly",
+    name: "Weekly VIP Pass",
+    durationDays: 7,
+    gracePeriodDays: 6, // 6 days grace period for weekly plan
+    noticeBeforeExpiryDays: 2,
+    noticeBeforeCutoffDays: 1,
+  },
+  monthly: {
+    id: "monthly",
+    name: "Monthly Scholar VIP",
+    durationDays: 30,
+    gracePeriodDays: 12, // 12 days grace period for monthly plan
+    noticeBeforeExpiryDays: 4,
+    noticeBeforeCutoffDays: 2,
+  },
+  yearly: {
+    id: "yearly",
+    name: "Annual Academic Elite",
+    durationDays: 365,
+    gracePeriodDays: 14,
+    noticeBeforeExpiryDays: 7,
+    noticeBeforeCutoffDays: 3,
+  },
+};
+
+export type SubscriptionStatus = "active" | "grace_period" | "expired" | "canceled";
+
+export interface ProfileSubscriptionData {
+  plan: "weekly" | "monthly" | "yearly";
+  status: SubscriptionStatus;
+  started_at: string;
+  current_period_end: string;
+  grace_period_end: string | null;
+  auto_renew: boolean;
+  renewal_failed_at?: string | null;
+  failure_reason?: string | null;
+  notices_sent: string[];
+  payment_method?: string;
+  last_renewed_at?: string;
+}
 
 // Economics:
 // Regional (Africa, India, Pakistan, Nepal): 1 SyllaPoint = 0.83 NGN

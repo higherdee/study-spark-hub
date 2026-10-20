@@ -27,6 +27,7 @@ import {
   Pause,
   Loader2,
   Upload,
+  AlertTriangle,
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
@@ -35,6 +36,7 @@ import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuide } from "@/components/onboarding/guide-context";
+import { SyllaPlusModal } from "@/components/syllaplus-modal";
 import {
   formatNaira,
   PLAN_NAME,
@@ -142,6 +144,7 @@ function SettingsPage() {
   // Modals for QR Code and QR Scanner
   const [showQrModal, setShowQrModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [plusModalOpen, setPlusModalOpen] = useState(false);
 
   // Active study timer hook (Synchronized across the entire app via StudyTimerContext)
   const sharedTimer = useSharedStudyTimer();
@@ -329,35 +332,8 @@ function SettingsPage() {
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
   };
 
-  const handleUpgrade = async () => {
-    if (!user) return;
-    setUpgrading(true);
-    try {
-      toast.loading("Initiating Bachs secure payment...", { id: "bachs-sub" });
-      const res = await createBachsCheckoutSessionServerFn({
-        data: {
-          userId: user.id,
-          email: user.email || "student@syllaboss.org",
-          amountNaira: SYLLAPLUS_PRICE_NAIRA,
-        },
-      });
-
-      if (res.checkoutUrl) {
-        window.location.href = res.checkoutUrl;
-        return;
-      }
-
-      await upgradeToSyllaPlusServerFn({ data: { userId: user.id } });
-      toast.success(`Welcome to ${PLAN_NAME}! +${POINTS_UPGRADE_BONUS} ${POINTS_NAME} credited.`, {
-        id: "bachs-sub",
-      });
-      await qc.invalidateQueries({ queryKey: ["profile"] });
-      await qc.invalidateQueries({ queryKey: ["ledger"] });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to upgrade", { id: "bachs-sub" });
-    } finally {
-      setUpgrading(false);
-    }
+  const handleUpgrade = () => {
+    setPlusModalOpen(true);
   };
 
   const handleClaimInstall = async () => {
@@ -473,39 +449,86 @@ function SettingsPage() {
       />
 
       {/* SyllaPlus Plan Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-brass/30 bg-gradient-to-br from-brass/10 via-brass-ink/5 to-card p-6 shadow-soft">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-full bg-brass/20 text-brass-ink">
-                <Sparkles className="size-4" />
-              </span>
-              <h2 className="font-display text-xl font-bold text-foreground">
-                {profile?.sylla_plus ? `${PLAN_NAME} Active` : `${PLAN_NAME} Membership`}
-              </h2>
-            </div>
-            <p className="text-sm text-muted-foreground max-w-md">
-              {profile?.sylla_plus
-                ? "You enjoy 1.3x reward earnings on all uploads and downloads, priority study access, and unlimited Boss AI access."
-                : `Upgrade with Bachs payment to unlock +${POINTS_UPGRADE_BONUS} ${POINTS_NAME}, 1.3x points multiplier, and unlimited Boss AI.`}
-            </p>
-          </div>
+      {(() => {
+        const subData = (profile?.study_plan as any)?.subscription;
+        const isGrace = subData?.status === "grace_period";
+        const graceDays = subData?.plan === "weekly" ? 6 : 12;
+        const daysLeft = subData?.grace_period_end
+          ? Math.max(1, Math.ceil((new Date(subData.grace_period_end).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+          : graceDays;
+        const planTitle = subData?.plan === "weekly" ? "Weekly VIP Pass" : subData?.plan === "yearly" ? "Annual Academic Elite" : "Monthly Scholar VIP";
 
-          {!profile?.sylla_plus ? (
-            <Button
-              onClick={handleUpgrade}
-              disabled={upgrading}
-              className="rounded-full bg-brass-ink text-white hover:bg-brass-ink shadow-md font-semibold text-xs px-5 h-9"
-            >
-              {upgrading ? "Connecting Bachs..." : `Upgrade with Bachs (${formatNaira(SYLLAPLUS_PRICE_NAIRA)})`}
-            </Button>
-          ) : (
-            <span className="rounded-full bg-brass/20 border border-brass/40 px-3 py-1 text-xs font-semibold text-brass-ink">
-              Active Member
-            </span>
-          )}
-        </div>
-      </div>
+        return (
+          <div className={cn(
+            "relative overflow-hidden rounded-3xl border p-6 shadow-soft transition-all",
+            isGrace
+              ? "border-amber-500/40 bg-linear-to-br from-amber-500/10 via-amber-500/5 to-card"
+              : "border-brass/30 bg-linear-to-br from-brass/10 via-brass-ink/5 to-card"
+          )}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "flex size-7 items-center justify-center rounded-full",
+                    isGrace ? "bg-amber-500/20 text-amber-600 dark:text-amber-400" : "bg-brass/20 text-brass-ink"
+                  )}>
+                    {isGrace ? <AlertTriangle className="size-4" /> : <Sparkles className="size-4" />}
+                  </span>
+                  <h2 className="font-display text-xl font-bold text-foreground">
+                    {profile?.sylla_plus
+                      ? isGrace
+                        ? `${PLAN_NAME} (${planTitle}) — Grace Period Active`
+                        : `${PLAN_NAME} Active (${planTitle})`
+                      : `${PLAN_NAME} Membership`}
+                  </h2>
+                </div>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  {profile?.sylla_plus
+                    ? isGrace
+                      ? `Your last auto-renewal could not be charged. You have ${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining in your ${graceDays}-day grace period before VIP perks are paused.`
+                      : `You enjoy 1.3x reward earnings on all uploads and downloads, priority study access, and unlimited Boss AI access. Renews automatically.`
+                    : `Upgrade with Bachs payment to unlock +${POINTS_UPGRADE_BONUS} ${POINTS_NAME}, 1.3x points multiplier, and unlimited Boss AI.`}
+                </p>
+                {subData?.current_period_end && !isGrace && (
+                  <p className="text-xs text-brass-ink dark:text-brass font-medium">
+                    Current period ends: {new Date(subData.current_period_end).toLocaleDateString()} (Auto-renews with prior notice)
+                  </p>
+                )}
+              </div>
+
+              {!profile?.sylla_plus ? (
+                <Button
+                  onClick={handleUpgrade}
+                  className="rounded-full bg-brass-ink text-white hover:bg-brass-ink shadow-md font-semibold text-xs px-5 h-9 cursor-pointer"
+                >
+                  View Plans & Upgrade
+                </Button>
+              ) : isGrace ? (
+                <Button
+                  onClick={handleUpgrade}
+                  className="rounded-full bg-amber-600 hover:bg-amber-700 text-white shadow-md font-semibold text-xs px-5 h-9 cursor-pointer"
+                >
+                  Renew VIP Access Now
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUpgrade}
+                    className="rounded-full text-xs h-8 px-3"
+                  >
+                    Change Plan
+                  </Button>
+                  <span className="rounded-full bg-brass/20 border border-brass/40 px-3 py-1 text-xs font-semibold text-brass-ink">
+                    Active Member
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Device Push Notifications (Hardware OS Notifications) */}
       <div className="space-y-2">
@@ -1001,9 +1024,9 @@ function SettingsPage() {
               <Compass className="size-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">10-Step Interactive App Tour</p>
+              <p className="text-sm font-semibold text-foreground">Quick 3-Slide Platform Tour</p>
               <p className="text-xs text-muted-foreground">
-                Revisit the complete walkthrough: study timers, upload royalties, study battles, and cash payouts.
+                Revisit the quick tour: past papers, Boss AI, focus study timer, and weekend withdrawals.
               </p>
             </div>
           </div>
@@ -1084,6 +1107,16 @@ function SettingsPage() {
         open={showScannerModal}
         onOpenChange={setShowScannerModal}
         onScanPeer={handleScanPeer}
+      />
+
+      {/* SyllaPlus Upgrade & Renewal Modal */}
+      <SyllaPlusModal
+        open={plusModalOpen}
+        onClose={() => setPlusModalOpen(false)}
+        onSuccess={() => {
+          qc.invalidateQueries({ queryKey: ["profile"] });
+          qc.invalidateQueries({ queryKey: ["ledger"] });
+        }}
       />
     </div>
   );

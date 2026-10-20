@@ -11,6 +11,7 @@ import {
   requestWithdrawal as tursoRequestWithdrawal,
   claimAppInstallBonus as tursoClaimInstall,
   upgradeToSyllaPlus as tursoUpgradePlus,
+  syncSubscriptionStatus as tursoSyncSubscriptionStatus,
   recordStudySession as tursoRecordStudy,
   createComplaint as tursoCreateComplaint,
   replyToComplaint as tursoReplyComplaint,
@@ -203,10 +204,24 @@ export const claimAppInstallBonusServerFn = createServerFn({ method: "POST" })
   });
 
 export const upgradeToSyllaPlusServerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) =>
+    z
+      .object({
+        userId: z.string(),
+        plan: z.enum(["weekly", "monthly", "yearly"]).optional().default("monthly"),
+        paymentMethod: z.string().optional().default("bachs"),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data }) => {
+    await tursoUpgradePlus(data.userId, data.plan, data.paymentMethod);
+    return { success: true };
+  });
+
+export const syncSubscriptionStatusServerFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ userId: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    await tursoUpgradePlus(data.userId);
-    return { success: true };
+    return await tursoSyncSubscriptionStatus(data.userId);
   });
 
 export const recordStudySessionServerFn = createServerFn({ method: "POST" })
@@ -315,6 +330,7 @@ export const createBachsCheckoutSessionServerFn = createServerFn({ method: "POST
         userId: z.string(),
         email: z.string(),
         amountNaira: z.number().default(SYLLAPLUS_PRICE_NAIRA),
+        plan: z.enum(["weekly", "monthly", "yearly"]).optional().default("monthly"),
       })
       .parse(d)
   )
@@ -344,9 +360,9 @@ export const createBachsCheckoutSessionServerFn = createServerFn({ method: "POST
           },
           metadata: {
             userId: data.userId,
-            plan: "syllaplus",
+            plan: data.plan,
           },
-          success_url: `${publicAppUrl}/dashboard?upgraded=true`,
+          success_url: `${publicAppUrl}/dashboard?upgraded=true&plan=${data.plan}`,
           cancel_url: `${publicAppUrl}/dashboard`,
         }),
       });

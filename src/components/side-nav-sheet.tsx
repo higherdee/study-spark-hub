@@ -193,7 +193,7 @@ export function SideNavSheet({ open, onClose, items = [] }: SideNavSheetProps) {
                           <Compass className="size-[18px]" />
                         </span>
                         <span className="flex-1 text-sm font-semibold text-foreground">
-                          Student Guide (10 Steps)
+                          Quick Platform Tour (3 Steps)
                         </span>
                         <ChevronRight className="size-4 text-muted-foreground/70" />
                       </button>

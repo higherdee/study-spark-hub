@@ -38,6 +38,8 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
       : billingCycle === "yearly"
       ? `${formatNaira(SYLLAPLUS_PRICING.regional.yearly)} / year`
       : `${formatNaira(SYLLAPLUS_PRICING.regional.monthly)} / month`
+    : billingCycle === "weekly"
+    ? `${formatUsd(SYLLAPLUS_PRICING.international.weekly)} / week`
     : billingCycle === "yearly"
     ? `${formatUsd(SYLLAPLUS_PRICING.international.yearly)} / year`
     : `${formatUsd(SYLLAPLUS_PRICING.international.monthly)} / month`;
@@ -59,7 +61,9 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
           ? SYLLAPLUS_PRICING.regional.yearly
           : SYLLAPLUS_PRICING.regional.monthly
         : Math.round(
-            (billingCycle === "yearly"
+            (billingCycle === "weekly"
+              ? SYLLAPLUS_PRICING.international.weekly
+              : billingCycle === "yearly"
               ? SYLLAPLUS_PRICING.international.yearly
               : SYLLAPLUS_PRICING.international.monthly) * 1500
           );
@@ -69,6 +73,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
           userId: user.id,
           email: user.email || "student@syllaboss.org",
           amountNaira,
+          plan: billingCycle,
         },
       });
 
@@ -80,7 +85,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
 
       // Direct activation fallback
       toast.loading("Activating SyllaPlus membership...", { id: "checkout" });
-      await upgradeToSyllaPlusServerFn({ data: { userId: user.id } });
+      await upgradeToSyllaPlusServerFn({ data: { userId: user.id, plan: billingCycle } });
       await qc.invalidateQueries({ queryKey: ["profile"] });
       await qc.invalidateQueries({ queryKey: ["ledger"] });
 
@@ -196,12 +201,27 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
             </div>
           ) : (
             // International Tier (USD / Global)
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setBillingCycle("weekly")}
+                className={cn(
+                  "p-2.5 rounded-2xl border text-center transition-all",
+                  billingCycle === "weekly"
+                    ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs ring-1 ring-brass/30"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                )}
+              >
+                <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Weekly</div>
+                <div className="mt-1 font-mono font-bold text-foreground">$4.99</div>
+                <div className="text-[9px] text-muted-foreground">/ week</div>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setBillingCycle("monthly")}
                 className={cn(
-                  "p-3 rounded-2xl border text-center transition-all relative",
+                  "p-2.5 rounded-2xl border text-center transition-all relative",
                   billingCycle === "monthly"
                     ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs ring-1 ring-brass/30"
                     : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
@@ -212,14 +232,14 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
                 </span>
                 <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Monthly</div>
                 <div className="mt-1 font-mono font-bold text-foreground">$13.99</div>
-                <div className="text-[10px] text-muted-foreground">/ month</div>
+                <div className="text-[9px] text-muted-foreground">/ month</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setBillingCycle("yearly")}
                 className={cn(
-                  "p-3 rounded-2xl border text-center transition-all relative",
+                  "p-2.5 rounded-2xl border text-center transition-all relative",
                   billingCycle === "yearly"
                     ? "border-brass bg-brass/10 text-foreground font-bold shadow-xs ring-1 ring-brass/30"
                     : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
@@ -230,10 +250,25 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: SyllaPlusModalProps
                 </span>
                 <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Yearly</div>
                 <div className="mt-1 font-mono font-bold text-foreground">$119.99</div>
-                <div className="text-[10px] text-muted-foreground">/ year billed annually</div>
+                <div className="text-[9px] text-muted-foreground">/ year</div>
               </button>
             </div>
           )}
+
+          {/* Auto-Renewal & Grace Period Notice Banner */}
+          <div className="mt-3 rounded-xl border border-brass/20 bg-brass/5 p-2.5 text-[11px] text-muted-foreground flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 font-medium text-foreground">
+              <ShieldCheck className="size-3.5 text-brass" />
+              <span>
+                {billingCycle === "weekly"
+                  ? "Auto-renews weekly • 6-day card failure grace period"
+                  : billingCycle === "monthly"
+                  ? "Auto-renews monthly • 12-day card failure grace period"
+                  : "Auto-renews annually • 14-day card failure grace period"}
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground shrink-0">Prior notice sent</span>
+          </div>
         </div>
 
         {/* Benefits list (Zero emojis) */}

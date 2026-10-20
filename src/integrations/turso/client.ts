@@ -13,6 +13,10 @@ import {
   pointsToNaira,
   formatNaira,
   calculateReward,
+  SUBSCRIPTION_RULES,
+  PLAN_NAME,
+  type SubscriptionStatus,
+  type ProfileSubscriptionData,
 } from "@/lib/constants";
 
 const TURSO_URL =
@@ -350,17 +354,64 @@ export async function upsertProfile(data: {
   return (await getProfile(data.id))!;
 }
 
-export async function upgradeToSyllaPlus(userId: string): Promise<void> {
+export async function createUserNotification(
+  userId: string,
+  title: string,
+  message: string,
+  type: string = "general"
+): Promise<void> {
+  await turso.execute({
+    sql: "INSERT INTO user_notifications (id, user_id, title, message, type) VALUES (?, ?, ?, ?, ?)",
+    args: [crypto.randomUUID(), userId, title, message, type],
+  });
+}
+
+export async function upgradeToSyllaPlus(
+  userId: string,
+  plan: "weekly" | "monthly" | "yearly" = "monthly",
+  paymentMethod: string = "bachs"
+): Promise<void> {
   const profile = await getProfile(userId);
   if (!profile) throw new Error("Profile not found");
-  if (profile.sylla_plus) return; // already upgraded
+
+  const isFirstTime = !profile.sylla_plus;
+  const rule = SUBSCRIPTION_RULES[plan] || SUBSCRIPTION_RULES.monthly;
+  const now = new Date();
+  const currentPeriodEnd = new Date(now.getTime() + rule.durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+  const currentStudyPlan = (profile.study_plan || {}) as Record<string, unknown>;
+  const existingSub = currentStudyPlan.subscription as Partial<ProfileSubscriptionData> | undefined;
+
+  const subData: ProfileSubscriptionData = {
+    plan,
+    status: "active",
+    started_at: existingSub?.started_at || now.toISOString(),
+    current_period_end: currentPeriodEnd,
+    grace_period_end: null,
+    auto_renew: true,
+    notices_sent: [],
+    payment_method: paymentMethod,
+    last_renewed_at: now.toISOString(),
+  };
+
+  const updatedStudyPlan = {
+    ...currentStudyPlan,
+    subscription: subData,
+  };
 
   const batch: { sql: string; args: InValue[] }[] = [
     {
-      sql: "UPDATE profiles SET sylla_plus = 1, points = points + ? WHERE id = ?",
-      args: [POINTS_UPGRADE_BONUS, userId],
+      sql: isFirstTime
+        ? "UPDATE profiles SET sylla_plus = 1, points = points + ?, study_plan = ? WHERE id = ?"
+        : "UPDATE profiles SET sylla_plus = 1, study_plan = ? WHERE id = ?",
+      args: isFirstTime
+        ? [POINTS_UPGRADE_BONUS, JSON.stringify(updatedStudyPlan), userId]
+        : [JSON.stringify(updatedStudyPlan), userId],
     },
-    {
+  ];
+
+  if (isFirstTime) {
+    batch.push({
       sql: `INSERT INTO points_ledger (id, user_id, amount, reason)
             VALUES (?, ?, ?, ?)`,
       args: [
@@ -369,37 +420,209 @@ export async function upgradeToSyllaPlus(userId: string): Promise<void> {
         POINTS_UPGRADE_BONUS,
         "SyllaPlus upgrade milestone bonus",
       ],
-    },
-  ];
-
-  // If user was referred, award 200 SyllaPoints to referrer!
-  if (profile.referred_by) {
-    const refRs = await turso.execute({
-      sql: "SELECT id FROM profiles WHERE referral_code = ? OR id = ? LIMIT 1",
-      args: [profile.referred_by, profile.referred_by],
     });
-    if (refRs.rows.length > 0 && refRs.rows[0]) {
-      const referrerId = String(refRs.rows[0]['id']);
-      batch.push(
-        {
-          sql: "UPDATE profiles SET points = points + ? WHERE id = ?",
-          args: [POINTS_REFERRAL_UPGRADE, referrerId],
-        },
-        {
-          sql: `INSERT INTO points_ledger (id, user_id, amount, reason)
-                VALUES (?, ?, ?, ?)`,
-          args: [
-            crypto.randomUUID(),
-            referrerId,
-            POINTS_REFERRAL_UPGRADE,
-            `Referral milestone: ${profile.full_name || "Referred user"} upgraded to SyllaPlus!`,
-          ],
-        }
-      );
+
+    if (profile.referred_by) {
+      const refRs = await turso.execute({
+        sql: "SELECT id FROM profiles WHERE referral_code = ? OR id = ? LIMIT 1",
+        args: [profile.referred_by, profile.referred_by],
+      });
+      if (refRs.rows.length > 0 && refRs.rows[0]) {
+        const referrerId = String(refRs.rows[0]['id']);
+        batch.push(
+          {
+            sql: "UPDATE profiles SET points = points + ? WHERE id = ?",
+            args: [POINTS_REFERRAL_UPGRADE, referrerId],
+          },
+          {
+            sql: `INSERT INTO points_ledger (id, user_id, amount, reason)
+                  VALUES (?, ?, ?, ?)`,
+            args: [
+              crypto.randomUUID(),
+              referrerId,
+              POINTS_REFERRAL_UPGRADE,
+              `Referral milestone: ${profile.full_name || "Referred user"} upgraded to SyllaPlus!`,
+            ],
+          }
+        );
+      }
     }
   }
 
+  // Record activation notification
+  batch.push({
+    sql: "INSERT INTO user_notifications (id, user_id, title, message, type) VALUES (?, ?, ?, ?, 'reward')",
+    args: [
+      crypto.randomUUID(),
+      userId,
+      `${PLAN_NAME} Active (${rule.name})`,
+      `Your subscription is active until ${new Date(currentPeriodEnd).toLocaleDateString()}. Enjoy 1.3x points multiplier, LaTeX math solver, and VIP past questions!`,
+    ],
+  });
+
   await turso.batch(batch);
+}
+
+export async function syncSubscriptionStatus(userId: string): Promise<{
+  sylla_plus: boolean;
+  status: SubscriptionStatus;
+  plan: "weekly" | "monthly" | "yearly";
+  current_period_end: string | null;
+  grace_period_end: string | null;
+  daysRemainingInGrace: number;
+  notice: string | null;
+}> {
+  const profile = await getProfile(userId);
+  if (!profile) {
+    return {
+      sylla_plus: false,
+      status: "expired",
+      plan: "monthly",
+      current_period_end: null,
+      grace_period_end: null,
+      daysRemainingInGrace: 0,
+      notice: null,
+    };
+  }
+
+  const studyPlan = (profile.study_plan || {}) as Record<string, unknown>;
+  const sub = studyPlan.subscription as ProfileSubscriptionData | undefined;
+
+  if (!sub || !sub.current_period_end) {
+    return {
+      sylla_plus: Boolean(profile.sylla_plus),
+      status: profile.sylla_plus ? "active" : "expired",
+      plan: "monthly",
+      current_period_end: null,
+      grace_period_end: null,
+      daysRemainingInGrace: 0,
+      notice: null,
+    };
+  }
+
+  const now = Date.now();
+  const periodEnd = new Date(sub.current_period_end).getTime();
+  const rule = SUBSCRIPTION_RULES[sub.plan || "monthly"] || SUBSCRIPTION_RULES.monthly;
+  let noticesSent = Array.isArray(sub.notices_sent) ? [...sub.notices_sent] : [];
+  let updatedSub: ProfileSubscriptionData = { ...sub };
+  let needsDbUpdate = false;
+  let newSyllaPlus = Boolean(profile.sylla_plus);
+  let activeNotice: string | null = null;
+
+  if (sub.status === "active") {
+    if (now < periodEnd) {
+      const msLeft = periodEnd - now;
+      const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+
+      if (daysLeft <= rule.noticeBeforeExpiryDays && !noticesSent.includes("pre_expiry_notice")) {
+        noticesSent.push("pre_expiry_notice");
+        updatedSub.notices_sent = noticesSent;
+        needsDbUpdate = true;
+        await createUserNotification(
+          userId,
+          `SyllaPlus Renewal Notice`,
+          `Your ${rule.name} subscription will renew in ${daysLeft} day(s) on ${new Date(periodEnd).toLocaleDateString()}. Please ensure your payment method has sufficient balance.`,
+          "general"
+        );
+      }
+    } else {
+      // Period has elapsed: auto-renewal or card failure grace period
+      if (sub.auto_renew) {
+        // Auto-renewal attempted: card failed -> enters grace period
+        // Exactly 6 days for weekly plan, 12 days for monthly plan
+        const graceEnd = new Date(now + rule.gracePeriodDays * 24 * 60 * 60 * 1000).toISOString();
+        updatedSub.status = "grace_period";
+        updatedSub.grace_period_end = graceEnd;
+        updatedSub.renewal_failed_at = new Date(now).toISOString();
+        updatedSub.failure_reason = "Card auto-renewal attempt could not be processed";
+        noticesSent.push("grace_started_notice");
+        updatedSub.notices_sent = noticesSent;
+        needsDbUpdate = true;
+        newSyllaPlus = true; // User keeps VIP access during grace period!
+
+        activeNotice = `Renewal payment failed. You have a ${rule.gracePeriodDays}-day grace period until ${new Date(graceEnd).toLocaleDateString()} to update your payment method before VIP perks are cut.`;
+
+        await createUserNotification(
+          userId,
+          `Payment Failed: ${rule.gracePeriodDays}-Day Grace Period Active`,
+          activeNotice,
+          "general"
+        );
+      } else {
+        updatedSub.status = "expired";
+        needsDbUpdate = true;
+        newSyllaPlus = false;
+        await createUserNotification(
+          userId,
+          `SyllaPlus Expired`,
+          `Your ${rule.name} subscription period has concluded. Renew anytime to restore your 1.3x points multiplier.`,
+          "general"
+        );
+      }
+    }
+  } else if (sub.status === "grace_period") {
+    const graceEndMs = sub.grace_period_end
+      ? new Date(sub.grace_period_end).getTime()
+      : periodEnd + rule.gracePeriodDays * 24 * 60 * 60 * 1000;
+
+    if (now >= graceEndMs) {
+      // Grace period ended: Cut VIP access!
+      updatedSub.status = "expired";
+      updatedSub.grace_period_end = null;
+      needsDbUpdate = true;
+      newSyllaPlus = false;
+
+      await createUserNotification(
+        userId,
+        `SyllaPlus VIP Paused: Grace Period Ended`,
+        `Your ${rule.gracePeriodDays}-day grace period for ${rule.name} has concluded. Your 1.3x points multiplier and VIP perks have been paused. Renew anytime to restore access.`,
+        "general"
+      );
+    } else {
+      newSyllaPlus = true; // Retains access during grace period
+      const msLeft = graceEndMs - now;
+      const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+
+      activeNotice = `Your subscription renewal failed. You have ${daysLeft} day(s) of grace period remaining before VIP access is paused.`;
+
+      if (daysLeft <= rule.noticeBeforeCutoffDays && !noticesSent.includes("cutoff_urgent_notice")) {
+        noticesSent.push("cutoff_urgent_notice");
+        updatedSub.notices_sent = noticesSent;
+        needsDbUpdate = true;
+
+        await createUserNotification(
+          userId,
+          `URGENT: ${daysLeft} Day(s) Left Before SyllaPlus VIP Access Ends`,
+          `Your grace period ends on ${new Date(graceEndMs).toLocaleDateString()}. Renew your subscription now to avoid losing your VIP perks.`,
+          "general"
+        );
+      }
+    }
+  }
+
+  if (needsDbUpdate) {
+    const newPlan = { ...studyPlan, subscription: updatedSub };
+    await turso.execute({
+      sql: "UPDATE profiles SET sylla_plus = ?, study_plan = ? WHERE id = ?",
+      args: [newSyllaPlus ? 1 : 0, JSON.stringify(newPlan), userId],
+    });
+  }
+
+  const graceEndMs = updatedSub.grace_period_end ? new Date(updatedSub.grace_period_end).getTime() : 0;
+  const daysRemainingInGrace =
+    updatedSub.status === "grace_period" && graceEndMs > now
+      ? Math.max(1, Math.ceil((graceEndMs - now) / (24 * 60 * 60 * 1000)))
+      : 0;
+
+  return {
+    sylla_plus: newSyllaPlus,
+    status: updatedSub.status,
+    plan: updatedSub.plan,
+    current_period_end: updatedSub.current_period_end,
+    grace_period_end: updatedSub.grace_period_end,
+    daysRemainingInGrace,
+    notice: activeNotice,
+  };
 }
 
 export async function claimAppInstallBonus(userId: string): Promise<boolean> {

@@ -166,7 +166,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
             className="press flex w-full items-center gap-2.5 rounded-xl border border-forest/25 bg-forest/5 px-3 py-2 text-[12px] font-semibold text-forest transition-colors hover:bg-forest/15 hover:border-forest/40"
           >
             <Compass className="size-4 shrink-0 text-forest" />
-            <span className="truncate">Student Guide (10 Steps)</span>
+            <span className="truncate">Quick Platform Tour</span>
           </button>
           <FocusCard />
           {footer}
@@ -263,8 +263,8 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
               <button
                 type="button"
                 onClick={openGuide}
-                aria-label="Student Guide"
-                title="10-step platform guide & tour"
+                aria-label="Platform Tour"
+                title="Quick 3-step platform tour"
                 className="press relative grid size-9 place-items-center rounded-full border border-forest/30 bg-forest/10 text-forest transition-colors hover:bg-forest/20 hover:border-forest/50"
               >
                 <Compass className="size-4 text-forest" />

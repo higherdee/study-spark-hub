@@ -428,52 +428,96 @@ export function DashboardOnboardingModal({
         )}
 
         {/* ========================================================================= */}
-        {/* STAGE 2: WELCOME CELEBRATION */}
+        {/* STAGE 2: WELCOME ONBOARD MODAL & REGISTRATION PROMPT */}
         {/* ========================================================================= */}
         {stage === "welcome" && (
-          <div className="text-center py-4 space-y-5">
+          <div className="text-center py-2 space-y-4">
             <div className="mx-auto size-16 rounded-3xl bg-forest/15 border border-forest/30 flex items-center justify-center text-forest shadow-lift">
               <Sparkles className="size-8 text-brass" />
             </div>
 
-            <div className="space-y-1.5 max-w-md mx-auto">
-              <span className="eyebrow text-brass-ink font-bold">Registration Verified</span>
-              <h2 className="font-display text-3xl font-medium text-ink tracking-tight">
+            <div className="space-y-1 max-w-md mx-auto">
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-semibold bg-forest/10 border border-forest/25 text-forest">
+                <CheckCircle2 className="size-3.5" />
+                <span>Academic Profile Activated</span>
+              </span>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-tight">
                 Welcome Onboard, @{username}!
               </h2>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Your academic ledger has been minted. You have been awarded <strong className="font-mono text-brand font-bold">+200 SyllaPoints</strong> welcome bonus in your study wallet.
+                Your academic ledger is verified. We deposited <strong className="font-mono text-forest font-bold">+200 SyllaPoints</strong> welcome bonus directly into your study wallet.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-surface-container-low border border-border/80 text-left space-y-2 text-xs">
-              <div className="flex items-center gap-2 text-ink font-semibold">
-                <CheckCircle2 className="size-4 text-forest" />
-                <span>Scholar Profile Active: {fullName}</span>
+            {/* Academic ID Verification Card */}
+            <div className="p-4 rounded-2xl bg-surface-container-low border border-border text-left space-y-2.5 text-xs shadow-xs">
+              <div className="flex items-center justify-between border-b border-border/70 pb-2">
+                <span className="font-semibold text-ink text-sm">{fullName}</span>
+                <span className="font-mono font-bold text-forest bg-forest/10 px-2 py-0.5 rounded-md text-[11px]">
+                  +200 pts bonus
+                </span>
               </div>
-              <p className="text-muted-foreground text-[11px] pl-6">
-                Institution: {institution?.label} · {course?.label}
-              </p>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Institution</span>
+                  <span className="font-medium text-foreground truncate block">{institution?.label}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Course</span>
+                  <span className="font-medium text-foreground truncate block">{course?.label}</span>
+                </div>
+              </div>
             </div>
 
+            {/* Registration Security Prompt */}
+            <div className="rounded-2xl border border-brass/35 bg-gradient-to-r from-brass/10 via-brass/5 to-surface-container-low p-3.5 text-left text-xs">
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="size-4 text-brass shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-ink text-xs">Complete Your Registration & Sync Devices</p>
+                  <p className="text-muted-foreground text-[11px] mt-0.5 leading-relaxed">
+                    Lock in your academic credentials, sync your study streak between your mobile and PC, and activate weekend withdrawal privileges.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
             <div className="pt-2 flex flex-col gap-2">
               <Button
-                onClick={() => setStage("syllaplus_upsell")}
-                className="h-11 w-full rounded-xl text-xs font-semibold bg-forest text-white hover:bg-forest/90 shadow-lift gap-2 cursor-pointer"
-              >
-                <span>Continue to SyllaPlus Privileges</span>
-                <ArrowRight className="size-4" />
-              </Button>
-
-              <button
-                type="button"
                 onClick={() => {
                   onComplete();
                   onClose();
                 }}
-                className="text-xs text-muted-foreground hover:text-ink font-semibold py-1.5 cursor-pointer"
+                className="h-11 w-full rounded-xl text-xs font-semibold bg-forest text-white hover:bg-forest/90 shadow-lift gap-2 cursor-pointer active:scale-[0.98]"
               >
-                Enter Dashboard Now
+                <span>Enter Workspace & Claim Bonus</span>
+                <ArrowRight className="size-4" />
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  onComplete();
+                  onClose();
+                  if (onOpenGuide) {
+                    onOpenGuide();
+                  }
+                }}
+                className="h-10 w-full rounded-xl text-xs font-semibold border-border text-ink hover:bg-secondary flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Compass className="size-3.5 text-forest" />
+                <span>Take Quick 3-Slide Tour</span>
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => setStage("syllaplus_upsell")}
+                className="text-[11px] text-muted-foreground hover:text-ink font-medium py-1 cursor-pointer flex items-center justify-center gap-1"
+              >
+                <Zap className="size-3 text-brass" />
+                <span>Optional: Explore SyllaPlus 1.3x VIP Privileges</span>
               </button>
             </div>
           </div>

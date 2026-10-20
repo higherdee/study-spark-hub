@@ -282,9 +282,10 @@ async function registerMaterial({
 /**
  * Main Harvesting Execution
  */
-export async function runSuperFastHarvest() {
+export async function runSuperFastHarvest(targetCount = 20) {
+  const startTime = Date.now();
   console.log("======================================================================");
-  console.log("⚡ SYLLABOSS HIGH-SPEED MULTI-SOURCE ACADEMIC HARVESTER");
+  console.log(`⚡ SYLLABOSS HIGH-SPEED MULTI-SOURCE ACADEMIC HARVESTER (Target: ${targetCount})`);
   console.log("Fast 15s timeouts · Live Academic APIs (arXiv, Zenodo, Europe PMC)");
   console.log("Admin Recipient: " + ADMIN_USER_ID + " (+25 pts/material)");
   console.log("======================================================================\n");
@@ -338,11 +339,22 @@ export async function runSuperFastHarvest() {
       if (res.success) {
         totalFarmed++;
         totalBytes += buffer.length;
-        console.log(`  ✅ HARVESTED: [${doc.courseCode}] ${doc.title} (${(buffer.length / 1024 / 1024).toFixed(2)} MB, ${pageCount} pgs)`);
+        console.log(`  [HARVESTED]: [${doc.courseCode}] ${doc.title} (${(buffer.length / 1024 / 1024).toFixed(2)} MB, ${pageCount} pgs)`);
+        if (totalFarmed >= targetCount) break;
       }
     } catch (err) {
       console.log(`  [SKIPPED/TIMEOUT] ${doc.title}: ${err.message}`);
     }
+  }
+
+  if (totalFarmed >= targetCount) {
+    console.log(`🎯 Target reached: +${totalFarmed} materials farmed.`);
+    return {
+      harvested: totalFarmed,
+      durationMs: Date.now() - startTime,
+      bytes: totalBytes,
+      adminPoints: totalFarmed * POINTS_PER_UPLOAD,
+    };
   }
 
   // 2. Dynamic live discovery from academic repositories
@@ -406,7 +418,7 @@ export async function runSuperFastHarvest() {
         if (res.success) {
           totalFarmed++;
           totalBytes += buffer.length;
-          console.log(`  ✅ HARVESTED: [${disc.courseCode}] ${item.title.slice(0, 50)} -> ${institution} (${(buffer.length / 1024 / 1024).toFixed(2)} MB, ${pageCount} pgs)`);
+          console.log(`  [HARVESTED]: [${disc.courseCode}] ${item.title.slice(0, 50)} -> ${institution} (${(buffer.length / 1024 / 1024).toFixed(2)} MB, ${pageCount} pgs)`);
         }
       } catch (err) {
         console.log(`  [FETCH FAILED]: ${err.message}`);
@@ -415,17 +427,24 @@ export async function runSuperFastHarvest() {
   }
 
   console.log("\n======================================================================");
-  console.log(`🎉 HARVEST CYCLE COMPLETE: +${totalFarmed} new authentic documents added.`);
+  console.log(`HARVEST CYCLE COMPLETE: +${totalFarmed} new authentic documents added.`);
   console.log(`Total Download Volume: ${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
   console.log(`Admin Points Awarded: +${totalFarmed * POINTS_PER_UPLOAD} SyllaPoints`);
   console.log("======================================================================\n");
+
+  return {
+    harvested: totalFarmed,
+    durationMs: Date.now() - startTime,
+    bytes: totalBytes,
+    adminPoints: totalFarmed * POINTS_PER_UPLOAD,
+  };
 }
 
 const isInfinite = process.argv.includes("--infinite");
 
 async function main() {
   do {
-    await runSuperFastHarvest();
+    await runSuperFastHarvest(50);
     if (isInfinite) {
       console.log("Resting 30s before next high-speed harvest cycle... (Ctrl+C to stop)");
       await new Promise((r) => setTimeout(r, 30000));
@@ -433,4 +452,6 @@ async function main() {
   } while (isInfinite);
 }
 
-main().catch(console.error);
+if (process.argv[1] && process.argv[1].endsWith("super-fast-harvester.mjs")) {
+  main().catch(console.error);
+}

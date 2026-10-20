@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { BookOpen, FileStack, Home, Trophy, Upload, Wallet, Shield, Bot, Users, Settings, AlertCircle } from "lucide-react";
+import { BookOpen, FileStack, Home, Trophy, Upload, Wallet, Shield, Bot, Users, Settings, AlertCircle, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -9,6 +9,7 @@ import { DashboardOnboardingModal } from "@/components/onboarding/dashboard-onbo
 import { AppWalkthroughGuide } from "@/components/onboarding/app-walkthrough-guide";
 import { GuideContext } from "@/components/onboarding/guide-context";
 import { AntiVpnShield } from "@/components/security/anti-vpn-shield";
+import { SyllaPlusModal } from "@/components/syllaplus-modal";
 import { useGeo } from "@/lib/geo";
 
 import { PageBreathingLoader } from "@/components/syllaboss-logo";
@@ -16,7 +17,7 @@ import { PageBreathingLoader } from "@/components/syllaboss-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { updateStreakServerFn } from "@/lib/community.functions";
-import { upgradeToSyllaPlusServerFn } from "@/lib/upload.functions";
+import { upgradeToSyllaPlusServerFn, syncSubscriptionStatusServerFn } from "@/lib/upload.functions";
 import { autoPromptNotificationConsent, schedulePeriodicStudyReminder } from "@/lib/notifications";
 import { toast } from "sonner";
 
@@ -56,11 +57,12 @@ function DashboardLayout() {
   const { geo, isVpnOrProxy, vpnReason } = useGeo();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const search = useRouterState({ select: (s) => s.location.search }) as { upgraded?: string; tour?: string };
+  const search = useRouterState({ select: (s) => s.location.search }) as { upgraded?: string; tour?: string; plan?: string };
 
   // Onboarding Modal & Walkthrough Guide States
   const [manualSetupOpen, setManualSetupOpen] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [plusModalOpen, setPlusModalOpen] = useState(false);
 
   const profileComplete = isProfileComplete(profile);
   const needsOnboarding = isFetched && Boolean(profile) && !profileComplete;
@@ -69,7 +71,8 @@ function DashboardLayout() {
   // Handle successful Bachs payment redirect (?upgraded=true) or tour (?tour=true)
   useEffect(() => {
     if (search?.upgraded === "true" && user?.id) {
-      upgradeToSyllaPlusServerFn({ data: { userId: user.id } })
+      const plan = (search?.plan as "weekly" | "monthly" | "yearly") || "monthly";
+      upgradeToSyllaPlusServerFn({ data: { userId: user.id, plan } })
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ["profile"] });
           queryClient.invalidateQueries({ queryKey: ["ledger"] });
@@ -81,6 +84,7 @@ function DashboardLayout() {
           if (typeof window !== "undefined") {
             const url = new URL(window.location.href);
             url.searchParams.delete("upgraded");
+            url.searchParams.delete("plan");
             window.history.replaceState({}, "", url.pathname + url.search);
           }
         })
@@ -92,7 +96,20 @@ function DashboardLayout() {
     if (search?.tour === "true") {
       setShowGuide(true);
     }
-  }, [search?.upgraded, search?.tour, user?.id, queryClient]);
+  }, [search?.upgraded, search?.tour, search?.plan, user?.id, queryClient]);
+
+  // Synchronize subscription status (auto-renewal check, grace period evaluation, notices)
+  useEffect(() => {
+    if (user?.id) {
+      syncSubscriptionStatusServerFn({ data: { userId: user.id } })
+        .then((res) => {
+          if (res.status === "grace_period" && res.notice) {
+            toast.warning(res.notice, { id: "sub-grace-notice", duration: 8000 });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user?.id]);
 
   // Auto-activate streak ONLY after scholar has completed their profile
   useEffect(() => {
@@ -165,6 +182,43 @@ function DashboardLayout() {
           </div>
         )}
 
+        {/* Grace Period Notification Banner (6 days weekly / 12 days monthly) */}
+        {(() => {
+          const subData = (profile?.study_plan as any)?.subscription;
+          if (subData?.status !== "grace_period") return null;
+          const gracePeriodDays = subData?.plan === "weekly" ? 6 : 12;
+          const daysRemainingInGrace = subData?.grace_period_end
+            ? Math.max(1, Math.ceil((new Date(subData.grace_period_end).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+            : gracePeriodDays;
+
+          return (
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 dark:text-amber-200 text-xs sm:text-sm shadow-md animate-fade-in backdrop-blur-md">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">
+                    Payment Notice: SyllaPlus {subData?.plan === "weekly" ? "Weekly" : "Monthly"} Auto-Renewal Failed
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-0.5">
+                    You are currently in a {gracePeriodDays}-day grace period ({daysRemainingInGrace} day{daysRemainingInGrace === 1 ? "" : "s"} remaining). Renew your payment method before your 1.3x points multiplier and VIP perks are suspended.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  onClick={() => setPlusModalOpen(true)}
+                  className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs h-8.5 px-4 shadow-xs cursor-pointer"
+                >
+                  Renew Subscription
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
+
         {profile?.suspended ? (
           <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm font-medium text-destructive">
             Your account is suspended. You can't upload or cash out until an admin restores it.
@@ -203,10 +257,20 @@ function DashboardLayout() {
         />
       )}
 
-      {/* 10-Step Interactive App Tour */}
+      {/* 3-Slide Interactive App Tour */}
       <AppWalkthroughGuide
         isOpen={showGuide}
         onClose={() => setShowGuide(false)}
+      />
+
+      {/* SyllaPlus Membership & Renewal Modal */}
+      <SyllaPlusModal
+        open={plusModalOpen}
+        onClose={() => setPlusModalOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["profile"] });
+          queryClient.invalidateQueries({ queryKey: ["ledger"] });
+        }}
       />
 
       {/* Anti-VPN & Anti-Proxy Security Shield */}

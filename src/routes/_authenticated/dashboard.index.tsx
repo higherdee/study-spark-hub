@@ -352,7 +352,7 @@ function HomePage() {
         <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
           <ActionTile to="/dashboard/library" icon={BookOpen} title="Library" sub="Notes & past questions" />
           <ActionTile to="/dashboard/assistant" icon={Bot} title="Boss AI" sub="Ask, quiz, explain" />
-          <ActionTile onClick={openGuide} icon={Compass} title="Student Guide" sub="10-step platform tour" />
+          <ActionTile onClick={openGuide} icon={Compass} title="Student Guide" sub="3-slide quick tour" />
           <ActionTile to="/dashboard/community" icon={Users} title="Peers" sub="Study groups & battles" />
           <ActionTile onClick={() => setShowWrapped(true)} icon={Share2} title="Campus Wrapped" sub="Share your rank card" />
         </section>
