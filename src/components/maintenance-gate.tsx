@@ -2,16 +2,10 @@ import React, { useState, useEffect } from "react";
 import {
   ShieldCheck,
   Clock,
-  Sparkles,
-  Lock,
-  CheckCircle2,
   Activity,
-  ArrowRight,
-  ExternalLink,
+  CheckCircle2,
+  Lock,
   X,
-  Server,
-  BookOpen,
-  Award,
 } from "lucide-react";
 import { SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
@@ -31,6 +25,7 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
   const [passcodeError, setPasscodeError] = useState("");
   const [notifyEmail, setNotifyEmail] = useState("");
   const [emailNotified, setEmailNotified] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -62,9 +57,19 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
     if (localStorage.getItem("syllaboss_maintenance_bypass") === "granted") {
       setIsBypassed(true);
     }
+
+    // Keyboard shortcut (Ctrl + Shift + S or Cmd + Shift + S) for secret admin unlock
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        setShowPasscodeModal(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Server-side rendering safe fallback: render children or clean frame
+  // Server-side rendering safe fallback: render children
   if (!mounted) {
     return <>{children}</>;
   }
@@ -104,16 +109,16 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
       localStorage.setItem("syllaboss_maintenance_bypass", "granted");
       setIsBypassed(true);
       setShowPasscodeModal(false);
-      toast.success("Staff bypass authenticated! Welcome to Syllaboss.");
+      toast.success("Bypass authenticated! Welcome to Syllaboss.");
     } else {
-      setPasscodeError("Invalid staff authentication passcode.");
+      setPasscodeError("Invalid passcode.");
     }
   };
 
   const handleSubscribeNotify = (e: React.FormEvent) => {
     e.preventDefault();
     if (!notifyEmail || !notifyEmail.includes("@")) {
-      toast.error("Please enter a valid student or faculty email address.");
+      toast.error("Please enter a valid email address.");
       return;
     }
     setEmailNotified(true);
@@ -125,49 +130,37 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
     } catch {}
   };
 
+  const handleLogoClick = () => {
+    setClickCount((prev) => {
+      const next = prev + 1;
+      if (next >= 3) {
+        setShowPasscodeModal(true);
+        return 0;
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#FBFDFB] text-[#14261C] flex flex-col justify-between selection:bg-[#155E38]/20 selection:text-[#0C3820]">
-      {/* Top Banner Navigation */}
+      {/* Top Navigation: Clean, no green container, no academic registry badge, no maintenance/staff pills */}
       <header className="border-b border-[#E3ECE6] bg-white/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-[#14532D] text-white shadow-xs">
-              <SyllabossEmblem className="size-5 fill-white" />
-            </div>
-            <div>
-              <span className="font-display font-bold text-base tracking-tight text-[#0F2E1E]">
-                SYLLABOSS
-              </span>
-              <span className="hidden sm:inline-block ml-2 text-[10px] font-mono uppercase tracking-wider text-[#155E38] font-semibold bg-[#EBF5EF] px-2 py-0.5 rounded-full border border-[#D1E7D9]">
-                Academic Registry
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#D1E7D9] bg-[#F0F7F2] px-3 py-1 text-xs font-semibold text-[#14532D]">
-              <span className="relative flex size-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full size-2 bg-emerald-600"></span>
-              </span>
-              <span>Maintenance Mode</span>
-            </div>
-
-            <button
-              onClick={() => {
-                setPasscodeError("");
-                setShowPasscodeModal(true);
-              }}
-              className="text-xs font-medium text-[#1E3A2B] hover:text-[#14532D] underline-offset-4 hover:underline px-2 py-1"
-            >
-              Staff Access
-            </button>
+          <div
+            onClick={handleLogoClick}
+            className="flex items-center gap-2.5 cursor-pointer select-none"
+            title="Syllaboss"
+          >
+            <SyllabossEmblem className="size-8 shrink-0" />
+            <span className="font-display font-bold text-lg tracking-tight text-[#0F2E1E]">
+              SYLLABOSS
+            </span>
           </div>
         </div>
       </header>
 
       {/* Main Body */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-12 sm:py-16 flex flex-col items-center text-center">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-14 sm:py-20 flex flex-col items-center text-center">
         {/* Status Badge */}
         <div className="inline-flex items-center gap-2 rounded-full bg-[#EBF5EF] border border-[#CDE5D6] px-3.5 py-1 text-xs font-semibold text-[#14532D] shadow-xs mb-6">
           <Activity className="size-3.5 text-[#155E38]" />
@@ -179,12 +172,7 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
           Syllaboss is currently undergoing scheduled maintenance.
         </h1>
 
-        <p className="mt-4 text-sm sm:text-base text-[#3E5C4B] max-w-xl leading-relaxed">
-          We are upgrading our university archives vault, calibrating KaTeX AI problem derivation engines,
-          and expanding course syllabus libraries. All student records, streaks, and wallet balances are 100% secure.
-        </p>
-
-        {/* Progress Bar & ETA */}
+        {/* Progress Bar (Without estimated window text) */}
         <div className="mt-8 w-full max-w-md rounded-2xl border border-[#DDECE2] bg-white p-5 shadow-xs text-left">
           <div className="flex items-center justify-between text-xs font-semibold text-[#14532D] mb-2">
             <span className="flex items-center gap-1.5">
@@ -195,50 +183,6 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
 
           <div className="w-full bg-[#EBF3ED] rounded-full h-2 overflow-hidden">
             <div className="bg-[#14532D] h-2 rounded-full w-[94%] transition-all duration-1000" />
-          </div>
-
-          <div className="mt-3 flex items-center justify-between text-[11px] text-[#4A6B58]">
-            <span>Estimated Window: Within 2 Hours</span>
-            <span className="font-medium text-[#14532D]">Tonight (WAT / UTC+1)</span>
-          </div>
-        </div>
-
-        {/* 3 Pillar Updates Grid (Green & White Card Palette) */}
-        <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full text-left">
-          <div className="rounded-2xl border border-[#DDECE2] bg-white p-4 shadow-xs">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-[#EBF5EF] text-[#14532D] mb-3">
-              <BookOpen className="size-4" />
-            </div>
-            <h3 className="text-xs font-bold text-[#0F2E1E] uppercase tracking-wider">
-              Library Vault
-            </h3>
-            <p className="text-xs text-[#4A6B58] mt-1 leading-relaxed">
-              Synchronizing 14,000+ authentic university past questions and CCMAS lecture notes.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-[#DDECE2] bg-white p-4 shadow-xs">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-[#EBF5EF] text-[#14532D] mb-3">
-              <Sparkles className="size-4" />
-            </div>
-            <h3 className="text-xs font-bold text-[#0F2E1E] uppercase tracking-wider">
-              Boss AI Solver
-            </h3>
-            <p className="text-xs text-[#4A6B58] mt-1 leading-relaxed">
-              Deploying KaTeX 3.5 formula calculation engines for faster step-by-step problem derivations.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-[#DDECE2] bg-white p-4 shadow-xs">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-[#EBF5EF] text-[#14532D] mb-3">
-              <Award className="size-4" />
-            </div>
-            <h3 className="text-xs font-bold text-[#0F2E1E] uppercase tracking-wider">
-              Points Ledger
-            </h3>
-            <p className="text-xs text-[#4A6B58] mt-1 leading-relaxed">
-              All scholar streaks, SyllaPoints, and weekend payout queues are protected in cold storage.
-            </p>
           </div>
         </div>
 
@@ -275,42 +219,21 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
             </form>
           )}
         </div>
-
-        {/* Development Subdomain Link */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-[#4A6B58]">
-          <span>Authorized testing environment:</span>
-          <a
-            href="https://test.syllaboss.org"
-            className="inline-flex items-center gap-1 font-semibold text-[#14532D] hover:underline bg-[#EBF5EF] px-3 py-1 rounded-full border border-[#D1E7D9]"
-          >
-            <span>test.syllaboss.org</span>
-            <ExternalLink className="size-3" />
-          </a>
-        </div>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-[#E3ECE6] bg-white/60 py-6 text-center text-xs text-[#6B8A78]">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>© {new Date().getFullYear()} Syllaboss Academic Registry. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1 text-[11px] text-[#14532D]">
-              <Server className="size-3" /> All servers operational
-            </span>
-            <button
-              onClick={() => {
-                setPasscodeError("");
-                setShowPasscodeModal(true);
-              }}
-              className="text-[11px] text-[#3E5C4B] hover:text-[#14532D]"
-            >
-              Faculty Portal
-            </button>
-          </div>
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-center">
+          <p
+            onClick={handleLogoClick}
+            className="cursor-default select-none"
+          >
+            © {new Date().getFullYear()} Syllaboss. All rights reserved.
+          </p>
         </div>
       </footer>
 
-      {/* Staff Passcode Modal */}
+      {/* Secret Passcode Modal (accessible via Ctrl+Shift+S or triple-clicking logo/footer) */}
       {showPasscodeModal && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-xs animate-fade-in"
@@ -325,7 +248,7 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
                 <div className="flex size-7 items-center justify-center rounded-lg bg-[#EBF5EF] text-[#14532D]">
                   <Lock className="size-3.5" />
                 </div>
-                <h3 className="font-display font-bold text-sm text-[#0F2E1E]">Staff Access</h3>
+                <h3 className="font-display font-bold text-sm text-[#0F2E1E]">Bypass Access</h3>
               </div>
               <button
                 onClick={() => setShowPasscodeModal(false)}
@@ -336,7 +259,7 @@ export function MaintenanceGate({ children }: MaintenanceGateProps) {
             </div>
 
             <p className="mt-3 text-xs text-[#4A6B58]">
-              Enter the faculty or administrator passcode to bypass maintenance mode on this device.
+              Enter the access passcode to unlock the live platform on this device.
             </p>
 
             <form onSubmit={handleVerifyPasscode} className="mt-4 space-y-3">
