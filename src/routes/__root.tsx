@@ -14,6 +14,7 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
+import { MaintenanceGate } from "@/components/maintenance-gate";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { GA_MEASUREMENT_ID, trackGAPageView } from "@/lib/analytics";
@@ -225,7 +226,9 @@ function RootComponent() {
         <SmoothScrollProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <AuthProvider>
-            <Outlet />
+            <MaintenanceGate>
+              <Outlet />
+            </MaintenanceGate>
             <Toaster richColors position="top-center" />
           </AuthProvider>
         </SmoothScrollProvider>
