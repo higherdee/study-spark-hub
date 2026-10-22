@@ -1,5 +1,3 @@
-import "./dns-resilience.mjs";
-
 export const REAL_ACADEMIC_WEB_DOCS = [
   // --- ENGINEERING & WORKSHOP TECHNOLOGY (GET 206 / MEE 206 / FEG 206 / ENG 206) ---
   {
