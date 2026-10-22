@@ -386,7 +386,7 @@ function Onboarding() {
                 <SearchSelect
                   id="course"
                   label="Course / Field of Study"
-                  placeholder="Search discipline or department..."
+                  placeholder="Search course or programme..."
                   options={courseOptions}
                   value={course}
                   onChange={setCourse}

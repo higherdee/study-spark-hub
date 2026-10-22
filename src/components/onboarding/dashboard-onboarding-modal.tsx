@@ -8,11 +8,10 @@ import {
   Building2,
   User,
   ArrowRight,
+  ArrowLeft,
   Zap,
   Check,
-  Target,
   ShieldCheck,
-  Compass,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,7 +32,6 @@ interface DashboardOnboardingModalProps {
   onClose: () => void;
   profile: Profile;
   onComplete: () => void;
-  onOpenGuide?: () => void;
   isMandatory?: boolean;
 }
 
@@ -42,43 +40,42 @@ export function DashboardOnboardingModal({
   onClose,
   profile,
   onComplete,
-  onOpenGuide,
   isMandatory = false,
 }: DashboardOnboardingModalProps) {
   const qc = useQueryClient();
 
-  // Wizard Sub-steps: "form" -> "welcome" -> "syllaplus_upsell"
-  const [stage, setStage] = useState<"form" | "welcome" | "syllaplus_upsell">("form");
+  // 3-Slide Onboarding Wizard: 1 (Personal Details) -> 2 (School Details) -> 3 (Welcome Onboard)
+  // Plus optional VIP upsell slide
+  const [slide, setSlide] = useState<1 | 2 | 3 | "syllaplus_upsell">(1);
 
-  // Form inputs
+  // Form inputs - Slide 1: Personal Details
   const [fullName, setFullName] = useState(profile.full_name || "");
   const [username, setUsername] = useState(profile.username || "");
   const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
   const [usernameChecking, setUsernameChecking] = useState(false);
   const [usernameError, setUsernameError] = useState("");
+  const [referralCode, setReferralCode] = useState(profile.referral_source || "");
 
+  // Form inputs - Slide 2: School Details (NO department input!)
   const [institution, setInstitution] = useState<SearchOption | null>(
     profile.institution ? { label: profile.institution } : null
   );
   const [course, setCourse] = useState<SearchOption | null>(
     profile.course ? { label: profile.course } : null
   );
-  const [department, setDepartment] = useState(profile.department || "");
   const [dailyFocusTarget, setDailyFocusTarget] = useState<number>(60); // minutes
-  const [referralCode, setReferralCode] = useState(profile.referral_source || "");
 
   const [saving, setSaving] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
   const { isRegional, countryName } = useGeo();
 
-  // Sync profile data on open, but never reset stage if user is already on welcome or upsell
+  // Sync profile data on open
   useEffect(() => {
     if (isOpen) {
       if (profile.full_name && !fullName) setFullName(profile.full_name);
       if (profile.username && !profile.username.startsWith("student_") && !username) setUsername(profile.username);
       if (profile.institution && !institution) setInstitution({ label: profile.institution });
       if (profile.course && !course) setCourse({ label: profile.course });
-      if (profile.department && !department) setDepartment(profile.department);
       if (profile.referral_source && !referralCode) setReferralCode(profile.referral_source);
     }
   }, [isOpen, profile.id]);
@@ -137,16 +134,23 @@ export function DashboardOnboardingModal({
 
   if (!isOpen) return null;
 
-  const handleSubmitProfile = async (e: React.FormEvent) => {
+  // Validate Slide 1 and proceed to Slide 2
+  const handleProceedToSchoolDetails = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) {
       toast.error("Please enter your full name.");
       return;
     }
     if (!username.trim() || isUsernameAvailable === false) {
-      toast.error("Please choose a valid available username handle.");
+      toast.error("Please choose a valid unique username handle.");
       return;
     }
+    setSlide(2);
+  };
+
+  // Submit Slide 2 to save academic profile and proceed to Slide 3
+  const handleSaveAcademicProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
     const finalInstitution = institution?.label?.trim() || "";
     if (!finalInstitution) {
       toast.error("Please select or type your university or institution.");
@@ -167,7 +171,7 @@ export function DashboardOnboardingModal({
           username: username.trim().toLowerCase(),
           institution: finalInstitution,
           course: finalCourse,
-          department: department.trim() || finalCourse,
+          department: finalCourse, // Map directly to course label - department input removed
           referral_source: referralCode.trim() || undefined,
           onboarding_step: 3,
         },
@@ -175,7 +179,7 @@ export function DashboardOnboardingModal({
 
       await qc.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Academic records updated!");
-      setStage("welcome");
+      setSlide(3);
     } catch (err: any) {
       toast.error(err?.message || "Failed to save profile.");
     } finally {
@@ -216,67 +220,105 @@ export function DashboardOnboardingModal({
     onClose();
   };
 
-  const handleDismissToGuide = () => {
-    if (isMandatory) return;
-    onClose();
-    if (onOpenGuide) {
-      onOpenGuide();
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-lg animate-fade-in"
       onClick={(e) => {
-        // Prevent backdrop dismiss if mandatory
         if (e.target === e.currentTarget && !isMandatory) {
           handleClose();
         }
       }}
     >
-      <div
-        className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] border border-white/20 bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-2xl animate-scale-in"
-      >
+      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] border border-white/20 bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-2xl animate-scale-in">
         {/* Glow ambient background */}
         <div className="absolute -top-20 -right-20 size-56 rounded-full bg-gradient-to-br from-forest/20 via-brand/15 to-brass/20 blur-3xl pointer-events-none" />
 
-        {/* ========================================================================= */}
-        {/* STAGE 1: PROFILE SETUP FORM */}
-        {/* ========================================================================= */}
-        {stage === "form" && (
-          <div>
-            {/* Header */}
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold bg-brand/10 border border-brand/20 text-brand">
-                  <GraduationCap className="size-3.5" />
-                  <span>Scholar Onboarding</span>
-                </span>
-                <h2 className="mt-2.5 font-display text-2xl sm:text-3xl font-normal text-ink tracking-tight">
-                  Calibrate Your Academic Folio
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  {isMandatory
-                    ? "Academic registration is required before accessing study materials and AI tools."
-                    : "Personalize your courseware, configure your username handle, and activate your study wallet."}
-                </p>
-              </div>
+        {/* Wizard Slide Step Pills (1 to 3) */}
+        {slide !== "syllaplus_upsell" && (
+          <div className="flex items-center justify-between border-b border-border/70 pb-4 mb-6">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "size-6 rounded-full text-xs font-mono font-bold grid place-items-center transition-all",
+                  slide === 1
+                    ? "bg-forest text-white shadow-xs"
+                    : slide > 1
+                    ? "bg-forest/20 text-forest"
+                    : "bg-secondary text-muted-foreground"
+                )}
+              >
+                {slide > 1 ? <Check className="size-3.5 stroke-[3]" /> : "1"}
+              </span>
+              <span className={cn("text-xs font-semibold", slide === 1 ? "text-ink" : "text-muted-foreground")}>
+                Personal Details
+              </span>
 
-              {!isMandatory && (
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  aria-label="Skip for now"
-                  className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all"
-                >
-                  <X className="size-4" />
-                </button>
-              )}
+              <span className="text-muted-foreground/40 font-mono text-xs mx-1">/</span>
+
+              <span
+                className={cn(
+                  "size-6 rounded-full text-xs font-mono font-bold grid place-items-center transition-all",
+                  slide === 2
+                    ? "bg-forest text-white shadow-xs"
+                    : slide > 2
+                    ? "bg-forest/20 text-forest"
+                    : "bg-secondary text-muted-foreground"
+                )}
+              >
+                {slide > 2 ? <Check className="size-3.5 stroke-[3]" /> : "2"}
+              </span>
+              <span className={cn("text-xs font-semibold", slide === 2 ? "text-ink" : "text-muted-foreground")}>
+                School Details
+              </span>
+
+              <span className="text-muted-foreground/40 font-mono text-xs mx-1">/</span>
+
+              <span
+                className={cn(
+                  "size-6 rounded-full text-xs font-mono font-bold grid place-items-center transition-all",
+                  slide === 3 ? "bg-forest text-white shadow-xs" : "bg-secondary text-muted-foreground"
+                )}
+              >
+                3
+              </span>
+              <span className={cn("text-xs font-semibold", slide === 3 ? "text-ink" : "text-muted-foreground")}>
+                Verified
+              </span>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmitProfile} className="mt-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {!isMandatory && (
+              <button
+                type="button"
+                onClick={handleClose}
+                aria-label="Skip for now"
+                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* SLIDE 1: PERSONAL DETAILS */}
+        {/* ========================================================================= */}
+        {slide === 1 && (
+          <div>
+            <div className="space-y-1">
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-mono font-bold bg-brand/10 border border-brand/20 text-brand">
+                <User className="size-3.5" />
+                <span>Step 1 of 3: Personal Details</span>
+              </span>
+              <h2 className="font-display text-2xl sm:text-3xl font-normal text-ink tracking-tight pt-1">
+                Your Scholar Identity
+              </h2>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Set up your academic handle and personal profile to start interacting with peers and earning rewards.
+              </p>
+            </div>
+
+            <form onSubmit={handleProceedToSchoolDetails} className="mt-6 space-y-4">
+              <div className="space-y-3.5">
                 {/* Full Name */}
                 <div className="space-y-1.5">
                   <Label htmlFor="fn" className="text-xs font-semibold text-ink">
@@ -295,7 +337,7 @@ export function DashboardOnboardingModal({
                   </div>
                 </div>
 
-                {/* Unique Username */}
+                {/* Unique Username Handle */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="un" className="text-xs font-semibold text-ink">
@@ -328,53 +370,101 @@ export function DashboardOnboardingModal({
                       )}
                     />
                   </div>
-                  {usernameError && (
-                    <p className="text-[10px] text-destructive">{usernameError}</p>
-                  )}
+                  {usernameError && <p className="text-[10px] text-destructive">{usernameError}</p>}
                 </div>
-              </div>
 
-              {/* Institution / University */}
-              <div className="space-y-1.5">
-                <Label htmlFor="inst" className="text-xs font-semibold text-ink">
-                  Institution / University <span className="text-destructive">*</span>
-                </Label>
-                <SearchSelect
-                  placeholder="Select or type your university / college..."
-                  options={institutionOptions}
-                  value={institution}
-                  onChange={setInstitution}
-                />
-              </div>
-
-              {/* Course / Programme */}
-              <div className="space-y-1.5">
-                <Label htmlFor="cr" className="text-xs font-semibold text-ink">
-                  Course / Academic Programme <span className="text-destructive">*</span>
-                </Label>
-                <SearchSelect
-                  placeholder="e.g. Mechanical Engineering, Computer Science, Law..."
-                  options={courseOptions}
-                  value={course}
-                  onChange={setCourse}
-                />
-              </div>
-
-              {/* Department / Faculty & Daily Target */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Referral Code (Optional) */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="dp" className="text-xs font-semibold text-ink">
-                    Faculty / Department
+                  <Label htmlFor="ref" className="text-xs font-semibold text-ink">
+                    Referral Code or Campus Ambassador (Optional)
                   </Label>
                   <Input
-                    id="dp"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="e.g. Faculty of Engineering"
+                    id="ref"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value)}
+                    placeholder="e.g. SCHOLAR2026 or leave blank"
                     className="h-10 rounded-xl text-xs"
                   />
                 </div>
+              </div>
 
+              {/* Actions */}
+              <div
+                className={cn(
+                  "pt-4 flex items-center gap-3 border-t border-border/60",
+                  isMandatory ? "justify-end" : "justify-between"
+                )}
+              >
+                {!isMandatory && (
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="text-xs font-semibold text-muted-foreground hover:text-ink transition-colors cursor-pointer"
+                  >
+                    Skip for now
+                  </button>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={usernameChecking || isUsernameAvailable === false}
+                  className="h-10 px-6 rounded-xl text-xs font-semibold bg-forest text-white hover:bg-forest/90 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <span>Next: School Details</span>
+                  <ArrowRight className="size-3.5 ml-1.5" />
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* SLIDE 2: SCHOOL DETAILS (DEPARTMENT REMOVED) */}
+        {/* ========================================================================= */}
+        {slide === 2 && (
+          <div>
+            <div className="space-y-1">
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-mono font-bold bg-forest/10 border border-forest/20 text-forest">
+                <Building2 className="size-3.5" />
+                <span>Step 2 of 3: School Details</span>
+              </span>
+              <h2 className="font-display text-2xl sm:text-3xl font-normal text-ink tracking-tight pt-1">
+                Your Academic Affiliation
+              </h2>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Connect your institution and course to browse verified university summaries, past questions, and study materials.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveAcademicProfile} className="mt-6 space-y-4">
+              <div className="space-y-3.5">
+                {/* Institution / University */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="inst" className="text-xs font-semibold text-ink">
+                    University / Institution <span className="text-destructive">*</span>
+                  </Label>
+                  <SearchSelect
+                    placeholder="Select or type your university / college..."
+                    options={institutionOptions}
+                    value={institution}
+                    onChange={setInstitution}
+                  />
+                </div>
+
+                {/* Course / Programme */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="cr" className="text-xs font-semibold text-ink">
+                    Course / Field of Study <span className="text-destructive">*</span>
+                  </Label>
+                  <SearchSelect
+                    placeholder="e.g. Mechanical Engineering, Computer Science, Law..."
+                    options={courseOptions}
+                    value={course}
+                    onChange={setCourse}
+                  />
+                </div>
+
+                {/* Daily Study Target */}
                 <div className="space-y-1.5">
                   <Label htmlFor="focus" className="text-xs font-semibold text-ink">
                     Daily Study Target
@@ -394,21 +484,21 @@ export function DashboardOnboardingModal({
               </div>
 
               {/* Actions */}
-              <div className={cn("pt-3 flex items-center gap-3 border-t border-border/60", isMandatory ? "justify-end" : "justify-between")}>
-                {!isMandatory && (
-                  <button
-                    type="button"
-                    onClick={handleDismissToGuide}
-                    className="text-xs font-semibold text-muted-foreground hover:text-ink transition-colors cursor-pointer"
-                  >
-                    Skip for now
-                  </button>
-                )}
+              <div className="pt-4 flex items-center justify-between gap-3 border-t border-border/60">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSlide(1)}
+                  className="h-10 px-4 rounded-xl text-xs font-semibold border-border text-ink hover:bg-secondary cursor-pointer"
+                >
+                  <ArrowLeft className="size-3.5 mr-1.5" />
+                  <span>Back</span>
+                </Button>
 
                 <Button
                   type="submit"
-                  disabled={saving || usernameChecking || isUsernameAvailable === false}
-                  className="h-10 px-6 rounded-xl text-xs font-semibold bg-forest text-white hover:bg-forest/90 shadow-xs transition-all active:scale-[0.98]"
+                  disabled={saving}
+                  className="h-10 px-6 rounded-xl text-xs font-semibold bg-forest text-white hover:bg-forest/90 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
                 >
                   {saving ? (
                     <>
@@ -417,7 +507,7 @@ export function DashboardOnboardingModal({
                     </>
                   ) : (
                     <>
-                      Complete Setup
+                      <span>Save & Complete Setup</span>
                       <ArrowRight className="size-3.5 ml-1.5" />
                     </>
                   )}
@@ -428,9 +518,9 @@ export function DashboardOnboardingModal({
         )}
 
         {/* ========================================================================= */}
-        {/* STAGE 2: WELCOME ONBOARD MODAL & REGISTRATION PROMPT */}
+        {/* SLIDE 3: WELCOME ONBOARD MODAL & REGISTRATION PROMPT */}
         {/* ========================================================================= */}
-        {stage === "welcome" && (
+        {slide === 3 && (
           <div className="text-center py-2 space-y-4">
             <div className="mx-auto size-16 rounded-3xl bg-forest/15 border border-forest/30 flex items-center justify-center text-forest shadow-lift">
               <Sparkles className="size-8 text-brass" />
@@ -441,11 +531,13 @@ export function DashboardOnboardingModal({
                 <CheckCircle2 className="size-3.5" />
                 <span>Academic Profile Activated</span>
               </span>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-tight">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-tight pt-1">
                 Welcome Onboard, @{username}!
               </h2>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Your academic ledger is verified. We deposited <strong className="font-mono text-forest font-bold">+200 SyllaPoints</strong> welcome bonus directly into your study wallet.
+                Your academic ledger is verified. We deposited{" "}
+                <strong className="font-mono text-forest font-bold">+200 SyllaPoints</strong> welcome bonus directly
+                into your study wallet.
               </p>
             </div>
 
@@ -459,11 +551,15 @@ export function DashboardOnboardingModal({
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div>
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Institution</span>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">
+                    Institution
+                  </span>
                   <span className="font-medium text-foreground truncate block">{institution?.label}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Course</span>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">
+                    Course
+                  </span>
                   <span className="font-medium text-foreground truncate block">{course?.label}</span>
                 </div>
               </div>
@@ -474,9 +570,9 @@ export function DashboardOnboardingModal({
               <div className="flex items-start gap-2.5">
                 <ShieldCheck className="size-4 text-brass shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-ink text-xs">Complete Your Registration & Sync Devices</p>
+                  <p className="font-semibold text-ink text-xs">Lock In Your Credentials & Sync Devices</p>
                   <p className="text-muted-foreground text-[11px] mt-0.5 leading-relaxed">
-                    Lock in your academic credentials, sync your study streak between your mobile and PC, and activate weekend withdrawal privileges.
+                    Keep your study streak active across your devices, access unlimited AI summaries, and unlock weekend cash withdrawals.
                   </p>
                 </div>
               </div>
@@ -495,25 +591,9 @@ export function DashboardOnboardingModal({
                 <ArrowRight className="size-4" />
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  onComplete();
-                  onClose();
-                  if (onOpenGuide) {
-                    onOpenGuide();
-                  }
-                }}
-                className="h-10 w-full rounded-xl text-xs font-semibold border-border text-ink hover:bg-secondary flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Compass className="size-3.5 text-forest" />
-                <span>Take Quick 3-Slide Tour</span>
-              </Button>
-
               <button
                 type="button"
-                onClick={() => setStage("syllaplus_upsell")}
+                onClick={() => setSlide("syllaplus_upsell")}
                 className="text-[11px] text-muted-foreground hover:text-ink font-medium py-1 cursor-pointer flex items-center justify-center gap-1"
               >
                 <Zap className="size-3 text-brass" />
@@ -524,9 +604,9 @@ export function DashboardOnboardingModal({
         )}
 
         {/* ========================================================================= */}
-        {/* STAGE 3: SYLLAPLUS UPSELL */}
+        {/* OPTIONAL SLIDE: SYLLAPLUS UPSELL */}
         {/* ========================================================================= */}
-        {stage === "syllaplus_upsell" && (
+        {slide === "syllaplus_upsell" && (
           <div className="space-y-5">
             <div className="flex items-start justify-between">
               <div>
@@ -542,19 +622,14 @@ export function DashboardOnboardingModal({
                 </p>
               </div>
 
-              {!isMandatory && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onComplete();
-                    onClose();
-                  }}
-                  aria-label="Skip SyllaPlus"
-                  className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all"
-                >
-                  <X className="size-4" />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setSlide(3)}
+                aria-label="Back to Welcome"
+                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
             </div>
 
             {/* Benefits Cards */}
@@ -600,12 +675,18 @@ export function DashboardOnboardingModal({
             <div className="p-3.5 rounded-2xl bg-surface-container-low border border-border flex items-center justify-between text-xs">
               <div>
                 <span className="eyebrow block text-muted-foreground">
-                  {isRegional ? `Regional Pricing (${countryName || "Africa / Asia"})` : `International Pricing (${countryName || "Global"})`}
+                  {isRegional
+                    ? `Regional Pricing (${countryName || "Africa / Asia"})`
+                    : `International Pricing (${countryName || "Global"})`}
                 </span>
                 <span className="font-semibold text-ink">
                   {isRegional
-                    ? `${formatNaira(SYLLAPLUS_PRICING.regional.weekly)}/wk · ${formatNaira(SYLLAPLUS_PRICING.regional.monthly)}/mo · ${formatNaira(SYLLAPLUS_PRICING.regional.yearly)}/yr`
-                    : `${formatUsd(SYLLAPLUS_PRICING.international.monthly)}/mo · ${formatUsd(SYLLAPLUS_PRICING.international.yearly)}/yr`}
+                    ? `${formatNaira(SYLLAPLUS_PRICING.regional.weekly)}/wk · ${formatNaira(
+                        SYLLAPLUS_PRICING.regional.monthly
+                      )}/mo · ${formatNaira(SYLLAPLUS_PRICING.regional.yearly)}/yr`
+                    : `${formatUsd(SYLLAPLUS_PRICING.international.monthly)}/mo · ${formatUsd(
+                        SYLLAPLUS_PRICING.international.yearly
+                      )}/yr`}
                 </span>
               </div>
               <div className="text-right">
@@ -620,7 +701,7 @@ export function DashboardOnboardingModal({
               <Button
                 onClick={handleUpgradeSyllaPlus}
                 disabled={upgrading}
-                className="h-11 w-full rounded-xl text-xs font-semibold bg-gradient-to-r from-brass to-brass-ink text-white shadow-lift gap-2 active:scale-[0.98]"
+                className="h-11 w-full rounded-xl text-xs font-semibold bg-gradient-to-r from-brass to-brass-ink text-white shadow-lift gap-2 active:scale-[0.98] cursor-pointer"
               >
                 {upgrading ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -632,22 +713,6 @@ export function DashboardOnboardingModal({
                 )}
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  onComplete();
-                  onClose();
-                  if (onOpenGuide) {
-                    onOpenGuide();
-                  }
-                }}
-                className="h-10 w-full rounded-xl text-xs font-semibold border-forest/30 text-forest hover:bg-forest/10 hover:text-forest flex items-center justify-center gap-2"
-              >
-                <Compass className="size-3.5" />
-                <span>Take 10-Step Interactive Tour</span>
-              </Button>
-
               <button
                 type="button"
                 onClick={() => {
@@ -656,7 +721,7 @@ export function DashboardOnboardingModal({
                 }}
                 className="text-xs text-muted-foreground hover:text-ink font-semibold py-1 cursor-pointer"
               >
-                Skip Tour & Enter Dashboard
+                Enter Dashboard Directly
               </button>
             </div>
           </div>

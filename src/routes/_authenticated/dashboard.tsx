@@ -6,7 +6,6 @@ import { AppShell, type NavItem } from "@/components/app-shell";
 import { isProfileComplete, useIsAdmin, useProfile } from "@/lib/profile";
 import { Button } from "@/components/ui/button";
 import { DashboardOnboardingModal } from "@/components/onboarding/dashboard-onboarding-modal";
-import { AppWalkthroughGuide } from "@/components/onboarding/app-walkthrough-guide";
 import { GuideContext } from "@/components/onboarding/guide-context";
 import { AntiVpnShield } from "@/components/security/anti-vpn-shield";
 import { SyllaPlusModal } from "@/components/syllaplus-modal";
@@ -59,16 +58,15 @@ function DashboardLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const search = useRouterState({ select: (s) => s.location.search }) as { upgraded?: string; tour?: string; plan?: string };
 
-  // Onboarding Modal & Walkthrough Guide States
+  // Onboarding Modal & SyllaPlus Modal States
   const [manualSetupOpen, setManualSetupOpen] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
   const [plusModalOpen, setPlusModalOpen] = useState(false);
 
   const profileComplete = isProfileComplete(profile);
   const needsOnboarding = isFetched && Boolean(profile) && !profileComplete;
   const isModalOpen = needsOnboarding || manualSetupOpen;
 
-  // Handle successful Bachs payment redirect (?upgraded=true) or tour (?tour=true)
+  // Handle successful Bachs payment redirect (?upgraded=true)
   useEffect(() => {
     if (search?.upgraded === "true" && user?.id) {
       const plan = (search?.plan as "weekly" | "monthly" | "yearly") || "monthly";
@@ -92,11 +90,7 @@ function DashboardLayout() {
           console.error("Auto upgrade check failed:", err);
         });
     }
-
-    if (search?.tour === "true") {
-      setShowGuide(true);
-    }
-  }, [search?.upgraded, search?.tour, search?.plan, user?.id, queryClient]);
+  }, [search?.upgraded, search?.plan, user?.id, queryClient]);
 
   // Synchronize subscription status (auto-renewal check, grace period evaluation, notices)
   useEffect(() => {
@@ -138,9 +132,9 @@ function DashboardLayout() {
   return (
     <GuideContext.Provider
       value={{
-        isOpen: showGuide,
-        openGuide: () => setShowGuide(true),
-        closeGuide: () => setShowGuide(false),
+        isOpen: manualSetupOpen,
+        openGuide: () => setManualSetupOpen(true),
+        closeGuide: () => setManualSetupOpen(false),
       }}
     >
       <AppShell
@@ -250,18 +244,8 @@ function DashboardLayout() {
           onComplete={() => {
             setManualSetupOpen(false);
           }}
-          onOpenGuide={() => {
-            setManualSetupOpen(false);
-            setShowGuide(true);
-          }}
         />
       )}
-
-      {/* 3-Slide Interactive App Tour */}
-      <AppWalkthroughGuide
-        isOpen={showGuide}
-        onClose={() => setShowGuide(false)}
-      />
 
       {/* SyllaPlus Membership & Renewal Modal */}
       <SyllaPlusModal
