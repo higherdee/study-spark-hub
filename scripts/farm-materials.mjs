@@ -10,4 +10,23 @@
  * - Registers records in Turso DB ('materials' table) with verified status.
  * - Awards +25 SyllaPoints per upload to Admin.
  */
-export { runSuperFastHarvest as runHarvest } from "./super-fast-harvester.mjs";
+import { runSuperFastHarvest } from "./super-fast-harvester.mjs";
+
+export { runSuperFastHarvest as runHarvest };
+
+if (process.argv[1] && process.argv[1].endsWith("farm-materials.mjs")) {
+  const isInfinite = process.argv.includes("--infinite");
+  const countArg = parseInt(process.argv.find(a => !isNaN(parseInt(a, 10)) && !a.startsWith("-")), 10) || 20;
+
+  async function run() {
+    do {
+      await runSuperFastHarvest(countArg);
+      if (isInfinite) {
+        console.log("Resting 30s before next high-speed harvest cycle... (Ctrl+C to stop)");
+        await new Promise((r) => setTimeout(r, 30000));
+      }
+    } while (isInfinite);
+  }
+
+  run().catch(console.error);
+}
