@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+﻿import { createFileRoute } from "@tanstack/react-router";
 import { verifyToken } from "@clerk/backend";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import type { InValue } from "@libsql/client";
 
-import { turso, getProfile } from "@/integrations/turso/client";
+import { turso, getProfile } from "@/integrations/turso/client.server";
 import { CHAT_MODEL, createGateway, reasoningOptions } from "@/lib/ai/gateway.server";
 import { getLovableAiGatewayRunId, withLovableAiGatewayRunIdHeader } from "@/lib/ai/run-id";
 
@@ -112,3 +112,4 @@ Study plan: ${JSON.stringify(profile?.study_plan ?? {})}`;
     },
   },
 });
+

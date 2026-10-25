@@ -30,19 +30,19 @@ export function AppWelcomeGate() {
         </h1>
 
         <p className="mt-3 text-sm text-ink-soft leading-relaxed max-w-xs">
-          Your campus course materials, verified past questions, and 24/7 AI study partner — always in your pocket.
+          Find course materials, organize a focused study session, and ask Boss AI for help with the topics you are working through.
         </p>
 
         {/* Feature badges */}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-[11px] font-semibold text-moss">
           <span className="px-3 py-1 rounded-full bg-muted border border-border/70 flex items-center gap-1">
-            <BookOpen className="size-3 text-brand" /> Past Questions
+            <BookOpen className="size-3 text-brand" /> Course Library
           </span>
           <span className="px-3 py-1 rounded-full bg-muted border border-border/70 flex items-center gap-1">
             <Sparkles className="size-3 text-brand" /> Boss AI
           </span>
           <span className="px-3 py-1 rounded-full bg-muted border border-border/70 flex items-center gap-1">
-            <ShieldCheck className="size-3 text-brand" /> Verified Notes
+            <ShieldCheck className="size-3 text-brand" /> Study Tools
           </span>
         </div>
       </div>
@@ -70,7 +70,7 @@ export function AppWelcomeGate() {
         </Button>
 
         <p className="text-center text-[11px] text-muted-foreground mt-2">
-          Fast offline access · Instant study rewards
+          Study materials, peer groups, and an AI study assistant
         </p>
       </div>
     </div>

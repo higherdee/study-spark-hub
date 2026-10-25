@@ -1,11 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { turso } from "@/integrations/turso/client";
+﻿import { createFileRoute } from "@tanstack/react-router";
+import { turso } from "@/integrations/turso/client.server";
+import { requireAdmin } from "@/lib/auth.server";
 
 export const Route = createFileRoute("/api/harvester")({
   server: {
     handlers: {
       GET: async () => {
         try {
+          await requireAdmin();
           const [totalRes, farmedRes, todayRes, recentRes, levelRes, typeRes, courseRes, logsRes] = await Promise.all([
             turso.execute("SELECT COUNT(*) as count FROM materials"),
             turso.execute("SELECT COUNT(*) as count FROM materials WHERE user_id = 'syllaboss-harvester-bot'"),
@@ -44,6 +46,7 @@ export const Route = createFileRoute("/api/harvester")({
 
       POST: async ({ request }) => {
         try {
+          await requireAdmin();
           let count = 50;
           try {
             const body = await request.json();
@@ -68,3 +71,4 @@ export const Route = createFileRoute("/api/harvester")({
     }
   }
 });
+

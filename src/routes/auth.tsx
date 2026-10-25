@@ -1,10 +1,11 @@
-import { SignIn, SignUp } from "@clerk/clerk-react";
+import { ClerkFailed, ClerkLoaded, ClerkLoading, SignIn, SignUp } from "@clerk/clerk-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { BookOpen, Bot, Coins } from "lucide-react";
+import { AlertCircle, BookOpen, Bot, Coins, Loader2, RefreshCw } from "lucide-react";
 import { z } from "zod";
 
 import { SyllabossEmblem, SyllabossLogo } from "@/components/syllaboss-logo";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { clerkAppearance } from "@/integrations/clerk";
 
@@ -101,27 +102,76 @@ function AuthPage() {
         </header>
 
         <main className="flex flex-1 items-center justify-center px-6 pb-12 sm:px-10">
-          <div key={mode} className="route-enter !h-auto w-full max-w-[26rem]">
-            {isSignup ? (
-              <SignUp
-                appearance={clerkAppearance}
-                routing="virtual"
-                signInUrl="/auth?mode=signin"
-                forceRedirectUrl="/dashboard"
-                fallbackRedirectUrl="/dashboard"
-              />
-            ) : (
-              <SignIn
-                appearance={clerkAppearance}
-                routing="virtual"
-                signUpUrl="/auth?mode=signup"
-                forceRedirectUrl="/dashboard"
-                fallbackRedirectUrl="/dashboard"
-              />
-            )}
-          </div>
+          <ClerkLoading>
+            <AuthLoadingPanel />
+          </ClerkLoading>
+          <ClerkLoaded>
+            <div key={mode} className="route-enter !h-auto w-full max-w-[26rem]">
+              {isSignup ? (
+                <SignUp
+                  appearance={clerkAppearance}
+                  routing="virtual"
+                  signInUrl="/auth?mode=signin"
+                  forceRedirectUrl="/dashboard"
+                  fallbackRedirectUrl="/dashboard"
+                  fallback={<AuthLoadingPanel label="Preparing account creation…" />}
+                />
+              ) : (
+                <SignIn
+                  appearance={clerkAppearance}
+                  routing="virtual"
+                  signUpUrl="/auth?mode=signup"
+                  forceRedirectUrl="/dashboard"
+                  fallbackRedirectUrl="/dashboard"
+                  fallback={<AuthLoadingPanel label="Preparing sign in…" />}
+                />
+              )}
+            </div>
+          </ClerkLoaded>
+          <ClerkFailed>
+            <AuthFailurePanel />
+          </ClerkFailed>
         </main>
       </div>
+    </div>
+  );
+}
+
+function AuthLoadingPanel({ label = "Connecting to secure sign in…" }: { label?: string }) {
+  return (
+    <div
+      className="grid w-full max-w-[26rem] justify-items-center gap-3 rounded-2xl border border-border bg-card px-6 py-10 text-center shadow-[var(--elev-1)]"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="grid size-11 place-items-center rounded-2xl bg-forest/8 text-forest">
+        <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+      </span>
+      <p className="text-sm font-semibold text-ink">{label}</p>
+      <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+        This usually takes a moment.
+      </p>
+    </div>
+  );
+}
+
+function AuthFailurePanel() {
+  return (
+    <div
+      className="grid w-full max-w-[26rem] justify-items-center gap-3 rounded-2xl border border-border bg-card px-6 py-10 text-center shadow-[var(--elev-1)]"
+      role="alert"
+    >
+      <span className="grid size-11 place-items-center rounded-2xl bg-destructive/10 text-destructive">
+        <AlertCircle className="size-5" aria-hidden="true" />
+      </span>
+      <h1 className="font-display text-xl font-medium text-ink">Sign in didn’t load</h1>
+      <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+        Check your connection, then try again. If the problem continues, the sign-in service may be temporarily unavailable.
+      </p>
+      <Button className="mt-1 min-h-11 gap-2" onClick={() => window.location.reload()}>
+        <RefreshCw className="size-4" aria-hidden="true" />
+        Try again
+      </Button>
     </div>
   );
 }

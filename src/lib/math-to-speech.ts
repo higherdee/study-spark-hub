@@ -1,8 +1,7 @@
-import katex from "katex";
-
 // Lazy-loaded Speech Rule Engine instance
 let sreInstance: any = null;
 let sreReadyPromise: Promise<boolean> | null = null;
+let katexInstance: typeof import("katex").default | null = null;
 
 /**
  * Initialize Speech Rule Engine asynchronously
@@ -13,8 +12,12 @@ export async function initSpeechRuleEngine(): Promise<boolean> {
 
   sreReadyPromise = (async () => {
     try {
-      const sreModule = await import("speech-rule-engine");
+      const [sreModule, katexModule] = await Promise.all([
+        import("speech-rule-engine"),
+        import("katex"),
+      ]);
       const sre = sreModule.default || sreModule;
+      katexInstance = katexModule.default;
       sre.setupEngine({
         domain: "mathspeak", // Reads math using standard conversational academic rules
         style: "default",
@@ -224,11 +227,11 @@ export function mathToSpeech(latexOrMathML: string): string {
   if (!trimmed) return "";
 
   // 1. Try Speech Rule Engine if ready
-  if (sreInstance) {
+  if (sreInstance && katexInstance) {
     try {
       let mathml = trimmed;
       if (!trimmed.startsWith("<math")) {
-        const rendered = katex.renderToString(trimmed, {
+        const rendered = katexInstance.renderToString(trimmed, {
           output: "mathml",
           throwOnError: false,
         });

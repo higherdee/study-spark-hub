@@ -4,15 +4,12 @@ import {
   BookOpen,
   Bot,
   Building2,
-  Check,
-  Copy,
   Download,
   Eye,
   FileText,
   GraduationCap,
   Loader2,
   Search,
-  Sparkles,
   Star,
   Upload,
   Verified,
@@ -25,14 +22,12 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { PageHeader } from "@/components/app-shell";
-import { SyllabossEmblem } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, getTotalMaterialsCount, type Material } from "@/integrations/turso/client";
 import { LEVELS, MATERIAL_TYPES, POINTS_NAME } from "@/lib/constants";
 import { getDownloadUrlServerFn, recordMaterialViewServerFn } from "@/lib/upload.functions";
-import { AiMessageRenderer } from "@/components/ai-message-renderer";
 
 const librarySearchSchema = z.object({
   q: z.string().catch("").default(""),
@@ -60,19 +55,7 @@ function LibraryPage() {
   const [q, setQ] = useState(initialQ);
   const [type, setType] = useState(initialType);
   const [level, setLevel] = useState(initialLevel);
-
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
-  const [activeTab, setActiveTab] = useState<"details" | "open" | "summary">("details");
   const [downloading, setDownloading] = useState<string | null>(null);
-
-  // Summary generation state
-  const [summary, setSummary] = useState<string | null>(null);
-  const [generatingSummary, setGeneratingSummary] = useState(false);
-  const [copiedSummary, setCopiedSummary] = useState(false);
-
-  // Document preview URL
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
 
   const { data: totalCount = 0 } = useQuery({
     queryKey: ["library-materials-total-count"],
@@ -110,41 +93,6 @@ function LibraryPage() {
     });
   }
 
-  // Action 3: Summarize with AI
-  async function handleSummarizeWithAI(m: Material) {
-    setSelectedMaterial(m);
-    setActiveTab("summary");
-    setGeneratingSummary(true);
-    setSummary(null);
-
-    try {
-      const summaryText = `## Executive Summary: ${m.title}
-**Course:** ${m.course_code ? `${m.course_code} - ` : ""}${m.course}
-**Institution:** ${m.institution}
-
-### Core Focus & Concepts
-This verified material provides high-yield coverage of fundamental principles, step-by-step mathematical or theoretical derivations, and real-world applications tailored for examinations and academic mastery.
-
-### Key Takeaways & Exam Pointers
-1. **Fundamental Theorems & Definitions:** Make sure you can state and write down the foundational laws and formulas without hesitation.
-2. **Standard Problem Types:** Review the worked examples in sections 1 through 3—these represent recurring past question archetypes.
-3. **Common Pitfalls:** Watch out for unit conversions, proper notations, and boundary conditions during calculations.
-
-### Practice Self-Test
-- Explain the primary mechanism or theory detailed in this material.
-- How does this topic integrate with previous coursework in this department?
-- Solve 2 related past examination questions under timed conditions.`;
-
-      setTimeout(() => {
-        setSummary(summaryText);
-        setGeneratingSummary(false);
-      }, 700);
-    } catch {
-      toast.error("Failed to generate summary.");
-      setGeneratingSummary(false);
-    }
-  }
-
   // Action 4: Download File Directly to Device
   async function handleDownload(m: Material) {
     setDownloading(m.id);
@@ -175,21 +123,13 @@ This verified material provides high-yield coverage of fundamental principles, s
         document.body.removeChild(a);
       }
 
-      toast.success("Download started! Saved directly to your device (+5 pts)");
+      toast.success("Your download has started.");
       qc.invalidateQueries({ queryKey: ["library-materials"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
     } finally {
       setDownloading(null);
     }
-  }
-
-  function handleCopySummary() {
-    if (!summary) return;
-    navigator.clipboard.writeText(summary);
-    setCopiedSummary(true);
-    toast.success("Summary copied to clipboard!");
-    setTimeout(() => setCopiedSummary(false), 2000);
   }
 
   const hasFilters = Boolean(q || type || level);
@@ -388,18 +328,8 @@ This verified material provides high-yield coverage of fundamental principles, s
                   <Button
                     variant="outline"
                     size="icon"
-                    aria-label="Summarize with AI"
-                    title="Summarize"
-                    className="size-10 rounded-xl"
-                    onClick={() => handleSummarizeWithAI(m)}
-                  >
-                    <Sparkles className="size-4 text-brass" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Download (+5 pts)"
-                    title="Download (+5 pts)"
+                    aria-label="Download material"
+                    title="Download material"
                     className="size-10 rounded-xl"
                     disabled={downloading === m.id}
                     onClick={() => handleDownload(m)}
@@ -417,227 +347,6 @@ This verified material provides high-yield coverage of fundamental principles, s
         )}
       </section>
 
-      {/* Material Modal with Tabs for Open / Read and Summarize */}
-      {selectedMaterial && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3 sm:p-6 backdrop-blur-md animate-fade-in"
-          onClick={() => {
-            setSelectedMaterial(null);
-            setSummary(null);
-            setPreviewUrl(null);
-          }}
-        >
-          <div
-            className="relative flex flex-col w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl border border-border bg-white p-6 shadow-2xl animate-page-zoom-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-surface-container pb-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground font-semibold">
-                  <FileText className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-display text-lg font-bold text-ink truncate">
-                    {selectedMaterial.title}
-                  </h3>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {selectedMaterial.course_code ? `${selectedMaterial.course_code} · ` : ""}
-                    {selectedMaterial.course} · {selectedMaterial.institution}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedMaterial(null);
-                  setSummary(null);
-                  setPreviewUrl(null);
-                }}
-                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            {/* Tab navigation within modal */}
-            <div className="mt-4 flex items-center gap-2 border-b border-surface-container pb-3 text-xs">
-              <button
-                type="button"
-                onClick={() => setActiveTab("details")}
-                className={`rounded-full px-3.5 py-1 font-semibold transition-all ${
-                  activeTab === "details"
-                    ? "bg-forest text-white"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                Overview
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOpenMaterial(selectedMaterial)}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1 font-semibold transition-all ${
-                  activeTab === "open"
-                    ? "bg-forest text-white"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                <Eye className="size-3.5" /> In-App Reader
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSummarizeWithAI(selectedMaterial)}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1 font-semibold transition-all ${
-                  activeTab === "summary"
-                    ? "bg-forest text-white"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                <Sparkles className="size-3.5 text-brass-soft" /> AI Summary
-              </button>
-            </div>
-
-            {/* Modal Body Content */}
-            <div className="flex-1 overflow-y-auto py-4">
-              {activeTab === "details" && (
-                <div className="space-y-4">
-                  {selectedMaterial.description && (
-                    <div className="rounded-xl bg-muted p-4 text-xs leading-relaxed text-foreground">
-                      {selectedMaterial.description}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-xl border border-border bg-white p-3.5">
-                      <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                        <Building2 className="size-3.5 text-moss" /> Institution
-                      </p>
-                      <p className="font-semibold text-ink mt-1 truncate">{selectedMaterial.institution}</p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-white p-3.5">
-                      <p className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                        <GraduationCap className="size-3.5 text-moss" /> Material Category
-                      </p>
-                      <p className="font-semibold text-ink mt-1 truncate">
-                        {selectedMaterial.material_type}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border bg-white p-4 text-xs">
-                    <p className="font-semibold text-ink">Document Stats</p>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-center text-muted-foreground">
-                      <div className="rounded-lg bg-muted p-2">
-                        <p className="text-base font-bold text-ink">{selectedMaterial.page_count}</p>
-                        <p className="text-[10px]">Pages</p>
-                      </div>
-                      <div className="rounded-lg bg-muted p-2">
-                        <p className="text-base font-bold text-ink">{selectedMaterial.views ?? 0}</p>
-                        <p className="text-[10px]">Views</p>
-                      </div>
-                      <div className="rounded-lg bg-muted p-2">
-                        <p className="text-base font-bold text-ink">{selectedMaterial.downloads}</p>
-                        <p className="text-[10px]">Downloads</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "open" && (
-                <div className="space-y-3">
-                  {loadingPreview ? (
-                    <div className="py-20 text-center flex flex-col items-center justify-center">
-                      <div className="animate-breathe-zoom">
-                        <SyllabossEmblem className="size-14" />
-                      </div>
-                      <p className="mt-3 text-xs font-semibold text-moss animate-pulse">Loading preview reader...</p>
-                    </div>
-                  ) : previewUrl ? (
-                    <div className="rounded-xl border border-border overflow-hidden bg-white">
-                      {selectedMaterial.mime_type.includes("pdf") ? (
-                        <iframe
-                          src={previewUrl}
-                          className="w-full h-[55vh] border-0"
-                          title="PDF Viewer"
-                        />
-                      ) : (
-                        <div className="p-4 grid place-items-center max-h-[55vh] overflow-auto">
-                          <img
-                            src={previewUrl}
-                            alt={selectedMaterial.title}
-                            className="max-h-[50vh] rounded-lg object-contain"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center text-xs text-muted-foreground">
-                      <p>Preview unavailable. You can download the file directly.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === "summary" && (
-                <div className="space-y-3">
-                  {generatingSummary ? (
-                    <div className="py-20 text-center flex flex-col items-center justify-center">
-                      <div className="animate-breathe-zoom">
-                        <SyllabossEmblem className="size-14" />
-                      </div>
-                      <p className="mt-3 text-xs font-semibold text-ink">Boss AI is extracting key concepts...</p>
-                      <p className="text-[11px] text-muted-foreground">Formulating exam pointers and definitions</p>
-                    </div>
-                  ) : summary ? (
-                    <div className="relative rounded-xl border border-border bg-muted/50 p-5 text-xs text-foreground leading-relaxed font-sans">
-                      <button
-                        type="button"
-                        onClick={handleCopySummary}
-                        className="absolute top-3 right-3 flex items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1 text-[11px] font-medium text-foreground shadow-xs hover:bg-muted transition-all"
-                      >
-                        {copiedSummary ? <Check className="size-3 text-brand" /> : <Copy className="size-3" />}
-                        {copiedSummary ? "Copied" : "Copy"}
-                      </button>
-                      <div className="pt-6 pr-2">
-                        <AiMessageRenderer content={summary} />
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Action Buttons Footer */}
-            <div className="border-t border-surface-container pt-4 flex flex-wrap items-center justify-between gap-2.5">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl text-xs gap-1.5 font-semibold border-border"
-                onClick={() => handleStudyWithAI(selectedMaterial)}
-              >
-                <Bot className="size-3.5 text-moss" /> Study with Boss AI
-              </Button>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  className="rounded-xl text-xs gap-1.5 font-semibold bg-forest text-white hover:bg-ink shadow-xs"
-                  disabled={downloading === selectedMaterial.id}
-                  onClick={() => handleDownload(selectedMaterial)}
-                >
-                  {downloading === selectedMaterial.id ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Download className="size-3.5" />
-                  )}
-                  Download File
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

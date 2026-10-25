@@ -1,104 +1,33 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+﻿import { createServerFn } from "@tanstack/react-start";
+import type * as Storage from "./client.server";
 
-const R2_ENDPOINT =
-  (typeof import.meta !== "undefined" && import.meta.env?.['R2_ENDPOINT'] as string | undefined) ||
-  (typeof process !== "undefined" && process.env?.['R2_ENDPOINT']) ||
-  "https://4ac4c0251ef536b199cd90f31059ab22.r2.cloudflarestorage.com";
+type StorageModule = typeof import("./client.server");
+type StorageMethod = { [K in keyof StorageModule]: StorageModule[K] extends (...args: any[]) => any ? K : never; }[keyof StorageModule];
+type Fn = (...args: any[]) => any;
+type Args<K extends StorageMethod> = StorageModule[K] extends Fn ? Parameters<StorageModule[K]> : never;
+type CallInput = { name: StorageMethod; args: unknown[] };
 
-const R2_ACCESS_KEY_ID =
-  (typeof import.meta !== "undefined" && import.meta.env?.['R2_ACCESS_KEY_ID'] as string | undefined) ||
-  (typeof process !== "undefined" && process.env?.['R2_ACCESS_KEY_ID']) ||
-  "d02692497cf7a4c1a727d05980b333d2";
-
-const R2_SECRET_ACCESS_KEY =
-  (typeof import.meta !== "undefined" && import.meta.env?.['R2_SECRET_ACCESS_KEY'] as string | undefined) ||
-  (typeof process !== "undefined" && process.env?.['R2_SECRET_ACCESS_KEY']) ||
-  "864f37bed332c3dc6bee9962a915f71d41264643a00974818be3da2f660b38e6";
-
-export const R2_BUCKET =
-  (typeof import.meta !== "undefined" && import.meta.env?.['R2_BUCKET_NAME'] as string | undefined) ||
-  (typeof process !== "undefined" && process.env?.['R2_BUCKET_NAME']) ||
-  "syllaboss";
-
-export const r2Client = new S3Client({
-  region: "auto",
-  endpoint: R2_ENDPOINT,
-  forcePathStyle: true,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
-  },
-});
-
-export async function uploadToR2(
-  key: string,
-  body: Uint8Array | Buffer | Blob,
-  contentType: string
-): Promise<{ key: string; bucket: string }> {
-  let uploadBody: any = body;
-  if (typeof Blob !== "undefined" && body instanceof Blob) {
-    uploadBody = new Uint8Array(await body.arrayBuffer());
-  }
-
-  await r2Client.send(
-    new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-      Body: uploadBody,
-      ContentType: contentType,
-    })
-  );
-
-  return { key, bucket: R2_BUCKET };
-}
-
-export async function getFromR2(key: string): Promise<{ bytes: Uint8Array; contentType: string }> {
-  const res = await r2Client.send(
-    new GetObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-    })
-  );
-
-  const bytes = await res.Body!.transformToByteArray();
-  return {
-    bytes,
-    contentType: res.ContentType || "application/octet-stream",
-  };
-}
-
-export async function getSignedDownloadUrl(key: string, expiresIn = 300): Promise<string> {
-  const command = new GetObjectCommand({
-    Bucket: R2_BUCKET,
-    Key: key,
+const callStorageServerFn = createServerFn({ method: "POST" })
+  .validator((value: unknown) => {
+    if (!value || typeof value !== "object" || !Array.isArray((value as CallInput).args)) throw new Error("Invalid request");
+    return value as CallInput;
+  })
+  .handler(async ({ data }) => {
+    const { requireAdmin, requireCurrentUserId } = await import("@/lib/auth.server");
+    const userId = await requireCurrentUserId();
+    const key = String(data.args[0] ?? "");
+    if (!key.startsWith(`materials/${userId}/`)) await requireAdmin();
+    const storage = await import("./client.server");
+    const fn = storage[data.name] as unknown as (...values: unknown[]) => unknown;
+    return await fn(...data.args);
   });
-  return await getSignedUrl(r2Client, command, { expiresIn });
-}
 
-export async function getPresignedUploadUrl(
-  key: string,
-  contentType: string,
-  expiresIn = 300
-): Promise<string> {
-  const command = new PutObjectCommand({
-    Bucket: R2_BUCKET,
-    Key: key,
-    ContentType: contentType,
-  });
-  return await getSignedUrl(r2Client, command, { expiresIn });
+function createStorageCall<K extends StorageMethod>(name: K) {
+  return ((...args: Args<K>) => callStorageServerFn({ data: { name, args } })) as unknown as StorageModule[K];
 }
-
-export async function deleteFromR2(key: string): Promise<void> {
-  await r2Client.send(
-    new DeleteObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: key,
-    })
-  );
-}
+export const uploadToR2 = createStorageCall("uploadToR2");
+export const getFromR2 = createStorageCall("getFromR2");
+export const getSignedDownloadUrl = createStorageCall("getSignedDownloadUrl");
+export const getPresignedUploadUrl = createStorageCall("getPresignedUploadUrl");
+export const deleteFromR2 = createStorageCall("deleteFromR2");
+export const R2_BUCKET = "syllaboss";

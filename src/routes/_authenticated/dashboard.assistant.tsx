@@ -74,18 +74,12 @@ import {
 } from "@/components/chat/in-chat-study-widgets";
 import {
   categorizeDocumentAutonomously,
-  auditUploadAutonomous,
   generatePracticeQuestions,
   gradeTheoryAnswer,
   generateFlashcards,
   type QuizQuestion,
   type Flashcard,
 } from "@/lib/academic-ai";
-import {
-  createMaterialServerFn,
-  autoVerifyMaterialServerFn,
-  getPresignedUploadUrlServerFn,
-} from "@/lib/upload.functions";
 import { getMaterialsForChatServerFn } from "@/lib/community.functions";
 import { convertTextAndMathToSpeech, initSpeechRuleEngine, getBestNaturalVoice } from "@/lib/math-to-speech";
 import { sendDeviceNotification } from "@/lib/notifications";
@@ -762,46 +756,24 @@ function AssistantPage() {
     toast.loading("Analyzing document with autonomous AI...", { id: "doc-proc" });
 
     try {
-      const presigned = await getPresignedUploadUrlServerFn({
-        data: {
-          filename: file.name,
-          contentType: file.type || "application/pdf",
-          userId: user.id,
-        },
-      });
-
-      await fetch(presigned.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/pdf" },
-        body: file,
-      });
-
       const extractedSample = `Document: ${file.name}\nSize: ${(file.size / (1024 * 1024)).toFixed(2)} MB\nUploaded for semester revision.`;
       const cat = await categorizeDocumentAutonomously(file.name, extractedSample, profile);
-      const audit = await auditUploadAutonomous(file.name, file.size, file.type, extractedSample);
-
-      const createdMat = await createMaterialServerFn({
-        data: {
-          userId: user.id,
-          title: cat.title,
-          course: cat.course,
-          courseCode: cat.course_code ?? undefined,
-          institution: cat.institution,
-          department: cat.department,
-          level: cat.level,
-          materialType: cat.material_type,
-          description: cat.description,
-          r2Key: presigned.key,
-          pageCount: 1,
-        },
-      });
-
-      await autoVerifyMaterialServerFn({
-        data: {
-          materialId: createdMat.id,
-          score: audit.score,
-        },
-      });
+      const uploadForm = new FormData();
+      uploadForm.append("file", file);
+      uploadForm.append("userId", user.id);
+      uploadForm.append("title", cat.title);
+      uploadForm.append("course", cat.course);
+      uploadForm.append("courseCode", cat.course_code ?? "");
+      uploadForm.append("institution", cat.institution);
+      uploadForm.append("level", cat.level ?? "");
+      uploadForm.append("materialType", cat.material_type);
+      uploadForm.append("description", cat.description ?? "");
+      const uploadResponse = await fetch("/api/upload", { method: "POST", body: uploadForm });
+      const uploadResult = await uploadResponse.json() as { error?: string; material?: { id: string }; auditResult?: { status?: string } };
+      if (!uploadResponse.ok || !uploadResult.material?.id) {
+        throw new Error(uploadResult.error || "The document could not be uploaded.");
+      }
+      const createdMat = uploadResult.material;
 
       await qc.invalidateQueries({ queryKey: ["campus-library-materials"] });
 
@@ -812,7 +784,12 @@ function AssistantPage() {
         text: extractedSample,
       });
 
-      toast.success(`Attached "${cat.title}"! Added to campus library.`, { id: "doc-proc" });
+      toast.success(
+        uploadResult.auditResult?.status === "verified"
+          ? `Attached "${cat.title}". It passed the material check.`
+          : `Attached "${cat.title}". It is waiting for review.`,
+        { id: "doc-proc" }
+      );
 
       const aiWelcomeMsg: ChatMessage = {
         id: crypto.randomUUID(),

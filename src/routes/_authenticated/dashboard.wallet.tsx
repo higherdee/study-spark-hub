@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Coins,
@@ -11,7 +11,6 @@ import {
   Clock,
   Upload,
   Zap,
-  CreditCard,
   Gift,
   Calendar,
   ShieldCheck,
@@ -33,7 +32,6 @@ import {
   POINTS_NAME,
   MINIMUM_WITHDRAWAL_POINTS,
   MINIMUM_WITHDRAWAL_NAIRA,
-  MINIMUM_WITHDRAWAL_USD,
   pointsToNaira,
   pointsToUsd,
   isWeekendWithdrawalWindow,
@@ -56,8 +54,8 @@ import {
 export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
   head: () => ({
     meta: [
-      { title: "SyllaPoints & Cash Out — Syllaboss" },
-      { name: "description", content: "Redeem your SyllaPoints through verified regional banks, card disbursement, or digital gift cards." },
+      { title: "SyllaPoints & Cash Out â€” Syllaboss" },
+      { name: "description", content: "Review your SyllaPoints balance and submit a payout request." },
     ],
   }),
   component: WalletPage,
@@ -119,18 +117,14 @@ function WalletPage() {
   // Amount in points to cash out
   const [amount, setAmount] = useState(MINIMUM_WITHDRAWAL_POINTS);
 
-  // Payout method: Regional gets 'bank' or 'giftcard'; International gets 'card' or 'giftcard'
-  const [payoutMethod, setPayoutMethod] = useState<"bank" | "card" | "giftcard">(() => {
-    return isRegional ? "bank" : "card";
+  // Bank transfers are currently available only in supported regions.
+  const [payoutMethod, setPayoutMethod] = useState<"bank" | "giftcard">(() => {
+    return isRegional ? "bank" : "giftcard";
   });
 
   // Ensure payoutMethod matches user region when geo finishes loading
   useEffect(() => {
-    if (isRegional && payoutMethod === "card") {
-      setPayoutMethod("bank");
-    } else if (!isRegional && payoutMethod === "bank") {
-      setPayoutMethod("card");
-    }
+    if (!isRegional && payoutMethod === "bank") setPayoutMethod("giftcard");
   }, [isRegional]);
 
   // Bank payout states (Regional only)
@@ -143,9 +137,6 @@ function WalletPage() {
   const [isVerified, setIsVerified] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
 
-  // Card payout states (Capitalist - International only)
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardHolder, setCardHolder] = useState("");
 
   // Gift Card states ($5, $10, $20)
   const [selectedBrandId, setSelectedBrandId] = useState<GiftCardBrandId>("amazon");
@@ -259,7 +250,7 @@ function WalletPage() {
         return;
       }
       const brand = GIFT_CARD_BRANDS.find((b) => b.id === selectedBrandId);
-      finalBankName = `Digital Gift Card: ${brand?.name || "Gift Card"} (${activeDenom.label}${isRegional ? ` · ${activeDenom.localLabel}` : ""})`;
+      finalBankName = `Digital Gift Card: ${brand?.name || "Gift Card"} (${activeDenom.label}${isRegional ? ` Â· ${activeDenom.localLabel}` : ""})`;
       finalAccountNumber = giftCardEmail.trim();
       finalAccountName = profile?.full_name || user.email || "Scholar";
     } else if (payoutMethod === "bank") {
@@ -284,27 +275,6 @@ function WalletPage() {
         return;
       }
       finalBankName = selectedBank.name;
-    } else if (payoutMethod === "card") {
-      if (amount < MINIMUM_WITHDRAWAL_POINTS) {
-        toast.error(`Minimum withdrawal is ${MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} ${POINTS_NAME}`);
-        return;
-      }
-      if (points < amount) {
-        toast.error(`Insufficient balance. You have ${points.toLocaleString()} ${POINTS_NAME}`);
-        return;
-      }
-      const cleanCard = cardNumber.replace(/\s+/g, "");
-      if (cleanCard.length < 15 || cleanCard.length > 19) {
-        toast.error("Please enter a valid debit/credit card number (15 to 19 digits).");
-        return;
-      }
-      if (!cardHolder.trim()) {
-        toast.error("Please enter the cardholder legal name.");
-        return;
-      }
-      finalBankName = "Capitalist Global Card Disbursement";
-      finalAccountNumber = cleanCard;
-      finalAccountName = cardHolder.trim();
     }
 
     setBusy(true);
@@ -332,8 +302,6 @@ function WalletPage() {
       setSelectedBank(null);
       setAcct("");
       setName("");
-      setCardNumber("");
-      setCardHolder("");
       setIsVerified(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Cash out request failed.");
@@ -367,9 +335,9 @@ function WalletPage() {
           </div>
           <div className="text-xs text-white/70 font-mono tnum">
             {isRegional ? (
-              <span>1 pt = ₦0.83 · {countryName} Region</span>
+              <span>1 pt = â‚¦0.83 Â· {countryName} Region</span>
             ) : (
-              <span>1 pt = $0.004 USD · International</span>
+              <span>1 pt = $0.004 USD Â· International</span>
             )}
           </div>
         </div>
@@ -532,36 +500,19 @@ function WalletPage() {
                   </button>
                 </>
               ) : (
-                // International user: Capitalist Card disbursement OR Digital Gift Cards
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setPayoutMethod("card")}
-                    className={cn(
-                      "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
-                      payoutMethod === "card"
-                        ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                        : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
-                    )}
-                  >
-                    <CreditCard className="size-4" />
-                    <span className="text-xs">Debit / Credit Card (Capitalist)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPayoutMethod("giftcard")}
-                    className={cn(
-                      "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
-                      payoutMethod === "giftcard"
-                        ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                        : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
-                    )}
-                  >
-                    <Gift className="size-4" />
-                    <span className="text-xs">Digital Gift Card</span>
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={() => setPayoutMethod("giftcard")}
+                  className={cn(
+                    "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
+                    payoutMethod === "giftcard"
+                      ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                      : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
+                  )}
+                >
+                  <Gift className="size-4" />
+                  <span className="text-xs">Digital Gift Card</span>
+                </button>
               )}
             </div>
           </div>
@@ -676,63 +627,7 @@ function WalletPage() {
             </div>
           )}
 
-          {/* Form Variant 2: Direct Card Disbursement via Capitalist (International) */}
-          {payoutMethod === "card" && (
-            <div className="space-y-4 pt-1 animate-fade-in">
-              <div className="space-y-2">
-                <Label htmlFor="amt">{POINTS_NAME} to cash out</Label>
-                <Input
-                  id="amt"
-                  type="number"
-                  min={MINIMUM_WITHDRAWAL_POINTS}
-                  step={100}
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  className="h-11 rounded-xl font-mono text-sm"
-                />
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Estimated payout: <strong className="text-foreground">{formatUsd(pointsToUsd(amount))}</strong></span>
-                  <span>Min: {formatUsd(MINIMUM_WITHDRAWAL_USD)}</span>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3.5 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                  <ShieldCheck className="size-4 text-primary" />
-                  <span>Capitalist Direct Card Disbursement</span>
-                </div>
-                <p className="mt-1 text-[11px] leading-relaxed">
-                  Automatic payout sent directly to your international Visa or Mastercard in USD via Capitalist payment network.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cnum">16-Digit Card Number</Label>
-                <Input
-                  id="cnum"
-                  required
-                  placeholder="4000 1234 5678 9010"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(e.target.value)}
-                  className="h-11 rounded-xl font-mono text-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="chold">Cardholder Legal Name</Label>
-                <Input
-                  id="chold"
-                  required
-                  placeholder="Legal Name on Card"
-                  value={cardHolder}
-                  onChange={(e) => setCardHolder(e.target.value)}
-                  className="h-11 rounded-xl font-medium"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Form Variant 3: Digital Gift Cards ($5, $10, $20) with Vector SVGs & ZERO Emojis */}
+          {/* Form Variant 2: Digital gift cards */}
           {payoutMethod === "giftcard" && (
             <div className="space-y-5 pt-1 animate-fade-in">
               {/* Brand Selector */}
@@ -773,7 +668,7 @@ function WalletPage() {
                 <div className="flex items-center justify-between text-xs">
                   <Label>Choose Denomination</Label>
                   <span className="text-[11px] text-muted-foreground font-mono">
-                    {isRegional ? "Exchange: $1 = ₦1,500 · 1 pt = ₦0.83" : "Rate: 1 pt = $0.004 USD"}
+                    {isRegional ? "Exchange: $1 = â‚¦1,500 Â· 1 pt = â‚¦0.83" : "Rate: 1 pt = $0.004 USD"}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -847,7 +742,7 @@ function WalletPage() {
                     </p>
                     {isRegional && (
                       <p className="text-[9px] text-white/70">
-                        (SyllaPoints → ₦ → $)
+                        (SyllaPoints â†’ â‚¦ â†’ $)
                       </p>
                     )}
                   </div>
@@ -879,8 +774,7 @@ function WalletPage() {
               (payoutMethod === "giftcard"
                 ? points < selectedDenomination.points || !giftCardEmail.includes("@")
                 : points < MINIMUM_WITHDRAWAL_POINTS ||
-                  (payoutMethod === "bank" && !isVerified) ||
-                  (payoutMethod === "card" && !cardNumber.trim()))
+                  (payoutMethod === "bank" && !isVerified))
             }
             className="w-full h-11 rounded-xl font-medium shadow-xs transition-all active:scale-[0.98] mt-2"
           >
@@ -959,7 +853,7 @@ function WalletPage() {
                           : `Cash Out: ${formatUsd(w.amount_naira / 1400)}`}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
-                        {w.bank_name} · {new Date(w.created_at).toLocaleDateString()}
+                        {w.bank_name} Â· {new Date(w.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -1031,3 +925,4 @@ function WalletPage() {
     </div>
   );
 }
+

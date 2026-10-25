@@ -7,18 +7,8 @@ export const Route = createFileRoute("/api/download")({
         const url = new URL(request.url);
         const platform = (url.searchParams.get("platform") || "android").toLowerCase();
 
-        let filename = "syllaboss.apk";
-        let downloadName = "Syllaboss.apk";
-        let contentType = "application/vnd.android.package-archive";
-
-        if (platform === "windows" || platform === "msi" || platform === "exe") {
-          filename = "syllaboss-setup.msi";
-          downloadName = "Syllaboss-Setup.msi";
-          contentType = "application/x-msi";
-        } else if (platform === "linux" || platform === "appimage") {
-          filename = "syllaboss.AppImage";
-          downloadName = "Syllaboss.AppImage";
-          contentType = "application/octet-stream";
+        if (!["android", "apk", "windows", "msi", "exe", "linux", "appimage"].includes(platform)) {
+          return Response.json({ error: "Unsupported platform." }, { status: 400 });
         }
 
         const remoteUrl =
@@ -32,15 +22,10 @@ export const Route = createFileRoute("/api/download")({
           return Response.redirect(remoteUrl, 302);
         }
 
-        const targetUrl = new URL(`/downloads/${filename}`, request.url).toString();
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: targetUrl,
-            "Content-Type": contentType,
-            "Content-Disposition": `attachment; filename="${downloadName}"`,
-          },
-        });
+        return Response.json(
+          { error: "No packaged installer is currently available. Use the browser installation option instead." },
+          { status: 404 }
+        );
       },
     },
   },

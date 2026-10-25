@@ -1,4 +1,4 @@
-import { turso } from "./client";
+﻿import { turso } from "./client.server";
 
 export interface ScholarArchetype {
   id: string;
@@ -59,7 +59,7 @@ export function determineScholarArchetype(data: {
     return {
       id: "streak_titan",
       title: "The Unstoppable Streak Titan",
-      badgeEmoji: "🔥",
+      badgeEmoji: "ðŸ”¥",
       tagline: "Relentless Academic Momentum",
       quote: "Neither rain, power cuts, nor exam week could break the sacred daily flame.",
       colorTheme: "amber",
@@ -71,7 +71,7 @@ export function determineScholarArchetype(data: {
     return {
       id: "quiz_reaper",
       title: "The Quiz Lobby Reaper",
-      badgeEmoji: "⚡",
+      badgeEmoji: "âš¡",
       tagline: "Cold-Blooded Arena Dominator",
       quote: "Enters group battle lobbies only to take everyone's points without remorse.",
       colorTheme: "violet",
@@ -83,7 +83,7 @@ export function determineScholarArchetype(data: {
     return {
       id: "cgpa_menace",
       title: "The 4.98 CGPA Menace",
-      badgeEmoji: "👑",
+      badgeEmoji: "ðŸ‘‘",
       tagline: "Departmental Curve Breaker",
       quote: "Casually sets the departmental curve while claiming 'I swear I didn't even read'.",
       colorTheme: "emerald",
@@ -102,7 +102,7 @@ export function determineScholarArchetype(data: {
     return {
       id: "night_demon",
       title: `The 2AM ${courseShort} Demon`,
-      badgeEmoji: "🧪",
+      badgeEmoji: "ðŸ§ª",
       tagline: "Insomniac Formula Specialist",
       quote: "Fueled by midnight caffeine, deriving proofs when ordinary mortals are fast asleep.",
       colorTheme: "rose",
@@ -114,7 +114,7 @@ export function determineScholarArchetype(data: {
     return {
       id: "material_hoarder",
       title: "The Past Question Hoarder",
-      badgeEmoji: "📚",
+      badgeEmoji: "ðŸ“š",
       tagline: "Academic Archive Cartel",
       quote: "Possesses exam scripts from 2012 that even the head of department has misplaced.",
       colorTheme: "indigo",
@@ -126,7 +126,7 @@ export function determineScholarArchetype(data: {
     return {
       id: "archmage",
       title: "Formula Sheet Archmage",
-      badgeEmoji: "✨",
+      badgeEmoji: "âœ¨",
       tagline: "Master of Academic Currency",
       quote: "Turns lecture slides and practice quizzes into pure SyllaPoints and campus clout.",
       colorTheme: "amber",
@@ -137,7 +137,7 @@ export function determineScholarArchetype(data: {
   return {
     id: "rising_star",
     title: "The Campus Rising Star",
-    badgeEmoji: "🚀",
+    badgeEmoji: "ðŸš€",
     tagline: "Uncharted Academic Potential",
     quote: "Building steady streaks, hunting points, and rising through the departmental ranks.",
     colorTheme: "cyan",
@@ -317,3 +317,4 @@ export async function getScholarFlexData(identifier: {
     generatedDate,
   };
 }
+

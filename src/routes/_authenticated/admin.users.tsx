@@ -12,9 +12,9 @@ import {
   adminAdjustPoints,
   adminSetSuspended,
   adminToggleAdmin,
-  turso,
   type Profile,
 } from "@/integrations/turso/client";
+import { getAdminUsersServerFn } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({ component: AdminUsers });
 
@@ -25,15 +25,10 @@ function AdminUsers() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const [pRs, rRs, mRs] = await Promise.all([
-        turso.execute("SELECT * FROM profiles ORDER BY created_at DESC LIMIT 1000"),
-        turso.execute("SELECT user_id FROM user_roles WHERE role = 'admin'"),
-        turso.execute("SELECT user_id, status FROM materials LIMIT 5000"),
-      ]);
-
-      const profiles = pRs.rows as unknown as Profile[];
-      const adminSet = new Set(rRs.rows.map((r) => String(r['user_id'])));
-      const materials = mRs.rows as unknown as { user_id: string; status: string }[];
+      const result = await getAdminUsersServerFn();
+      const profiles = result.profiles as unknown as Profile[];
+      const adminSet = new Set(result.adminIds);
+      const materials = result.materials as unknown as { user_id: string; status: string }[];
 
       return profiles.map((p) => ({
         ...p,

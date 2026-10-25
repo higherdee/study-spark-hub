@@ -1,7 +1,6 @@
 import {
   Download,
   Share,
-  X,
   Check,
   Sparkles,
   Laptop,
@@ -13,6 +12,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useInstall, type DevicePlatform } from "@/hooks/use-install";
 import { cn } from "@/lib/utils";
 import {
@@ -112,41 +112,26 @@ export function InstallButton({
         )}
       </Button>
 
-      {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-md p-3 sm:p-4 animate-fade-in"
-          onClick={() => setModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-lg rounded-3xl border border-border bg-card p-6 shadow-2xl animate-scale-in text-card-foreground"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-lg p-4 sm:p-6">
+          <div className="w-full text-card-foreground">
             <div className="flex items-start justify-between pb-3 border-b border-border/80">
-              <div>
+              <DialogHeader className="text-left">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand/10 text-brand dark:text-brand text-[10px] font-bold mb-1">
                   <Sparkles className="size-3" />
-                  <span>Ultra-Clean PWA · Zero Friction</span>
+                  <span>Add Syllaboss to your home screen</span>
                 </div>
-                <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">
+                <DialogTitle className="font-display text-xl font-medium text-foreground sm:text-2xl">
                   Install Syllaboss
-                </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Instant offline access, automated updates, and zero app store clutter.
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full size-8"
-                aria-label="Close"
-                onClick={() => setModalOpen(false)}
-              >
-                <X className="size-4" />
-              </Button>
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-sm text-muted-foreground">
+                  Open Syllaboss from your home screen. An internet connection is required.
+                </DialogDescription>
+              </DialogHeader>
             </div>
 
-            {/* Platform selector grid / tabs */}
-            <div className="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-secondary mt-4">
+            {/* Platform selector */}
+            <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl bg-secondary p-1 sm:grid-cols-4">
               <button
                 type="button"
                 onClick={() => setActiveTab("android")}
@@ -221,13 +206,13 @@ export function InstallButton({
                       <p className="text-[11px] text-muted-foreground">Samsung, Xiaomi, Tecno, Infinix, Pixel, Redmi, etc.</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-md bg-accent text-forest font-bold text-[10px]">
-                      Instant PWA
+                      Home screen app
                     </span>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-card border border-border/80 space-y-2">
                     <p className="text-[11px] font-semibold text-foreground">
-                      How to install on Android in 2 taps:
+                      Add Syllaboss from your browser:
                     </p>
                     <ol className="list-decimal pl-4 text-[11px] space-y-1.5 text-foreground/80">
                       <li>
@@ -237,7 +222,7 @@ export function InstallButton({
                         Select <strong>"Install App"</strong> or <strong>"Add to Home screen"</strong>.
                       </li>
                       <li>
-                        Confirm <strong>Install</strong>. Syllaboss launches instantly from your app drawer like a native app!
+                        Confirm if your browser asks. An internet connection is still required to use Syllaboss.
                       </li>
                     </ol>
                   </div>
@@ -253,7 +238,7 @@ export function InstallButton({
                       setModalOpen(false);
                     }}
                   >
-                    <span>Launch Web App Now</span>
+                    <span>{canPrompt ? "Install now" : "Continue in browser"}</span>
                     <ArrowRight className="size-4" />
                   </Button>
                 </div>
@@ -285,9 +270,7 @@ export function InstallButton({
                       <li>
                         Scroll down and tap <strong className="text-foreground">"Add to Home Screen"</strong>.
                       </li>
-                      <li>
-                        Tap <strong className="text-foreground">Add</strong> in the top-right corner. Launches fullscreen with 120Hz native smoothness!
-                      </li>
+                      <li>Tap <strong className="text-foreground">Add</strong> in the top-right corner. Open Syllaboss from the new home-screen icon.</li>
                     </ol>
                   </div>
 
@@ -328,7 +311,7 @@ export function InstallButton({
                         Click the <Monitor className="inline size-3.5 text-primary" /> <strong className="text-foreground">"Install App" icon</strong>.
                       </li>
                       <li>
-                        Confirm <strong className="text-foreground">Install</strong>. A dedicated, distraction-free desktop window will open!
+                        Confirm if your browser asks, then open Syllaboss from the new app shortcut.
                       </li>
                     </ol>
                   </div>
@@ -344,7 +327,7 @@ export function InstallButton({
                       setModalOpen(false);
                     }}
                   >
-                    <span>Launch Web App Now</span>
+                    <span>{canPrompt ? "Install now" : "Open Syllaboss"}</span>
                     <ArrowRight className="size-4" />
                   </Button>
                 </div>
@@ -374,7 +357,7 @@ export function InstallButton({
                         In Chrome on Mac: Click the <strong className="text-foreground">Install icon</strong> in the address bar.
                       </li>
                       <li>
-                        Syllaboss will run as an independent app straight from your Mac Dock!
+                        Open Syllaboss from the new Dock item. An internet connection is required.
                       </li>
                     </ol>
                   </div>
@@ -386,7 +369,7 @@ export function InstallButton({
                       setModalOpen(false);
                     }}
                   >
-                    <span>Launch Web App Now</span>
+                    <span>Open Syllaboss</span>
                     <ArrowRight className="size-4" />
                   </Button>
                 </div>
@@ -394,18 +377,14 @@ export function InstallButton({
             </div>
 
             <div className="mt-4 flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/60">
-              <span>Zero downloads or installers required</span>
-              <a
-                href="/dashboard"
-                onClick={() => setModalOpen(false)}
-                className="font-bold text-forest hover:underline"
-              >
-                Continue in browser &rarr;
-              </a>
+              <span>No app-store download is needed</span>
+              <button type="button" onClick={() => setModalOpen(false)} className="min-h-11 font-bold text-forest hover:underline">
+                Stay in browser <ArrowRight aria-hidden="true" className="ml-1 inline size-3.5" />
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

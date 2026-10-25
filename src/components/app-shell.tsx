@@ -82,7 +82,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
     user?.email ??
     "Student";
   const points = profile?.points ?? 0;
-  const streak = Number(profile?.current_streak || 1);
+  const streak = Number(profile?.current_streak || 0);
   const isPlus = Boolean(profile?.sylla_plus);
 
   const isAssistantPage = path.startsWith("/dashboard/assistant");
@@ -120,6 +120,8 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
     [...nav, ...secondary].find((n) => isActivePath(path, n))?.label ?? title;
 
   return (
+    <>
+    <a className="skip-link" href="#app-main-content">Skip to main content</a>
     <div
       className={cn(
         "relative bg-background text-foreground antialiased",
@@ -160,14 +162,6 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
         </nav>
 
         <div className="shrink-0 space-y-3 border-t border-border p-3">
-          <button
-            type="button"
-            onClick={openGuide}
-            className="press flex w-full items-center gap-2.5 rounded-xl border border-forest/25 bg-forest/5 px-3 py-2 text-[12px] font-semibold text-forest transition-colors hover:bg-forest/15 hover:border-forest/40"
-          >
-            <Compass className="size-4 shrink-0 text-forest" />
-            <span className="truncate">Quick Platform Tour</span>
-          </button>
           <FocusCard />
           {footer}
           <div className="flex items-center gap-2.5 rounded-xl p-1.5">
@@ -274,6 +268,8 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
         </header>
 
         <main
+          id="app-main-content"
+          tabIndex={-1}
           className={cn(
             "mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8",
             isFullScreenAppPage
@@ -288,6 +284,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
       {/* ───────── Mobile tab bar ───────── */}
       <nav
         data-app-chrome
+        data-mobile-tabs
         aria-label="Primary"
         className={cn(
           "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 pb-safe backdrop-blur-xl lg:hidden",
@@ -335,6 +332,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
         username={profile?.username || undefined}
       />
     </div>
+    </>
   );
 }
 

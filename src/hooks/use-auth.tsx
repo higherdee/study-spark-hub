@@ -52,6 +52,25 @@ function AuthInternalProvider({ children }: { children: ReactNode }) {
 
   // Sync profile into Turso database on sign in
   useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    const authenticatedFetch: typeof window.fetch = async (input, init) => {
+      const requestUrl = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
+      if (requestUrl.origin !== window.location.origin) return originalFetch(input, init);
+
+      const token = await getToken();
+      if (!token) return originalFetch(input, init);
+      const headers = new Headers(input instanceof Request ? input.headers : undefined);
+      new Headers(init?.headers).forEach((value, key) => headers.set(key, value));
+      headers.set("Authorization", `Bearer ${token}`);
+      return originalFetch(input, { ...init, headers });
+    };
+    window.fetch = authenticatedFetch;
+    return () => {
+      if (window.fetch === authenticatedFetch) window.fetch = originalFetch;
+    };
+  }, [getToken]);
+
+  useEffect(() => {
     if (authUser && user) {
       upsertProfileServerFn({
         data: {

@@ -1,5 +1,12 @@
 import { Moon, Sun, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -11,29 +18,28 @@ interface ThemePickerModalProps {
 export function ThemePickerModal({ open, onConfirm }: ThemePickerModalProps) {
   const { theme, setTheme } = useTheme();
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/20 bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-2xl animate-scale-in">
-        <div className="text-center">
+    <Dialog open={open}>
+      <DialogContent showCloseButton={false} className="max-w-md p-6 sm:p-8">
+        <DialogHeader className="text-center sm:text-center">
           <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary mb-3">
             <Sun className="size-6 dark:hidden text-brass" />
             <Moon className="size-6 hidden dark:block text-brand" />
           </div>
-          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+          <DialogTitle className="font-display text-2xl font-medium tracking-tight text-foreground">
             Choose Your Appearance
-          </h2>
-          <p className="mt-1.5 text-xs text-muted-foreground">
+          </DialogTitle>
+          <DialogDescription className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
             Select your preferred display theme for studying and browsing materials. You can change this anytime from the top bar.
-          </p>
-        </div>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="mt-6 grid grid-cols-2 gap-3.5">
           {/* Light Mode Option */}
           <button
             type="button"
             onClick={() => setTheme("light")}
+            aria-pressed={theme === "light"}
             className={cn(
               "group relative flex flex-col items-center rounded-2xl border-2 p-4 text-center transition-all",
               theme === "light"
@@ -57,6 +63,7 @@ export function ThemePickerModal({ open, onConfirm }: ThemePickerModalProps) {
           <button
             type="button"
             onClick={() => setTheme("dark")}
+            aria-pressed={theme === "dark"}
             className={cn(
               "group relative flex flex-col items-center rounded-2xl border-2 p-4 text-center transition-all",
               theme === "dark"
@@ -83,7 +90,7 @@ export function ThemePickerModal({ open, onConfirm }: ThemePickerModalProps) {
         >
           Continue
         </Button>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

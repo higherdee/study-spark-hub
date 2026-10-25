@@ -1,15 +1,17 @@
-import { createServerFn } from "@tanstack/react-start";
+﻿import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSelfOrAdmin } from "@/lib/auth.server";
 
 export const verifyMaterial = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    const { getMaterialById, setMaterialStatus, turso } = await import("@/integrations/turso/client");
-    const { getFromR2 } = await import("@/integrations/r2/client");
+    const { getMaterialById, setMaterialStatus, turso } = await import("@/integrations/turso/client.server");
+    const { getFromR2 } = await import("@/integrations/r2/client.server");
     const { checkMaterial } = await import("./verify.server");
 
     const m = await getMaterialById(data.materialId);
     if (!m) throw new Error("Material not found");
+    await requireSelfOrAdmin(m.user_id);
     if (m.status !== "pending" || m.verification_score !== null) {
       return { status: m.status, score: m.verification_score, notes: m.verification_notes, pages: m.page_count };
     }
@@ -39,7 +41,7 @@ export const verifyMaterial = createServerFn({ method: "POST" })
 
     let status: "verified" | "rejected" | "pending" = "pending";
     let score = 0;
-    let notes = "Automatic check unavailable right now — an admin will review it.";
+    let notes = "Automatic check unavailable right now â€” an admin will review it.";
     try {
       const v = await checkMaterial(bytes, m.mime_type, m.file_name, m);
       score = v.score;
@@ -53,3 +55,4 @@ export const verifyMaterial = createServerFn({ method: "POST" })
     await setMaterialStatus(m.id, status, score, notes);
     return { status, score, notes, pages };
   });
+

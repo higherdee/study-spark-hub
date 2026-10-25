@@ -15,7 +15,7 @@ import {
   type StudyBattle,
   type BattleParticipant,
   type GroupMemberWithBalance,
-} from "@/integrations/turso/community";
+} from "@/integrations/turso/community.server";
 import { generatePracticeQuestions, gradeTheoryAnswer } from "@/lib/academic-ai";
 import { broadcastChatMessage } from "@/lib/supabase-realtime";
 
@@ -25,7 +25,9 @@ import { broadcastChatMessage } from "@/lib/supabase-realtime";
 export const getGroupMembersWithBalancesServerFn = createServerFn({ method: "GET" })
   .validator((d: { groupId: string }) => d)
   .handler(async ({ data }): Promise<GroupMemberWithBalance[]> => {
-    return await getStudyGroupMembersWithBalances(data.groupId);
+    const { requireCurrentUserId } = await import("@/lib/auth.server");
+    const userId = await requireCurrentUserId();
+    return await getStudyGroupMembersWithBalances(data.groupId, userId);
   });
 
 /**
@@ -48,6 +50,9 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
     sponsoredIds?: string[] | undefined;
   }) => d)
   .handler(async ({ data }): Promise<StudyBattle> => {
+    const { requireSelfOrAdmin } = await import("@/lib/auth.server");
+    await requireSelfOrAdmin(data.hostId);
+    if (data.fighterIds.length > 20 || (data.stakeAmount ?? 0) < 0 || (data.stakeAmount ?? 0) > 10000) throw new Error("Invalid battle setup.");
     const questionCount = data.questionCount || 5;
     const modeType = data.mode === "mcq" ? "objective" : "theory";
 
@@ -111,8 +116,22 @@ export const getBattleDetailsServerFn = createServerFn({ method: "GET" })
     battle: StudyBattle | null;
     participants: BattleParticipant[];
   }> => {
+    const { requireCurrentUserId } = await import("@/lib/auth.server");
+    await requireCurrentUserId();
     const battle = await getStudyBattle(data.battleId);
     const participants = await getBattleParticipants(data.battleId);
+    if (!battle) return { battle, participants };
+    if (battle.status !== "completed") {
+      try {
+        const questions = JSON.parse(battle.questions_json);
+        for (const question of questions) {
+          delete question.correctAnswer;
+          delete question.correctOptionIndex;
+          delete question.modelAnswer;
+        }
+        return { battle: { ...battle, questions_json: JSON.stringify(questions) }, participants };
+      } catch { return { battle: { ...battle, questions_json: "[]" }, participants }; }
+    }
     return { battle, participants };
   });
 
@@ -129,6 +148,8 @@ export const joinBattleEscrowServerFn = createServerFn({ method: "POST" })
     role?: "fighter" | "spectator" | undefined;
   }) => d)
   .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
+    const { requireSelfOrAdmin } = await import("@/lib/auth.server");
+    await requireSelfOrAdmin(data.userId);
     const res = await joinBattleEscrowRecord({
       battleId: data.battleId,
       userId: data.userId,
@@ -161,6 +182,8 @@ export const declineBattleServerFn = createServerFn({ method: "POST" })
     userId: string;
   }) => d)
   .handler(async ({ data }): Promise<boolean> => {
+    const { requireSelfOrAdmin } = await import("@/lib/auth.server");
+    await requireSelfOrAdmin(data.userId);
     const ok = await declineBattleRecord({
       battleId: data.battleId,
       userId: data.userId,
@@ -191,14 +214,24 @@ export const submitBattleAnswersServerFn = createServerFn({ method: "POST" })
     answersJson: string;
   }) => d)
   .handler(async ({ data }): Promise<{ allSubmitted: boolean; participantCount: number; submittedCount: number }> => {
+    const { requireSelfOrAdmin } = await import("@/lib/auth.server");
+    await requireSelfOrAdmin(data.userId);
+    if (data.answersJson.length > 100_000) throw new Error("Submission is too large.");
+    const battle = await getStudyBattle(data.battleId);
+    if (!battle || battle.status === "completed") throw new Error("Battle is not accepting submissions.");
+    let score = 0;
+    if (battle.mode === "mcq") {
+      const questions = JSON.parse(battle.questions_json);
+      const answers = JSON.parse(data.answersJson) as Record<string, number>;
+      const correct = questions.filter((q: any, i: number) => answers[String(i)] === (typeof q.correctOptionIndex === "number" ? q.correctOptionIndex : typeof q.correctAnswer === "number" ? q.correctAnswer : 0)).length;
+      score = Math.round((correct / Math.max(questions.length, 1)) * 100);
+    }
     const res = await submitBattleAnswersRecord({
       battleId: data.battleId,
       userId: data.userId,
-      score: data.score,
+      score,
       answersJson: data.answersJson,
     });
-
-    const battle = await getStudyBattle(data.battleId);
 
     // If it's an MCQ battle and all have submitted, auto-conclude
     if (battle && battle.mode === "mcq" && res.allSubmitted) {
@@ -253,6 +286,10 @@ export const nudgeSlowpokesServerFn = createServerFn({ method: "POST" })
     battleTitle: string;
   }) => d)
   .handler(async ({ data }): Promise<{ count: number; slowpokes: string[] }> => {
+    const { requireCurrentUserId } = await import("@/lib/auth.server");
+    const actor = await requireCurrentUserId();
+    const battle = await getStudyBattle(data.battleId);
+    if (!battle || battle.host_id !== actor) throw new Error("Only the host can nudge participants.");
     const slowpokes = await getSlowpokesRecord(data.battleId);
     if (slowpokes.length === 0) {
       return { count: 0, slowpokes: [] };
@@ -280,8 +317,11 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
     groupId: string;
   }) => d)
   .handler(async ({ data }): Promise<{ success: boolean; winners: string[] }> => {
+    const { requireCurrentUserId } = await import("@/lib/auth.server");
+    const actor = await requireCurrentUserId();
     const battle = await getStudyBattle(data.battleId);
     if (!battle) return { success: false, winners: [] };
+    if (battle.host_id !== actor) throw new Error("Only the host can grade this battle.");
 
     const participants = await getBattleParticipants(data.battleId);
     const submittedFighters = participants.filter((p) => p.role === "fighter" && p.status === "submitted");
@@ -383,8 +423,10 @@ export const forceGradeBattleServerFn = createServerFn({ method: "POST" })
     hostId: string;
   }) => d)
   .handler(async ({ data }): Promise<{ success: boolean }> => {
+    const { requireCurrentUserId } = await import("@/lib/auth.server");
+    const actor = await requireCurrentUserId();
     const battle = await getStudyBattle(data.battleId);
-    if (!battle || battle.host_id !== data.hostId) {
+    if (!battle || battle.host_id !== actor) {
       throw new Error("Only the host can force-grade this battle.");
     }
 

@@ -17,6 +17,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface AppWalkthroughGuideProps {
   isOpen: boolean;
@@ -29,14 +35,14 @@ const GUIDE_SLIDES = [
     title: "Course Library & Boss AI",
     eyebrow: "Learn Faster",
     description:
-      "Instant access to verified past exam questions, textbook derivations, and lecture notes. Need clarity? Boss AI works out complex LaTeX math, summarizes dense documents, and creates instant practice quizzes.",
+      "Browse course notes and past questions shared by students. Ask Boss AI to explain a topic or help you practise; check important answers against your course materials.",
     icon: BookOpen,
     accent: "text-forest bg-forest/10 border-forest/20",
     badge: "Slide 1 of 3",
     features: [
       { icon: BookOpen, text: "Curated past papers & lecture notes" },
       { icon: Bot, text: "Boss AI with LaTeX formula step solver" },
-      { icon: ShieldCheck, text: "Strictly verified academic material" },
+      { icon: ShieldCheck, text: "Review status is shown on each material" },
     ],
   },
   {
@@ -44,29 +50,29 @@ const GUIDE_SLIDES = [
     title: "Focus Timer & Study Battles",
     eyebrow: "Earn As You Focus",
     description:
-      "Earn +5 SyllaPoints automatically every 30 minutes of active study. Build your daily habit streak for bonus multipliers, and host live 1v1 timed study battles against classmates.",
+      "Use the focus timer to give a study session some structure, build a routine, and join study activities with your peers. Eligible rewards are shown in your wallet.",
     icon: Flame,
     accent: "text-brass bg-brass/15 border-brass/30",
     badge: "Slide 2 of 3",
     features: [
-      { icon: Clock, text: "+5 SyllaPoints per 30-min study sprint" },
-      { icon: Flame, text: "Daily study streaks with bonus rewards" },
-      { icon: Swords, text: "Multiplayer 1v1 study battle arenas" },
+      { icon: Clock, text: "A focus timer for study sessions" },
+      { icon: Flame, text: "A streak to help you keep a routine" },
+      { icon: Swords, text: "Shared study activities with peers" },
     ],
   },
   {
     step: 3,
-    title: "Weekend Cashouts & SyllaPlus VIP",
-    eyebrow: "Global Payouts",
+    title: "Your wallet & activity",
+    eyebrow: "Keep track",
     description:
-      "Convert your SyllaPoints into real money every weekend via direct bank transfer, card disbursement (Capitalist), or digital gift cards ($5, $10, $20). Upgrade to SyllaPlus for 1.3x earnings and unlimited AI.",
+      "Review your SyllaPoints balance, activity, and current payout options in the wallet. Availability and requirements can vary. Subscription purchases are not available at the moment.",
     icon: Wallet,
     accent: "text-brand bg-brand/10 border-brand/20",
     badge: "Slide 3 of 3",
     features: [
-      { icon: Wallet, text: "Weekend cashouts to Bank or Card" },
-      { icon: Sparkles, text: "$5, $10, $20 digital gift card vouchers" },
-      { icon: Zap, text: "1.3x VIP multiplier & priority review" },
+      { icon: Wallet, text: "See the latest payout options in your wallet" },
+      { icon: Sparkles, text: "Review your rewards and contributions" },
+      { icon: Zap, text: "Your current account access stays the same" },
     ],
   },
 ];
@@ -82,7 +88,7 @@ export function AppWalkthroughGuide({ isOpen, onClose }: AppWalkthroughGuideProp
 
   if (!isOpen) return null;
 
-  const current = GUIDE_SLIDES[currentSlideIndex];
+  const current = GUIDE_SLIDES[currentSlideIndex]!;
   const Icon = current.icon;
   const isFirst = currentSlideIndex === 0;
   const isLast = currentSlideIndex === GUIDE_SLIDES.length - 1;
@@ -108,14 +114,15 @@ export function AppWalkthroughGuide({ isOpen, onClose }: AppWalkthroughGuideProp
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] grid place-items-center bg-black/60 p-4 backdrop-blur-md animate-fade-in"
-      onClick={handleSkip}
+    <Dialog
+      open={isOpen}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) handleSkip();
+      }}
     >
-      <div
-        className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/20 bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-2xl animate-scale-in"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <DialogContent showCloseButton={false} className="relative max-h-[min(90dvh,56rem)] max-w-lg overflow-y-auto rounded-[1.75rem] border-border bg-card p-5 shadow-pop sm:p-8">
+        <DialogTitle className="sr-only">{current.title}</DialogTitle>
+        <DialogDescription className="sr-only">{current.description}</DialogDescription>
         {/* Glow ambient background */}
         <div className="absolute -top-24 -right-24 size-56 rounded-full bg-gradient-to-br from-forest/20 via-brand/15 to-brass/20 blur-3xl pointer-events-none" />
 
@@ -231,7 +238,7 @@ export function AppWalkthroughGuide({ isOpen, onClose }: AppWalkthroughGuideProp
             )}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

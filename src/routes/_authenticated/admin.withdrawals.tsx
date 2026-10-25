@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import {
   adminProcessWithdrawal,
   getProfile,
-  turso,
   type Withdrawal,
   type Profile,
 } from "@/integrations/turso/client";
+import { getAdminWithdrawalsServerFn } from "@/lib/profile.functions";
 import { formatNaira } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -24,13 +24,8 @@ function AdminWithdrawals() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["admin-withdrawals", filter],
     queryFn: async () => {
-      const whereClause = filter !== "all" ? "WHERE status = ?" : "";
-      const args = filter !== "all" ? [filter] : [];
-      const rs = await turso.execute({
-        sql: `SELECT * FROM withdrawals ${whereClause} ORDER BY created_at DESC LIMIT 500`,
-        args,
-      });
-      const list = rs.rows as unknown as Withdrawal[];
+      const rows = await getAdminWithdrawalsServerFn({ data: { status: filter } });
+      const list = rows as unknown as Withdrawal[];
       const userIds = [...new Set(list.map((w) => w.user_id))];
       const profiles = await Promise.all(userIds.map((uid) => getProfile(uid)));
       const byId = new Map<string, Profile | null>(

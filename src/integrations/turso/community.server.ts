@@ -1,4 +1,4 @@
-import { turso } from "./client";
+﻿import { turso } from "./client.server";
 
 export type StudyGroup = {
   id: string;
@@ -207,17 +207,11 @@ export async function createStudyGroup(data: {
  */
 export async function joinStudyGroup(groupId: string, userId: string): Promise<boolean> {
   try {
-    await turso.batch([
-      {
-        sql: `INSERT OR IGNORE INTO study_group_members (id, group_id, user_id, role)
-              VALUES (?, ?, ?, 'member')`,
-        args: [crypto.randomUUID(), groupId, userId],
-      },
-      {
-        sql: `UPDATE study_groups SET member_count = member_count + 1 WHERE id = ?`,
-        args: [groupId],
-      },
-    ]);
+    const inserted = await turso.execute({
+      sql: `INSERT OR IGNORE INTO study_group_members (id, group_id, user_id, role) VALUES (?, ?, ?, 'member')`,
+      args: [crypto.randomUUID(), groupId, userId],
+    });
+    if (inserted.rowsAffected > 0) await turso.execute({ sql: "UPDATE study_groups SET member_count = member_count + 1 WHERE id = ?", args: [groupId] });
     return true;
   } catch (err) {
     return false;
@@ -227,10 +221,11 @@ export async function joinStudyGroup(groupId: string, userId: string): Promise<b
 /**
  * Fetches recent messages for a group
  */
-export async function getGroupMessages(groupId: string, limit = 60): Promise<GroupMessage[]> {
+export async function getGroupMessages(groupId: string, limit = 60, userId?: string): Promise<GroupMessage[]> {
+  if (!userId) throw new Error("Sign in to view group messages.");
   const rs = await turso.execute({
-    sql: `SELECT * FROM group_messages WHERE group_id = ? ORDER BY created_at ASC LIMIT ?`,
-    args: [groupId, limit],
+    sql: `SELECT gm.* FROM group_messages gm JOIN study_group_members sgm ON sgm.group_id = gm.group_id WHERE gm.group_id = ? AND sgm.user_id = ? ORDER BY gm.created_at ASC LIMIT ?`,
+    args: [groupId, userId, limit],
   });
 
   return rs.rows.map((r: any) => ({
@@ -260,6 +255,8 @@ export async function sendGroupMessage(data: {
   materialTitle?: string;
   materialCourseCode?: string;
 }): Promise<GroupMessage> {
+  const membership = await turso.execute({ sql: "SELECT 1 FROM study_group_members WHERE group_id = ? AND user_id = ? LIMIT 1", args: [data.groupId, data.userId] });
+  if (!membership.rows.length) throw new Error("Join this study group before posting.");
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -491,6 +488,8 @@ export async function getStudentConversations(userId: string): Promise<DirectCon
  * Marks all incoming messages in a conversation as read
  */
 export async function markDirectMessagesRead(conversationId: string, readerUserId: string): Promise<void> {
+  const membership = await turso.execute({ sql: "SELECT 1 FROM direct_conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1", args: [conversationId, readerUserId, readerUserId] });
+  if (!membership.rows.length) throw new Error("Conversation not found.");
   await turso.execute({
     sql: "UPDATE direct_messages SET is_read = 1 WHERE conversation_id = ? AND sender_id != ?",
     args: [conversationId, readerUserId],
@@ -500,7 +499,8 @@ export async function markDirectMessagesRead(conversationId: string, readerUserI
 /**
  * Fetches messages in a 1-on-1 conversation
  */
-export async function getDirectMessages(conversationId: string, limit = 80): Promise<DirectMessage[]> {
+export async function getDirectMessages(conversationId: string, limit = 80, userId?: string): Promise<DirectMessage[]> {
+  if (!userId) throw new Error("Sign in to view direct messages.");
   const rs = await turso.execute({
     sql: `
       SELECT 
@@ -510,11 +510,11 @@ export async function getDirectMessages(conversationId: string, limit = 80): Pro
       FROM direct_messages m
       JOIN profiles p ON p.id = m.sender_id
       LEFT JOIN materials mat ON mat.id = m.material_id
-      WHERE m.conversation_id = ?
+      WHERE m.conversation_id = ? AND (EXISTS (SELECT 1 FROM direct_conversations c WHERE c.id = m.conversation_id AND (c.user1_id = ? OR c.user2_id = ?)))
       ORDER BY m.created_at ASC
       LIMIT ?
     `,
-    args: [conversationId, limit],
+    args: [conversationId, userId, userId, limit],
   });
 
   return rs.rows.map((r: any) => ({
@@ -541,6 +541,8 @@ export async function sendDirectMessage(data: {
   content: string;
   materialId?: string;
 }): Promise<DirectMessage> {
+  const membership = await turso.execute({ sql: "SELECT 1 FROM direct_conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1", args: [data.conversationId, data.senderId, data.senderId] });
+  if (!membership.rows.length) throw new Error("Conversation not found.");
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -679,18 +681,15 @@ export async function deleteGroupMessage(data: {
 export async function addMemberToStudyGroup(data: {
   groupId: string;
   memberUserId: string;
+  actorUserId: string;
 }): Promise<boolean> {
-  await turso.batch([
-    {
-      sql: `INSERT OR IGNORE INTO study_group_members (id, group_id, user_id, role, joined_at)
-            VALUES (?, ?, ?, 'member', datetime('now'))`,
-      args: [crypto.randomUUID(), data.groupId, data.memberUserId],
-    },
-    {
-      sql: `UPDATE study_groups SET member_count = member_count + 1 WHERE id = ?`,
-      args: [data.groupId],
-    },
-  ]);
+  const inviter = await turso.execute({ sql: "SELECT role FROM study_group_members WHERE group_id = ? AND user_id = ? LIMIT 1", args: [data.groupId, data.actorUserId] });
+  if (String(inviter.rows[0]?.['role'] || "") !== "admin") throw new Error("Only group admins can invite members.");
+  const inserted = await turso.execute({
+    sql: `INSERT OR IGNORE INTO study_group_members (id, group_id, user_id, role, joined_at) VALUES (?, ?, ?, 'member', datetime('now'))`,
+    args: [crypto.randomUUID(), data.groupId, data.memberUserId],
+  });
+  if (inserted.rowsAffected > 0) await turso.execute({ sql: "UPDATE study_groups SET member_count = member_count + 1 WHERE id = ?", args: [data.groupId] });
   return true;
 }
 
@@ -705,7 +704,8 @@ export type GroupMemberWithBalance = {
 /**
  * Fetch all members of a study group (or 1v1 direct conversation) with their live points balance
  */
-export async function getStudyGroupMembersWithBalances(groupId: string): Promise<GroupMemberWithBalance[]> {
+export async function getStudyGroupMembersWithBalances(groupId: string, requesterId?: string): Promise<GroupMemberWithBalance[]> {
+  if (!requesterId) throw new Error("Sign in to view member balances.");
   // 1. Check if this ID belongs to a 1v1 direct conversation
   const directRs = await turso.execute({
     sql: `SELECT user1_id, user2_id FROM direct_conversations WHERE id = ? LIMIT 1`,
@@ -714,6 +714,7 @@ export async function getStudyGroupMembersWithBalances(groupId: string): Promise
 
   if (directRs.rows.length > 0) {
     const row = directRs.rows[0] as any;
+    if (String(row.user1_id) !== requesterId && String(row.user2_id) !== requesterId) throw new Error("Conversation not found.");
     const pRs = await turso.execute({
       sql: `SELECT id, full_name, username, avatar_url, points FROM profiles WHERE id IN (?, ?)`,
       args: [String(row.user1_id), String(row.user2_id)],
@@ -726,6 +727,9 @@ export async function getStudyGroupMembersWithBalances(groupId: string): Promise
       points: Number(r.points) || 0,
     }));
   }
+
+  const membership = await turso.execute({ sql: "SELECT 1 FROM study_group_members WHERE group_id = ? AND user_id = ? LIMIT 1", args: [groupId, requesterId] });
+  if (!membership.rows.length) throw new Error("Join this study group to view member details.");
 
   // 2. Otherwise fetch group members from study_group_members
   const rs = await turso.execute({
@@ -1130,12 +1134,13 @@ export async function submitBattleAnswersRecord(data: {
   answersJson: string;
 }): Promise<{ allSubmitted: boolean; participantCount: number; submittedCount: number }> {
   // Update participant status and score
-  await turso.execute({
+  const submitResult = await turso.execute({
     sql: `UPDATE battle_participants 
           SET status = 'submitted', score = ?, answers_json = ?, submitted_at = datetime('now')
-          WHERE battle_id = ? AND user_id = ?`,
+          WHERE battle_id = ? AND user_id = ? AND role = 'fighter' AND status = 'joined'`,
     args: [data.score, data.answersJson, data.battleId, data.userId],
   });
+  if (submitResult.rowsAffected !== 1) throw new Error("Battle participant could not submit.");
 
   // Check if all joined fighters have submitted
   const rs = await turso.execute({
@@ -1219,6 +1224,7 @@ export async function getSlowpokesRecord(battleId: string): Promise<Array<{ user
     userName: String(r.user_name),
   }));
 }
+
 
 
 

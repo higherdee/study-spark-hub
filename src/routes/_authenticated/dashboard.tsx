@@ -16,7 +16,7 @@ import { PageBreathingLoader } from "@/components/syllaboss-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { updateStreakServerFn } from "@/lib/community.functions";
-import { upgradeToSyllaPlusServerFn, syncSubscriptionStatusServerFn } from "@/lib/upload.functions";
+import { syncSubscriptionStatusServerFn } from "@/lib/upload.functions";
 import { autoPromptNotificationConsent, schedulePeriodicStudyReminder } from "@/lib/notifications";
 import { toast } from "sonner";
 
@@ -66,31 +66,16 @@ function DashboardLayout() {
   const needsOnboarding = isFetched && Boolean(profile) && !profileComplete;
   const isModalOpen = needsOnboarding || manualSetupOpen;
 
-  // Handle successful Bachs payment redirect (?upgraded=true)
+  // A return URL alone does not prove payment; only a verified provider event may activate a plan.
   useEffect(() => {
     if (search?.upgraded === "true" && user?.id) {
-      const plan = (search?.plan as "weekly" | "monthly" | "yearly") || "monthly";
-      upgradeToSyllaPlusServerFn({ data: { userId: user.id, plan } })
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["profile"] });
-          queryClient.invalidateQueries({ queryKey: ["ledger"] });
-          toast.success("Welcome to SyllaPlus! +300 points added & 1.3x multiplier unlocked!", {
-            id: "bachs-upgrade-success",
-            duration: 6000,
-          });
-          // Clean URL param
-          if (typeof window !== "undefined") {
-            const url = new URL(window.location.href);
-            url.searchParams.delete("upgraded");
-            url.searchParams.delete("plan");
-            window.history.replaceState({}, "", url.pathname + url.search);
-          }
-        })
-        .catch((err) => {
-          console.error("Auto upgrade check failed:", err);
-        });
+      toast.info("We’re checking your payment. Your plan changes after payment verification.");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("upgraded");
+      url.searchParams.delete("plan");
+      window.history.replaceState({}, "", url.pathname + url.search);
     }
-  }, [search?.upgraded, search?.plan, user?.id, queryClient]);
+  }, [search?.upgraded, user?.id]);
 
   // Synchronize subscription status (auto-renewal check, grace period evaluation, notices)
   useEffect(() => {

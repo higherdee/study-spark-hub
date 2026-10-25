@@ -9,7 +9,7 @@ export const Route = createFileRoute("/about")({
       { title: "About Syllaboss — Academic Courseware & Study Platform" },
       {
         name: "description",
-        content: "Discover how Syllaboss empowers tertiary students across Nigerian universities with verified course materials, NUC CCMAS curriculum indexing, and Boss AI.",
+        content: "Learn about Syllaboss, a student study platform for sharing course materials, asking Boss AI questions, and studying with peers.",
       },
       { property: "og:title", content: "About Syllaboss — Nigerian University Academic Platform" },
       { property: "og:description", content: "Our mission to democratize higher education study materials across Nigeria." },
@@ -41,10 +41,10 @@ function AboutPage() {
           <span className="eyebrow text-forest">Our Academic Mission</span>
         </div>
         <h1 className="font-display text-3xl sm:text-5xl font-normal tracking-tight text-ink leading-tight">
-          Democratizing Higher Education Through Verified Knowledge
+          Helping students study together
         </h1>
         <p className="mt-4 text-sm sm:text-base text-ink-soft max-w-2xl mx-auto leading-relaxed">
-          Syllaboss bridges the lecture hall gap. We curate course monographs, verified lecture summaries, and solved past questions strictly benchmarked against the National Universities Commission (NUC CCMAS) guidelines.
+          Syllaboss gives students a place to find and share course materials, study with peers, and use an AI assistant. Uploaded materials may be reviewed, but students should check important information against their course requirements.
         </p>
       </section>
 
@@ -56,9 +56,9 @@ function AboutPage() {
             <div className="size-11 rounded-2xl bg-surface-container-high text-forest flex items-center justify-center border border-border">
               <BookOpen className="size-5 text-brand" />
             </div>
-            <h3 className="font-display text-base font-bold text-ink">Curriculum Aligned</h3>
+            <h3 className="font-display text-base font-bold text-ink">Course materials</h3>
             <p className="text-xs text-ink-soft leading-relaxed">
-              Every course unit is categorized against the NUC Core Curriculum and Minimum Academic Standards across 17 disciplinary faculties.
+              Browse and share materials organized by institution and course information supplied by students.
             </p>
           </div>
 
@@ -68,7 +68,7 @@ function AboutPage() {
             </div>
             <h3 className="font-display text-base font-bold text-ink">Boss AI Copilot</h3>
             <p className="text-xs text-ink-soft leading-relaxed">
-              Our academic tutor assists students by distilling complex derivations, highlighting high-yield exam radar concepts, and answering inquiries in real-time.
+              Boss AI can help explain concepts and answer study questions. Check its responses against trusted course sources.
             </p>
           </div>
 
@@ -78,7 +78,7 @@ function AboutPage() {
             </div>
             <h3 className="font-display text-base font-bold text-ink">Student Royalty Rewards</h3>
             <p className="text-xs text-ink-soft leading-relaxed">
-              Top scholars earn SyllaPoints whenever peers consult their verified contributions, withdrawable directly to Nigerian bank accounts (OPay, Kuda, GTB, etc.).
+              Eligible activity can earn SyllaPoints. Available withdrawal options and requirements are shown in the wallet.
             </p>
           </div>
         </div>
@@ -92,7 +92,7 @@ function AboutPage() {
             University education across Nigerian federal, state, and private institutions has historically suffered from fragmented study materials. Course notes were passed down as faded photocopies, syllabus expectations were frequently ambiguous, and examination prep took place through chaotic last-minute messaging groups.
           </p>
           <p className="text-ink-soft">
-            Syllaboss changes this paradigm by providing an archival-grade, indexed academic ecosystem. Students can find materials specific to their university, department, and course code (e.g. MTH 101, CSC 201, GST 111, GET 206) in seconds.
+              Syllaboss helps students organize and discover materials by institution, department, and course code. Availability depends on what students have shared.
           </p>
 
           <div className="pt-5 border-t border-border space-y-3.5">
@@ -103,11 +103,11 @@ function AboutPage() {
             <ul className="space-y-2.5 text-xs text-ink-soft">
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="size-4 text-brand shrink-0 mt-0.5" />
-                <span><strong className="text-ink">Multi-Stage Screening:</strong> Submissions undergo automated OCR parsing, virus scans, and syllabus matching before publishing.</span>
+                <span><strong className="text-ink">Material review:</strong> Submissions may be checked before they appear in the shared library. Review does not guarantee accuracy or completeness.</span>
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="size-4 text-brand shrink-0 mt-0.5" />
-                <span><strong className="text-ink">Plagiarism & Copyright Guard:</strong> We automatically check against duplicate submissions and protect intellectual property rights.</span>
+                <span><strong className="text-ink">Responsible sharing:</strong> Share only material you have the right to distribute and report content that appears incorrect or unauthorized.</span>
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="size-4 text-brand shrink-0 mt-0.5" />

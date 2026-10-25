@@ -1,106 +1,36 @@
-import { createServerFn } from "@tanstack/react-start";
+﻿import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getPresignedUploadUrl, getSignedDownloadUrl } from "@/integrations/r2/client";
+import { getSignedDownloadUrl } from "@/integrations/r2/client.server";
 import {
-  createMaterial,
-  setMaterialStatus,
   recordMaterialDownload,
   recordMaterialView,
   rateMaterial,
   getUserRating,
   requestWithdrawal as tursoRequestWithdrawal,
   claimAppInstallBonus as tursoClaimInstall,
-  upgradeToSyllaPlus as tursoUpgradePlus,
   syncSubscriptionStatus as tursoSyncSubscriptionStatus,
   recordStudySession as tursoRecordStudy,
   createComplaint as tursoCreateComplaint,
   replyToComplaint as tursoReplyComplaint,
   createAnnouncement as tursoCreateAnnouncement,
   markNotificationRead as tursoMarkNotificationRead,
-  getLeaderboard,
-} from "@/integrations/turso/client";
-import { MINIMUM_WITHDRAWAL_POINTS, SYLLAPLUS_PRICE_NAIRA } from "@/lib/constants";
-
-export const getUploadUrlServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) =>
-    z
-      .object({
-        userId: z.string(),
-        fileName: z.string(),
-        contentType: z.string(),
-      })
-      .parse(d)
-  )
-  .handler(async ({ data }) => {
-    const safe = data.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
-    const key = `materials/${data.userId}/${crypto.randomUUID()}-${safe}`;
-    const uploadUrl = await getPresignedUploadUrl(key, data.contentType, 300);
-    return { uploadUrl, key };
-  });
-
-export const getPresignedUploadUrlServerFn = getUploadUrlServerFn;
-
-export const createMaterialServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) =>
-    z
-      .object({
-        userId: z.string(),
-        title: z.string(),
-        course: z.string(),
-        courseCode: z.string().optional().nullable(),
-        institution: z.string(),
-        level: z.string().optional().nullable(),
-        materialType: z.string(),
-        description: z.string().optional().nullable(),
-        filePath: z.string(),
-        fileName: z.string(),
-        mimeType: z.string(),
-        fileSize: z.number(),
-      })
-      .parse(d)
-  )
-  .handler(async ({ data }) => {
-    const row = await createMaterial({
-      user_id: data.userId,
-      title: data.title,
-      course: data.course,
-      course_code: data.courseCode ?? null,
-      institution: data.institution,
-      level: data.level ?? null,
-      material_type: data.materialType,
-      description: data.description ?? null,
-      file_path: data.filePath,
-      file_name: data.fileName,
-      mime_type: data.mimeType,
-      file_size: data.fileSize,
-      page_count: 1,
-    });
-    return row;
-  });
-
-export const autoVerifyMaterialServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) =>
-    z
-      .object({
-        materialId: z.string(),
-        score: z.number().min(0).max(100),
-        notes: z.string().optional(),
-      })
-      .parse(d)
-  )
-  .handler(async ({ data }) => {
-    const status = data.score >= 70 ? "verified" : data.score < 40 ? "rejected" : "pending";
-    const notes = data.notes || (status === "verified" ? "Autonomous AI audit passed: verified course material." : "Pending review.");
-    await setMaterialStatus(data.materialId, status, data.score, notes);
-    return { status, score: data.score, notes };
-  });
+} from "@/integrations/turso/client.server";
+import { MINIMUM_WITHDRAWAL_POINTS } from "@/lib/constants";
+import { getCurrentUserIdOrNull, requireAdmin, requireCurrentUserId, requireSelfOrAdmin } from "@/lib/auth.server";
 
 export const getDownloadUrlServerFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     z.object({ materialId: z.string(), userId: z.string().optional() }).parse(d)
   )
   .handler(async ({ data }) => {
-    const filePath = await recordMaterialDownload(data.materialId, data.userId);
+    const userId = await requireCurrentUserId();
+    if (data.userId && data.userId !== userId) throw new Error("Forbidden");
+    const material = await import("@/integrations/turso/client.server").then((db) => db.getMaterialById(data.materialId));
+    if (!material) throw new Error("Material not found");
+    if (material.status !== "verified" && material.user_id !== userId && !(await import("@/lib/auth.server").then(({ requireAdmin }) => requireAdmin()))) {
+      throw new Error("This material is not available for download.");
+    }
+    const filePath = await recordMaterialDownload(data.materialId, userId);
     // If filePath is an external URL or missing, route to our resilient material streaming endpoint
     if (!filePath || filePath.startsWith("http://") || filePath.startsWith("https://")) {
       return { downloadUrl: `/api/materials?id=${data.materialId}&download=true` };
@@ -118,6 +48,7 @@ export const getPreviewUrlServerFn = createServerFn({ method: "POST" })
     z.object({ materialId: z.string() }).parse(d)
   )
   .handler(async ({ data }) => {
+    await requireCurrentUserId();
     return { previewUrl: `/api/materials?id=${data.materialId}` };
   });
 
@@ -126,7 +57,9 @@ export const recordMaterialViewServerFn = createServerFn({ method: "POST" })
     z.object({ materialId: z.string(), userId: z.string().optional() }).parse(d)
   )
   .handler(async ({ data }) => {
-    await recordMaterialView(data.materialId, data.userId);
+    const userId = await getCurrentUserIdOrNull();
+    if (data.userId && data.userId !== userId) throw new Error("Forbidden");
+    await recordMaterialView(data.materialId, userId ?? undefined);
     return { success: true };
   });
 
@@ -142,6 +75,7 @@ export const rateMaterialServerFn = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
+    await requireSelfOrAdmin(data.userId);
     const res = await rateMaterial(data.materialId, data.userId, data.rating, data.review);
     return res;
   });
@@ -151,6 +85,7 @@ export const getUserRatingServerFn = createServerFn({ method: "POST" })
     z.object({ materialId: z.string(), userId: z.string() }).parse(d)
   )
   .handler(async ({ data }) => {
+    await requireSelfOrAdmin(data.userId);
     const rating = await getUserRating(data.materialId, data.userId);
     return { rating };
   });
@@ -160,29 +95,22 @@ export const requestWithdrawalServerFn = createServerFn({ method: "POST" })
     z
       .object({
         userId: z.string(),
-        points: z.number().int().min(MINIMUM_WITHDRAWAL_POINTS),
-        bankName: z.string().min(1),
-        accountNumber: z.string().min(3),
-        accountName: z.string().min(1),
+        points: z.number().int().positive().max(1_000_000),
+        bankName: z.string().trim().min(1).max(80),
+        accountNumber: z.string().trim().min(3).max(120),
+        accountName: z.string().trim().min(1).max(120),
         payoutMethod: z.enum(["bank", "card", "giftcard"]).optional().default("bank"),
       })
       .parse(d)
   )
   .handler(async ({ data }) => {
-    // If card disbursement, initiate direct Capitalist API routing
-    if (data.payoutMethod === "card") {
-      try {
-        const { executeCapitalistCardPayout } = await import("@/lib/capitalist");
-        const { pointsToUsd } = await import("@/lib/constants");
-        await executeCapitalistCardPayout({
-          cardNumber: data.accountNumber,
-          cardHolder: data.accountName,
-          amountUsd: pointsToUsd(data.points),
-          userId: data.userId,
-        });
-      } catch (err) {
-        console.warn("Capitalist payout dispatch notice:", err);
-      }
+    await requireSelfOrAdmin(data.userId);
+    if (data.payoutMethod === "card") throw new Error("Card payouts are unavailable. Choose a bank transfer or gift card.");
+    if (data.payoutMethod !== "giftcard" && data.points < MINIMUM_WITHDRAWAL_POINTS) {
+      throw new Error(`Minimum withdrawal is ${MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} SyllaPoints.`);
+    }
+    if (data.payoutMethod === "bank" && !/^\d{10}$/.test(data.accountNumber)) {
+      throw new Error("Enter a valid 10-digit bank account number.");
     }
 
     const id = await tursoRequestWithdrawal(
@@ -199,6 +127,7 @@ export const requestWithdrawalServerFn = createServerFn({ method: "POST" })
 export const claimAppInstallBonusServerFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ userId: z.string() }).parse(d))
   .handler(async ({ data }) => {
+    await requireSelfOrAdmin(data.userId);
     const claimed = await tursoClaimInstall(data.userId);
     return { claimed };
   });
@@ -214,19 +143,21 @@ export const upgradeToSyllaPlusServerFn = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
-    await tursoUpgradePlus(data.userId, data.plan, data.paymentMethod);
-    return { success: true };
+    await requireSelfOrAdmin(data.userId);
+    throw new Error("Subscription upgrades are applied only after payment-provider verification.");
   });
 
 export const syncSubscriptionStatusServerFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ userId: z.string() }).parse(d))
   .handler(async ({ data }) => {
+    await requireSelfOrAdmin(data.userId);
     return await tursoSyncSubscriptionStatus(data.userId);
   });
 
 export const recordStudySessionServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => z.object({ userId: z.string(), minutes: z.number().min(1) }).parse(d))
+  .validator((d: unknown) => z.object({ userId: z.string(), minutes: z.number().int().min(1).max(240) }).parse(d))
   .handler(async ({ data }) => {
+    await requireSelfOrAdmin(data.userId);
     const res = await tursoRecordStudy(data.userId, data.minutes);
     return res;
   });
@@ -236,8 +167,9 @@ export const resolveBankAccountServerFn = createServerFn({ method: "POST" })
     z.object({ accountNumber: z.string().length(10), bankCode: z.string().min(1) }).parse(d)
   )
   .handler(async ({ data }) => {
-    const paystackSecret =
-      process.env['PAYSTACK_SECRET_KEY'] || "sk_test_e779bd6d22d9742889c46c992b3f6c0534d6320a";
+    await requireCurrentUserId();
+    const paystackSecret = process.env['PAYSTACK_SECRET_KEY'];
+    if (!paystackSecret) return { verified: false, error: "Bank verification is temporarily unavailable." };
 
     try {
       const res = await fetch(
@@ -274,6 +206,7 @@ export const createComplaintServerFn = createServerFn({ method: "POST" })
     z.object({ materialId: z.string(), userId: z.string(), complaintText: z.string().min(5) }).parse(d)
   )
   .handler(async ({ data }) => {
+    await requireSelfOrAdmin(data.userId);
     const id = await tursoCreateComplaint(data.materialId, data.userId, data.complaintText);
     return { complaintId: id };
   });
@@ -289,6 +222,7 @@ export const replyToComplaintServerFn = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
+    await requireAdmin();
     await tursoReplyComplaint(data.complaintId, data.adminReply, data.newStatus);
     return { success: true };
   });
@@ -305,6 +239,7 @@ export const createAnnouncementServerFn = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
+    await requireAdmin();
     const id = await tursoCreateAnnouncement(data.title, data.message, data.target, data.adminId);
     return { announcementId: id };
   });
@@ -312,79 +247,28 @@ export const createAnnouncementServerFn = createServerFn({ method: "POST" })
 export const markNotificationReadServerFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ notificationId: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    await tursoMarkNotificationRead(data.notificationId);
+    await requireCurrentUserId();
+    const userId = await requireCurrentUserId();
+    await tursoMarkNotificationRead(data.notificationId, userId);
     return { success: true };
   });
 
 export const getLeaderboardServerFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    const { getLeaderboard } = await import("@/integrations/turso/client");
+    await requireCurrentUserId();
+    const { getLeaderboard } = await import("@/integrations/turso/client.server");
     const list = await getLeaderboard(50);
     return { leaderboard: list };
   });
 
 export const createBachsCheckoutSessionServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) =>
-    z
-      .object({
-        userId: z.string(),
-        email: z.string(),
-        amountNaira: z.number().default(SYLLAPLUS_PRICE_NAIRA),
-        plan: z.enum(["weekly", "monthly", "yearly"]).optional().default("monthly"),
-      })
-      .parse(d)
-  )
+  .validator((d: unknown) => z.object({
+    userId: z.string(),
+    email: z.string().optional(),
+    amountNaira: z.number().optional(),
+    plan: z.enum(["weekly", "monthly", "yearly"]).optional().default("monthly"),
+  }).parse(d))
   .handler(async ({ data }) => {
-    const secretKey =
-      process.env['BACHS_SECRET_KEY'] ||
-      process.env['BASCH_SECRET_KEY'] ||
-      "sk_live_139a7b0b_HiZH6DnskIpOrNEHtzpuyHQJ_53y7ItOeY3R4b3PGEk";
-
-    const rawUrl = process.env['APP_URL'] || "https://syllaboss.org";
-    const publicAppUrl = rawUrl.includes("localhost") ? "https://syllaboss.org" : rawUrl;
-
-    try {
-      const response = await fetch("https://api.bachs.io/v1/checkout-sessions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${secretKey}`,
-        },
-        body: JSON.stringify({
-          pricing: {
-            amount: String(data.amountNaira),
-            currency: "NGN",
-          },
-          customer: {
-            email: data.email,
-          },
-          metadata: {
-            userId: data.userId,
-            plan: data.plan,
-          },
-          success_url: `${publicAppUrl}/dashboard?upgraded=true&plan=${data.plan}`,
-          cancel_url: `${publicAppUrl}/dashboard`,
-        }),
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        return {
-          checkoutUrl: json.checkout_url || null,
-          sessionId: json.checkout_id || `bachs_${data.userId}_${Date.now()}`,
-        };
-      } else {
-        const errJson = await response.json().catch(() => null);
-        console.warn("Bachs checkout error response:", response.status, errJson);
-      }
-    } catch (err) {
-      console.warn("Bachs checkout API request error:", err);
-    }
-
-    return {
-      checkoutUrl: null,
-      sessionId: `bachs_${data.userId}_${Date.now()}`,
-    };
+    await requireSelfOrAdmin(data.userId);
+    throw new Error("Subscription checkout is temporarily unavailable while payment verification is being configured.");
   });
-
-

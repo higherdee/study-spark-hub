@@ -1,16 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { uploadToR2 } from "@/integrations/r2/client";
-import { createMaterial, setMaterialStatus } from "@/integrations/turso/client";
+﻿import { createFileRoute } from "@tanstack/react-router";
+import { uploadToR2 } from "@/integrations/r2/client.server";
+import { createMaterial } from "@/integrations/turso/client.server";
 import { verifyMaterial } from "@/lib/verify.functions";
+import { requireCurrentUserId } from "@/lib/auth.server";
 
 export const Route = createFileRoute("/api/upload")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
+          let authenticatedUserId: string;
+          try {
+            authenticatedUserId = await requireCurrentUserId();
+          } catch {
+            return new Response(JSON.stringify({ error: "Sign in to upload materials." }), { status: 401, headers: { "Content-Type": "application/json" } });
+          }
           const formData = await request.formData();
           const file = formData.get("file") as File | null;
-          const userId = formData.get("userId") as string | null;
+          const requestedUserId = formData.get("userId") as string | null;
+          if (requestedUserId && requestedUserId !== authenticatedUserId) {
+            return new Response(JSON.stringify({ error: "The upload account does not match the signed-in account." }), { status: 403, headers: { "Content-Type": "application/json" } });
+          }
+          const userId = authenticatedUserId;
           const title = (formData.get("title") as string | null) || "";
           const course = (formData.get("course") as string | null) || "";
           const courseCode = (formData.get("courseCode") as string | null) || null;
@@ -60,8 +71,9 @@ export const Route = createFileRoute("/api/upload")({
 
           // Upload directly to Cloudflare R2 on the backend
           const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-          const key = `${userId}/${Date.now()}-${safeName}`;
-          await uploadToR2(key, buffer, file.type || "application/octet-stream");
+          const key = `materials/${userId}/${Date.now()}-${safeName}`;
+          const mimeType = isPdf ? "application/pdf" : isJpg ? "image/jpeg" : isPng ? "image/png" : "image/webp";
+          await uploadToR2(key, buffer, mimeType);
 
           // Estimate rough page count if PDF
           let pageCount = 1;
@@ -82,7 +94,7 @@ export const Route = createFileRoute("/api/upload")({
             description: description?.trim() || null,
             file_path: key,
             file_name: file.name,
-            mime_type: file.type || "application/pdf",
+            mime_type: mimeType,
             file_size: file.size,
             page_count: pageCount,
           });
@@ -126,3 +138,4 @@ export const Route = createFileRoute("/api/upload")({
     },
   },
 });
+

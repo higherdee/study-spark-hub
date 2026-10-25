@@ -1,6 +1,6 @@
-import { createServerFn } from "@tanstack/react-start";
+﻿import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getScholarFlexData, type ScholarFlexData } from "@/integrations/turso/scholar";
+import { getScholarFlexData, type ScholarFlexData } from "@/integrations/turso/scholar.server";
 
 /**
  * Server function to fetch Campus Wrapped & Scholar Flex stats
@@ -13,3 +13,4 @@ export const getScholarFlexDataServerFn = createServerFn({ method: "GET" })
       username: data.username,
     });
   });
+

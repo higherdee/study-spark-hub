@@ -102,11 +102,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Syllaboss" },
       { name: "description", content: "A clear academic starting point for students." },
       { name: "author", content: "Syllaboss" },
-      { name: "theme-color", content: "#0d281e" },
+      { name: "theme-color", content: "#f5f3ec" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Syllaboss" },
       { property: "og:site_name", content: "Syllaboss" },
@@ -115,7 +115,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      { rel: "canonical", href: "https://syllaboss.org" },
       {
         rel: "stylesheet",
         href: appCss,
@@ -178,27 +177,6 @@ function RootShell({ children }: { children: ReactNode }) {
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              try {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-                localStorage.setItem('syllaboss-theme', 'light');
-              } catch(e) {}
-              if ('serviceWorker' in navigator) {
-                try {
-                  navigator.serviceWorker.getRegistrations().then(function(regs) {
-                    for (var i = 0; i < regs.length; i++) {
-                      regs[i].unregister();
-                    }
-                  });
-                  if ('caches' in window) {
-                    caches.keys().then(function(names) {
-                      for (var j = 0; j < names.length; j++) {
-                        caches.delete(names[j]);
-                      }
-                    });
-                  }
-                } catch(e) {}
-              }
               window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;window.dispatchEvent(new Event('bip-ready'));});
             `,
           }}

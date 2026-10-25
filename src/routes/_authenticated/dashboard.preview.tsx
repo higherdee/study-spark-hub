@@ -386,7 +386,7 @@ Formatting Guidelines:
       link.click();
       document.body.removeChild(link);
 
-      toast.success("Download started directly to your device (+5 pts)");
+      toast.success("Your download has started.");
       qc.invalidateQueries({ queryKey: ["material-preview", materialId] });
     } catch (err: any) {
       toast.error(err.message || "Download failed");

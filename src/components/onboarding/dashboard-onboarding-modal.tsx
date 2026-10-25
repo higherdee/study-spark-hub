@@ -9,7 +9,6 @@ import {
   User,
   ArrowRight,
   ArrowLeft,
-  Zap,
   Check,
   ShieldCheck,
 } from "lucide-react";
@@ -18,13 +17,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SearchSelect, type SearchOption } from "@/components/search-select";
-import { institutionOptions, courseOptions, SYLLAPLUS_PRICING, formatNaira, formatUsd } from "@/lib/constants";
+import { institutionOptions, courseOptions } from "@/lib/constants";
 import { checkUsernameAvailableServerFn } from "@/lib/community.functions";
 import { upsertProfileServerFn } from "@/lib/profile.functions";
 import type { Profile } from "@/integrations/turso/client";
-import { createBachsCheckoutSessionServerFn } from "@/lib/upload.functions";
-import { useGeo } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
 interface DashboardOnboardingModalProps {
@@ -44,9 +47,8 @@ export function DashboardOnboardingModal({
 }: DashboardOnboardingModalProps) {
   const qc = useQueryClient();
 
-  // 3-Slide Onboarding Wizard: 1 (Personal Details) -> 2 (School Details) -> 3 (Welcome Onboard)
-  // Plus optional VIP upsell slide
-  const [slide, setSlide] = useState<1 | 2 | 3 | "syllaplus_upsell">(1);
+  // 3-step setup: personal details, school details, and a welcome summary.
+  const [slide, setSlide] = useState<1 | 2 | 3>(1);
 
   // Form inputs - Slide 1: Personal Details
   const [fullName, setFullName] = useState(profile.full_name || "");
@@ -66,12 +68,14 @@ export function DashboardOnboardingModal({
   const [dailyFocusTarget, setDailyFocusTarget] = useState<number>(60); // minutes
 
   const [saving, setSaving] = useState(false);
-  const [upgrading, setUpgrading] = useState(false);
-  const { isRegional, countryName } = useGeo();
 
   // Sync profile data on open
   useEffect(() => {
     if (isOpen) {
+      const savedFocusTarget = Number(localStorage.getItem("syllaboss_study_goal"));
+      if ([30, 60, 90, 120].includes(savedFocusTarget)) {
+        setDailyFocusTarget(savedFocusTarget);
+      }
       if (profile.full_name && !fullName) setFullName(profile.full_name);
       if (profile.username && !profile.username.startsWith("student_") && !username) setUsername(profile.username);
       if (profile.institution && !institution) setInstitution({ label: profile.institution });
@@ -177,6 +181,7 @@ export function DashboardOnboardingModal({
         },
       });
 
+      localStorage.setItem("syllaboss_study_goal", String(dailyFocusTarget));
       await qc.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Academic records updated!");
       setSlide(3);
@@ -187,54 +192,32 @@ export function DashboardOnboardingModal({
     }
   };
 
-  const handleUpgradeSyllaPlus = async () => {
-    setUpgrading(true);
-    try {
-      toast.loading("Initiating Bachs payment portal...", { id: "bachs-up" });
-      const res = await createBachsCheckoutSessionServerFn({
-        data: {
-          userId: profile.id,
-          email: profile.email || "student@syllaboss.org",
-          amountNaira: SYLLAPLUS_PRICING.regional.monthly,
-        },
-      });
-
-      toast.dismiss("bachs-up");
-      if (res.checkoutUrl) {
-        window.location.href = res.checkoutUrl;
-      } else {
-        toast.success("SyllaPlus membership VIP unlocked!");
-        onComplete();
-        onClose();
-      }
-    } catch (err: any) {
-      toast.dismiss("bachs-up");
-      toast.error(err?.message || "Payment initialization failed.");
-    } finally {
-      setUpgrading(false);
-    }
-  };
-
   const handleClose = () => {
     if (isMandatory) return;
     onClose();
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-lg animate-fade-in"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isMandatory) {
-          handleClose();
-        }
+    <Dialog
+      open={isOpen}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) handleClose();
       }}
     >
-      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2rem] border border-white/20 bg-card p-6 sm:p-8 shadow-2xl backdrop-blur-2xl animate-scale-in">
+      <DialogContent
+        showCloseButton={false}
+        className="relative max-h-[min(90dvh,56rem)] max-w-xl overflow-y-auto rounded-[1.75rem] border-border bg-card p-5 shadow-pop sm:p-8"
+        onEscapeKeyDown={(event) => isMandatory && event.preventDefault()}
+        onPointerDownOutside={(event) => isMandatory && event.preventDefault()}
+      >
+        <DialogTitle className="sr-only">Complete your student profile</DialogTitle>
+        <DialogDescription className="sr-only">
+          Set up your profile and university details to personalize your study space.
+        </DialogDescription>
         {/* Glow ambient background */}
         <div className="absolute -top-20 -right-20 size-56 rounded-full bg-gradient-to-br from-forest/20 via-brand/15 to-brass/20 blur-3xl pointer-events-none" />
 
         {/* Wizard Slide Step Pills (1 to 3) */}
-        {slide !== "syllaplus_upsell" && (
           <div className="flex items-center justify-between border-b border-border/70 pb-4 mb-6">
             <div className="flex items-center gap-2">
               <span
@@ -282,7 +265,7 @@ export function DashboardOnboardingModal({
                 3
               </span>
               <span className={cn("text-xs font-semibold", slide === 3 ? "text-ink" : "text-muted-foreground")}>
-                Verified
+                Ready
               </span>
             </div>
 
@@ -297,7 +280,6 @@ export function DashboardOnboardingModal({
               </button>
             )}
           </div>
-        )}
 
         {/* ========================================================================= */}
         {/* SLIDE 1: PERSONAL DETAILS */}
@@ -432,7 +414,7 @@ export function DashboardOnboardingModal({
                 Your Academic Affiliation
               </h2>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Connect your institution and course to browse verified university summaries, past questions, and study materials.
+                Add your institution and course so your profile and student community reflect what you study.
               </p>
             </div>
 
@@ -475,10 +457,10 @@ export function DashboardOnboardingModal({
                     onChange={(e) => setDailyFocusTarget(Number(e.target.value))}
                     className="h-10 w-full rounded-xl border border-border bg-card px-3 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    <option value={30}>30 Minutes / day (+5 pts)</option>
+                    <option value={30}>30 Minutes / day</option>
                     <option value={60}>1 Hour / day (Recommended)</option>
-                    <option value={120}>2 Hours / day (+20 pts)</option>
-                    <option value={180}>3 Hours / day (Power Scholar)</option>
+                    <option value={90}>1.5 Hours / day</option>
+                    <option value={120}>2 Hours / day</option>
                   </select>
                 </div>
               </div>
@@ -529,24 +511,22 @@ export function DashboardOnboardingModal({
             <div className="space-y-1 max-w-md mx-auto">
               <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-semibold bg-forest/10 border border-forest/25 text-forest">
                 <CheckCircle2 className="size-3.5" />
-                <span>Academic Profile Activated</span>
+                <span>Your profile is ready</span>
               </span>
               <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink tracking-tight pt-1">
-                Welcome Onboard, @{username}!
+                Welcome, @{username}.
               </h2>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Your academic ledger is verified. We deposited{" "}
-                <strong className="font-mono text-forest font-bold">+200 SyllaPoints</strong> welcome bonus directly
-                into your study wallet.
+                Your course details are saved. Use them to find relevant materials and make your study space feel like yours.
               </p>
             </div>
 
-            {/* Academic ID Verification Card */}
+            {/* Course profile summary */}
             <div className="p-4 rounded-2xl bg-surface-container-low border border-border text-left space-y-2.5 text-xs shadow-xs">
               <div className="flex items-center justify-between border-b border-border/70 pb-2">
                 <span className="font-semibold text-ink text-sm">{fullName}</span>
                 <span className="font-mono font-bold text-forest bg-forest/10 px-2 py-0.5 rounded-md text-[11px]">
-                  +200 pts bonus
+                  Profile saved
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
@@ -565,14 +545,14 @@ export function DashboardOnboardingModal({
               </div>
             </div>
 
-            {/* Registration Security Prompt */}
-            <div className="rounded-2xl border border-brass/35 bg-gradient-to-r from-brass/10 via-brass/5 to-surface-container-low p-3.5 text-left text-xs">
+            {/* Helpful next step */}
+            <div className="rounded-2xl border border-border bg-surface-container-low p-3.5 text-left text-xs">
               <div className="flex items-start gap-2.5">
-                <ShieldCheck className="size-4 text-brass shrink-0 mt-0.5" />
+                <ShieldCheck className="size-4 text-brand shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-ink text-xs">Lock In Your Credentials & Sync Devices</p>
+                  <p className="font-semibold text-ink text-xs">A good place to start</p>
                   <p className="text-muted-foreground text-[11px] mt-0.5 leading-relaxed">
-                    Keep your study streak active across your devices, access unlimited AI summaries, and unlock weekend cash withdrawals.
+                    Browse your course library, set up a focus session, or ask Boss AI about a topic you’re working through.
                   </p>
                 </div>
               </div>
@@ -587,146 +567,15 @@ export function DashboardOnboardingModal({
                 }}
                 className="h-11 w-full rounded-xl text-xs font-semibold bg-forest text-white hover:bg-forest/90 shadow-lift gap-2 cursor-pointer active:scale-[0.98]"
               >
-                <span>Enter Workspace & Claim Bonus</span>
+                <span>Go to your dashboard</span>
                 <ArrowRight className="size-4" />
               </Button>
 
-              <button
-                type="button"
-                onClick={() => setSlide("syllaplus_upsell")}
-                className="text-[11px] text-muted-foreground hover:text-ink font-medium py-1 cursor-pointer flex items-center justify-center gap-1"
-              >
-                <Zap className="size-3 text-brass" />
-                <span>Optional: Explore SyllaPlus 1.3x VIP Privileges</span>
-              </button>
             </div>
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* OPTIONAL SLIDE: SYLLAPLUS UPSELL */}
-        {/* ========================================================================= */}
-        {slide === "syllaplus_upsell" && (
-          <div className="space-y-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold bg-brass/15 border border-brass/30 text-brass-ink">
-                  <Zap className="size-3.5 text-brass" />
-                  <span>VIP Academic Pass</span>
-                </span>
-                <h2 className="mt-2.5 font-display text-2xl sm:text-3xl font-normal text-ink tracking-tight">
-                  Supercharge Your Experience with <span className="text-brass">SyllaPlus</span>
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  Earn higher cash-out rewards, enjoy priority Boss AI derivations, and fast-track weekend withdrawals.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSlide(3)}
-                aria-label="Back to Welcome"
-                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary transition-all cursor-pointer"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            {/* Benefits Cards */}
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-start gap-3 rounded-2xl border border-brass/25 bg-brass/5 p-3.5">
-                <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-brass/15 text-brass">
-                  <Zap className="size-4" />
-                </div>
-                <div>
-                  <p className="font-semibold text-ink">1.3x SyllaPoints Multiplier</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                    Earn 1.3x points on all study timer sessions, verified uploads, and classmate downloads.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-2xl border border-border/70 bg-card p-3.5">
-                <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
-                  <Sparkles className="size-4" />
-                </div>
-                <div>
-                  <p className="font-semibold text-ink">+300 SyllaPoints Instant Bonus</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                    Credited immediately to accelerate your minimum withdrawal journey.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-2xl border border-border/70 bg-card p-3.5">
-                <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-forest/10 text-forest">
-                  <ShieldCheck className="size-4" />
-                </div>
-                <div>
-                  <p className="font-semibold text-ink">Priority AI Exam Prep & Weekend Fast-Lane</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                    Unlimited document summaries, LaTeX math step-by-step solutions, and instant weekend payouts.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Localized Pricing Summary */}
-            <div className="p-3.5 rounded-2xl bg-surface-container-low border border-border flex items-center justify-between text-xs">
-              <div>
-                <span className="eyebrow block text-muted-foreground">
-                  {isRegional
-                    ? `Regional Pricing (${countryName || "Africa / Asia"})`
-                    : `International Pricing (${countryName || "Global"})`}
-                </span>
-                <span className="font-semibold text-ink">
-                  {isRegional
-                    ? `${formatNaira(SYLLAPLUS_PRICING.regional.weekly)}/wk · ${formatNaira(
-                        SYLLAPLUS_PRICING.regional.monthly
-                      )}/mo · ${formatNaira(SYLLAPLUS_PRICING.regional.yearly)}/yr`
-                    : `${formatUsd(SYLLAPLUS_PRICING.international.monthly)}/mo · ${formatUsd(
-                        SYLLAPLUS_PRICING.international.yearly
-                      )}/yr`}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="inline-flex items-center rounded-full bg-brass/10 px-2 py-0.5 text-[10px] font-semibold text-brass">
-                  {isRegional ? "Local Currency" : "USD Tier"}
-                </span>
-              </div>
-            </div>
-
-            {/* CTAs */}
-            <div className="pt-2 flex flex-col gap-2">
-              <Button
-                onClick={handleUpgradeSyllaPlus}
-                disabled={upgrading}
-                className="h-11 w-full rounded-xl text-xs font-semibold bg-gradient-to-r from-brass to-brass-ink text-white shadow-lift gap-2 active:scale-[0.98] cursor-pointer"
-              >
-                {upgrading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <>
-                    <Sparkles className="size-4 text-brass-soft" />
-                    <span>Upgrade to SyllaPlus (Bachs / Card)</span>
-                  </>
-                )}
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  onComplete();
-                  onClose();
-                }}
-                className="text-xs text-muted-foreground hover:text-ink font-semibold py-1 cursor-pointer"
-              >
-                Enter Dashboard Directly
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

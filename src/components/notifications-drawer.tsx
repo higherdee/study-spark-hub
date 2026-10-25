@@ -1,9 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
 import { Bell, MessageSquare, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { getUserNotifications, markNotificationRead } from "@/integrations/turso/client";
 import { cn } from "@/lib/utils";
@@ -12,8 +18,6 @@ interface NotificationsDrawerProps {
   open: boolean;
   onClose: () => void;
 }
-
-const EASE = [0.23, 1, 0.32, 1] as const;
 
 export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps) {
   const { user } = useAuth();
@@ -54,59 +58,41 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          key="notifications"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 backdrop-blur-[2px] sm:items-stretch sm:justify-end"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2, ease: EASE }}
-          onClick={onClose}
-        >
-          <motion.aside
-            role="dialog"
-            aria-label="Notifications"
-            className="flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-background shadow-[var(--elev-3)] sm:max-h-none sm:w-[26rem] sm:rounded-none sm:rounded-l-3xl"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ duration: 0.32, ease: EASE }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <header className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div>
-                <h3 className="font-display text-xl text-ink">Notifications</h3>
-                <p className="text-xs text-muted-foreground tnum">
-                  {unreadCount > 0
-                    ? `${unreadCount} unread`
-                    : "You're all caught up"}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                {unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2.5 text-xs font-semibold text-forest"
-                    onClick={handleMarkAllRead}
-                  >
-                    Mark all read
-                  </Button>
-                )}
-                <button
-                  type="button"
-                  aria-label="Close notifications"
-                  onClick={onClose}
-                  className="press grid size-9 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-            </header>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="bottom-0 left-0 top-auto flex max-h-[85dvh] w-full max-w-none translate-x-0 translate-y-0 flex-col overflow-y-hidden rounded-t-3xl rounded-b-none p-0 sm:bottom-auto sm:left-auto sm:right-0 sm:top-0 sm:h-dvh sm:max-h-dvh sm:w-[26rem] sm:translate-x-0 sm:translate-y-0 sm:rounded-l-3xl sm:rounded-r-none"
+      >
+        <header className="flex items-center justify-between border-b border-border px-5 py-4">
+          <DialogHeader className="min-w-0 text-left">
+            <DialogTitle className="font-display text-xl font-medium text-ink">Notifications</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground tnum">
+              {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 px-2.5 text-xs font-semibold text-forest"
+                onClick={handleMarkAllRead}
+              >
+                Mark all read
+              </Button>
+            )}
+            <button
+              type="button"
+              aria-label="Close notifications"
+              onClick={onClose}
+              className="press grid size-9 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </header>
 
-            <div className="flex-1 overflow-y-auto p-4 pb-safe">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-safe">
               {isLoading ? (
                 <div className="space-y-3">
                   {[0, 1, 2].map((i) => (
@@ -142,8 +128,8 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                           className={cn(
                             "press flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors duration-150",
                             n.read
-                              ? "border-border bg-white/60"
-                              : "border-brand/30 bg-white shadow-[var(--elev-1)]",
+                              ? "border-border bg-surface-container-low"
+                              : "border-brand/30 bg-card shadow-[var(--elev-1)]",
                           )}
                         >
                           <span
@@ -189,10 +175,8 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                   })}
                 </ul>
               )}
-            </div>
-          </motion.aside>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,22 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { CheckCircle2, Clock, Coins, Download, FileStack, Users, Wallet, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { PageHeader, StatCard } from "@/components/app-shell";
-import { turso } from "@/integrations/turso/client";
+import { getAdminDashboardDataServerFn } from "@/lib/profile.functions";
 import { formatNaira } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/")({ component: AdminOverview });
 
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--primary)", "var(--muted-foreground)"];
-
-async function all<T>(table: "profiles" | "materials" | "withdrawals" | "points_ledger", cols: string): Promise<T[]> {
-  const rs = await turso.execute(`SELECT ${cols} FROM ${table}`);
-  return rs.rows as unknown as T[];
-}
 
 type P = { id: string; created_at: string; referral_source: string | null; institution: string | null; points: number; onboarding_step: number };
 type M = { id: string; created_at: string; status: string; material_type: string; course: string; page_count: number; points_awarded: number; downloads: number; verification_score: number | null };
@@ -29,12 +24,12 @@ function AdminOverview() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-metrics"],
     queryFn: async () => {
-      const [profiles, materials, withdrawals] = await Promise.all([
-        all<P>("profiles", "id, created_at, referral_source, institution, points, onboarding_step"),
-        all<M>("materials", "id, created_at, status, material_type, course, page_count, points_awarded, downloads, verification_score"),
-        all<W>("withdrawals", "created_at, status, amount_naira, points"),
-      ]);
-      return { profiles, materials, withdrawals };
+      const result = await getAdminDashboardDataServerFn();
+      return {
+        profiles: result.profiles as unknown as P[],
+        materials: result.materials as unknown as M[],
+        withdrawals: result.withdrawals as unknown as W[],
+      };
     },
   });
 
@@ -80,7 +75,7 @@ function AdminOverview() {
     };
   }, [data, range]);
 
-  if (isLoading || !m) return <p className="text-muted-foreground">Loading metrics…</p>;
+  if (isLoading || !m) return <p className="text-muted-foreground">Loading metricsâ€¦</p>;
   const t = m.totals;
 
   return (
@@ -116,7 +111,7 @@ function AdminOverview() {
             </AreaChart>
           </ResponsiveContainer>
         </Panel>
-        <Panel title="Payout requests (₦)">
+        <Panel title="Payout requests (â‚¦)">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={m.series}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -160,9 +155,11 @@ function HBar({ data }: { data: { name: string; value: number }[] }) {
     <ResponsiveContainer width="100%" height={Math.max(160, data.length * 34)}>
       <BarChart data={data} layout="vertical" margin={{ left: 10 }}>
         <XAxis type="number" allowDecimals={false} fontSize={11} stroke="var(--muted-foreground)" />
-        <YAxis type="category" dataKey="name" width={150} fontSize={11} stroke="var(--muted-foreground)" tickFormatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}…` : v)} />
+        <YAxis type="category" dataKey="name" width={150} fontSize={11} stroke="var(--muted-foreground)" tickFormatter={(v: string) => (v.length > 22 ? `${v.slice(0, 22)}â€¦` : v)} />
         <Tooltip /><Bar dataKey="value" fill="var(--primary)" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
 }
+
+

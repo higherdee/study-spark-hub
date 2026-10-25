@@ -81,7 +81,7 @@ function MaterialsPage() {
       const { downloadUrl } = await getDownloadUrlServerFn({ data: { materialId: id } });
       if (!downloadUrl) throw new Error("Could not generate download link");
       window.location.href = downloadUrl;
-      toast.success("Download started! Uploader earned +5 SyllaPoints.");
+      toast.success("Download started. The contributor may earn a reward for an eligible first download.");
       qc.invalidateQueries({ queryKey: ["search-materials"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed");
