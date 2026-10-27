@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
     val scope = rememberCoroutineScope()
     val user by Clerk.userFlow.collectAsState()
     val initialized by Clerk.isInitialized.collectAsState()
+    val authComplete by Clerk.isAuthFlowCompleteFlow.collectAsState()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var auth by rememberSaveable { mutableStateOf(false) }
     var welcomed by rememberSaveable { mutableStateOf(prefs.getBoolean("welcomed", false)) }
@@ -84,7 +85,7 @@ class MainActivity : ComponentActivity() {
         val activity = context as android.app.Activity
         WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightStatusBars = (welcomed || auth) && !focus
     }
-    var materials by remember { mutableStateOf<List<Material>>(emptyList()) }
+    var materials by remember { mutableStateOf(runCatching { val a = JSONArray(prefs.getString("library", "[]")); (0 until a.length()).map { Material.from(a.getJSONObject(it)) } }.getOrDefault(emptyList())) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var saved by remember { mutableStateOf(runCatching { val a = JSONArray(prefs.getString("saved", "[]")); (0 until a.length()).map { Material.from(a.getJSONObject(it)) } }.getOrDefault(emptyList())) }
@@ -98,7 +99,7 @@ class MainActivity : ComponentActivity() {
     }
     LaunchedEffect(refresh) {
         loading = true; error = null
-        try { val a = StudyApi.call().getJSONArray("materials"); materials = (0 until a.length()).map { Material.from(a.getJSONObject(it)) } }
+        try { val a = StudyApi.call().getJSONArray("materials"); materials = (0 until a.length()).map { Material.from(a.getJSONObject(it)) }; prefs.edit().putString("library", a.toString()).apply() }
         catch (e: Exception) { error = e.message ?: "Check your connection and try again." }
         finally { loading = false }
     }
@@ -106,7 +107,7 @@ class MainActivity : ComponentActivity() {
         space = null; spaceError = null
         if (user != null) try { space = StudyApi.call("space") } catch (e: Exception) { spaceError = e.message }
     }
-    LaunchedEffect(user?.id) { if (user != null) auth = false }
+    LaunchedEffect(authComplete) { if (authComplete) auth = false }
     BackHandler(enabled = auth || focus || reader != null || secondary.isNotBlank() || tab != 0) {
         when { reader != null -> reader = null; focus -> focus = false; auth -> auth = false; secondary.isNotBlank() -> secondary = ""; else -> tab = 0 }
     }
@@ -419,6 +420,12 @@ class MainActivity : ComponentActivity() {
         file?.let { f ->
             try {
                 val rendered = withContext(Dispatchers.IO) {
+                    if (material.mime.startsWith("image/")) {
+                        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        android.graphics.BitmapFactory.decodeFile(f.path, bounds)
+                        val options = android.graphics.BitmapFactory.Options().apply { inSampleSize = maxOf(1, maxOf(bounds.outWidth, bounds.outHeight) / 1800) }
+                        return@withContext 1 to (android.graphics.BitmapFactory.decodeFile(f.path, options) ?: throw IllegalStateException("Image unavailable"))
+                    }
                     PdfRenderer(ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)).use { pdf ->
                         val count = pdf.pageCount
                         pdf.openPage(page.coerceIn(0, count - 1)).use { p ->

@@ -17,7 +17,7 @@ object StudyApi {
     private val http = OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(75, TimeUnit.SECONDS).build()
     suspend fun call(resource: String = "library", body: JSONObject? = null): JSONObject {
         var token: String? = null
-        Clerk.session?.fetchToken()?.onSuccess { token = it.jwt }
+        if (body != null || !resource.startsWith("library")) Clerk.session?.fetchToken()?.onSuccess { token = it.jwt }
         return withContext(Dispatchers.IO) {
             val request = Request.Builder().url("https://syllaboss.org/api/mobile?resource=$resource")
             token?.let { request.header("Authorization", "Bearer $it") }
@@ -33,7 +33,7 @@ object StudyApi {
         http.newCall(Request.Builder().url("https://syllaboss.org/api/materials?id=${java.net.URLEncoder.encode(id, "UTF-8")}").build()).execute().use { response ->
             if (!response.isSuccessful) throw IllegalStateException("This document is unavailable. Please retry.")
             val content = response.body
-            if (!content.contentType().toString().startsWith("application/pdf")) throw IllegalStateException("This file is not a PDF. Open it with a compatible viewer.")
+            if (content.contentType().toString().substringBefore(';') !in listOf("application/pdf", "image/jpeg", "image/png", "image/webp")) throw IllegalStateException("This document format is not supported.")
             content.byteStream().use { input -> target.outputStream().use { input.copyTo(it) } }
         }
     }
