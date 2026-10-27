@@ -1,5 +1,5 @@
 """Exercise native Android navigation using the emulator's accessibility tree."""
-import subprocess, time, re, xml.etree.ElementTree as E, json, urllib.request
+import subprocess, time, re, xml.etree.ElementTree as E
 from pathlib import Path
 root=Path('android-smoke')
 def adb(*args):
@@ -25,9 +25,12 @@ for attempt in range(15):
     time.sleep(3)
 assert any(re.search(r'[1-9]\d* materials', n.get('text',''), re.I) for n in library.iter('node')), 'Live library returned no materials'
 assert not any('DOCTYPE' in n.get('text','') for n in library.iter('node'))
-with urllib.request.urlopen('https://syllaboss.org/api/mobile?resource=library', timeout=25) as response:
-    material=json.load(response)['materials'][0]
-tap(material['title']);time.sleep(15)
+for node in library.iter('node'):
+    texts=[child.get('text') for child in node.iter('node') if child.get('text')]
+    if node.get('clickable') == 'true' and len(texts) >= 2 and any(child.get('content-desc') == 'Save material' for child in node.iter('node')):
+        title=texts[1];break
+else: raise AssertionError('No material row available to open')
+tap(title);time.sleep(15)
 reader=snapshot('reader')
 assert any(re.fullmatch(r'1 / [1-9]\d*', n.get('text','')) for n in reader.iter('node')), 'Native document rendering did not complete'
 adb('shell','input','keyevent','4');time.sleep(2)
