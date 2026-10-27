@@ -29,7 +29,6 @@ import { Button } from "@/components/ui/button";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { Magnetic } from "@/components/ui/magnetic";
 import { GsapReveal } from "@/components/ui/gsap-reveal";
-import { useGuide } from "@/components/onboarding/guide-context";
 import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, getPointsLedger } from "@/integrations/turso/client";
 import { useProfile } from "@/lib/profile";
@@ -97,7 +96,6 @@ function HomePage() {
   const [showPlus, setShowPlus] = useState(false);
   const [showWrapped, setShowWrapped] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { openGuide } = useGuide();
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -349,10 +347,9 @@ function HomePage() {
 
       {/* Quick actions */}
       <GsapReveal delay={0.15}>
-        <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
+        <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           <ActionTile to="/dashboard/library" icon={BookOpen} title="Library" sub="Notes & past questions" />
           <ActionTile to="/dashboard/assistant" icon={Bot} title="Boss AI" sub="Ask, quiz, explain" />
-          <ActionTile onClick={openGuide} icon={Compass} title="Student Guide" sub="3-slide quick tour" />
           <ActionTile to="/dashboard/community" icon={Users} title="Peers" sub="Study groups & battles" />
           <ActionTile onClick={() => setShowWrapped(true)} icon={Share2} title="Campus Wrapped" sub="Share your rank card" />
         </section>

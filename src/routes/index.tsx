@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { ArrowDown, ArrowRight, BookOpen, Bot, Coins, FileUp, LibraryBig, Users } from "lucide-react";
 
 import { InstallButton } from "@/components/install-button";
@@ -55,25 +57,35 @@ const studyTools = [
 function HomePage() {
   const { user } = useAuth();
   const appPath = user ? "/dashboard" : "/auth";
+  const [compactHeader, setCompactHeader] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    const updateHeader = () => setCompactHeader(window.scrollY > 12);
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeader);
+  }, []);
 
   return (
     <div className="home-page min-h-dvh bg-background text-ink">
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <header className="home-header">
-        <div className="home-header-inner">
-          <Link to="/" aria-label="Syllaboss home" className="home-wordmark"><SyllabossLogo /></Link>
-          <nav aria-label="Main navigation" className="home-nav">
+      <header className="home-header" data-compact={compactHeader}>
+        <motion.div layout className="home-header-inner"
+          transition={{ layout: { duration: reduceMotion ? 0 : 0.26, ease: [0.77, 0, 0.175, 1] } }}>
+          <motion.div layout="position" className="home-wordmark"><Link to="/" aria-label="Syllaboss home"><SyllabossLogo /></Link></motion.div>
+          <motion.nav layout="position" aria-label="Main navigation" className="home-nav">
             <a href="#how-it-works">How it works</a>
             <a href="#study-tools">Study tools</a>
             <Link to="/materials">Course library</Link>
-          </nav>
-          <div className="home-header-actions">
+          </motion.nav>
+          <motion.div layout="position" className="home-header-actions">
             <InstallButton variant="ghost" size="sm" className="home-install" />
             <Button asChild size="sm" className="home-login">
               <Link to={appPath}>{user ? "Open your space" : "Sign in"}<ArrowRight aria-hidden="true" /></Link>
             </Button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </header>
 
       <main id="main-content">

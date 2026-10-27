@@ -47,41 +47,32 @@ function AuthPage() {
   return (
     <div className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
       {/* Brand panel */}
-      <aside className="relative hidden overflow-hidden bg-forest p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <SyllabossEmblem
-          aria-hidden
-          className="pointer-events-none absolute -bottom-24 -right-16 size-[34rem] opacity-[0.06]"
-        />
+      <aside className="auth-brand-panel relative hidden overflow-hidden bg-forest text-white lg:flex lg:flex-col lg:justify-between">
         <a href="/" aria-label="Syllaboss home" className="relative inline-flex items-center gap-2.5">
-          <SyllabossEmblem className="size-9" />
+          <SyllabossEmblem className="size-9 brightness-0 invert" />
           <span className="font-display text-2xl font-semibold tracking-tight">Syllaboss</span>
         </a>
 
-        <div className="relative max-w-md">
-          <p className="eyebrow !text-white/50">Study with direction</p>
-          <h2 className="mt-4 font-display text-[2.75rem] font-medium leading-[1.05] tracking-tight">
-            Everything your course needs, in one quiet place.
+        <div className="auth-brand-story relative">
+          <p className="eyebrow !text-[#d9c18f]">Make this semester yours</p>
+          <h2 className="auth-brand-title">
+            Your courses.<br />Your questions.<br /><em>Your next chapter.</em>
           </h2>
-          <ul className="mt-9 space-y-5">
-            {PERKS.map(({ icon: Icon, title, sub }, i) => (
-              <li
-                key={title}
-                className="flex items-start gap-4"
-                style={{ animation: `rise 0.6s var(--ease-out) ${200 + i * 90}ms both` }}
-              >
-                <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg border border-white/15 bg-white/5">
-                  <Icon className="size-[18px] text-[#8fd9b6]" />
-                </span>
-                <span>
-                  <span className="block text-[15px] font-semibold">{title}</span>
-                  <span className="block text-sm text-white/60">{sub}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p className="auth-brand-description">A place to find your materials, work through the hard parts, and keep moving forward.</p>
+          <div className="auth-study-sheet">
+            <div className="auth-sheet-heading"><span>Your study essentials</span><BookOpen className="size-5" aria-hidden="true" /></div>
+            <ul>
+              {PERKS.map(({ icon: Icon, title, sub }) => (
+                <li key={title}>
+                  <Icon className="size-5 shrink-0" aria-hidden="true" />
+                  <span><strong>{title}</strong><span>{sub}</span></span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        <p className="relative text-xs text-white/40">© 2026 Syllaboss</p>
+        <div className="auth-brand-footer"><span>Built around your university life.</span><span>© 2026 Syllaboss</span></div>
       </aside>
 
       {/* Form */}

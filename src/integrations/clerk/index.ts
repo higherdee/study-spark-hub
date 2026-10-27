@@ -34,7 +34,7 @@ export const clerkAppearance = {
     formButtonPrimary:
       "bg-primary text-primary-foreground hover:bg-primary-container rounded-lg font-semibold h-11 text-sm transition-[background-color,transform] shadow-none active:scale-[0.98] normal-case",
     footerActionLink: "text-forest hover:underline font-semibold",
-    footer: "bg-transparent border-t-0",
+    footer: { display: "none" },
     footerAction: "justify-start",
   },
 };

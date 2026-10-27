@@ -854,3 +854,26 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* A quiet header that gathers into an island after the first scroll. */
+.home-header { height: 88px; border: 0; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.home-header-inner { box-sizing: border-box; background: color-mix(in srgb, var(--home-paper) 94%, transparent); border: 1px solid transparent; border-bottom-color: var(--home-line); padding-inline: 0; }
+.home-header[data-compact="true"] .home-header-inner { width: min(100% - 2rem, 1120px); min-height: 64px; margin-top: 12px; padding-inline: 20px; border-color: var(--home-line); border-radius: 24px; background: color-mix(in srgb, var(--home-paper) 96%, transparent); box-shadow: 0 8px 28px -18px rgb(23 59 45 / 30%); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.auth-brand-panel { padding: clamp(2rem, 4vw, 4rem); }
+.auth-brand-story { margin-block: 3.5rem; max-width: 36rem; }
+.auth-brand-title { margin-top: 1.2rem; font-size: clamp(2.75rem, 4.2vw, 4.5rem); line-height: 1.01; font-weight: 450; letter-spacing: -.035em; }
+.auth-brand-title em { color: #d9c18f; font-weight: 400; }
+.auth-brand-description { max-width: 28rem; margin-top: 1.5rem; color: #c1d4ca; font-size: 1rem; line-height: 1.7; }
+.auth-study-sheet { margin-top: 2.5rem; padding: 1.4rem 1.6rem .6rem; background: #f5f3ec; color: var(--forest); border-radius: 3px 18px 18px 3px; box-shadow: -7px 7px 0 #adc3ae; }
+.auth-sheet-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.auth-study-sheet li { display: flex; align-items: start; gap: 1rem; padding-block: 1rem; border-top: 1px solid #deded2; }
+.auth-study-sheet li > svg { margin-top: .15rem; color: #397354; }
+.auth-study-sheet strong { display: block; font-size: .9rem; font-weight: 650; }
+.auth-study-sheet li span span { display: block; margin-top: .25rem; color: #5f6c62; font-size: .8rem; line-height: 1.5; }
+.auth-brand-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; color: #b7cabe; font-size: .72rem; }
+@media (max-width: 1100px) and (min-width: 641px) { .home-header[data-compact="true"] .home-install { display: none; } }
+@media (max-width: 640px) {
+ .home-header { height: 76px; }
+ .home-header[data-compact="true"] .home-header-inner { width: calc(100% - 1rem); min-height: 58px; margin-top: 8px; padding-inline: 12px; border-radius: 20px; }
+ .home-header[data-compact="true"] .home-install { display: none; }
+}
