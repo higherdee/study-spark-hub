@@ -1,29 +1,17 @@
 # Syllaboss Android
 
-This is an installable, signed Android application using Google's Android Browser Helper (Trusted Web Activity). It opens `https://syllaboss.org/dashboard` in the user's compatible browser without browser chrome when Digital Asset Links verification succeeds. Chrome is recommended. Sign-in, uploads and downloads use the live website. Internet access is required; the application does not provide offline storage or background notifications.
+Version 2 is a native Kotlin and Jetpack Compose application. See [NATIVE-APP.md](NATIVE-APP.md) for screens, backend boundaries and release checks. The package remains `org.syllaboss.app`, supporting Android 7.0 and later.
 
-The app supports Android 7.0 and later. Its package ID is `org.syllaboss.app`.
+Version 1.0.1 was a Trusted Web Activity that launched the website through Chrome. Its public stable download is retained while the native build is reviewed.
 
 ## Build
 
-Use JDK 17, Gradle 8.13, Android SDK platform 36, and build tools 35.0.0. Run `gradle -p android assembleRelease`. The GitHub Actions **Build Android APK** workflow builds, aligns, signs, verifies, and uploads the release files.
+Use JDK 17, Gradle 8.13, Android SDK platform 36 and build tools 35.0.0. Run `gradle -p android assembleRelease assembleDebug`, or use the GitHub Actions **Build Android APK** workflow. Local Android Studio is not required.
 
-For local signing, run the workflow with `unsigned_only: true`. It returns an aligned unsigned APK and the official Android `apksigner.jar`. Use a portable Java 17 runtime and the original local PKCS12 key to sign, then run `apksigner verify`. This keeps the private signing key off CI.
+Run CI with `unsigned_only=true` to obtain an aligned release and the official `apksigner.jar`. Sign locally with the original PKCS12 signing identity. Verify with `apksigner verify --verbose --print-certs` and compare the certificate fingerprint to the previous release. Never commit signing keys, passwords or decrypted backups.
 
-The release manifest is checked for Android Browser Helper's required runtime activities after manifest merging. Version 1.0.1 fixes the missing `ManageDataLauncherActivity` registration that caused 1.0.0 to crash during startup. Signature verification alone does not verify launch behavior; exercise every release on an Android device or emulator.
+Do not use `bootstrap_signing` for an update. It is only for the first signing identity. Increase `versionCode` for every distributed update. The original encrypted recovery backup and private recovery key must remain recoverable outside public source control.
 
-The first release used the explicit `bootstrap_signing` option. **Do not bootstrap another signing identity for an update.** Updates must use the original key and an increased `versionCode` in `app/build.gradle`.
+The workflow checks the native manifest, boots Android 15, exercises navigation, and saves screenshots and accessibility dumps in `android-launch-evidence`. Signature verification alone does not establish runtime correctness. Authenticated flows also need a test account and the Clerk native settings.
 
-For subsequent CI releases, configure repository secrets `ANDROID_KEYSTORE_BASE64` (base64 of the saved PKCS12 keystore) and `ANDROID_KEYSTORE_PASSWORD`. The signing alias is `syllaboss`. Secret configuration is a separate administrative action; no signing secrets are committed in this repository.
-
-## Signing recovery
-
-The first signing identity was recovered locally to the ignored `scratch/android-signing/` folder (`release.p12` and `password.txt`). Preserve that folder in secure backup for future releases. The recovery private key is the ignored `scratch/android-signing-recovery-key.pem`. The matching public recipient certificate is safe to commit at `signing-recovery-recipient.pem`.
-
-CI artifacts include only the signed application, public metadata, public certificate, verification results, and an **encrypted** signing backup. The unencrypted signing identity is never uploaded as an artifact. The recovery private key is never sent to GitHub.
-
-## Publish
-
-After verification, copy only `syllaboss.apk` and `release.json` to `public/downloads/` (rename metadata to `android-release.json`). Copy the same release metadata to `src/data/android-release.json` so the download button uses the correct version and size. Copy `assetlinks.json` to `public/.well-known/assetlinks.json`. Never copy signing backups or passwords into `public/`.
-
-Verify the production APK's SHA-256 against `android-release.json`, and verify the website's certificate fingerprint matches the APK signing certificate. Test installation, full-screen launch, sign-in, uploads, and downloads on a real Android device before claiming device testing is complete.
+Native preview releases are published separately from the stable legacy download until these checks are complete.

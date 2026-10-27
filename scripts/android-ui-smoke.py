@@ -1,5 +1,5 @@
 """Exercise native Android navigation using the emulator's accessibility tree."""
-import subprocess, time, re, xml.etree.ElementTree as E
+import subprocess, time, re, xml.etree.ElementTree as E, json, urllib.request
 from pathlib import Path
 root=Path('android-smoke')
 def adb(*args):
@@ -21,6 +21,12 @@ tap('Library'); time.sleep(8)
 library=snapshot('library')
 assert any(re.search(r'[1-9]\d* materials', n.get('text',''), re.I) for n in library.iter('node')), 'Live library returned no materials'
 assert not any('DOCTYPE' in n.get('text','') for n in library.iter('node'))
+with urllib.request.urlopen('https://syllaboss.org/api/mobile?resource=library', timeout=25) as response:
+    material=json.load(response)['materials'][0]
+tap(material['title']);time.sleep(15)
+reader=snapshot('reader')
+assert any(re.fullmatch(r'1 / [1-9]\d*', n.get('text','')) for n in reader.iter('node')), 'Native document rendering did not complete'
+adb('shell','input','keyevent','4');time.sleep(2)
 tap('Boss AI');snapshot('boss')
 tap('Your space');snapshot('space')
 tap('Today');tap('Start a focus session');snapshot('focus')

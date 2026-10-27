@@ -77,6 +77,11 @@ class MainActivity : ComponentActivity() {
     val authComplete by Clerk.isAuthFlowCompleteFlow.collectAsState()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var auth by rememberSaveable { mutableStateOf(false) }
+    var authWaitExpired by remember { mutableStateOf(false) }
+    LaunchedEffect(auth, initialized) {
+        authWaitExpired = false
+        if (auth && !initialized) { delay(15000); authWaitExpired = true }
+    }
     var welcomed by rememberSaveable { mutableStateOf(prefs.getBoolean("welcomed", false)) }
     var focus by rememberSaveable { mutableStateOf(false) }
     var secondary by rememberSaveable { mutableStateOf("") }
@@ -116,6 +121,13 @@ class MainActivity : ComponentActivity() {
     if (auth) {
         Scaffold(topBar = { TopAppBar(title = { Text("Your Syllaboss account") }, navigationIcon = { IconButton(onClick = { auth = false }) { Icon(Icons.Outlined.ArrowBack, "Back") } }) }) { padding ->
             if (initialized) AuthView(modifier = Modifier.padding(padding).imePadding())
+            else if (authWaitExpired) Column(Modifier.fillMaxSize().padding(padding).padding(28.dp), verticalArrangement = Arrangement.Center) {
+                Display("Your account,\ncoming together.", size = 32)
+                Spacer(Modifier.height(18.dp))
+                Text("Native sign-in could not connect. It may need account configuration or a working connection. You can still explore the library and use your focus timer.", color = Muted, lineHeight = 24.sp)
+                Spacer(Modifier.height(24.dp))
+                Action("Back to the app", Modifier.fillMaxWidth()) { auth = false }
+            }
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         }; return
     }
