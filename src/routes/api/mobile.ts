@@ -8,7 +8,7 @@ const json = (data: unknown, status = 200) => Response.json(data, { status, head
 async function identity(request: Request) {
   const token = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
   if (!token) throw new Error("Unauthorized");
-  const claims = await verifyToken(token, { secretKey: CLERK_SECRET_KEY });
+  const claims = await verifyToken(token, { secretKey: CLERK_SECRET_KEY }).catch(() => { throw new Error("Unauthorized"); });
   const profile = await getProfile(claims.sub);
   if (profile?.suspended) throw new Error("Unauthorized");
   return claims.sub;

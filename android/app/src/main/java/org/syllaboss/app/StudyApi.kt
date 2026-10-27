@@ -22,7 +22,7 @@ object StudyApi {
             token?.let { request.header("Authorization", "Bearer $it") }
             if (body != null) request.post(body.toString().toRequestBody("application/json".toMediaType()))
             http.newCall(request.build()).execute().use { response ->
-                val result = JSONObject(response.body?.string() ?: "{}")
+                val result = runCatching { JSONObject(response.body.string()) }.getOrElse { throw IllegalStateException("The study service is unavailable. Please try again shortly.") }
                 if (!response.isSuccessful) throw IllegalStateException(result.optString("error", "Unable to connect. Try again."))
                 result
             }
@@ -31,7 +31,7 @@ object StudyApi {
     suspend fun pdf(id: String, target: java.io.File) = withContext(Dispatchers.IO) {
         http.newCall(Request.Builder().url("https://syllaboss.org/api/materials?id=${java.net.URLEncoder.encode(id, "UTF-8")}").build()).execute().use { response ->
             if (!response.isSuccessful) throw IllegalStateException("This document is unavailable. Please retry.")
-            val content = response.body ?: throw IllegalStateException("Empty document")
+            val content = response.body
             if (!content.contentType().toString().startsWith("application/pdf")) throw IllegalStateException("This file is not a PDF. Open it with a compatible viewer.")
             content.byteStream().use { input -> target.outputStream().use { input.copyTo(it) } }
         }

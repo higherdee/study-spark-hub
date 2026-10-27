@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -23,6 +24,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -31,6 +34,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
+import androidx.core.view.WindowCompat
 import com.clerk.api.Clerk
 import com.clerk.ui.auth.AuthView
 import com.clerk.api.network.serialization.onFailure
@@ -49,6 +53,12 @@ private val Sage = Color(0xFFE5EBDD)
 private val Lime = Color(0xFFDDECA4)
 private val Line = Color(0xFFE1E5DC)
 private val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Paper, surface = Paper, onSurface = Ink, secondaryContainer = Sage, onSecondaryContainer = Forest, outline = Line)
+private class ChatState {
+    val messages = mutableStateListOf<Pair<String, String>>()
+    var input by mutableStateOf("")
+    var sending by mutableStateOf(false)
+    var error by mutableStateOf<String?>(null)
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,6 +79,10 @@ class MainActivity : ComponentActivity() {
     var welcomed by rememberSaveable { mutableStateOf(prefs.getBoolean("welcomed", false)) }
     var focus by rememberSaveable { mutableStateOf(false) }
     var reader by remember { mutableStateOf<Material?>(null) }
+    SideEffect {
+        val activity = context as android.app.Activity
+        WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightStatusBars = (welcomed || auth) && !focus
+    }
     var materials by remember { mutableStateOf<List<Material>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -76,6 +90,7 @@ class MainActivity : ComponentActivity() {
     var space by remember { mutableStateOf<JSONObject?>(null) }
     var spaceError by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableIntStateOf(0) }
+    val chat = remember(user?.id) { ChatState() }
     fun toggleSave(m: Material) {
         saved = if (saved.any { it.id == m.id }) saved.filterNot { it.id == m.id } else saved + m
         prefs.edit().putString("saved", JSONArray(saved.map { it.json() }).toString()).apply()
@@ -120,7 +135,7 @@ class MainActivity : ComponentActivity() {
             when (tab) {
                 0 -> TodayScreen(materials, saved, space?.optJSONObject("profile"), loading, error, { refresh++ }, { tab = 1 }, { tab = 2 }, { focus = true }, { reader = it }, { toggleSave(it) }, { tab = 3 })
                 1 -> LibraryScreen(materials, saved, loading, error, { refresh++ }, { reader = it }, { toggleSave(it) })
-                2 -> BossScreen(user != null, { auth = true })
+                2 -> BossScreen(user != null, chat, scope, { auth = true })
                 3 -> SpaceScreen(user != null, space, spaceError, saved, { auth = true }, { refresh++ }, { reader = it }, {
                     scope.launch { Clerk.auth.signOut().onFailure { spaceError = "Could not sign out. Try again." } }
                 })
@@ -211,7 +226,22 @@ class MainActivity : ComponentActivity() {
 @Composable private fun LibraryScreen(materials: List<Material>, saved: List<Material>, loading: Boolean, error: String?, retry: () -> Unit, open: (Material) -> Unit, save: (Material) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf("All materials") }
-    val list = (if (filter == "Saved") saved else materials).filter { m ->
+    var searchResults by remember { mutableStateOf(materials) }
+    var searching by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(query, materials) {
+        searchError = null
+        if (query.isBlank()) { searchResults = materials; return@LaunchedEffect }
+        delay(350)
+        searching = true
+        try {
+            val a = StudyApi.call("library&q=" + java.net.URLEncoder.encode(query, "UTF-8")).getJSONArray("materials")
+            searchResults = (0 until a.length()).map { Material.from(a.getJSONObject(it)) }
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { searchError = e.message }
+        finally { searching = false }
+    }
+    val list = (if (filter == "Saved") saved else searchResults).filter { m ->
         (filter != "Past questions" || m.type.contains("question", true)) && (filter != "Notes" || !m.type.contains("question", true)) && listOf(m.title, m.code, m.course, m.school).any { it.contains(query, true) }
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -219,19 +249,19 @@ class MainActivity : ComponentActivity() {
         item { OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Course, title, or school") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(18.dp)) }
         item { Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("All materials", "Past questions", "Notes", "Saved").forEach { label -> FilterChip(selected = filter == label, onClick = { filter = label }, label = { Text(label) }, shape = RoundedCornerShape(12.dp)) } } }
         item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Eyebrow("${list.size} materials"); IconButton(onClick = retry) { Icon(Icons.Outlined.Refresh, "Refresh materials", tint = Forest) } } }
-        if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        if (loading || searching) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        if (searchError != null) item { StateMessage(searchError!!) }
         if (error != null) item { StateMessage(error, retry) }
         if (!loading && error == null && list.isEmpty()) item { StateMessage(if (filter == "Saved") "Tap the bookmark on any material to build your reading shelf." else "No matching materials. Try a different course or title.") }
         items(list, key = { it.id }) { m -> MaterialRow(m, saved.any { it.id == m.id }, { open(m) }, { save(m) }) }
     }
 }
 
-@Composable private fun BossScreen(signedIn: Boolean, signIn: () -> Unit) {
-    val scope = rememberCoroutineScope()
-    var input by rememberSaveable { mutableStateOf("") }
-    val messages = remember { mutableStateListOf<Pair<String, String>>() }
-    var sending by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+@Composable private fun BossScreen(signedIn: Boolean, chat: ChatState, scope: CoroutineScope, signIn: () -> Unit) {
+    val messages = chat.messages
+    var input by chat::input
+    var sending by chat::sending
+    var error by chat::error
     val scroll = androidx.compose.foundation.lazy.rememberLazyListState()
     fun send(question: String) {
         if (sending || question.isBlank()) return
@@ -354,6 +384,9 @@ class MainActivity : ComponentActivity() {
     var page by rememberSaveable { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var retry by remember { mutableIntStateOf(0) }
+    var zoom by remember(page) { mutableFloatStateOf(1f) }
+    var panX by remember(page) { mutableFloatStateOf(0f) }
+    var panY by remember(page) { mutableFloatStateOf(0f) }
     LaunchedEffect(material.id, retry) {
         error = null
         try {
@@ -386,7 +419,7 @@ class MainActivity : ComponentActivity() {
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             when { error != null -> Column(Modifier.padding(24.dp)) { StateMessage(error!!) { file = null; retry++ } }
-                bitmap != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp)) { Image(bitmap!!.asImageBitmap(), contentDescription = "${material.title}, page ${page + 1}", modifier = Modifier.fillMaxWidth().aspectRatio(bitmap!!.width.toFloat() / bitmap!!.height)) }
+                bitmap != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp)) { Image(bitmap!!.asImageBitmap(), contentDescription = "${material.title}, page ${page + 1}. Pinch to zoom.", modifier = Modifier.fillMaxWidth().aspectRatio(bitmap!!.width.toFloat() / bitmap!!.height).pointerInput(page) { detectTransformGestures { _, pan, scale, _ -> zoom = (zoom * scale).coerceIn(1f, 4f); panX = if (zoom > 1f) panX + pan.x else 0f; panY = if (zoom > 1f) panY + pan.y else 0f } }.graphicsLayer(scaleX = zoom, scaleY = zoom, translationX = panX, translationY = panY)) }
                 else -> CircularProgressIndicator()
             }
         }

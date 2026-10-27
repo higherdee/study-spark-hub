@@ -26,6 +26,7 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiDownloadRouteImport } from './routes/api/download'
 import { Route as ApiHarvesterRouteImport } from './routes/api/harvester'
 import { Route as ApiMaterialsRouteImport } from './routes/api/materials'
+import { Route as ApiMobileRouteImport } from './routes/api/mobile'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ScholarUsernameRouteImport } from './routes/scholar.$username'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
@@ -129,6 +130,11 @@ const ApiHarvesterRoute = ApiHarvesterRouteImport.update({
 const ApiMaterialsRoute = ApiMaterialsRouteImport.update({
   id: '/api/materials',
   path: '/api/materials',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMobileRoute = ApiMobileRouteImport.update({
+  id: '/api/mobile',
+  path: '/api/mobile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUploadRoute = ApiUploadRouteImport.update({
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/api/download': typeof ApiDownloadRoute
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
+  '/api/mobile': typeof ApiMobileRoute
   '/api/upload': typeof ApiUploadRoute
   '/scholar/$username': typeof ScholarUsernameRoute
   '/u/$username': typeof UUsernameRoute
@@ -300,6 +307,7 @@ export interface FileRoutesByTo {
   '/api/download': typeof ApiDownloadRoute
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
+  '/api/mobile': typeof ApiMobileRoute
   '/api/upload': typeof ApiUploadRoute
   '/scholar/$username': typeof ScholarUsernameRoute
   '/u/$username': typeof UUsernameRoute
@@ -340,6 +348,7 @@ export interface FileRoutesById {
   '/api/download': typeof ApiDownloadRoute
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
+  '/api/mobile': typeof ApiMobileRoute
   '/api/upload': typeof ApiUploadRoute
   '/scholar/$username': typeof ScholarUsernameRoute
   '/u/$username': typeof UUsernameRoute
@@ -380,6 +389,7 @@ export interface FileRouteTypes {
     | '/api/download'
     | '/api/harvester'
     | '/api/materials'
+    | '/api/mobile'
     | '/api/upload'
     | '/scholar/$username'
     | '/u/$username'
@@ -416,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/download'
     | '/api/harvester'
     | '/api/materials'
+    | '/api/mobile'
     | '/api/upload'
     | '/scholar/$username'
     | '/u/$username'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/api/download'
     | '/api/harvester'
     | '/api/materials'
+    | '/api/mobile'
     | '/api/upload'
     | '/scholar/$username'
     | '/u/$username'
@@ -492,6 +504,7 @@ export interface RootRouteChildren {
   ApiDownloadRoute: typeof ApiDownloadRoute
   ApiHarvesterRoute: typeof ApiHarvesterRoute
   ApiMaterialsRoute: typeof ApiMaterialsRoute
+  ApiMobileRoute: typeof ApiMobileRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ScholarUsernameRoute: typeof ScholarUsernameRoute
   UUsernameRoute: typeof UUsernameRoute
@@ -616,6 +629,13 @@ declare module '@tanstack/react-router' {
       path: '/api/materials'
       fullPath: '/api/materials'
       preLoaderRoute: typeof ApiMaterialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mobile': {
+      id: '/api/mobile'
+      path: '/api/mobile'
+      fullPath: '/api/mobile'
+      preLoaderRoute: typeof ApiMobileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/upload': {
@@ -847,6 +867,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDownloadRoute: ApiDownloadRoute,
   ApiHarvesterRoute: ApiHarvesterRoute,
   ApiMaterialsRoute: ApiMaterialsRoute,
+  ApiMobileRoute: ApiMobileRoute,
   ApiUploadRoute: ApiUploadRoute,
   ScholarUsernameRoute: ScholarUsernameRoute,
   UUsernameRoute: UUsernameRoute,
