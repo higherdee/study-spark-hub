@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import org.json.JSONObject
@@ -34,6 +35,27 @@ object StudyApi {
             val content = response.body
             if (!content.contentType().toString().startsWith("application/pdf")) throw IllegalStateException("This file is not a PDF. Open it with a compatible viewer.")
             content.byteStream().use { input -> target.outputStream().use { input.copyTo(it) } }
+        }
+    }
+    suspend fun upload(context: android.content.Context, uri: android.net.Uri, fields: Map<String, String>): JSONObject {
+        var token: String? = null
+        Clerk.session?.fetchToken()?.onSuccess { token = it.jwt }
+        if (token == null) throw IllegalStateException("Sign in to share materials.")
+        return withContext(Dispatchers.IO) {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
+                while (true) { val n = input.read(buffer); if (n < 0) break; out.write(buffer, 0, n); if (out.size() > 20 * 1024 * 1024) throw IllegalStateException("Choose a PDF smaller than 20 MB.") }
+                out.toByteArray()
+            } ?: throw IllegalStateException("Could not open the selected PDF.")
+            val body = MultipartBody.Builder().setType(MultipartBody.FORM)
+            fields.forEach { (k, v) -> body.addFormDataPart(k, v) }
+            body.addFormDataPart("file", "study-material.pdf", bytes.toRequestBody("application/pdf".toMediaType()))
+            http.newCall(Request.Builder().url("https://syllaboss.org/api/upload").header("Authorization", "Bearer $token").post(body.build()).build()).execute().use { response ->
+                val result = runCatching { JSONObject(response.body.string()) }.getOrElse { throw IllegalStateException("Upload unavailable. Try again later.") }
+                if (!response.isSuccessful) throw IllegalStateException(result.optString("error", "Upload failed. Please retry."))
+                result
+            }
         }
     }
 }

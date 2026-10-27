@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
     var auth by rememberSaveable { mutableStateOf(false) }
     var welcomed by rememberSaveable { mutableStateOf(prefs.getBoolean("welcomed", false)) }
     var focus by rememberSaveable { mutableStateOf(false) }
+    var secondary by rememberSaveable { mutableStateOf("") }
     var reader by remember { mutableStateOf<Material?>(null) }
     SideEffect {
         val activity = context as android.app.Activity
@@ -106,8 +107,8 @@ class MainActivity : ComponentActivity() {
         if (user != null) try { space = StudyApi.call("space") } catch (e: Exception) { spaceError = e.message }
     }
     LaunchedEffect(user?.id) { if (user != null) auth = false }
-    BackHandler(enabled = auth || focus || reader != null || tab != 0) {
-        when { reader != null -> reader = null; focus -> focus = false; auth -> auth = false; else -> tab = 0 }
+    BackHandler(enabled = auth || focus || reader != null || secondary.isNotBlank() || tab != 0) {
+        when { reader != null -> reader = null; focus -> focus = false; auth -> auth = false; secondary.isNotBlank() -> secondary = ""; else -> tab = 0 }
     }
     if (reader != null) { DocumentScreen(reader!!, { reader = null }); return }
     if (focus) { FocusScreen(prefs, { focus = false }); return }
@@ -117,6 +118,9 @@ class MainActivity : ComponentActivity() {
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         }; return
     }
+    if (secondary == "upload") { UploadScreen { secondary = "" }; return }
+    if (secondary == "peers") { PeersScreen { secondary = "" }; return }
+    if (secondary == "profile") { ProfileScreen(space?.optJSONObject("profile"), { secondary = "" }, { secondary = ""; refresh++ }); return }
     if (!welcomed) {
         WelcomeScreen(onStart = { prefs.edit().putBoolean("welcomed", true).apply(); welcomed = true; auth = true }, onExplore = { prefs.edit().putBoolean("welcomed", true).apply(); welcomed = true })
         return
@@ -136,7 +140,7 @@ class MainActivity : ComponentActivity() {
                 0 -> TodayScreen(materials, saved, space?.optJSONObject("profile"), loading, error, { refresh++ }, { tab = 1 }, { tab = 2 }, { focus = true }, { reader = it }, { toggleSave(it) }, { tab = 3 })
                 1 -> LibraryScreen(materials, saved, loading, error, { refresh++ }, { reader = it }, { toggleSave(it) })
                 2 -> BossScreen(user != null, chat, scope, { auth = true })
-                3 -> SpaceScreen(user != null, space, spaceError, saved, { auth = true }, { refresh++ }, { reader = it }, {
+                3 -> SpaceScreen(user != null, space, spaceError, saved, { auth = true }, { refresh++ }, { reader = it }, { destination -> if (user == null) auth = true else secondary = destination }, {
                     scope.launch { Clerk.auth.signOut().onFailure { spaceError = "Could not sign out. Try again." } }
                 })
             }
@@ -318,7 +322,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun SpaceScreen(signedIn: Boolean, space: JSONObject?, error: String?, saved: List<Material>, signIn: () -> Unit, retry: () -> Unit, open: (Material) -> Unit, signOut: () -> Unit) {
+@Composable private fun SpaceScreen(signedIn: Boolean, space: JSONObject?, error: String?, saved: List<Material>, signIn: () -> Unit, retry: () -> Unit, open: (Material) -> Unit, navigate: (String) -> Unit, signOut: () -> Unit) {
     val context = LocalContext.current
     val profile = space?.optJSONObject("profile")
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -341,6 +345,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(Triple("Student profile", "Your course and institution", "profile"), Triple("Share a material", "Help the next student", "upload"), Triple("Study together", "Your course, your people", "peers")).forEach { (title, subtitle, destination) ->
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).clickable { navigate(destination) }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(when (destination) { "upload" -> Icons.Outlined.UploadFile; "profile" -> Icons.Outlined.PersonOutline; else -> Icons.Outlined.Groups }, null, tint = Forest)
+                        Column(Modifier.weight(1f).padding(horizontal = 16.dp)) { Text(title, fontWeight = FontWeight.Medium); Text(subtitle, fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 4.dp)) }
+                        Icon(Icons.Outlined.ChevronRight, null, tint = Muted)
+                    }
+                }
+            }
+        }
         item { SectionTitle("Saved for later") }
         if (saved.isEmpty()) item { Text("Your saved materials live here. Bookmark a read from the library to get started.", color = Muted, lineHeight = 22.sp, fontSize = 14.sp) }
         items(saved, key = { it.id }) { m -> Row(Modifier.fillMaxWidth().clickable { open(m) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.BookmarkBorder, null, tint = Forest); Text(m.title, modifier = Modifier.weight(1f).padding(horizontal = 14.dp), fontSize = 15.sp, maxLines = 2); Icon(Icons.Outlined.ChevronRight, null, tint = Muted) } }
@@ -348,6 +363,11 @@ class MainActivity : ComponentActivity() {
         if (ledger != null && ledger.length() > 0) {
             item { SectionTitle("Recent activity") }
             items(minOf(ledger.length(), 8)) { i -> val row = ledger.getJSONObject(i); Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(row.optString("reason"), Modifier.weight(1f), color = Muted, fontSize = 13.sp); Text("${if (row.optInt("amount") >= 0) "+" else ""}${row.optInt("amount")} pts", fontWeight = FontWeight.Medium, fontSize = 13.sp) } }
+        }
+        val ranks = space?.optJSONArray("ranks")
+        if (ranks != null && ranks.length() > 0) {
+            item { SectionTitle("Campus leaders") }
+            items(minOf(5, ranks.length())) { i -> val rank = ranks.getJSONObject(i); Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("%02d".format(i + 1), color = Muted, fontSize = 13.sp); Text(rank.optString("full_name"), Modifier.weight(1f).padding(horizontal = 14.dp), fontSize = 14.sp); Text("${rank.optInt("points")} pts", color = Forest, fontWeight = FontWeight.Medium, fontSize = 13.sp) } }
         }
         item { HorizontalDivider(color = Line) }
         item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://syllaboss.org/privacy"))) }) { Text("Privacy") }; TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://syllaboss.org/terms"))) }) { Text("Terms") }; if (signedIn) TextButton(onClick = signOut) { Text("Sign out") } } }

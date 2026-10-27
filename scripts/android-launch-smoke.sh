@@ -32,3 +32,4 @@ grep -q 'Make room' android-smoke/today.xml
 adb logcat -b crash -d > android-smoke/crashes.txt
 if grep -q 'org.syllaboss.app' android-smoke/crashes.txt; then cat android-smoke/crashes.txt; exit 1; fi
 echo 'Native Android cold launch and guest navigation passed.'
+python3 scripts/android-ui-smoke.py

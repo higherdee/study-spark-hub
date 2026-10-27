@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { verifyToken } from "@clerk/backend";
 import { z } from "zod";
 import { CLERK_SECRET_KEY } from "@/integrations/clerk";
-import { turso, getMaterials, getProfile, getLeaderboard } from "@/integrations/turso/client.server";
+import { turso, getMaterials, getProfile, getLeaderboard, upsertProfile } from "@/integrations/turso/client.server";
+import { getStudyGroups, getGroupMessages, joinStudyGroup, sendGroupMessage } from "@/integrations/turso/community.server";
 
 const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 async function identity(request: Request) {
@@ -25,13 +26,15 @@ export const Route = createFileRoute("/api/mobile")({
             ({ id, title, course, course_code, institution, level, material_type, page_count, file_size, mime_type })) });
         }
         const userId = await identity(request);
+        if (resource === "groups") return json({ groups: await getStudyGroups(userId) });
+        if (resource === "messages") return json({ messages: await getGroupMessages((url.searchParams.get("group") || "").slice(0, 100), 60, userId) });
         if (resource === "space") {
           const [profile, ledger, ranks] = await Promise.all([
             getProfile(userId),
             turso.execute({ sql: "SELECT amount, reason, created_at FROM points_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT 20", args: [userId] }),
             getLeaderboard(20),
           ]);
-          return json({ profile: profile ? { full_name: profile.full_name, course: profile.course, institution: profile.institution, points: profile.points, study_minutes: profile.study_minutes, current_streak: profile.current_streak } : null, ledger: ledger.rows, ranks });
+          return json({ profile: profile ? { full_name: profile.full_name, course: profile.course, institution: profile.institution, level: profile.level, points: profile.points, study_minutes: profile.study_minutes, current_streak: profile.current_streak } : null, ledger: ledger.rows, ranks });
         }
         return json({ error: "Unknown resource" }, 404);
       } catch (error) {
@@ -43,7 +46,26 @@ export const Route = createFileRoute("/api/mobile")({
     POST: async ({ request }) => {
       let userId: string;
       try { userId = await identity(request); } catch { return json({ error: "Sign in to continue." }, 401); }
-      const parsed = z.object({ message: z.string().trim().min(1).max(6000), history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(12000) })).max(12).default([]) }).safeParse(await request.json().catch(() => null));
+      const body = await request.json().catch(() => null);
+      if (body?.action === "profile") {
+        const fields = z.object({ full_name: z.string().trim().min(2).max(100), course: z.string().trim().min(2).max(180), institution: z.string().trim().min(2).max(180), level: z.string().max(30) }).safeParse(body);
+        if (!fields.success) return json({ error: "Add your name, course and institution." }, 400);
+        try { await upsertProfile({ ...fields.data, id: userId, onboarding_step: 4 }); return json({ success: true }); }
+        catch { return json({ error: "Profile could not be saved. Please retry." }, 503); }
+      }
+      if (body?.action === "join" || body?.action === "group-message") {
+        const groupAction = z.object({ action: z.enum(["join", "group-message"]), group: z.string().min(1).max(100), content: z.string().trim().min(1).max(3000).optional() }).safeParse(body);
+        if (!groupAction.success) return json({ error: "Enter a valid group and message." }, 400);
+        try {
+          const group = await turso.execute({ sql: "SELECT id FROM study_groups WHERE id = ? LIMIT 1", args: [groupAction.data.group] });
+          if (!group.rows.length) return json({ error: "Study group not found." }, 404);
+          if (body.action === "join") return (await joinStudyGroup(groupAction.data.group, userId)) ? json({ success: true }) : json({ error: "Could not join this group." }, 400);
+          if (!groupAction.data.content) return json({ error: "Enter a message." }, 400);
+          const profile = await getProfile(userId);
+          return json({ message: await sendGroupMessage({ groupId: groupAction.data.group, userId, userName: profile?.full_name || "Student", userInstitution: profile?.institution || undefined, content: groupAction.data.content }) });
+        } catch { return json({ error: "Join the study group before posting. Please try again." }, 403); }
+      }
+      const parsed = z.object({ message: z.string().trim().min(1).max(6000), history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(12000) })).max(12).default([]) }).safeParse(body);
       if (!parsed.success) return json({ error: "Enter a question of up to 6,000 characters." }, 400);
       // The server controls identity, model, system prompt and API credentials.
       // Native clients never receive database credentials or write reward balances.
