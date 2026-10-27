@@ -62,3 +62,8 @@ scripts/build-syllaboss-msi.ps1
 agent/
 models.txt
 
+
+# Generated Android and visual-check output
+.taste-skill/
+android/.gradle/
+android/**/build/

@@ -1,12 +1,13 @@
-Syllaboss Native App Downloads Folder
-=======================================
+Syllaboss Android download
+==========================
 
-Syllaboss installs natively on all devices (Android, Windows, iOS, Mac, Linux) directly via 1-tap Progressive Web App (PWA / WebAPK) without requiring manual binary downloads or Play Store / App Store approvals.
+syllaboss.apk is the signed Syllaboss Android 1.0.0 application.
+Download: https://syllaboss.org/downloads/syllaboss.apk?v=1.0.0
+Requires Android 7.0 or later, Chrome or a compatible browser, and internet access.
 
-If you compile and host custom standalone native binaries (e.g. built via Capacitor or Electron):
-Set the environment variables:
-- APK_DOWNLOAD_URL="https://your-host.com/syllaboss.apk"
-- EXE_DOWNLOAD_URL="https://your-host.com/syllaboss-setup.exe"
-- LINUX_DOWNLOAD_URL="https://your-host.com/syllaboss.AppImage"
+Open the downloaded file and follow Android's installation prompt.
+Package: org.syllaboss.app
+Release size, SHA-256 and signing certificate fingerprint: android-release.json
 
-Do NOT place mock or text placeholder files here, as operating systems (Windows and Android) will reject them as corrupted packages ("This app can't run on your PC" / "There was a problem parsing the package").
+The source and build documentation are in android/.
+iPhone/iPad, Windows and Mac continue to use browser home-screen installation.

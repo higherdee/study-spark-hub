@@ -51,7 +51,7 @@ export function InstallButton({
       return;
     }
 
-    if (canPrompt) {
+    if (canPrompt && platform !== "android") {
       try {
         const success = await install();
         if (success) {
@@ -76,7 +76,7 @@ export function InstallButton({
       : platform === "ios"
       ? "Install on iPhone / iPad"
       : platform === "android"
-      ? "Install Web App"
+      ? "Download Android app"
       : platform === "windows"
       ? "Install for Windows"
       : platform === "mac"
@@ -119,13 +119,13 @@ export function InstallButton({
               <DialogHeader className="text-left">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand/10 text-brand dark:text-brand text-[10px] font-bold mb-1">
                   <Sparkles className="size-3" />
-                  <span>Add Syllaboss to your home screen</span>
+                  <span>Syllaboss on your device</span>
                 </div>
                 <DialogTitle className="font-display text-xl font-medium text-foreground sm:text-2xl">
                   Install Syllaboss
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-sm text-muted-foreground">
-                  Open Syllaboss from your home screen. An internet connection is required.
+                  {activeTab === "android" ? "Download the Android app and open your study space from your app drawer." : "Open Syllaboss from your home screen."} An internet connection is required.
                 </DialogDescription>
               </DialogHeader>
             </div>
@@ -144,7 +144,7 @@ export function InstallButton({
               >
                 <AndroidOutlineIcon className="size-4 text-brand" />
                 <span>Android</span>
-                <span className="text-[9px] font-mono opacity-70">Chrome PWA</span>
+                <span className="text-[9px] font-mono opacity-70">APK download</span>
               </button>
 
               <button
@@ -201,45 +201,37 @@ export function InstallButton({
                     <div>
                       <h4 className="font-bold text-foreground text-sm flex items-center gap-1.5">
                         <AndroidOutlineIcon className="size-4 text-brand" />
-                        Android Progressive Web App
+                        Syllaboss for Android
                       </h4>
-                      <p className="text-[11px] text-muted-foreground">Samsung, Xiaomi, Tecno, Infinix, Pixel, Redmi, etc.</p>
+                      <p className="text-[11px] text-muted-foreground">Android 7.0 or later · Chrome or a compatible browser</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-md bg-accent text-forest font-bold text-[10px]">
-                      Home screen app
+                      Signed APK
                     </span>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-card border border-border/80 space-y-2">
                     <p className="text-[11px] font-semibold text-foreground">
-                      Add Syllaboss from your browser:
+                      Install the Android app:
                     </p>
                     <ol className="list-decimal pl-4 text-[11px] space-y-1.5 text-foreground/80">
                       <li>
-                        Tap the browser menu (<strong>⋮</strong> three dots in Chrome or Brave).
+                        Tap <strong>Download APK</strong> below.
                       </li>
                       <li>
-                        Select <strong>"Install App"</strong> or <strong>"Add to Home screen"</strong>.
+                        Open <strong>syllaboss.apk</strong> from your downloads.
                       </li>
                       <li>
-                        Confirm if your browser asks. An internet connection is still required to use Syllaboss.
+                        Follow Android’s installation prompt, then open <strong>Syllaboss</strong>. Your study space stays up to date online.
                       </li>
                     </ol>
                   </div>
 
                   <Button
+                    asChild
                     className="w-full h-11 rounded-xl bg-brand hover:bg-brand/90 text-white font-bold gap-2 text-sm shadow-sm"
-                    onClick={() => {
-                      if (canPrompt) {
-                        install();
-                      } else {
-                        window.location.href = "/dashboard";
-                      }
-                      setModalOpen(false);
-                    }}
                   >
-                    <span>{canPrompt ? "Install now" : "Continue in browser"}</span>
-                    <ArrowRight className="size-4" />
+                    <a href="/downloads/syllaboss.apk?v=1.0.0" download="syllaboss.apk"><Download className="size-4" /><span>Download APK · 3.6 MB</span></a>
                   </Button>
                 </div>
               )}
@@ -377,7 +369,7 @@ export function InstallButton({
             </div>
 
             <div className="mt-4 flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-border/60">
-              <span>No app-store download is needed</span>
+              <span>{activeTab === "android" ? "Direct download from syllaboss.org" : "No app-store download is needed"}</span>
               <button type="button" onClick={() => setModalOpen(false)} className="min-h-11 font-bold text-forest hover:underline">
                 Stay in browser <ArrowRight aria-hidden="true" className="ml-1 inline size-3.5" />
               </button>

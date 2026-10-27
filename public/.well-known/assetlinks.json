@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.syllaboss.app",
+      "sha256_cert_fingerprints": [
+        "8C:CF:5C:D5:33:16:3C:B1:5F:B1:FA:15:32:EE:BD:4D:6C:6F:DB:36:E7:E6:39:89:3A:7F:3A:04:96:D4:48:62"
+      ]
+    }
+  }
+]
