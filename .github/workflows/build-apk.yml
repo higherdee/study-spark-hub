@@ -1,40 +1,69 @@
 name: Build Android APK
-
 on:
   workflow_dispatch:
-
+    inputs:
+      bootstrap_signing:
+        description: 'First release only: create a signing identity and encrypted recovery backup'
+        type: boolean
+        default: false
+permissions:
+  contents: read
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          node-version: 20
-
-      - name: Set up Java JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli
-
-      - name: Initialize Bubblewrap Project
-        run: |
-          bubblewrap init --manifest=https://study-spark-hub.vercel.app/manifest.webmanifest --directory=android-twa
-        continue-on-error: true
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
         with:
-          name: syllaboss-android-apk
-          path: '**/*.apk'
-          if-no-files-found: ignore
+          gradle-version: '8.11.1'
+      - name: Install build platform
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Build Android release
+        run: gradle -p android assembleRelease --no-daemon
+      - name: Prepare signing identity
+        env:
+          EXISTING_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          EXISTING_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BOOTSTRAP: ${{ inputs.bootstrap_signing }}
+        run: |
+          set -euo pipefail
+          mkdir -p signing release
+          if [ -n "$EXISTING_KEYSTORE" ] && [ -n "$EXISTING_PASSWORD" ]; then
+            printf '%s' "$EXISTING_KEYSTORE" | base64 --decode > signing/release.p12
+            printf '%s' "$EXISTING_PASSWORD" > signing/password.txt
+          elif [ "$BOOTSTRAP" = true ]; then
+            openssl rand -hex 32 > signing/password.txt
+            keytool -genkeypair -keystore signing/release.p12 -storetype PKCS12 \
+              -storepass:file signing/password.txt -alias syllaboss -keyalg RSA -keysize 3072 \
+              -validity 10000 -dname 'CN=Syllaboss, O=Syllaboss' -noprompt
+          else
+            echo 'Configure the saved signing identity for updates. Bootstrap is only for the first release.' >&2
+            exit 1
+          fi
+          tar -C signing -czf signing/backup.tar.gz release.p12 password.txt
+          openssl cms -encrypt -binary -aes-256-cbc -in signing/backup.tar.gz \
+            -outform DER -out release/signing-backup.enc android/signing-recovery-recipient.pem
+      - name: Align, sign and verify
+        run: |
+          set -euo pipefail
+          TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOLS/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk signing/aligned.apk
+          "$TOOLS/apksigner" sign --ks signing/release.p12 --ks-key-alias syllaboss \
+            --ks-pass file:signing/password.txt --out release/syllaboss.apk signing/aligned.apk
+          "$TOOLS/apksigner" verify --verbose --print-certs release/syllaboss.apk | tee release/verification.txt
+          "$TOOLS/zipalign" -c -p 4 release/syllaboss.apk
+          keytool -exportcert -keystore signing/release.p12 -storepass:file signing/password.txt \
+            -alias syllaboss -file release/signing-certificate.der
+          python3 scripts/android-release-metadata.py release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: syllaboss-android-release
+          path: release/
+          if-no-files-found: error
+          retention-days: 30
