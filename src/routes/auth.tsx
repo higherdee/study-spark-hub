@@ -86,10 +86,10 @@ function AuthPage() {
 
       {/* Form */}
       <div className="flex min-h-dvh flex-col">
-        <header className="flex items-center justify-between px-6 py-5 sm:px-10">
-          <span className="lg:hidden">
+        <header className="flex flex-wrap items-center justify-between gap-4 px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-5 sm:px-10">
+          <a href="/" aria-label="Syllaboss home" className="lg:hidden">
             <SyllabossLogo />
-          </span>
+          </a>
           <span className="ml-auto text-[13px] text-muted-foreground">
             {isSignup ? "Already have an account?" : "New to Syllaboss?"}{" "}
             <a
@@ -101,7 +101,7 @@ function AuthPage() {
           </span>
         </header>
 
-        <main className="flex flex-1 items-center justify-center px-6 pb-12 sm:px-10">
+        <main className="flex flex-1 items-start justify-center px-5 pt-8 pb-[calc(3rem+env(safe-area-inset-bottom))] sm:items-center sm:px-10 sm:pt-0">
           <ClerkLoading>
             <AuthLoadingPanel />
           </ClerkLoading>

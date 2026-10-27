@@ -211,8 +211,21 @@
   }
 
   button,
+  a,
   [role="button"] {
     touch-action: manipulation;
+  }
+
+  button,
+  [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]), textarea, select {
+      font-size: 16px;
+    }
   }
 
   :focus-visible {
@@ -826,4 +839,18 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   button[aria-label], a[aria-label] { min-width: 44px; min-height: 44px; }
   button, [role="button"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input, textarea, select { font-size: 16px !important; }
+}
+
+/* Keep the study workspace readable and reachable on small phones. */
+@media (max-width: 639px) {
+  .app-topbar > div:first-child { flex: 1; min-width: 6rem; }
+  .app-topbar h2 { font-size: 1.2rem; }
+  [data-mobile-tabs] { box-shadow: 0 -4px 24px rgb(23 59 45 / 5%); }
+  [data-mobile-tabs] a, [data-mobile-tabs] button { min-height: 60px; font-size: 11px; }
+  [data-mobile-tabs] a > span:first-child, [data-mobile-tabs] button > span:first-child { height: 32px; width: 48px; }
+  #app-main-content { padding-inline: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
 }

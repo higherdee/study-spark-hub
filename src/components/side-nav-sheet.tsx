@@ -49,7 +49,7 @@ const SHEET_EASE = [0.32, 0.72, 0, 1] as const;
  * Mobile "More" sheet. Slides up from the tab bar, can be dragged down to
  * dismiss (velocity-aware), and closes on backdrop tap or Escape.
  */
-export function SideNavSheet({ open, onClose, items = [] }: SideNavSheetProps) {
+export function SideNavSheet({ open, onClose, items = [], onOpenGuide }: SideNavSheetProps) {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
@@ -219,6 +219,14 @@ export function SideNavSheet({ open, onClose, items = [] }: SideNavSheetProps) {
                 </ul>
 
                 <ul className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
+                  {onOpenGuide && (
+                    <li className="border-b border-border">
+                      <button type="button" onClick={() => { onClose(); onOpenGuide(); }}
+                        className="flex min-h-14 w-full items-center gap-3.5 px-4 py-3.5 text-left text-sm font-semibold hover:bg-muted/60 active:bg-muted">
+                        <HelpCircle className="size-[18px] text-moss" /> Platform tour
+                      </button>
+                    </li>
+                  )}
                   <li>
                     <button
                       type="button"

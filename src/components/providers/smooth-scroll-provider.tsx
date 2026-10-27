@@ -7,7 +7,8 @@ export function SmoothScrollProvider({ children }: { children: ReactNode }) {
 
     // Check if user prefers reduced motion
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) return;
+    // Preserve native scrolling and keyboard positioning on touch devices.
+    if (prefersReducedMotion || window.matchMedia("(pointer: coarse)").matches) return;
 
     const lenis = new Lenis({
       duration: 1.1,

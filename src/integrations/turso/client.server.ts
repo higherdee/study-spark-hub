@@ -28,11 +28,16 @@ const TURSO_AUTH_TOKEN =
   (typeof import.meta !== "undefined" && import.meta.env?.['TURSO_AUTH_TOKEN'] as string | undefined) ||
   (typeof process !== "undefined" && process.env?.['TURSO_AUTH_TOKEN']) || "";
 
-if (!TURSO_AUTH_TOKEN) throw new Error("TURSO_AUTH_TOKEN must be configured on the server.");
-
-export const turso: Client = createClient({
-  url: TURSO_URL,
-  authToken: TURSO_AUTH_TOKEN,
+// Routes share this module. A missing database credential must fail a database
+// operation, rather than preventing public pages and sign-in from rendering.
+let databaseClient: Client | undefined;
+export const turso: Client = new Proxy({} as Client, {
+  get(_target, property) {
+    if (!TURSO_AUTH_TOKEN) throw new Error("TURSO_AUTH_TOKEN must be configured on the server.");
+    databaseClient ??= createClient({ url: TURSO_URL, authToken: TURSO_AUTH_TOKEN });
+    const value = Reflect.get(databaseClient, property, databaseClient);
+    return typeof value === "function" ? value.bind(databaseClient) : value;
+  },
 });
 
 export type Profile = {

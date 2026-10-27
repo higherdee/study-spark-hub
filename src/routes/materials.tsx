@@ -43,7 +43,7 @@ function MaterialsPage() {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [previewMaterial, setPreviewMaterial] = useState<Material | null>(null);
 
-  const { data = [], isLoading } = useQuery({
+  const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["search-materials", q, type, level],
     queryFn: async () => {
       return await getMaterials({
@@ -91,7 +91,7 @@ function MaterialsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <SyllabossLogo />
@@ -115,7 +115,7 @@ function MaterialsPage() {
           <select
             value={type}
             onChange={(e) => navigate({ search: (s) => ({ ...s, type: e.target.value }) })}
-            className="h-9 rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-ink focus:outline-hidden press"
+            className="h-11 max-w-full rounded-xl border border-border bg-card px-3.5 text-sm font-semibold text-ink focus:outline-hidden press"
             aria-label="Material type"
           >
             <option value="">All Document Types</option>
@@ -126,8 +126,22 @@ function MaterialsPage() {
         </div>
 
         <p className="mt-8 text-xs text-muted-foreground font-medium">
-          {isLoading ? "Consulting repository…" : `${data.length} document${data.length === 1 ? "" : "s"}${q ? ` matching “${q}”` : ""}`}
+          {isLoading ? "Loading course materials…" : isError ? "Library unavailable" : `${data.length} document${data.length === 1 ? "" : "s"}${q ? ` matching “${q}”` : ""}`}
         </p>
+
+        {isError && (
+          <div role="alert" className="mt-4 rounded-2xl border border-border bg-card p-6">
+            <h2 className="font-display text-xl font-semibold">We couldn’t load the library</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Check your connection and try again. Your saved materials are unchanged.</p>
+            <Button className="mt-4 min-h-11" onClick={() => void refetch()}>Try again</Button>
+          </div>
+        )}
+
+        {isLoading && (
+          <div role="status" aria-label="Loading materials" className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((id) => <div key={id} className="h-56 animate-pulse rounded-2xl border border-border bg-card p-5 motion-reduce:animate-none"><div className="h-5 w-3/4 rounded bg-muted" /><div className="mt-3 h-3 w-1/2 rounded bg-muted" /><div className="mt-8 h-20 rounded bg-muted" /></div>)}
+          </div>
+        )}
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.map((m) => (
@@ -188,15 +202,16 @@ function MaterialsPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="size-8 p-0 rounded-full hover:bg-surface-container"
+                      className="size-11 p-0 rounded-full hover:bg-surface-container"
                       onClick={() => openPreview(m)}
                       title="Preview material"
+                      aria-label={`Preview ${m.title}`}
                     >
                       <Eye className="size-4 text-ink-soft" />
                     </Button>
                     <Button
                       size="sm"
-                      className="gap-1.5 rounded-full text-xs h-8 px-3.5 bg-forest text-white hover:bg-forest/90 font-semibold press shadow-xs"
+                      className="gap-1.5 rounded-xl text-sm h-11 px-3.5 bg-forest text-white hover:bg-forest/90 font-semibold press shadow-xs"
                       disabled={downloading === m.id}
                       onClick={() => download(m.id)}
                     >
@@ -214,7 +229,7 @@ function MaterialsPage() {
           ))}
         </div>
 
-        {!isLoading && data.length === 0 && (
+        {!isLoading && !isError && data.length === 0 && (
           <div className="mt-8 rounded-3xl border border-dashed border-border bg-card p-10 text-center space-y-4">
             <BookOpen className="size-10 text-muted-foreground/60 mx-auto" />
             <h3 className="font-display text-lg font-bold text-foreground">

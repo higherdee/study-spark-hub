@@ -63,6 +63,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
   const [showMore, setShowMore] = useState(false);
   const [showWrapped, setShowWrapped] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [isNativeKeyboardOpen, setIsNativeKeyboardOpen] = useState(false);
   const { openGuide } = useGuide();
 
   const { data: notifications = [] } = useQuery({
@@ -97,6 +98,25 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
     };
     window.addEventListener("syllaboss-keyboard-state", keyHandler);
     return () => window.removeEventListener("syllaboss-keyboard-state", keyHandler);
+  }, []);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      const focused = document.activeElement;
+      const editing = focused instanceof HTMLElement &&
+        (focused.matches("input, textarea, select") || focused.isContentEditable);
+      setIsNativeKeyboardOpen(editing && window.innerHeight - viewport.height > 150);
+    };
+    viewport.addEventListener("resize", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
+    };
   }, []);
 
   // Close transient surfaces whenever the route changes.
@@ -207,7 +227,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
             isAssistantPage && "hidden lg:block",
           )}
         >
-          <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+          <div className="app-topbar mx-auto flex min-h-16 max-w-[1400px] flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-2.5">
               <Link to="/dashboard" aria-label="Home" className="press lg:hidden">
                 <SyllabossEmblem className="size-8" />
@@ -217,12 +237,12 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
               </h2>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="app-topbar-actions flex shrink-0 items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setShowWrapped(true)}
                 title="Your streak — tap to open Campus Wrapped"
-                className="press group flex h-9 items-center gap-1.5 rounded-full border border-brass/25 bg-brass-soft px-3 text-[13px] font-semibold text-brass-ink transition-colors hover:border-brass/45"
+                className="press group hidden h-11 items-center gap-1.5 rounded-full border border-brass/25 bg-brass-soft px-3 text-[13px] font-semibold text-brass-ink transition-colors hover:border-brass/45 sm:flex"
               >
                 <Flame className="streak-flame size-4 fill-brass/70 text-brass" />
                 <span className="tnum">{streak}</span>
@@ -233,10 +253,11 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
 
               <Link
                 to="/dashboard/wallet"
-                className="press flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-semibold text-ink shadow-[0_1px_2px_rgba(11,46,34,0.05)] transition-colors hover:border-ink/20"
+                aria-label={`${points.toLocaleString()} points. Open wallet`}
+                className="press flex h-11 max-w-28 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-semibold text-ink shadow-[0_1px_2px_rgba(11,46,34,0.05)] transition-colors hover:border-ink/20 sm:max-w-none"
               >
                 <Coins className="size-4 text-brass" />
-                <span className="tnum">{points.toLocaleString()}</span>
+                <span className="tnum truncate">{points.toLocaleString()}</span>
                 <span className="hidden sm:inline text-[11px] font-medium text-muted-foreground">pts</span>
               </Link>
 
@@ -244,7 +265,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
                 type="button"
                 onClick={() => setShowNotifications(true)}
                 aria-label={unreadCount ? `${unreadCount} unread notifications` : "Notifications"}
-                className="press relative grid size-9 place-items-center rounded-full border border-border bg-card text-ink transition-colors hover:border-ink/20"
+                className="press relative grid size-11 place-items-center rounded-full border border-border bg-card text-ink transition-colors hover:border-ink/20"
               >
                 <Bell className="size-4" />
                 {unreadCount > 0 && (
@@ -259,7 +280,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
                 onClick={openGuide}
                 aria-label="Platform Tour"
                 title="Quick 3-step platform tour"
-                className="press relative grid size-9 place-items-center rounded-full border border-forest/30 bg-forest/10 text-forest transition-colors hover:bg-forest/20 hover:border-forest/50"
+                className="press relative hidden size-11 place-items-center rounded-full border border-forest/30 bg-forest/10 text-forest transition-colors hover:bg-forest/20 hover:border-forest/50 sm:grid"
               >
                 <Compass className="size-4 text-forest" />
               </button>
@@ -288,7 +309,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
         aria-label="Primary"
         className={cn(
           "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 pb-safe backdrop-blur-xl lg:hidden",
-          isKeyboardOpen && "hidden",
+          (isKeyboardOpen || isNativeKeyboardOpen) && "hidden",
         )}
       >
         <LayoutGroup id="tabs">
@@ -302,6 +323,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
                 onClick={() => setShowMore(true)}
                 aria-label="More"
                 aria-haspopup="dialog"
+                aria-expanded={showMore}
                 className="press relative flex w-full flex-col items-center gap-0.5 pb-1.5 pt-2 text-[10.5px] font-semibold"
               >
                 <span className="relative grid h-7 w-14 place-items-center">

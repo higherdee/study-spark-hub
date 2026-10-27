@@ -19,16 +19,18 @@ const R2_SECRET_ACCESS_KEY =
   (typeof import.meta !== "undefined" && import.meta.env?.['R2_SECRET_ACCESS_KEY'] as string | undefined) ||
   (typeof process !== "undefined" && process.env?.['R2_SECRET_ACCESS_KEY']) || "";
 
-if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
-  throw new Error("R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY must be configured on the server.");
-}
-
 export const R2_BUCKET =
   (typeof import.meta !== "undefined" && import.meta.env?.['R2_BUCKET_NAME'] as string | undefined) ||
   (typeof process !== "undefined" && process.env?.['R2_BUCKET_NAME']) ||
   "syllaboss";
 
-export const r2Client = new S3Client({
+let r2Client: S3Client | undefined;
+
+function getR2Client(): S3Client {
+  if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+    throw new Error("R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY must be configured on the server.");
+  }
+  return r2Client ??= new S3Client({
   region: "auto",
   endpoint: R2_ENDPOINT,
   forcePathStyle: true,
@@ -36,7 +38,8 @@ export const r2Client = new S3Client({
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
   },
-});
+  });
+}
 
 export async function uploadToR2(
   key: string,
@@ -48,7 +51,7 @@ export async function uploadToR2(
     uploadBody = new Uint8Array(await body.arrayBuffer());
   }
 
-  await r2Client.send(
+  await getR2Client().send(
     new PutObjectCommand({
       Bucket: R2_BUCKET,
       Key: key,
@@ -61,7 +64,7 @@ export async function uploadToR2(
 }
 
 export async function getFromR2(key: string): Promise<{ bytes: Uint8Array; contentType: string }> {
-  const res = await r2Client.send(
+  const res = await getR2Client().send(
     new GetObjectCommand({
       Bucket: R2_BUCKET,
       Key: key,
@@ -80,7 +83,7 @@ export async function getSignedDownloadUrl(key: string, expiresIn = 300): Promis
     Bucket: R2_BUCKET,
     Key: key,
   });
-  return await getSignedUrl(r2Client, command, { expiresIn });
+  return await getSignedUrl(getR2Client(), command, { expiresIn });
 }
 
 export async function getPresignedUploadUrl(
@@ -93,11 +96,11 @@ export async function getPresignedUploadUrl(
     Key: key,
     ContentType: contentType,
   });
-  return await getSignedUrl(r2Client, command, { expiresIn });
+  return await getSignedUrl(getR2Client(), command, { expiresIn });
 }
 
 export async function deleteFromR2(key: string): Promise<void> {
-  await r2Client.send(
+  await getR2Client().send(
     new DeleteObjectCommand({
       Bucket: R2_BUCKET,
       Key: key,
