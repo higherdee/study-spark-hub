@@ -30,7 +30,30 @@ jobs:
       - name: Install build platform
         run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
       - name: Build Android release
-        run: gradle -p android assembleRelease --no-daemon
+        run: gradle -p android assembleRelease assembleDebug --no-daemon
+      - name: Verify runtime manifest components
+        run: python3 scripts/android-verify-manifest.py android/app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android 15 launch regression test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis_playstore
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash scripts/android-launch-smoke.sh
+      - name: Save Android launch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-launch-evidence
+          path: android-smoke/
+          if-no-files-found: warn
       - name: Prepare signing identity
         if: ${{ !inputs.unsigned_only }}
         env:
