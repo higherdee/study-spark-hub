@@ -1,19 +1,13 @@
-"""Validate the Android Browser Helper runtime components after manifest merging."""
+"""Verify native launch and transport settings in the merged manifest."""
 from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
-
-namespace = "{http://schemas.android.com/apk/res/android}"
-path = Path(sys.argv[1])
-manifest = ET.parse(path).getroot()
-application = manifest.find("application")
-activities = {node.get(namespace + "name"): node for node in application.findall("activity")}
-helper = "com.google.androidbrowserhelper.trusted."
-assert helper + "LauncherActivity" in activities, "Launcher activity is missing"
-for component in ("ManageDataLauncherActivity", "FocusActivity"):
-    assert helper + component in activities, f"Browser Helper requires the registered {component} component at runtime"
-assert application.get(namespace + "manageSpaceActivity") == helper + "ManageDataLauncherActivity"
-metadata = {node.get(namespace + "name"): node.get(namespace + "value") for node in activities[helper + "LauncherActivity"].findall("meta-data")}
-assert metadata.get("android.support.customtabs.trusted.DEFAULT_URL") == "https://syllaboss.org/dashboard"
-assert application.get(namespace + "usesCleartextTraffic") == "false"
-print("Android Browser Helper manifest contract verified.")
+ns = '{http://schemas.android.com/apk/res/android}'
+manifest = ET.parse(Path(sys.argv[1])).getroot()
+app = manifest.find('application')
+assert app.get(ns + 'usesCleartextTraffic') == 'false'
+assert app.get(ns + 'name') == 'org.syllaboss.app.SyllabossApp'
+activities = {n.get(ns + 'name'): n for n in app.findall('activity')}
+assert 'org.syllaboss.app.MainActivity' in activities
+assert not any('google.androidbrowserhelper' in name for name in activities)
+print('Native Android entry point and HTTPS-only transport verified.')

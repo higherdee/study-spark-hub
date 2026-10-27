@@ -1,33 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <application android:label="Syllaboss" android:icon="@drawable/ic_launcher"
+    <application android:name=".SyllabossApp" android:label="Syllaboss" android:icon="@drawable/ic_launcher"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
-        android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
         android:allowBackup="false" android:supportsRtl="true" android:usesCleartextTraffic="false">
-        <meta-data android:name="asset_statements" android:resource="@string/asset_statements" />
-        <activity android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
-            android:enabled="false" android:exported="false" android:excludeFromRecents="true">
-            <meta-data android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
-                android:value="https://syllaboss.org/dashboard" />
-        </activity>
-        <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity"
-            android:exported="false" />
-        <activity android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
-            android:exported="true" android:label="Syllaboss" android:alwaysRetainTaskState="true">
-            <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL" android:value="https://syllaboss.org/dashboard" />
-            <meta-data android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR" android:resource="@color/paper" />
-            <meta-data android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR" android:resource="@color/paper" />
-            <meta-data android:name="android.support.customtabs.trusted.FALLBACK_STRATEGY" android:value="customtabs" />
+        <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="syllaboss.org" android:pathPrefix="/dashboard" />
             </intent-filter>
         </activity>
     </application>
