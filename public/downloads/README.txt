@@ -1,13 +1,10 @@
-Syllaboss Android download
-==========================
+Syllaboss for Android — Native preview 2.0.0
 
-syllaboss.apk is the signed Syllaboss Android 1.0.1 application.
-Download: https://syllaboss.org/downloads/syllaboss.apk?v=1.0.1
-Requires Android 7.0 or later, Chrome or a compatible browser, and internet access.
+Download: https://syllaboss.org/downloads/syllaboss-native.apk?v=2.0.0
+Requires Android 7.0 or later.
 
-Open the downloaded file and follow Android's installation prompt.
-Package: org.syllaboss.app
-Release size, SHA-256 and signing certificate fingerprint: android-release.json
+This version has dedicated Android screens, bottom navigation, a library and document reader, saved materials, a focus timer, and native account and study tools. Sign-in and online features require internet.
 
-The source and build documentation are in android/.
-iPhone/iPad, Windows and Mac continue to use browser home-screen installation.
+The APK uses the original Syllaboss signing identity and can update the previous app. Native sign-in is configured; completing sign-in and authenticated account workflows still needs a device test. This is a preview release.
+
+The previous website launcher (version 1.0.1) is retained at /downloads/syllaboss.apk for compatibility. The current Android download button points to the native preview.

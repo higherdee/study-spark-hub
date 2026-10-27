@@ -25,3 +25,11 @@ Check native cold launch, all tabs, live library search, reading and bookmarks, 
 Clerk Native API and production Android identifiers must be configured for native sign-in. Access to private account settings requires user approval. Do not claim authenticated end-to-end tests passed before completing them.
 
 The first native release does not include withdrawal submission, subscription checkout, administration, battle games, push notifications, or background uploads. It does not expose inactive buttons for those features.
+
+## Validation on 28 October 2026
+
+The Android 15 emulator checks passed for cold launch, guest navigation, live library results, rendering a real document, Boss AI screen navigation, account navigation and starting the focus timer. Seven native API access-control tests passed and the website production build passed.
+
+Clerk Native API is enabled in production. The `org.syllaboss.app` release certificate is registered, its native return URL is allowlisted, and Clerk's public assetlinks file matches the original signing certificate.
+
+Email-code sign-in completion and authenticated AI, profile, upload and group operations still need an on-device account session. No user credentials or authenticated sessions were sent to the build runner. This release is a native preview, not a claim of complete website feature parity or full hardware coverage.

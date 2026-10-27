@@ -126,7 +126,7 @@ export function InstallButton({
                   Install Syllaboss
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-sm text-muted-foreground">
-                  {activeTab === "android" ? "Download the Android app and open your study space from your app drawer." : "Open Syllaboss from your home screen."} An internet connection is required.
+                  {activeTab === "android" ? "Try the new Android preview with its own mobile interface. Sign-in and online tools require internet." : "Open Syllaboss from your home screen. An internet connection is required."}
                 </DialogDescription>
               </DialogHeader>
             </div>
@@ -204,10 +204,10 @@ export function InstallButton({
                         <AndroidOutlineIcon className="size-4 text-brand" />
                         Syllaboss for Android
                       </h4>
-                      <p className="text-[11px] text-muted-foreground">Android 7.0 or later · Chrome or a compatible browser</p>
+                      <p className="text-[11px] text-muted-foreground">Android 7.0 or later · Dedicated Android interface</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-md bg-accent text-forest font-bold text-[10px]">
-                      Signed APK
+                      Android preview
                     </span>
                   </div>
 
