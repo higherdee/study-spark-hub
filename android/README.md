@@ -8,6 +8,10 @@ The app supports Android 7.0 and later. Its package ID is `org.syllaboss.app`.
 
 Use JDK 17, Gradle 8.13, Android SDK platform 36, and build tools 35.0.0. Run `gradle -p android assembleRelease`. The GitHub Actions **Build Android APK** workflow builds, aligns, signs, verifies, and uploads the release files.
 
+For local signing, run the workflow with `unsigned_only: true`. It returns an aligned unsigned APK and the official Android `apksigner.jar`. Use a portable Java 17 runtime and the original local PKCS12 key to sign, then run `apksigner verify`. This keeps the private signing key off CI.
+
+The release manifest is checked for Android Browser Helper's required runtime activities after manifest merging. Version 1.0.1 fixes the missing `ManageDataLauncherActivity` registration that caused 1.0.0 to crash during startup. Signature verification alone does not verify launch behavior; exercise every release on an Android device or emulator.
+
 The first release used the explicit `bootstrap_signing` option. **Do not bootstrap another signing identity for an update.** Updates must use the original key and an increased `versionCode` in `app/build.gradle`.
 
 For subsequent CI releases, configure repository secrets `ANDROID_KEYSTORE_BASE64` (base64 of the saved PKCS12 keystore) and `ANDROID_KEYSTORE_PASSWORD`. The signing alias is `syllaboss`. Secret configuration is a separate administrative action; no signing secrets are committed in this repository.
@@ -20,6 +24,6 @@ CI artifacts include only the signed application, public metadata, public certif
 
 ## Publish
 
-After verification, copy only `syllaboss.apk` and `release.json` to `public/downloads/` (rename metadata to `android-release.json`). Copy `assetlinks.json` to `public/.well-known/assetlinks.json`. Keep the download link's version query in sync with `versionName` to avoid cached older packages. Never copy signing backups or passwords into `public/`.
+After verification, copy only `syllaboss.apk` and `release.json` to `public/downloads/` (rename metadata to `android-release.json`). Copy the same release metadata to `src/data/android-release.json` so the download button uses the correct version and size. Copy `assetlinks.json` to `public/.well-known/assetlinks.json`. Never copy signing backups or passwords into `public/`.
 
 Verify the production APK's SHA-256 against `android-release.json`, and verify the website's certificate fingerprint matches the APK signing certificate. Test installation, full-screen launch, sign-in, uploads, and downloads on a real Android device before claiming device testing is complete.

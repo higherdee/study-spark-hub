@@ -16,5 +16,5 @@ if grep -q 'org.syllaboss.app' android-smoke/crashes.txt; then
 fi
 grep -q 'Status: ok' android-smoke/launch.txt
 grep -q 'Found TWA provider' android-smoke/browser-launch.txt
-grep 'mResumedActivity' android-smoke/activities.txt | grep -q 'com.android.chrome'
+grep -Eq '(topResumedActivity|mResumedActivity|ResumedActivity):?=.*com.android.chrome|ResumedActivity:.*com.android.chrome' android-smoke/activities.txt
 echo 'Android 15 cold launch passed: no Syllaboss crash; Chrome is in the foreground.'

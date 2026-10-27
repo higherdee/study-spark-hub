@@ -1,8 +1,8 @@
 Syllaboss Android download
 ==========================
 
-syllaboss.apk is the signed Syllaboss Android 1.0.0 application.
-Download: https://syllaboss.org/downloads/syllaboss.apk?v=1.0.0
+syllaboss.apk is the signed Syllaboss Android 1.0.1 application.
+Download: https://syllaboss.org/downloads/syllaboss.apk?v=1.0.1
 Requires Android 7.0 or later, Chrome or a compatible browser, and internet access.
 
 Open the downloaded file and follow Android's installation prompt.

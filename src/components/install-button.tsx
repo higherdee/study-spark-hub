@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useInstall, type DevicePlatform } from "@/hooks/use-install";
 import { cn } from "@/lib/utils";
+import androidRelease from "@/data/android-release.json";
 import {
   WindowsOutlineIcon,
   AndroidOutlineIcon,
@@ -231,7 +232,7 @@ export function InstallButton({
                     asChild
                     className="w-full h-11 rounded-xl bg-brand hover:bg-brand/90 text-white font-bold gap-2 text-sm shadow-sm"
                   >
-                    <a href="/downloads/syllaboss.apk?v=1.0.0" download="syllaboss.apk"><Download className="size-4" /><span>Download APK · 3.6 MB</span></a>
+                    <a href={`${androidRelease.downloadUrl}?v=${androidRelease.version}`} download="syllaboss.apk"><Download className="size-4" /><span>Download APK · {(androidRelease.bytes / 1048576).toFixed(1)} MB</span></a>
                   </Button>
                 </div>
               )}
