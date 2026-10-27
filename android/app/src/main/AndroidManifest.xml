@@ -3,8 +3,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <application android:label="Syllaboss" android:icon="@drawable/ic_launcher"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
         android:allowBackup="false" android:supportsRtl="true" android:usesCleartextTraffic="false">
         <meta-data android:name="asset_statements" android:resource="@string/asset_statements" />
+        <activity android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+            android:enabled="false" android:exported="false" android:excludeFromRecents="true">
+            <meta-data android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+                android:value="https://syllaboss.org/dashboard" />
+        </activity>
+        <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity"
+            android:exported="false" />
         <activity android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
             android:exported="true" android:label="Syllaboss" android:alwaysRetainTaskState="true">
             <meta-data android:name="android.support.customtabs.trusted.DEFAULT_URL" android:value="https://syllaboss.org/dashboard" />

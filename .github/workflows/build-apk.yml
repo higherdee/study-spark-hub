@@ -6,6 +6,10 @@ on:
         description: 'First release only: create a signing identity and encrypted recovery backup'
         type: boolean
         default: false
+      unsigned_only:
+        description: 'Build aligned release for signing locally with the existing private key'
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -28,6 +32,7 @@ jobs:
       - name: Build Android release
         run: gradle -p android assembleRelease --no-daemon
       - name: Prepare signing identity
+        if: ${{ !inputs.unsigned_only }}
         env:
           EXISTING_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           EXISTING_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -51,6 +56,7 @@ jobs:
           openssl cms -encrypt -binary -aes-256-cbc -in signing/backup.tar.gz \
             -outform DER -out release/signing-backup.enc android/signing-recovery-recipient.pem
       - name: Align, sign and verify
+        if: ${{ !inputs.unsigned_only }}
         run: |
           set -euo pipefail
           TOOLS="$ANDROID_HOME/build-tools/35.0.0"
@@ -62,6 +68,12 @@ jobs:
           keytool -exportcert -keystore signing/release.p12 -storepass:file signing/password.txt \
             -alias syllaboss -file release/signing-certificate.der
           python3 scripts/android-release-metadata.py release
+      - name: Prepare aligned release for local signing
+        if: ${{ inputs.unsigned_only }}
+        run: |
+          mkdir -p release
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk release/aligned.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" release/apksigner.jar
       - uses: actions/upload-artifact@v4
         with:
           name: syllaboss-android-release
