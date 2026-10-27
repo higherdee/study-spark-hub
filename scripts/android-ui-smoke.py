@@ -18,7 +18,11 @@ def tap(text):
             adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(3);return
     raise AssertionError('Missing native control: '+text)
 tap('Library'); time.sleep(8)
-library=snapshot('library')
+for attempt in range(15):
+    library=snapshot('library')
+    if any(re.search(r'[1-9]\d* materials', n.get('text',''), re.I) for n in library.iter('node')): break
+    if attempt == 5 and any(n.get('text') == 'Try again' for n in library.iter('node')): tap('Try again')
+    time.sleep(3)
 assert any(re.search(r'[1-9]\d* materials', n.get('text',''), re.I) for n in library.iter('node')), 'Live library returned no materials'
 assert not any('DOCTYPE' in n.get('text','') for n in library.iter('node'))
 with urllib.request.urlopen('https://syllaboss.org/api/mobile?resource=library', timeout=25) as response:

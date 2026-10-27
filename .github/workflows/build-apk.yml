@@ -46,6 +46,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -dns-server 8.8.8.8,1.1.1.1
           script: bash scripts/android-launch-smoke.sh
       - name: Save Android launch evidence
         if: always()
