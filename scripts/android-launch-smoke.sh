@@ -2,6 +2,10 @@
 set -euo pipefail
 mkdir -p android-smoke
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+# The native app has no Chrome dependency. Stop the emulator launcher before
+# exercising it; first-boot launcher ANRs can otherwise obscure the app window.
+adb shell am force-stop com.google.android.apps.nexuslauncher || true
+sleep 5
 adb logcat -c
 adb shell am start -W -n org.syllaboss.app/.MainActivity > android-smoke/launch.txt
 sleep 25
