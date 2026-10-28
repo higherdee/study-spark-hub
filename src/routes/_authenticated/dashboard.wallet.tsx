@@ -718,7 +718,7 @@ function WalletPage() {
                       Digital e-Gift Card
                     </p>
                   </div>
-                  <CardSmartChip className="h-7 w-9" />
+                  {selectedBrand.id === "visa" ? <CardSmartChip className="h-7 w-9" /> : <Gift className="h-7 w-7 opacity-70" aria-hidden="true" />}
                 </div>
 
                 <div className="mt-6 flex items-end justify-between">
