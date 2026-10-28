@@ -11,6 +11,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -50,21 +52,23 @@ private val Paper = Color(0xFFF6F5EF)
 private val Ink = Color(0xFF1E3029)
 private val Muted = Color(0xFF6E7C73)
 private val Sage = Color(0xFFE5EBDD)
-private val Lime = Color(0xFFDDECA4)
+private val Lime = Color(0xFFE6D9BC)
 private val Line = Color(0xFFE1E5DC)
 private val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Paper, surface = Paper, onSurface = Ink, secondaryContainer = Sage, onSecondaryContainer = Forest, outline = Line)
-private class ChatState {
+internal class ChatState {
     val messages = mutableStateListOf<Pair<String, String>>()
     var input by mutableStateOf("")
     var sending by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
+    var threadId by mutableStateOf<String?>(null)
+    var title by mutableStateOf("New conversation")
 }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { MaterialTheme(colorScheme = appColors) { Syllaboss() } }
+        setContent { MaterialTheme(colorScheme = appColors, typography = websiteTypography()) { Syllaboss() } }
     }
 }
 
@@ -119,8 +123,8 @@ class MainActivity : ComponentActivity() {
     if (reader != null) { DocumentScreen(reader!!, { reader = null }); return }
     if (focus) { FocusScreen(prefs, { focus = false }); return }
     if (auth) {
-        Scaffold(topBar = { TopAppBar(title = { Text("Your Syllaboss account") }, navigationIcon = { IconButton(onClick = { auth = false }) { Icon(Icons.Outlined.ArrowBack, "Back") } }) }) { padding ->
-            if (initialized) AuthView(modifier = Modifier.padding(padding).imePadding())
+        Scaffold { padding ->
+            if (initialized) AuthView(modifier = Modifier.padding(padding).imePadding(), clerkTheme = com.clerk.api.ui.ClerkTheme(colors = com.clerk.api.ui.ClerkColors(primary=Forest,background=Paper,foreground=Ink,mutedForeground=Muted,input=Color.White,inputForeground=Ink,border=Line,primaryForeground=Color.White)), logo = { BrandWordmark() }, onDismiss = { auth = false })
             else if (authWaitExpired) Column(Modifier.fillMaxSize().padding(padding).padding(28.dp), verticalArrangement = Arrangement.Center) {
                 Display("Your account,\ncoming together.", size = 32)
                 Spacer(Modifier.height(18.dp))
@@ -149,20 +153,22 @@ class MainActivity : ComponentActivity() {
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            when (tab) {
+            AnimatedContent(targetState = tab, label = "Study tab", transitionSpec = {
+                (fadeIn(tween(220, easing=CubicBezierEasing(.23f,1f,.32f,1f))) + slideInHorizontally(tween(240)) { if(targetState > initialState) it/12 else -it/12 }).togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { if(targetState > initialState) -it/12 else it/12 })
+            }) { selectedTab -> when (selectedTab) {
                 0 -> TodayScreen(materials, saved, space?.optJSONObject("profile"), loading, error, { refresh++ }, { tab = 1 }, { tab = 2 }, { focus = true }, { reader = it }, { toggleSave(it) }, { tab = 3 })
                 1 -> LibraryScreen(materials, saved, loading, error, { refresh++ }, { reader = it }, { toggleSave(it) })
-                2 -> BossScreen(user != null, chat, scope, { auth = true })
+                2 -> ProfessionalChat(user?.id, chat, scope, { auth = true })
                 3 -> SpaceScreen(user != null, space, spaceError, saved, { auth = true }, { refresh++ }, { reader = it }, { destination -> if (user == null) auth = true else secondary = destination }, {
                     scope.launch { Clerk.auth.signOut().onFailure { spaceError = "Could not sign out. Try again." } }
                 })
-            }
+            } }
         }
     }
 }
 
 @Composable private fun Eyebrow(text: String, color: Color = Muted) { Text(text.uppercase(), fontSize = 11.sp, letterSpacing = 1.8.sp, fontWeight = FontWeight.SemiBold, color = color) }
-@Composable private fun Display(text: String, color: Color = Ink, size: Int = 36) { Text(text, fontFamily = FontFamily.Serif, fontSize = size.sp, lineHeight = (size + 3).sp, letterSpacing = (-1).sp, color = color) }
+@Composable private fun Display(text: String, color: Color = Ink, size: Int = 36) { Text(text, fontFamily = WebsiteDisplay, fontSize = size.sp, lineHeight = (size + 3).sp, letterSpacing = (-1).sp, color = color) }
 @Composable private fun Action(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) { Button(onClick = onClick, modifier = modifier.heightIn(min = 54.dp), shape = RoundedCornerShape(18.dp), contentPadding = PaddingValues(horizontal = 24.dp)) { Text(text, fontWeight = FontWeight.SemiBold); Spacer(Modifier.width(12.dp)); Icon(Icons.Outlined.ArrowForward, null, Modifier.size(18.dp)) } }
 @Composable private fun SectionTitle(title: String, action: String? = null, onAction: () -> Unit = {}) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -179,17 +185,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun WelcomeScreen(onStart: () -> Unit, onExplore: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Forest).safeDrawingPadding().padding(28.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.SpaceBetween) {
-        Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.MenuBook, null, tint = Lime, modifier = Modifier.size(30.dp)); Spacer(Modifier.width(10.dp)); Text("Syllaboss", color = Color.White, fontFamily = FontFamily.Serif, fontSize = 27.sp) }
+        BrandWordmark(onDark=true)
         Column(Modifier.padding(vertical = 48.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Box(Modifier.size(150.dp).clip(RoundedCornerShape(40.dp)).background(Lime), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Outlined.AutoStories, null, tint = Forest, modifier = Modifier.size(62.dp)); Text("A little, every day.", color = Forest, fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp)) }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) { OfficialMark(82.dp); Text("Study with direction.", color = Forest, fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp)) }
             }
-            Eyebrow("Made for your next chapter", Lime)
-            Display("Less scattered.\nMore studied.", Color.White, 46)
+            Eyebrow("A study space for university life", Lime)
+            Display("Your courses,\nin good company.", Color.White, 46)
             Text("Your course materials, a patient study partner, and a little room to focus. All in your pocket.", fontSize = 16.sp, lineHeight = 25.sp, color = Color(0xFFC2D2C6))
         }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(58.dp), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(18.dp)) { Text("Make yourself at home", fontWeight = FontWeight.SemiBold); Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.ArrowForward, null) }
+            Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(58.dp), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(18.dp)) { Text("Start studying", fontWeight = FontWeight.SemiBold); Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.ArrowForward, null) }
             TextButton(onClick = onExplore, modifier = Modifier.fillMaxWidth()) { Text("Explore the library first", color = Color.White) }
         }
     }
@@ -200,14 +206,14 @@ class MainActivity : ComponentActivity() {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column { Eyebrow(SimpleDateFormat("EEEE, d MMMM", Locale.ENGLISH).format(Date())); Spacer(Modifier.height(10.dp)); Display(if (firstName != null) "Hey, $firstName." else "A good day to learn.", size = 32) }
+                Column { Eyebrow(SimpleDateFormat("EEEE, d MMMM", Locale.ENGLISH).format(Date())); Spacer(Modifier.height(10.dp)); Display(if (firstName != null) "Hey, $firstName." else "Your study space.", size = 32) }
                 FilledTonalIconButton(onClick = account, modifier = Modifier.size(46.dp)) { Icon(Icons.Outlined.PersonOutline, "Your account") }
             }
         }
         item {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Forest).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Eyebrow("One thing at a time", Lime); Icon(Icons.Outlined.NorthEast, null, tint = Lime, modifier = Modifier.size(20.dp)) }
-                Display("Make room\nfor focus.", Color.White, 37)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Eyebrow("Focus session", Lime); Icon(Icons.Outlined.NorthEast, null, tint = Lime, modifier = Modifier.size(20.dp)) }
+                Display("Study with\ndirection.", Color.White, 37)
                 Text("25 quiet minutes. One small step forward.", color = Color(0xFFBED0C3), fontSize = 13.sp)
                 Button(onClick = focus, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Start a focus session", fontWeight = FontWeight.SemiBold) }
             }
@@ -271,67 +277,6 @@ class MainActivity : ComponentActivity() {
         if (error != null) item { StateMessage(error, retry) }
         if (!loading && error == null && list.isEmpty()) item { StateMessage(if (filter == "Saved") "Tap the bookmark on any material to build your reading shelf." else "No matching materials. Try a different course or title.") }
         items(list, key = { it.id }) { m -> MaterialRow(m, saved.any { it.id == m.id }, { open(m) }, { save(m) }) }
-    }
-}
-
-@Composable private fun BossScreen(signedIn: Boolean, chat: ChatState, scope: CoroutineScope, signIn: () -> Unit) {
-    val messages = chat.messages
-    var input by chat::input
-    var sending by chat::sending
-    var error by chat::error
-    val scroll = androidx.compose.foundation.lazy.rememberLazyListState()
-    fun send(question: String) {
-        if (sending || question.isBlank()) return
-        if (!signedIn) { signIn(); return }
-        val history = JSONArray(messages.takeLast(12).map { JSONObject().put("role", it.first).put("content", it.second) })
-        messages.add("user" to question); input = ""; error = null; sending = true
-        scope.launch {
-            try { val result = StudyApi.call(body = JSONObject().put("message", question).put("history", history)); messages.add("assistant" to result.getString("answer")) }
-            catch (e: Exception) { error = e.message ?: "Could not connect to Boss. Try again." }
-            finally { sending = false }
-        }
-    }
-    LaunchedEffect(messages.size, sending) { if (messages.isNotEmpty()) scroll.animateScrollToItem(messages.size - 1) }
-    Column(Modifier.fillMaxSize().imePadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column { Eyebrow("Your study partner"); Spacer(Modifier.height(7.dp)); Display("Boss AI", size = 32) }
-            IconButton(onClick = { if (!sending) { messages.clear(); error = null } }, enabled = !sending) { Icon(Icons.Outlined.EditNote, "New conversation", tint = Forest) }
-        }
-        if (messages.isEmpty()) {
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                Box(Modifier.size(64.dp).clip(RoundedCornerShape(22.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.AutoAwesome, null, tint = Forest, modifier = Modifier.size(30.dp)) }
-                Display("Let's make\nit make sense.", size = 39)
-                Text("A tricky concept, an exam topic, or a question you keep coming back to. Start anywhere.", color = Muted, lineHeight = 23.sp)
-                listOf("Explain a concept" to "Help me understand a topic. Ask which concept I am studying.", "Quiz me for an exam" to "Help me practise for an exam. Ask my course and topic, then give me one question at a time.", "Build a revision plan" to "Help me make a realistic revision plan. Ask about my exam dates and courses.").forEach { (label, prompt) ->
-                    OutlinedCard(onClick = { send(prompt) }, colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent), border = BorderStroke(1.dp, Line), shape = RoundedCornerShape(17.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text(label, fontSize = 14.sp); Icon(Icons.Outlined.NorthEast, null, Modifier.size(18.dp), tint = Forest) }
-                    }
-                }
-            }
-        } else {
-            LazyColumn(state = scroll, modifier = Modifier.weight(1f), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                items(messages.size) { index ->
-                    val (role, text) = messages[index]
-                    Column(Modifier.fillMaxWidth(), horizontalAlignment = if (role == "user") Alignment.End else Alignment.Start) {
-                        if (role != "user") Eyebrow("Boss", Forest)
-                        SelectionContainerText(text, if (role == "user") Sage else Color.Transparent)
-                    }
-                }
-                if (sending) item { Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(15.dp), strokeWidth = 2.dp); Spacer(Modifier.width(12.dp)); Text("Thinking it through…", color = Muted, fontSize = 13.sp) } }
-            }
-        }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) }
-        if (!signedIn) TextButton(onClick = signIn, modifier = Modifier.fillMaxWidth()) { Text("Sign in to chat with Boss") }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(input, { if (it.length <= 6000) input = it }, placeholder = { Text("What are we studying?") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(24.dp), maxLines = 5, enabled = !sending)
-            FilledIconButton(onClick = { send(input.trim()) }, enabled = input.isNotBlank() && !sending, modifier = Modifier.padding(bottom = 4.dp).size(48.dp)) { Icon(Icons.Outlined.ArrowUpward, "Send question") }
-        }
-        Text("AI can make mistakes. Check important answers.", color = Muted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp))
-    }
-}
-@Composable private fun SelectionContainerText(text: String, background: Color) {
-    androidx.compose.foundation.text.selection.SelectionContainer {
-        Text(text, modifier = Modifier.padding(top = 7.dp).clip(RoundedCornerShape(20.dp)).background(background).padding(if (background == Color.Transparent) 0.dp else 16.dp), fontSize = 16.sp, lineHeight = 25.sp, color = Ink)
     }
 }
 

@@ -16,7 +16,7 @@ adb shell uiautomator dump /sdcard/welcome.xml
 adb pull /sdcard/welcome.xml android-smoke/welcome.xml
 if grep -q 'org.syllaboss.app' android-smoke/crashes.txt; then cat android-smoke/crashes.txt; exit 1; fi
 grep -q 'Status: ok' android-smoke/launch.txt
-grep -q 'Less scattered' android-smoke/welcome.xml
+grep -q 'Your courses' android-smoke/welcome.xml
 # Guest exploration never needs a browser or a signed-in account.
 python3 - <<'PY'
 import xml.etree.ElementTree as E, re, subprocess
@@ -32,7 +32,7 @@ sleep 15
 adb exec-out screencap -p > android-smoke/today.png
 adb shell uiautomator dump /sdcard/today.xml
 adb pull /sdcard/today.xml android-smoke/today.xml
-grep -q 'Make room' android-smoke/today.xml
+grep -q 'Study with' android-smoke/today.xml
 adb logcat -b crash -d > android-smoke/crashes.txt
 if grep -q 'org.syllaboss.app' android-smoke/crashes.txt; then cat android-smoke/crashes.txt; exit 1; fi
 echo 'Native Android cold launch and guest navigation passed.'

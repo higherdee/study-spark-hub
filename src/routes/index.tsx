@@ -61,7 +61,7 @@ function HomePage() {
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    const updateHeader = () => setCompactHeader(window.scrollY > 12);
+    const updateHeader = () => setCompactHeader(previous => window.scrollY > (previous ? 4 : 24));
     updateHeader();
     window.addEventListener("scroll", updateHeader, { passive: true });
     return () => window.removeEventListener("scroll", updateHeader);
@@ -71,15 +71,15 @@ function HomePage() {
     <div className="home-page min-h-dvh bg-background text-ink">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <header className="home-header" data-compact={compactHeader}>
-        <motion.div layout className="home-header-inner"
-          transition={{ layout: { duration: reduceMotion ? 0 : 0.26, ease: [0.77, 0, 0.175, 1] } }}>
-          <motion.div layout="position" className="home-wordmark"><Link to="/" aria-label="Syllaboss home"><SyllabossLogo /></Link></motion.div>
-          <motion.nav layout="position" aria-label="Main navigation" className="home-nav">
+        <motion.div layout className="home-header-inner" style={{ borderRadius: compactHeader ? 24 : 0 }}
+          transition={{ layout: { duration: reduceMotion ? 0 : 0.26, ease: [0.23, 1, 0.32, 1] } }}>
+          <motion.div layout="position" transition={{ layout: { duration: reduceMotion ? 0 : 0.26, ease: [0.23, 1, 0.32, 1] } }} className="home-wordmark"><Link to="/" aria-label="Syllaboss home"><SyllabossLogo /></Link></motion.div>
+          <motion.nav layout="position" transition={{ layout: { duration: reduceMotion ? 0 : 0.26, ease: [0.23, 1, 0.32, 1] } }} aria-label="Main navigation" className="home-nav">
             <a href="#how-it-works">How it works</a>
             <a href="#study-tools">Study tools</a>
             <Link to="/materials">Course library</Link>
           </motion.nav>
-          <motion.div layout="position" className="home-header-actions">
+          <motion.div layout="position" transition={{ layout: { duration: reduceMotion ? 0 : 0.26, ease: [0.23, 1, 0.32, 1] } }} className="home-header-actions">
             <InstallButton variant="ghost" size="sm" className="home-install" />
             <Button asChild size="sm" className="home-login">
               <Link to={appPath}>{user ? "Open your space" : "Sign in"}<ArrowRight aria-hidden="true" /></Link>

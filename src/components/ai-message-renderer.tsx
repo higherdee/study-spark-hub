@@ -3,6 +3,16 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { Check, Copy } from "lucide-react";
+
+function CodeBlock({ children }: { children?: React.ReactNode }) {
+  const ref = React.useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = React.useState(false);
+  return <div className="ai-code-block my-4 overflow-hidden rounded-xl border border-border bg-ink text-secondary">
+    <div className="flex items-center justify-between border-b border-white/10 px-4 py-1 text-xs text-white/70"><span>Code</span><button type="button" className="flex min-h-10 items-center gap-2 px-2" aria-label="Copy code" onClick={async () => { try { await navigator.clipboard.writeText(ref.current?.textContent || ""); setCopied(true); } catch { setCopied(false); } }}>{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}{copied ? "Copied" : "Copy"}</button></div>
+    <pre ref={ref} className="m-0 overflow-x-auto p-4 text-[13px] leading-6">{children}</pre>
+  </div>;
+}
 
 interface AiMessageRendererProps {
   content: string;
@@ -33,12 +43,13 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
 
   return (
     <div
-      className={`prose prose-sm dark:prose-invert max-w-none text-ink dark:text-secondary leading-relaxed text-[13px] md:text-sm ${className}`}
+      className={`prose dark:prose-invert max-w-none text-ink dark:text-secondary leading-[1.8] text-[15px] md:text-base ${className}`}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, { output: "htmlAndMathml", throwOnError: false }]]}
         components={{
+          pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
           // Responsive & Clean GFM Tables
           table: ({ children }) => (
             <div className="my-3 overflow-x-auto rounded-lg border border-border dark:border-ink shadow-xs">
@@ -134,11 +145,9 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
               );
             }
             return (
-              <pre className="my-3 overflow-x-auto rounded-lg bg-ink dark:bg-ink p-3 text-secondary font-mono text-xs border border-ink">
-                <code className={className} {...props}>
+                <code className={`${className || ""} font-mono`} {...props}>
                   {children}
                 </code>
-              </pre>
             );
           },
         }}

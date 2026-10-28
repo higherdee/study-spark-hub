@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const db = vi.hoisted(() => ({ getMaterials: vi.fn(), getProfile: vi.fn(), getLeaderboard: vi.fn(), upsert: vi.fn(), execute: vi.fn(), verify: vi.fn(), sendGroup: vi.fn() }));
 vi.mock("@tanstack/react-router", () => ({ createFileRoute: () => (options: unknown) => options }));
 vi.mock("@clerk/backend", () => ({ verifyToken: db.verify }));
@@ -9,6 +9,7 @@ import { Route } from "@/routes/api/mobile";
 const handlers = (Route as unknown as { server: { handlers: { GET: (ctx: { request: Request }) => Promise<Response>; POST: (ctx: { request: Request }) => Promise<Response> } } }).server.handlers;
 describe("Native Android API access boundaries", () => {
   beforeEach(() => { vi.resetAllMocks(); db.getProfile.mockResolvedValue(null); });
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
   it("exposes only verified public material metadata and hides storage and uploader fields", async () => {
     db.getMaterials.mockResolvedValue([{ id: "read-1", title: "Biology", file_path: "private/file.pdf", user_id: "private-user" }]);
     const response = await handlers.GET({ request: new Request("https://syllaboss.org/api/mobile?resource=library") });
@@ -43,5 +44,20 @@ describe("Native Android API access boundaries", () => {
     const response = await handlers.POST({ request: new Request("https://syllaboss.org/api/mobile", { method: "POST", headers: { authorization: "Bearer valid" }, body: JSON.stringify({ action: "group-message", group: "group-1", content: "Hello", userId: "victim", userName: "Impersonated" }) }) });
     expect(response.status).toBe(200);
     expect(db.sendGroup).toHaveBeenCalledWith({ groupId: "group-1", content: "Hello", userId: "real-user", userName: "Actual name", userInstitution: "Actual school" });
+  });
+  it("does not expose messages from another user's conversation", async () => {
+    db.verify.mockResolvedValue({ sub: "real-user" }); db.execute.mockResolvedValue({ rows: [] });
+    const response = await handlers.GET({ request: new Request("https://syllaboss.org/api/mobile?resource=conversation&thread=private-thread", { headers: { authorization: "Bearer valid" } }) });
+    expect(response.status).toBe(404);
+    expect(db.execute).toHaveBeenCalledTimes(1);
+    expect(db.execute).toHaveBeenCalledWith(expect.objectContaining({ args: ["private-thread", "real-user"] }));
+  });
+  it("rejects appending to another user's chat before contacting the AI provider", async () => {
+    vi.stubEnv("GROQ_API_KEY", "unit-test-only");
+    const provider = vi.fn(); vi.stubGlobal("fetch", provider);
+    db.verify.mockResolvedValue({ sub: "real-user" }); db.execute.mockResolvedValue({ rows: [] });
+    const response = await handlers.POST({ request: new Request("https://syllaboss.org/api/mobile", { method: "POST", headers: { authorization: "Bearer valid" }, body: JSON.stringify({ threadId: "12345678-1234-4234-8234-123456789abc", message: "Add to this chat" }) }) });
+    expect(response.status).toBe(404); expect(provider).not.toHaveBeenCalled();
+    expect(db.execute.mock.calls.every(([query]) => !query.sql.startsWith("INSERT"))).toBe(true);
   });
 });

@@ -54,7 +54,7 @@ import {
 export const Route = createFileRoute("/_authenticated/dashboard/wallet")({
   head: () => ({
     meta: [
-      { title: "SyllaPoints & Cash Out â€” Syllaboss" },
+      { title: "SyllaPoints & Cash Out — Syllaboss" },
       { name: "description", content: "Review your SyllaPoints balance and submit a payout request." },
     ],
   }),
@@ -250,7 +250,7 @@ function WalletPage() {
         return;
       }
       const brand = GIFT_CARD_BRANDS.find((b) => b.id === selectedBrandId);
-      finalBankName = `Digital Gift Card: ${brand?.name || "Gift Card"} (${activeDenom.label}${isRegional ? ` Â· ${activeDenom.localLabel}` : ""})`;
+      finalBankName = `Digital Gift Card: ${brand?.name || "Gift Card"} (${activeDenom.label}${isRegional ? ` · ${activeDenom.localLabel}` : ""})`;
       finalAccountNumber = giftCardEmail.trim();
       finalAccountName = profile?.full_name || user.email || "Scholar";
     } else if (payoutMethod === "bank") {
@@ -335,9 +335,9 @@ function WalletPage() {
           </div>
           <div className="text-xs text-white/70 font-mono tnum">
             {isRegional ? (
-              <span>1 pt = â‚¦0.83 Â· {countryName} Region</span>
+              <span>1 pt = ₦0.83 · {countryName} Region</span>
             ) : (
-              <span>1 pt = $0.004 USD Â· International</span>
+              <span>1 pt = $0.004 USD · International</span>
             )}
           </div>
         </div>
@@ -668,7 +668,7 @@ function WalletPage() {
                 <div className="flex items-center justify-between text-xs">
                   <Label>Choose Denomination</Label>
                   <span className="text-[11px] text-muted-foreground font-mono">
-                    {isRegional ? "Exchange: $1 = â‚¦1,500 Â· 1 pt = â‚¦0.83" : "Rate: 1 pt = $0.004 USD"}
+                    {isRegional ? "Exchange: $1 = ₦1,500 · 1 pt = ₦0.83" : "Rate: 1 pt = $0.004 USD"}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -742,7 +742,7 @@ function WalletPage() {
                     </p>
                     {isRegional && (
                       <p className="text-[9px] text-white/70">
-                        (SyllaPoints â†’ â‚¦ â†’ $)
+                        (SyllaPoints → ₦ → $)
                       </p>
                     )}
                   </div>
@@ -853,7 +853,7 @@ function WalletPage() {
                           : `Cash Out: ${formatUsd(w.amount_naira / 1400)}`}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
-                        {w.bank_name} Â· {new Date(w.created_at).toLocaleDateString()}
+                        {w.bank_name} · {new Date(w.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>

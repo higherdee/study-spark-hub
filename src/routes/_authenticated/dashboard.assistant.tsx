@@ -32,6 +32,7 @@ import {
   X,
   Upload,
   Search,
+  Copy,
   MessageSquare,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -84,6 +85,7 @@ import { getMaterialsForChatServerFn } from "@/lib/community.functions";
 import { convertTextAndMathToSpeech, initSpeechRuleEngine, getBestNaturalVoice } from "@/lib/math-to-speech";
 import { sendDeviceNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
+import { SyllabossEmblem } from "@/components/syllaboss-logo";
 
 const searchSchema = z.object({
   materialId: z.string().optional(),
@@ -453,7 +455,7 @@ function AssistantPage() {
   }, [threadMessages, activeThreadId, isLoadingMessages, isFetchingMessages, thinking]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!showScrollBottom) messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
   }, [messages, thinking]);
 
   // Voice Note Recording (SpeechRecognition + MediaRecorder fallback)
@@ -498,7 +500,7 @@ function AssistantPage() {
               setInput(transcript);
               if (textareaRef.current) {
                 textareaRef.current.style.height = "auto";
-                textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 84)}px`;
+                textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
               }
             }
           };
@@ -854,7 +856,7 @@ function AssistantPage() {
         textareaRef.current.focus();
         textareaRef.current.setSelectionRange(template.length, template.length);
         textareaRef.current.style.height = "auto";
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 84)}px`;
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
       }
     }, 50);
   }
@@ -1306,7 +1308,7 @@ function AssistantPage() {
   }
 
   return (
-    <div className="flex min-h-0 h-full max-h-full flex-1 w-full overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans relative">
+    <div className="boss-workspace flex min-h-0 h-full max-h-full flex-1 w-full overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card font-sans relative">
       {/* Hidden File Inputs */}
       <input
         type="file"
@@ -1523,7 +1525,7 @@ function AssistantPage() {
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                University Study Session · Groq LLaMA 3.1 &amp; Whisper
+                Your study partner · Explain, practise, revise
               </p>
             </div>
           </div>
@@ -1550,7 +1552,7 @@ function AssistantPage() {
         <div
           ref={messagesScrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth pt-14 pb-3 px-3 sm:p-4 space-y-3.5 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]"
+          className="boss-transcript flex-1 min-h-0 overflow-y-auto overscroll-contain pb-3 px-3 sm:p-4 space-y-6 [scrollbar-width:thin] [scrollbar-color:theme(colors.border)_transparent]"
         >
           {isLoadingMessages && messages.length === 0 ? (
             <div className="grid h-full place-items-center p-4 text-center">
@@ -1563,13 +1565,13 @@ function AssistantPage() {
             <div className="grid h-full place-items-center p-4 text-center">
               <div className="max-w-md space-y-3">
                 <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-forest/10 text-forest border border-forest/20 shadow-xs">
-                  <Bot className="size-6 text-forest" />
+                  <SyllabossEmblem className="size-9" />
                 </div>
                 <h3 className="font-display text-xl sm:text-2xl font-medium tracking-tight text-ink">
-                  Boss AI Academic Copilot
+                  What are we studying today?
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Ask any academic question, attach your course notes, or tap <strong>+</strong> in the input bar to take an MCQ Blitz, Theory Showdown, or 3D Flashcards.
+                  Bring a question, a difficult concept, or your course notes. We’ll work through it together, one clear step at a time.
                 </p>
 
                 <div className="grid gap-2 pt-3 sm:grid-cols-2 text-left">
@@ -1614,12 +1616,15 @@ function AssistantPage() {
                 <div
                   key={m.id}
                   className={cn(
-                    "flex flex-col space-y-1",
+                    "boss-message flex flex-col space-y-2",
                     m.role === "user" ? "items-end" : "items-start"
                   )}
                 >
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
                     <span className="font-semibold text-ink-soft">{m.role === "user" ? "You" : "Boss AI"}</span>
+                    {isAssistant && (
+                      <button type="button" aria-label="Copy response" title="Copy response" className="boss-message-action" onClick={() => navigator.clipboard.writeText(m.content).then(() => toast.success("Response copied")).catch(() => toast.error("Could not copy. You can select the response text instead."))}><Copy className="size-3.5" /></button>
+                    )}
                     {isAssistant && (
                       <button
                         type="button"
@@ -1637,8 +1642,9 @@ function AssistantPage() {
                   </div>
 
                   <div
+                    data-role={m.role}
                     className={cn(
-                      "rounded-2xl px-4 py-3 text-xs sm:text-[13px] leading-relaxed transition-all shadow-xs",
+                      "boss-message-content rounded-2xl px-4 py-3 text-[15px] leading-relaxed",
                       m.role === "user"
                         ? "max-w-[88%] bg-forest text-white font-medium rounded-br-xs"
                         : "w-full max-w-[96%] md:max-w-[92%] bg-card text-ink border border-border rounded-bl-xs"
@@ -1672,7 +1678,7 @@ function AssistantPage() {
 
                     {isAssistant ? (
                       <div className="space-y-2">
-                        {m.content && <AiMessageRenderer content={m.content} />}
+                        {m.content && <AiMessageRenderer content={m.content} className="boss-response" />}
                         {m.flashcardsData && (
                           <InChatFlashcardsWidget
                             data={m.flashcardsData}
@@ -1702,9 +1708,9 @@ function AssistantPage() {
           )}
 
           {thinking && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse p-2">
-              <Bot className="size-4 text-primary animate-bounce" />
-              <span>Boss AI is solving and formatting math with KaTeX...</span>
+            <div role="status" className="boss-thinking flex items-center gap-3 text-sm text-muted-foreground p-2">
+              <SyllabossEmblem className="size-7" />
+              <span>Working through your question<span className="boss-thinking-dots" aria-hidden="true">…</span></span>
             </div>
           )}
 
@@ -1717,7 +1723,7 @@ function AssistantPage() {
             type="button"
             onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
             title="Scroll to bottom"
-            className="absolute right-4 bottom-24 z-30 size-9 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-all animate-bounce"
+            className="absolute right-4 bottom-24 z-30 size-10 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-transform"
           >
             <ChevronDown className="size-5" />
           </button>
@@ -1981,37 +1987,32 @@ function AssistantPage() {
           )}
 
           {/* Autogrowing Typing Capsule */}
-          <div className="rounded-2xl sm:rounded-3xl border border-border bg-surface-container-low p-2 sm:p-2.5 shadow-xs transition-all focus-within:border-forest/50 focus-within:bg-card">
+          <div className="boss-composer rounded-2xl sm:rounded-3xl border border-border bg-card p-3 shadow-xs focus-within:border-forest/50">
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
                 e.target.style.height = "auto";
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 84)}px`;
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
               }}
               onKeyDown={(e) => {
-                if (!isMobile && e.key === "Enter" && !e.shiftKey) {
+                if (!isMobile && e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   handleSend();
                 }
               }}
-              onFocus={() => {
-                if (isMobile) setShowCustomKeyboard(true);
-              }}
-              onClick={() => {
-                if (isMobile) setShowCustomKeyboard(true);
-              }}
-              inputMode={isMobile ? "none" : "text"}
+              inputMode="text"
+              aria-label="Message Boss AI"
               placeholder={
                 isAssignmentMode
                   ? "Type your assignment problem or question here for a step-by-step academic solution..."
                   : activeDocContext
                   ? `Ask Boss AI about ${activeDocContext.title}...`
-                  : "Ask Boss AI anything or tap + for study modes..."
+                  : "Ask a question, or add your course notes…"
               }
               rows={1}
-              className="w-full resize-none bg-transparent text-xs sm:text-sm text-ink placeholder:text-muted-foreground focus:outline-hidden min-h-[28px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
+              className="w-full resize-none bg-transparent text-base text-ink placeholder:text-muted-foreground focus:outline-hidden min-h-[44px] max-h-[160px] overflow-y-auto px-1 py-2 leading-relaxed"
             />
 
             {/* Embedded Action Bar per Prototype Sketch */}
@@ -2108,7 +2109,7 @@ function AssistantPage() {
                 setInput(val);
                 if (textareaRef.current) {
                   textareaRef.current.style.height = "auto";
-                  textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 84)}px`;
+                  textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
                 }
               }}
               onSend={() => handleSend()}
