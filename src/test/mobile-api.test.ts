@@ -52,6 +52,16 @@ describe("Native Android API access boundaries", () => {
     expect(db.execute).toHaveBeenCalledTimes(1);
     expect(db.execute).toHaveBeenCalledWith(expect.objectContaining({ args: ["private-thread", "real-user"] }));
   });
+  it("restores website and native message formats in chronological order", async () => {
+    db.verify.mockResolvedValue({ sub: "real-user" });
+    db.execute.mockResolvedValueOnce({ rows: [{ id: "thread", title: "Biology revision" }] }).mockResolvedValueOnce({ rows: [
+      { role: "assistant", parts: JSON.stringify({ text: "Here is the explanation." }) },
+      { role: "user", parts: JSON.stringify([{ type: "text", text: "Explain biology." }]) },
+    ] });
+    const response = await handlers.GET({ request: new Request("https://syllaboss.org/api/mobile?resource=conversation&thread=thread", { headers: { authorization: "Bearer valid" } }) });
+    expect(await response.json()).toEqual({ title: "Biology revision", messages: [{ role: "user", content: "Explain biology." }, { role: "assistant", content: "Here is the explanation." }] });
+    expect(db.execute).toHaveBeenLastCalledWith(expect.objectContaining({ args: ["thread", "real-user"] }));
+  });
   it("rejects appending to another user's chat before contacting the AI provider", async () => {
     vi.stubEnv("GROQ_API_KEY", "unit-test-only");
     const provider = vi.fn(); vi.stubGlobal("fetch", provider);

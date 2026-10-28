@@ -110,6 +110,11 @@ export const Route = createFileRoute("/api/mobile")({
 });
 
 function readText(parts: unknown): string {
-  try { const parsed = JSON.parse(String(parts || "[]")); return Array.isArray(parsed) ? parsed.filter(part => part.type === "text").map(part => String(part.text || "")).join("\n") : ""; }
+  try {
+    const parsed = JSON.parse(String(parts || "[]"));
+    if (Array.isArray(parsed)) return parsed.filter(part => part.type === "text").map(part => String(part.text || "")).join("\n");
+    if (parsed && typeof parsed === "object") return typeof parsed.text === "string" ? parsed.text : "";
+    return typeof parsed === "string" ? parsed : "";
+  }
   catch { return ""; }
 }

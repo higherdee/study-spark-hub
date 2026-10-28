@@ -6,7 +6,7 @@ Version 2 replaces the Chrome launcher with Kotlin and Jetpack Compose. App scre
 
 Welcome, Today, searchable Library, saved reading shelf, PDF/image reader with pinch zoom and pagination, Boss AI, student profile, points activity, campus leaders, material sharing, study groups and discussions, and a persistent focus timer.
 
-The institution and course directories are bundled JSON. Library metadata and opened documents are cached on the device. AI and account operations require internet. Focus time does not mint reward points. The current chat survives tab switches but is not restored after app termination. Study-group messages refresh manually.
+The institution and course directories are bundled JSON. Library metadata and opened documents are cached on the device. AI and account operations require internet. Focus time does not mint reward points. Conversations are saved on the server and the active thread is restored per signed-in user after app termination. Study-group messages refresh manually.
 
 ## Backend and security
 
@@ -28,7 +28,7 @@ The first native release does not include withdrawal submission, subscription ch
 
 ## Validation on 28 October 2026
 
-The Android 15 emulator checks passed for cold launch, guest navigation, live library results, rendering a real document, Boss AI screen navigation, account navigation and starting the focus timer. Seven native API access-control tests passed and the website production build passed.
+The Android 15 emulator checks passed for cold launch, guest navigation, live library results, rendering a real document, Boss AI screen navigation, account navigation and starting the focus timer. Twelve API access-control, conversation and Markdown rendering tests passed and the website production build passed. An isolated debug-only Android activity also verified native mathematics, tables and code rendering. Release screens use the exact website emblem and bundled Hanken Grotesk and Newsreader fonts; the redundant outer sign-in header is removed.
 
 Clerk Native API is enabled in production. The `org.syllaboss.app` release certificate is registered, its native return URL is allowlisted, and Clerk's public assetlinks file matches the original signing certificate.
 
