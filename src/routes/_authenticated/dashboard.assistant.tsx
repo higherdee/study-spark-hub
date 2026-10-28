@@ -36,10 +36,6 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import {
-  MobileCustomKeyboard,
-  getPredictiveSuggestions,
-} from "@/components/chat/mobile-custom-keyboard";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -199,7 +195,6 @@ function AssistantPage() {
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [showCustomKeyboard, setShowCustomKeyboard] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
@@ -2098,29 +2093,7 @@ function AssistantPage() {
           </div>
         </div>
 
-        {/* ========================================================================= */}
-        {/* CUSTOM KEYBOARD: Rendered in-flow below typing bar on mobile */}
-        {/* ========================================================================= */}
-        <AnimatePresence>
-          {showCustomKeyboard && isMobile && (
-            <MobileCustomKeyboard
-              value={input}
-              onChange={(val) => {
-                setInput(val);
-                if (textareaRef.current) {
-                  textareaRef.current.style.height = "auto";
-                  textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
-                }
-              }}
-              onSend={() => handleSend()}
-              isOpen={showCustomKeyboard}
-              onClose={() => setShowCustomKeyboard(false)}
-              inputRef={textareaRef}
-              disabled={thinking}
-              activeDocTitle={activeDocContext?.title}
-            />
-          )}
-        </AnimatePresence>
+
       </div>
 
       {/* ========================================================================= */}

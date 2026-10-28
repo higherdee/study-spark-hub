@@ -311,10 +311,10 @@ ${
     if (data.threadId) {
       try {
         const historyRs = await turso.execute({
-          sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND id != ? ORDER BY created_at ASC LIMIT 16",
+          sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND id != ? ORDER BY created_at DESC, rowid DESC LIMIT 16",
           args: [data.threadId, userMsgId],
         });
-        historyMessages = historyRs.rows
+        historyMessages = [...historyRs.rows].reverse()
           .map((row: any) => {
             let text = "";
             try {

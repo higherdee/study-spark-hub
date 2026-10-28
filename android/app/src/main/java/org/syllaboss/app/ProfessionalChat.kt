@@ -121,7 +121,7 @@ import org.json.JSONObject
                     val (role,text)=chat.messages[index]
                     var visible by remember {mutableStateOf(false)}
                     LaunchedEffect(Unit){visible=true}
-                    AnimatedVisibility(visible,enter=fadeIn(tween(180))+slideInVertically(tween(220)){it/8}) {
+                    androidx.compose.animation.AnimatedVisibility(visible,enter=fadeIn(tween(180))+slideInVertically(tween(220)){it/8}) {
                         Column(Modifier.fillMaxWidth(),horizontalAlignment=if(role=="user") Alignment.End else Alignment.Start) {
                             if(role=="assistant") Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {OfficialMark(24.dp);Text("Boss AI",fontWeight=FontWeight.SemiBold,fontSize=13.sp)}
                             if(role=="user") androidx.compose.foundation.text.selection.SelectionContainer {Text(text,modifier=Modifier.padding(start=24.dp).clip(RoundedCornerShape(20.dp,20.dp,5.dp,20.dp)).background(MaterialTheme.colorScheme.primary).padding(16.dp),color=MaterialTheme.colorScheme.onPrimary,fontSize=16.sp,lineHeight=25.sp)}
