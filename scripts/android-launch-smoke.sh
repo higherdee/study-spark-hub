@@ -37,3 +37,13 @@ adb logcat -b crash -d > android-smoke/crashes.txt
 if grep -q 'org.syllaboss.app' android-smoke/crashes.txt; then cat android-smoke/crashes.txt; exit 1; fi
 echo 'Native Android cold launch and guest navigation passed.'
 python3 scripts/android-ui-smoke.py
+# This activity exists only in debug builds; the distributed APK has no fixtures.
+adb shell am force-stop org.syllaboss.app
+adb shell am start -W -n org.syllaboss.app/.FormatCheckActivity > android-smoke/format-launch.txt
+sleep 8
+adb exec-out screencap -p > android-smoke/answer-formatting.png
+adb logcat -b crash -d > android-smoke/format-crashes.txt
+if grep -q 'org.syllaboss.app' android-smoke/format-crashes.txt; then cat android-smoke/format-crashes.txt; exit 1; fi
+adb shell uiautomator dump /sdcard/formatting.xml
+adb pull /sdcard/formatting.xml android-smoke/formatting.xml
+grep -q 'Native formatting check' android-smoke/formatting.xml
