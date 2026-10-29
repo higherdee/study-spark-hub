@@ -1,0 +1,21 @@
+name: Prepare local Android emulator image
+on:
+  push:
+    branches: ['codex/emulator-image-transfer-*']
+permissions:
+  contents: read
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download official Android 15 image
+        run: |
+          curl --fail --location --retry 5 --retry-all-errors --output android-35.zip https://dl.google.com/android/repository/sys-img/android/x86_64-35_r02.zip
+          echo '2d857d170c0d1b827149565da34b3383e5306f7f  android-35.zip' | sha1sum --check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: official-android-35-image
+          path: android-35.zip
+          compression-level: 0
+          retention-days: 1
