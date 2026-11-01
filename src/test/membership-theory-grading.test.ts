@@ -1,0 +1,10 @@
+import {beforeEach,expect,it,vi} from "vitest";
+const provider=vi.hoisted(()=>({text:vi.fn(),vision:vi.fn()}));
+vi.mock("@/lib/gemini",()=>({askGeminiAI:(...args:unknown[])=>provider.text(...args),askGeminiVisionAI:(...args:unknown[])=>provider.vision(...args)}));
+import{gradeTheoryAnswer}from"@/lib/academic-ai";
+const marking=(earned:number,referenceIssue:string|null=null)=>JSON.stringify({criteria:[{criterion:"Correct reasoning",possible:10,earned,evidence:"Student's calculation",reason:"Checked calculation."}],feedback:"Checked against the question.",strengths:[],areasToImprove:[],referenceIssue});
+beforeEach(()=>{provider.text.mockReset();provider.vision.mockReset();});
+it("keeps an actual zero without replacing it with a default grade",async()=>{provider.text.mockResolvedValue(marking(0));expect((await gradeTheoryAnswer("Question","Reference","Incorrect answer")).score).toBe(0);expect(provider.text).toHaveBeenCalledOnce();});
+it("moderates a disputed reference before returning a deduction",async()=>{provider.text.mockResolvedValueOnce(marking(8.5,"The reference has the wrong formula.")).mockResolvedValueOnce(marking(10,"The student's alternative method is correct."));const result=await gradeTheoryAnswer("Question","Incorrect reference","Correct alternative solution");expect(result.score).toBe(10);expect(provider.text.mock.calls[1]?.[0]).toContain("INDEPENDENT MODERATION");});
+it("withholds a disputed numeric grade if the verification service fails",async()=>{provider.text.mockResolvedValueOnce(marking(8.5,"Incorrect reference")).mockRejectedValueOnce(new Error("Unavailable"));await expect(gradeTheoryAnswer("Question","Reference","Student answer")).rejects.toThrow("second review");});
+it("does not turn an unreadable photo into a text-only invented assessment",async()=>{provider.vision.mockRejectedValue(new Error("Unreadable photograph"));await expect(gradeTheoryAnswer("Question","Reference","",undefined,{base64:"fixture",mimeType:"image/jpeg"})).rejects.toThrow("Unreadable");expect(provider.text).not.toHaveBeenCalled();});

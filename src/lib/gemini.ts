@@ -44,6 +44,7 @@ export async function askGeminiVisionAI(
     systemPrompt?: string;
     temperature?: number;
     responseMimeType?: string;
+    reasoning?: boolean;
   }
 ): Promise<string> {
   const geminiApiKey = getGeminiApiKey();
@@ -89,7 +90,8 @@ export async function askGeminiVisionAI(
     payload.generationConfig.responseMimeType = options.responseMimeType;
   }
 
-  const visionModels = ["gemini-flash-lite-latest", "gemini-flash-latest"];
+  // Assessment must not silently fall back to the lightweight extraction model.
+  const visionModels = options?.reasoning ? ["gemini-flash-latest"] : ["gemini-flash-lite-latest", "gemini-flash-latest"];
   for (const model of visionModels) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -125,6 +127,7 @@ export async function askGeminiAI(
         systemPrompt?: string;
         temperature?: number;
         responseMimeType?: string;
+        reasoning?: boolean;
       }
 ): Promise<string> {
   const opts: Exclude<NonNullable<typeof options>, string> = typeof options === "string" ? { systemPrompt: options } : options || {};
@@ -157,7 +160,7 @@ export async function askGeminiAI(
         }
       }
 
-      for (const groqModel of GROQ_MODELS) {
+      for (const groqModel of opts.reasoning ? [GROQ_MODELS[0]!] : GROQ_MODELS) {
         try {
           const bodyPayload: any = {
             model: groqModel,
@@ -174,7 +177,7 @@ export async function askGeminiAI(
               "Content-Type": "application/json",
               Authorization: `Bearer ${groqApiKey}`,
             },
-            signal: AbortSignal.timeout(12000),
+            signal: AbortSignal.timeout(opts.reasoning ? 25000 : 12000),
             body: JSON.stringify(bodyPayload),
           });
 
@@ -227,7 +230,7 @@ export async function askGeminiAI(
       generationConfig.responseMimeType = opts.responseMimeType;
     }
 
-    for (const model of GEMINI_MODELS) {
+    for (const model of opts.reasoning ? ["gemini-flash-latest"] : GEMINI_MODELS) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const payload: any = { contents, generationConfig };
@@ -236,7 +239,7 @@ export async function askGeminiAI(
         const res = await (opts.fetcher ?? fetch)(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey },
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(opts.reasoning ? 25000 : 10000),
           body: JSON.stringify(payload),
         });
 

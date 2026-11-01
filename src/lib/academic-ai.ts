@@ -1,6 +1,6 @@
 import { parseStudyArray } from "./ai/study-json";
 import { askGeminiAI, askGeminiVisionAI } from "./gemini";
-import { theoryMarkingPrompt, parseTheoryMarking } from "./ai/theory-marking";
+import { theoryMarkingPrompt, parseTheoryMarking, theoryModerationPrompt } from "./ai/theory-marking";
 import type { Profile } from "@/integrations/turso/client";
 
 export interface QuizQuestion {
@@ -201,9 +201,17 @@ export async function generatePracticeQuestions(materialTitle: string, contextTe
 export async function gradeTheoryAnswer(question: string, modelAnswer: string, studentAnswer: string, fetcher?: typeof fetch, image?: { base64: string; mimeType: string }, maxScore = 10) {
   if (!studentAnswer.trim() && !image) return { score: 0, maxScore, verdict: "Needs Revision", feedback: "No answer was submitted.", criteria: [], strengths: [], areasToImprove: ["Submit an answer to receive feedback."], transcription: undefined, referenceIssue: null };
   const prompt = theoryMarkingPrompt({question,modelAnswer,studentAnswer},maxScore);
-  const options = {temperature:0.1,responseMimeType:"application/json",...(fetcher?{fetcher}:{})};
+  const options = {temperature:0.1,responseMimeType:"application/json",reasoning:true,...(fetcher?{fetcher}:{})};
   const raw = image ? await askGeminiVisionAI(prompt,image.base64,image.mimeType,options) : await askGeminiAI(prompt,options);
-  return parseTheoryMarking(raw,maxScore);
+  const assessment=parseTheoryMarking(raw,maxScore);
+  if(assessment.referenceIssue&&assessment.score<maxScore){
+    const moderation=theoryModerationPrompt({question,modelAnswer,studentAnswer},assessment,maxScore);
+    try{
+      const checked=image?await askGeminiVisionAI(moderation,image.base64,image.mimeType,options):await askGeminiAI(moderation,options);
+      return parseTheoryMarking(checked,maxScore);
+    }catch{throw new Error("The reference answer may be incorrect. Your response needs a second review before a final mark can be assigned.");}
+  }
+  return assessment;
 }
 /**
  * Generate Flashcards
