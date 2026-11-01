@@ -1424,7 +1424,6 @@ function AssistantPage() {
       {/* MAIN CHAT & INTERACTIVE WORKSPACE */}
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
-        {activeDocContext?.id&&<DocumentFocusBar key={activeDocContext.id} id={activeDocContext.id} title={activeDocContext.title} focus={documentFocus} change={setDocumentFocus} detach={()=>{setActiveDocContext(null);setDocumentFocus("");}}/>}
         {/* Mobile Header (Top-Right Recent Menu + New Chat) */}
         <div className="md:hidden flex items-center justify-between px-3.5 py-2 border-b border-border/50 bg-card/85 backdrop-blur-md shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
@@ -1519,6 +1518,7 @@ function AssistantPage() {
 
 
 
+        {activeDocContext?.id&&<DocumentFocusBar key={activeDocContext.id} id={activeDocContext.id} title={activeDocContext.title} focus={documentFocus} change={setDocumentFocus} detach={()=>{setActiveDocContext(null);setDocumentFocus("");}}/>}
         {/* Messages Stream */}
         <div
           ref={messagesScrollRef}
@@ -1558,7 +1558,7 @@ function AssistantPage() {
                     onClick={() => prepareStudyPrompt("mcq")}
                     className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all flex items-center justify-between lift press"
                   >
-                    <span>20 Practice MCQ Questions</span>
+                    <span>Practice questions</span>
                     <CheckCircle2 className="size-3.5 text-forest" />
                   </button>
                   <button
@@ -1566,7 +1566,7 @@ function AssistantPage() {
                     onClick={() => prepareStudyPrompt("flashcards")}
                     className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all flex items-center justify-between lift press"
                   >
-                    <span>20 Study Flashcards</span>
+                    <span>Build flashcards</span>
                     <Layers className="size-3.5 text-brand" />
                   </button>
                   <button

@@ -5,7 +5,7 @@ vi.mock("@/integrations/r2/client.server",()=>({getFromR2:async()=>({bytes:state
 vi.mock("@/lib/membership/policy.server",()=>({requireLibraryAiAccess:async()=>{},enforceChatRetention:async()=>{}}));
 vi.mock("@/lib/membership/ai.server",()=>({budgetedAiFetch:vi.fn(),withAiAllowance:async(_id:string,run:()=>unknown)=>run()}));
 vi.mock("@/lib/gemini",()=>({askGeminiAI:vi.fn(),askGeminiVisionAI:(...args:unknown[])=>state.vision(...args)}));
-import {loadDocumentContext,generateFromStoredDocument,selectDocumentExcerpt} from "@/lib/document-study.server";
+import {loadDocumentContext,generateFromStoredDocument,selectDocumentExcerpt,documentVisionInput} from "@/lib/document-study.server";
 beforeAll(()=>{
   const objects:string[]=["<< /Type /Catalog /Pages 2 0 R >>","", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
   const kids:string[]=[];
@@ -25,6 +25,10 @@ it("extracts all 70 actual PDF pages and retrieves page 65 line 20 despite an un
   const passage=selectDocumentExcerpt(document.text,"Explain line 20 on page 65");expect(passage).toContain("[Line 20] Page 65 line 20: the capacitor stores 24 joules");expect(passage).not.toContain("French literature");
 });
 it("sends the original complete PDF bytes to study generation rather than its title or description",async()=>{
-  await generateFromStoredDocument("owner","test-pdf","Create questions from page 65 line 20");
-  const args=state.vision.mock.calls[0]!;expect(Buffer.from(args[1] as string,"base64")).toEqual(Buffer.from(state.bytes));expect(args[2]).toBe("application/pdf");expect(args[0]).toContain("capacitor stores 24 joules");
+  await generateFromStoredDocument("owner","test-pdf","Create questions across the entire document");
+  const args=state.vision.mock.calls[0]!;expect(Buffer.from(args[1] as string,"base64")).toEqual(Buffer.from(state.bytes));expect(args[2]).toBe("application/pdf");expect(args[0]).toContain("complete original document");
+});
+it("isolates a requested scanned page while retaining its original citation number",async()=>{
+  const focused=await documentVisionInput(state.bytes,"application/pdf","Explain the diagram on page 65");const {PDFDocument}=await import("pdf-lib");const pdf=await PDFDocument.load(focused.bytes);
+  expect(pdf.getPageCount()).toBe(1);expect(focused.sourceNote).toContain("ORIGINAL PDF PAGE 65");expect(focused.bytes.length).toBeLessThan(state.bytes.length/10);
 });
