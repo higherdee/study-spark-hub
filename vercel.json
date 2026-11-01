@@ -1,4 +1,5 @@
 {
+  "crons": [{ "path": "/api/membership-maintenance", "schedule": "0 3 * * *" }],
   "headers": [
     {
       "source": "/downloads/syllaboss.apk",

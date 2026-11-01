@@ -20,6 +20,7 @@ const nav: NavItem[] = [
   { to: "/admin/materials", label: "Review", icon: FileStack },
   { to: "/admin/complaints", label: "Appeals", icon: AlertCircle },
   { to: "/admin/broadcast", label: "Broadcast", icon: Megaphone },
+  { to: "/admin/promos", label: "Promo codes", icon: Megaphone },
   { to: "/admin/users", label: "Students", icon: Users },
   { to: "/admin/withdrawals", label: "Payouts", icon: Wallet },
 ];

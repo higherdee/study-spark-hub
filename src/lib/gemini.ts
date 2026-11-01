@@ -9,51 +9,12 @@ export interface GeminiMessage {
   content: string;
 }
 
-const DEFAULT_GROQ_KEY =
-  ["gs", "k"].join("") +
-  "_" +
-  "uTwDusbxatZErBQRarmCWGdyb3FYoUjKzvctlKCtFO42Rrb5b4HP";
-
-const DEFAULT_GEMINI_KEY =
-  ["A", "Q", "."].join("") +
-  ["Ab8RN6KxDrTfuj4avQ", "FpuvgiLQ1iwNUOZcEEPM", "gM3BzN-ujPVQ"].join("");
-
 export function getGroqApiKey(): string {
-  if (typeof import.meta !== "undefined" && import.meta.env?.VITE_GROQ_API_KEY) {
-    return import.meta.env.VITE_GROQ_API_KEY;
-  }
-  if (typeof process !== "undefined" && process.env?.GROQ_API_KEY) {
-    return process.env.GROQ_API_KEY;
-  }
-  if (typeof process !== "undefined" && process.env?.VITE_GROQ_API_KEY) {
-    return process.env.VITE_GROQ_API_KEY;
-  }
-  if (typeof window !== "undefined") {
-    try {
-      const stored = window.localStorage.getItem("groq_api_key");
-      if (stored) return stored;
-    } catch (e) {}
-  }
-  return DEFAULT_GROQ_KEY;
+  return typeof window === "undefined" && typeof process !== "undefined" ? process.env["GROQ_API_KEY"] || "" : "";
 }
 
 export function getGeminiApiKey(): string {
-  if (typeof import.meta !== "undefined" && import.meta.env?.VITE_GEMINI_API_KEY) {
-    return import.meta.env.VITE_GEMINI_API_KEY;
-  }
-  if (typeof process !== "undefined" && process.env?.GEMINI_API_KEY) {
-    return process.env.GEMINI_API_KEY;
-  }
-  if (typeof process !== "undefined" && process.env?.VITE_GEMINI_API_KEY) {
-    return process.env.VITE_GEMINI_API_KEY;
-  }
-  if (typeof window !== "undefined") {
-    try {
-      const stored = window.localStorage.getItem("gemini_api_key");
-      if (stored) return stored;
-    } catch (e) {}
-  }
-  return DEFAULT_GEMINI_KEY;
+  return typeof window === "undefined" && typeof process !== "undefined" ? process.env["GEMINI_API_KEY"] || "" : "";
 }
 
 // Live tested working models on Groq:
@@ -79,6 +40,7 @@ export async function askGeminiVisionAI(
   imageBase64: string,
   mimeType: string = "image/jpeg",
   options?: {
+    fetcher?: typeof fetch;
     systemPrompt?: string;
     temperature?: number;
     responseMimeType?: string;
@@ -130,10 +92,10 @@ export async function askGeminiVisionAI(
   const visionModels = ["gemini-flash-lite-latest", "gemini-flash-latest"];
   for (const model of visionModels) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
-      const res = await fetch(url, {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const res = await (options?.fetcher ?? fetch)(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey },
         signal: AbortSignal.timeout(25000),
         body: JSON.stringify(payload),
       });
@@ -158,13 +120,14 @@ export async function askGeminiAI(
   options?:
     | string
     | {
+        fetcher?: typeof fetch;
         model?: string;
         systemPrompt?: string;
         temperature?: number;
         responseMimeType?: string;
       }
 ): Promise<string> {
-  const opts = typeof options === "string" ? { systemPrompt: options } : options || {};
+  const opts: Exclude<NonNullable<typeof options>, string> = typeof options === "string" ? { systemPrompt: options } : options || {};
   const groqApiKey = getGroqApiKey();
 
   // 1. PRIMARY ENGINE: Groq Cloud (Ultra-fast LPU inference)
@@ -205,7 +168,7 @@ export async function askGeminiAI(
             bodyPayload.response_format = { type: "json_object" };
           }
 
-          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          const res = await (opts.fetcher ?? fetch)("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -266,13 +229,13 @@ export async function askGeminiAI(
 
     for (const model of GEMINI_MODELS) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
         const payload: any = { contents, generationConfig };
         if (systemInstruction) payload.systemInstruction = systemInstruction;
 
-        const res = await fetch(url, {
+        const res = await (opts.fetcher ?? fetch)(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": geminiApiKey },
           signal: AbortSignal.timeout(10000),
           body: JSON.stringify(payload),
         });
@@ -289,25 +252,5 @@ export async function askGeminiAI(
   }
 
   // 3. TERTIARY RESILIENT ACADEMIC ENGINE FALLBACK
-  return generateOfflineAcademicResponse(promptOrMessages);
-}
-
-function generateOfflineAcademicResponse(
-  promptOrMessages: string | GeminiMessage[]
-): string {
-  const query =
-    typeof promptOrMessages === "string"
-      ? promptOrMessages
-      : promptOrMessages[promptOrMessages.length - 1]?.content || "";
-
-  return `### Syllaboss Study Assistant (Boss AI)
-
-I have analyzed your study inquiry: **"${query.slice(0, 80)}..."**
-
-**Key Concept Breakdown:**
-1. **Core Principle:** In university-level study, mastering foundational axioms and definitions is essential for examination excellence.
-2. **Step-by-Step Methodology:** Review key worked examples, note the standard notation formulas, and identify common calculation errors.
-3. **Examination Strategy:** Past examination patterns show lecturers place high test weight on structured problem derivations.
-
-*Powered by Groq Cloud LPU. You can ask me to generate practice questions, grade theory questions, or explain complex course concepts.*`;
+  throw new Error("Boss AI could not reach a study model. Please try again shortly.");
 }

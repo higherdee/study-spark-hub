@@ -147,6 +147,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 import { ThemeProvider } from "@/lib/theme";
+import { MaterialAccessGate } from "@/components/material-access-gate";
+import { CookiePreferences } from "@/components/cookie-preferences";
+import { MembershipNotices } from "@/components/membership-notices";
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
@@ -206,7 +209,10 @@ function RootComponent() {
           <AuthProvider>
             <MaintenanceGate>
               <Outlet />
+              <MaterialAccessGate />
+              <MembershipNotices />
             </MaintenanceGate>
+            <CookiePreferences />
             <Toaster richColors position="top-center" />
           </AuthProvider>
         </SmoothScrollProvider>

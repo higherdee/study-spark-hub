@@ -1,8 +1,18 @@
+import { authorizeStudyData } from "@/lib/membership/study-access.server";
+import { withAiAllowance, budgetedAiFetch } from "@/lib/membership/ai.server";
+import { membershipAccess, requireLibraryAiAccess } from "@/lib/membership/policy.server";
+import { generationCount } from "@/lib/membership/policy";
 ﻿import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { turso } from "@/integrations/turso/client.server";
 import { askGeminiAI, askGeminiVisionAI, getGroqApiKey } from "@/lib/gemini";
 export { getGroqApiKey };
+
+function usableQuestion(q: any, objective: boolean) {
+  return q && typeof q.question === "string" && q.question.trim() && typeof q.modelAnswer === "string" && q.modelAnswer.trim()
+    && (!objective || Array.isArray(q.options) && q.options.length === 4 && q.options.every((o: unknown) => typeof o === "string" && o.trim()) && Number.isInteger(q.correctOptionIndex) && q.correctOptionIndex >= 0 && q.correctOptionIndex < 4);
+}
+function usableCard(c: any) { return c && typeof c.front === "string" && c.front.trim() && typeof c.back === "string" && c.back.trim(); }
 
 // Smart model assignment prioritizing active Groq models
 export type AcademicTaskType = "general" | "quiz" | "theory-grade" | "flashcards" | "summary";
@@ -91,7 +101,7 @@ Rules:
     const models = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
     for (const model of models) {
       try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const res = await budgetedAiFetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -127,7 +137,7 @@ Rules:
     try {
       const geminiRes = await askGeminiAI(
         `${systemPrompt}\nUser message: "${cleaned.slice(0, 300)}"\nOutput strictly only the 2 to 5 word title:`,
-        { temperature: 0.1 }
+        { temperature: 0.1 , fetcher: budgetedAiFetch}
       );
       if (geminiRes && !geminiRes.includes("### Syllaboss")) {
         title = geminiRes.trim();
@@ -167,6 +177,8 @@ export const createStudyThreadServerFn = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+
     const threadId = crypto.randomUUID();
     await turso.execute({
       sql: "INSERT INTO chat_threads (id, user_id, title) VALUES (?, ?, ?)",
@@ -179,6 +191,8 @@ export const createStudyThreadServerFn = createServerFn({ method: "POST" })
 export const getStudyThreadsServerFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ userId: z.string() }).parse(d))
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+
     const rs = await turso.execute({
       sql: "SELECT id, title, updated_at FROM chat_threads WHERE user_id = ? ORDER BY updated_at DESC",
       args: [data.userId],
@@ -194,6 +208,8 @@ export const getStudyThreadsServerFn = createServerFn({ method: "GET" })
 export const deleteStudyThreadServerFn = createServerFn({ method: "POST" })
   .validator((d: unknown) => z.object({ threadId: z.string() }).parse(d))
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+
     await turso.batch([
       { sql: "DELETE FROM chat_threads WHERE id = ?", args: [data.threadId] },
       { sql: "DELETE FROM chat_messages WHERE thread_id = ?", args: [data.threadId] },
@@ -205,6 +221,8 @@ export const deleteStudyThreadServerFn = createServerFn({ method: "POST" })
 export const getStudyMessagesServerFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ threadId: z.string() }).parse(d))
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+
     const rs = await turso.execute({
       sql: "SELECT id, message_id, role, parts, created_at FROM chat_messages WHERE thread_id = ? ORDER BY created_at ASC, rowid ASC",
       args: [data.threadId],
@@ -266,6 +284,10 @@ export const askBossAiServerFn = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+    if (data.docContext || data.attachedMaterial) await requireLibraryAiAccess(memberUserId);
+    return withAiAllowance(memberUserId, async () => {
+
     const userMsgId = crypto.randomUUID();
     const userPayload = data.attachedMaterial
       ? JSON.stringify({ text: data.query, attachedMaterial: data.attachedMaterial })
@@ -351,7 +373,7 @@ ${
     if (groqKey) {
       for (const model of modelsToTry) {
         try {
-          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          const res = await budgetedAiFetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -394,8 +416,7 @@ ${
 
         const geminiResult = await askGeminiAI(geminiContextPrompt, {
           systemPrompt: systemInstruction,
-          temperature: data.taskType === "quiz" ? 0.3 : 0.7,
-        });
+          temperature: data.taskType === "quiz" ? 0.3 : 0.7, fetcher: budgetedAiFetch});
         if (
           geminiResult &&
           !geminiResult.includes("### Syllaboss Study Assistant (Boss AI)\n\nI have analyzed your study inquiry:")
@@ -407,9 +428,8 @@ ${
       }
     }
 
-    // Tertiary Fallback: Offline academic overview
     if (!aiResponseText) {
-      aiResponseText = `### Syllaboss Study Assistant (Boss AI)\n\nI have analyzed your query: **"${data.query.slice(0, 80)}"**\n\n**Key Concept Summary:**\n1. **Core Principle:** In university study, foundational clarity and systematic derivation are essential.\n2. **Practical Step:** Review the textbook definitions and test yourself against past examination problems.\n3. **Pro Tip:** Ask me to generate a practice quiz or summary from your course notes anytime!`;
+      throw new Error("Boss AI could not connect. Please try again; no generated answer has been saved.");
     }
 
     // Strict Emoji filter: Strip any Unicode emojis completely
@@ -474,6 +494,8 @@ ${
       assistantMessageId: assistantMsgId,
       response: aiResponseText,
     };
+
+    });
   });
 
 // 6. Save arbitrary study message (e.g. uploaded doc notification or voice note)
@@ -491,6 +513,8 @@ export const saveStudyMessageServerFn = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+
     const msgId = crypto.randomUUID();
     const payload = JSON.stringify({
       text: data.content,
@@ -523,6 +547,8 @@ export const updateStudyThreadTitleServerFn = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+
     await turso.execute({
       sql: "UPDATE chat_threads SET title = ?, updated_at = datetime('now') WHERE id = ?",
       args: [data.title, data.threadId],
@@ -539,6 +565,8 @@ export const generateSmartThreadTitleServerFn = createServerFn({ method: "POST" 
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+
     try {
       const threadRs = await turso.execute({
         sql: "SELECT title FROM chat_threads WHERE id = ? LIMIT 1",
@@ -550,7 +578,9 @@ export const generateSmartThreadTitleServerFn = createServerFn({ method: "POST" 
         /^(new (study )?conversation|untitled|chat|new chat)$/i.test(currentTitle);
 
       if (isGeneric) {
-        const smartTitle = await generateIntelligentTitle(data.query);
+        const smartTitle = await membershipAccess(memberUserId)
+          ? await withAiAllowance(memberUserId, () => generateIntelligentTitle(data.query))
+          : data.query.trim().split(/\s+/).slice(0, 5).join(" ").slice(0, 48);
         if (smartTitle && smartTitle !== "New Conversation") {
           await turso.execute({
             sql: "UPDATE chat_threads SET title = ?, updated_at = datetime('now') WHERE id = ?",
@@ -576,6 +606,12 @@ export const generateSmartThreadTitleServerFn = createServerFn({ method: "POST" 
 export const getStudyMaterialByIdServerFn = createServerFn({ method: "GET" })
   .validator((d: unknown) => z.object({ materialId: z.string() }).parse(d))
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+    await requireLibraryAiAccess(memberUserId);
+
+    const { loadDocumentContext, selectDocumentExcerpt } = await import("@/lib/document-study.server");
+    const document = await loadDocumentContext(memberUserId, data.materialId);
+
     const rs = await turso.execute({
       sql: "SELECT id, title, course, institution, department, level, description FROM materials WHERE id = ? LIMIT 1",
       args: [data.materialId],
@@ -589,7 +625,7 @@ export const getStudyMaterialByIdServerFn = createServerFn({ method: "GET" })
       institution: String(r.institution),
       department: String(r.department),
       level: String(r.level),
-      description: r.description ? String(r.description) : "",
+      description: document.text ? selectDocumentExcerpt(document.text, "", 20000) : "This document requires visual reading. Open Read with Boss AI to ask questions about its pages.",
     };
   });
 
@@ -602,6 +638,8 @@ export const transcribeVoiceAudioServerFn = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+
     const groqKey = getGroqApiKey();
 
     if (!groqKey) {
@@ -633,7 +671,7 @@ export const transcribeVoiceAudioServerFn = createServerFn({ method: "POST" })
       formData.append("model", "whisper-large-v3-turbo");
       formData.append("response_format", "json");
 
-      let res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      let res = await budgetedAiFetch("https://api.groq.com/openai/v1/audio/transcriptions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${groqKey}`,
@@ -648,7 +686,7 @@ export const transcribeVoiceAudioServerFn = createServerFn({ method: "POST" })
         fallbackForm.append("file", blob, `speech.${ext}`);
         fallbackForm.append("model", "whisper-large-v3");
         fallbackForm.append("response_format", "json");
-        res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        res = await budgetedAiFetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${groqKey}`,
@@ -686,6 +724,10 @@ export const generateStudyQuizServerFn = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+    generationCount(data.count, await membershipAccess(memberUserId));
+    return withAiAllowance(memberUserId, async () => {
+
     // Save user prompt if provided
     if (data.userPrompt) {
       const userMsgId = crypto.randomUUID();
@@ -817,7 +859,7 @@ ${
       const models = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
       for (const model of models) {
         try {
-          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          const res = await budgetedAiFetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -854,7 +896,7 @@ ${
         const geminiPrompt = `You are a university exam generator. Generate exactly ${chunkCount} high-yield ${
           isObjective ? "multiple-choice" : "theory"
         } questions on "${data.title}".\n${prompt}\nReturn ONLY a valid JSON array:`;
-        const geminiText = await askGeminiAI(geminiPrompt, { temperature: 0.3 });
+        const geminiText = await askGeminiAI(geminiPrompt, { temperature: 0.3 , fetcher: budgetedAiFetch});
         const geminiList = repairAndParseJsonArray(geminiText);
         if (Array.isArray(geminiList) && geminiList.length > 0) return geminiList;
       } catch (geminiErr: any) {
@@ -879,7 +921,7 @@ ${
     }
 
     // Clean & normalize questions
-    let finalQuestions = allQuestions.map((q: any, i: number) => ({
+    let finalQuestions = allQuestions.filter(q => usableQuestion(q, isObjective)).map((q: any, i: number) => ({
       id: `q_${i + 1}`,
       type: data.mode,
       question: String(q.question || `Question ${i + 1} on ${data.title}`),
@@ -903,10 +945,11 @@ ${
         const topUpPrompt = `Generate exactly ${needed} additional university examination ${
           isObjective ? "multiple choice" : "theory essay"
         } questions on "${data.title}". Return ONLY a JSON array.`;
-        const topUpText = await askGeminiAI(topUpPrompt, { temperature: 0.3 });
+        const topUpText = await askGeminiAI(topUpPrompt, { temperature: 0.3 , fetcher: budgetedAiFetch});
         const topUpList = repairAndParseJsonArray(topUpText);
         if (Array.isArray(topUpList)) {
           for (const q of topUpList) {
+            if (!usableQuestion(q, isObjective)) continue;
             if (finalQuestions.length >= targetCount) break;
             const idx = finalQuestions.length + 1;
             finalQuestions.push({
@@ -924,6 +967,7 @@ ${
       } catch {}
     }
 
+    if (!finalQuestions.length) throw new Error("Boss AI could not generate valid questions. Please try again.");
     // If more than targetCount, trim to exact count
     if (finalQuestions.length > targetCount) {
       finalQuestions = finalQuestions.slice(0, targetCount);
@@ -993,6 +1037,8 @@ ${
       content: introText,
       quizData,
     };
+
+    });
   });
 
 // 11. Generate Study Flashcards with Guaranteed Exact Count
@@ -1009,6 +1055,10 @@ export const generateStudyFlashcardsServerFn = createServerFn({ method: "POST" }
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+    generationCount(data.count, await membershipAccess(memberUserId));
+    return withAiAllowance(memberUserId, async () => {
+
     // Save user prompt if provided
     if (data.userPrompt) {
       const userMsgId = crypto.randomUUID();
@@ -1108,7 +1158,7 @@ Constraints:
       const models = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
       for (const model of models) {
         try {
-          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          const res = await budgetedAiFetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -1143,7 +1193,7 @@ Constraints:
       // Resilient Fallback to Google Gemini
       try {
         const geminiPrompt = `You are an academic flashcard engine. Generate exactly ${chunkCount} high-yield study flashcards for "${data.title}".\n${prompt}\nReturn ONLY a valid JSON array:`;
-        const geminiText = await askGeminiAI(geminiPrompt, { temperature: 0.3 });
+        const geminiText = await askGeminiAI(geminiPrompt, { temperature: 0.3 , fetcher: budgetedAiFetch});
         const geminiList = repairAndParseJsonArray(geminiText);
         if (Array.isArray(geminiList) && geminiList.length > 0) return geminiList;
       } catch (gErr: any) {
@@ -1166,7 +1216,7 @@ Constraints:
       allCards = [...resA, ...resB];
     }
 
-    let finalCards = allCards.map((c: any, i: number) => ({
+    let finalCards = allCards.filter(usableCard).map((c: any, i: number) => ({
       id: `fc_${i + 1}`,
       front: String(c.front || `Core Concept ${i + 1} of ${data.title}`),
       back: String(c.back || `Definition and high-yield examination notes for concept ${i + 1}.`),
@@ -1178,10 +1228,11 @@ Constraints:
       const needed = targetCount - finalCards.length;
       try {
         const topUpPrompt = `Generate exactly ${needed} additional university flashcards on "${data.title}". Format: ${data.type === "qa" ? "Question & Answer" : "Concept & Definition"}. Return ONLY a JSON array.`;
-        const topUpText = await askGeminiAI(topUpPrompt, { temperature: 0.3 });
+        const topUpText = await askGeminiAI(topUpPrompt, { temperature: 0.3 , fetcher: budgetedAiFetch});
         const topUpList = repairAndParseJsonArray(topUpText);
         if (Array.isArray(topUpList)) {
           for (const c of topUpList) {
+            if (!usableCard(c)) continue;
             if (finalCards.length >= targetCount) break;
             const idx = finalCards.length + 1;
             finalCards.push({
@@ -1195,6 +1246,7 @@ Constraints:
       } catch {}
     }
 
+    if (!finalCards.length) throw new Error("Boss AI could not generate valid flashcards. Please try again.");
     if (finalCards.length > targetCount) {
       finalCards = finalCards.slice(0, targetCount);
     }
@@ -1258,6 +1310,8 @@ Constraints:
       content: introText,
       flashcardsData,
     };
+
+    });
   });
 
 // 12. Grade Theory Answer using Multimodal Gemini Vision (for handwritten photos) or Groq LPU
@@ -1272,6 +1326,9 @@ export const gradeTheoryAnswerServerFn = createServerFn({ method: "POST" })
     }).parse(d)
   )
   .handler(async ({ data }) => {
+    const memberUserId = await authorizeStudyData(data);
+    return withAiAllowance(memberUserId, async () => {
+
     // 1. VISION CASE: Student snapped or uploaded a photo of handwritten notes/working
     if (data.imageBase64) {
       try {
@@ -1309,8 +1366,7 @@ Marking Instructions:
           data.mimeType || "image/jpeg",
           {
             temperature: 0.2,
-            responseMimeType: "application/json",
-          }
+            responseMimeType: "application/json", fetcher: budgetedAiFetch}
         );
 
         const match = visionRaw.match(/\{[\s\S]*\}/);
@@ -1369,7 +1425,7 @@ Constraints:
     const activeModels = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
     for (const model of activeModels) {
       try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const res = await budgetedAiFetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1415,8 +1471,7 @@ Constraints:
     try {
       const geminiText = await askGeminiAI(prompt, {
         temperature: 0.2,
-        responseMimeType: "application/json",
-      });
+        responseMimeType: "application/json", fetcher: budgetedAiFetch});
       const match = geminiText.match(/\{[\s\S]*\}/);
       if (match) {
         const parsed = JSON.parse(match[0]);
@@ -1437,15 +1492,9 @@ Constraints:
       console.warn("Gemini text grading fallback error:", gErr?.message);
     }
 
-    // Honest network retry prompt (never award fake mock template scores)
-    return {
-      score: 0,
-      maxScore: 10,
-      verdict: "Needs Revision" as const,
-      feedback: "The grading service encountered a temporary connection timeout. Please click Grade Answer again to evaluate your response.",
-      strengths: ["Submission recorded"],
-      areasToImprove: ["Please tap Grade Answer to complete marking"],
-    };
+    throw new Error("Your answer could not be marked because the grading service is unavailable. Please try again; no score has been assigned.");
+
+    });
   });
 
 

@@ -8,6 +8,7 @@ import { SyllabossEmblem, SyllabossLogo } from "@/components/syllaboss-logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { clerkAppearance } from "@/integrations/clerk";
+import { TermsBeforeSignup } from "@/components/account-consent";
 
 const searchSchema = z.object({ mode: z.enum(["signin", "signup"]).catch("signin").default("signin") });
 
@@ -99,6 +100,7 @@ function AuthPage() {
           <ClerkLoaded>
             <div key={mode} className="route-enter !h-auto w-full max-w-[26rem]">
               {isSignup ? (
+                <TermsBeforeSignup>
                 <SignUp
                   appearance={clerkAppearance}
                   routing="virtual"
@@ -107,6 +109,7 @@ function AuthPage() {
                   fallbackRedirectUrl="/dashboard"
                   fallback={<AuthLoadingPanel label="Preparing account creation…" />}
                 />
+                </TermsBeforeSignup>
               ) : (
                 <SignIn
                   appearance={clerkAppearance}

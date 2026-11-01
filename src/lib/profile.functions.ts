@@ -44,7 +44,10 @@ export const getProfileServerFn = createServerFn({ method: "GET" })
   .validator((d: { userId: string }) => d)
   .handler(async ({ data }): Promise<Profile | null> => {
     await requireSelfOrAdmin(data.userId);
-    return await getProfile(data.userId);
+    const profile = await getProfile(data.userId);
+    if (!profile) return null;
+    const { membershipStatus } = await import("@/lib/billing/service.server");
+    return { ...profile, sylla_plus: (await membershipStatus(data.userId)).sylla_plus };
   });
 
 export const upsertProfileServerFn = createServerFn({ method: "POST" })

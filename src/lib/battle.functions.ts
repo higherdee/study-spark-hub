@@ -18,6 +18,9 @@ import {
 } from "@/integrations/turso/community.server";
 import { generatePracticeQuestions, gradeTheoryAnswer } from "@/lib/academic-ai";
 import { broadcastChatMessage } from "@/lib/supabase-realtime";
+import { withAiAllowance, budgetedAiFetch } from "@/lib/membership/ai.server";
+import { membershipAccess } from "@/lib/membership/policy.server";
+import { generationCount } from "@/lib/membership/policy";
 
 /**
  * Fetch all group members with live point balances for the battle host drawer
@@ -43,6 +46,7 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
     mode: "mcq" | "theory";
     sourceSummary?: string | undefined;
     sourceContext?: string | undefined;
+    sourceMaterialId?: string | undefined;
     timePerQuestion?: number | null | undefined;
     questionCount?: number | undefined;
     stakeAmount?: number | undefined;
@@ -53,16 +57,26 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
     const { requireSelfOrAdmin } = await import("@/lib/auth.server");
     await requireSelfOrAdmin(data.hostId);
     if (data.fighterIds.length > 20 || (data.stakeAmount ?? 0) < 0 || (data.stakeAmount ?? 0) > 10000) throw new Error("Invalid battle setup.");
-    const questionCount = data.questionCount || 5;
+    const members = await getStudyGroupMembersWithBalances(data.groupId, data.hostId);
+    if (data.fighterIds.some(id => !members.some(member => member.id === id))) throw new Error("Invite students who belong to this conversation.");
+    const questionCount = generationCount(data.questionCount || 5, await membershipAccess(data.hostId));
     const modeType = data.mode === "mcq" ? "objective" : "theory";
+    let sourceContext = data.sourceContext || data.title;
+    if (data.sourceMaterialId) {
+      const { loadDocumentContext, selectDocumentExcerpt } = await import("@/lib/document-study.server");
+      const document = await loadDocumentContext(data.hostId, data.sourceMaterialId);
+      sourceContext = selectDocumentExcerpt(document.text, data.title);
+      if (sourceContext.replace(/\[Page \d+\]/g, "").trim().length < 40) throw new Error("This scan needs visual reading. Use a clear text passage as the battle source.");
+    }
 
     // 1. Generate questions using Boss AI
-    const questions = await generatePracticeQuestions(
+    const questions = await withAiAllowance(data.hostId, () => generatePracticeQuestions(
       data.title,
-      data.sourceContext || data.title,
+      sourceContext,
       modeType,
-      questionCount
-    );
+      questionCount,
+      budgetedAiFetch
+    ));
 
     const battleId = crypto.randomUUID();
 
@@ -117,10 +131,11 @@ export const getBattleDetailsServerFn = createServerFn({ method: "GET" })
     participants: BattleParticipant[];
   }> => {
     const { requireCurrentUserId } = await import("@/lib/auth.server");
-    await requireCurrentUserId();
+    const actor = await requireCurrentUserId();
     const battle = await getStudyBattle(data.battleId);
     const participants = await getBattleParticipants(data.battleId);
     if (!battle) return { battle, participants };
+    await getStudyGroupMembersWithBalances(battle.group_id, actor);
     if (battle.status !== "completed") {
       try {
         const questions = JSON.parse(battle.questions_json);
@@ -150,6 +165,9 @@ export const joinBattleEscrowServerFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
     const { requireSelfOrAdmin } = await import("@/lib/auth.server");
     await requireSelfOrAdmin(data.userId);
+    const joiningBattle = await getStudyBattle(data.battleId);
+    if (!joiningBattle) throw new Error("Battle not found.");
+    await getStudyGroupMembersWithBalances(joiningBattle.group_id, data.userId);
     const res = await joinBattleEscrowRecord({
       battleId: data.battleId,
       userId: data.userId,
@@ -322,6 +340,7 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
     const battle = await getStudyBattle(data.battleId);
     if (!battle) return { success: false, winners: [] };
     if (battle.host_id !== actor) throw new Error("Only the host can grade this battle.");
+    if (battle.status === "completed" || battle.status === "cancelled") return { success: false, winners: [] };
 
     const participants = await getBattleParticipants(data.battleId);
     const submittedFighters = participants.filter((p) => p.role === "fighter" && p.status === "submitted");
@@ -336,14 +355,17 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
     } catch {
       questions = [];
     }
+    if (!questions.length || battle.mode !== "theory") throw new Error("This battle has no theory questions to grade.");
 
     // Evaluate each submitted fighter's answers
-    const fighterScores: Array<{ userId: string; userName: string; totalScore: number; evaluations: any[] }> = [];
+    const fighterScores: Array<{ userId: string; userName: string; totalScore: number; evaluations: any[]; answers: Record<string, unknown> }> = [];
 
+    await withAiAllowance(actor, async () => {
     for (const fighter of submittedFighters) {
       let answers: Record<string, { text?: string; imageBase64?: string; audioTranscript?: string }> = {};
       try {
-        answers = JSON.parse(fighter.answers_json || "{}");
+        const saved = JSON.parse(fighter.answers_json || "{}");
+        answers = saved.answers || saved;
       } catch {
         answers = {};
       }
@@ -358,15 +380,14 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
 
         try {
           if (combinedText.trim()) {
-            const grading = await gradeTheoryAnswer(q.question, q.modelAnswer || q.explanation || "", combinedText);
+            const grading = await gradeTheoryAnswer(q.question, q.modelAnswer || q.explanation || "", combinedText, budgetedAiFetch);
             totalScore += grading.score;
             evaluations.push(grading);
           } else {
             evaluations.push({ score: 0, feedback: "No response submitted." });
           }
-        } catch (err: any) {
-          evaluations.push({ score: 5, feedback: "Estimated standard credit." });
-          totalScore += 5;
+        } catch {
+          throw new Error("Boss AI could not finish grading. No estimated scores have been awarded. Try grading again.");
         }
       }
 
@@ -375,25 +396,20 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
         userName: fighter.user_name,
         totalScore,
         evaluations,
-      });
-
-      // Update participant's finalized score in Turso
-      await submitBattleAnswersRecord({
-        battleId: data.battleId,
-        userId: fighter.user_id,
-        score: totalScore,
-        answersJson: JSON.stringify({ answers, evaluations }),
+        answers,
       });
     }
-
+    });
     // Find winners
     const maxScore = Math.max(...fighterScores.map((f) => f.totalScore));
     const winners = fighterScores.filter((f) => f.totalScore === maxScore).map((f) => ({ userId: f.userId, score: f.totalScore }));
 
-    await concludeBattleRecord({
+    const concluded = await concludeBattleRecord({
       battleId: data.battleId,
       winners,
+      gradedAnswers: fighterScores.map(f => ({ userId: f.userId, score: f.totalScore, answersJson: JSON.stringify({ answers: f.answers, evaluations: f.evaluations }) })),
     });
+    if (!concluded.success) return { success: false, winners: [] };
 
     const winnerNames = fighterScores.filter((f) => f.totalScore === maxScore).map((f) => f.userName).join(", ");
 

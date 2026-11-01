@@ -35,6 +35,8 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { PromoCodeEntry } from "@/components/promo-code-entry";
+import { defaultStudyGoal, type StudyPreferences } from "@/lib/membership/preferences";
 import { useGuide } from "@/components/onboarding/guide-context";
 import { SyllaPlusModal } from "@/components/syllaplus-modal";
 import {
@@ -95,7 +97,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/settings")({
 });
 
 function SettingsPage() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, getToken } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
 
@@ -110,9 +112,17 @@ function SettingsPage() {
   const [rewardAlerts, setRewardAlerts] = useState(true);
 
   // Productivity & Study preferences
-  const [studyGoalMinutes, setStudyGoalMinutes] = useState(60);
+  const [studyGoalMinutes, setStudyGoalMinutes] = useState(defaultStudyGoal);
   const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState(60);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  async function savePreferences(preferences: StudyPreferences) {
+    const token = await getToken();
+    const response = await fetch("/api/membership", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: "preferences", preferences }) });
+    if (!response.ok) throw new Error("Your settings could not be synced. Please try again.");
+    window.dispatchEvent(new Event("syllaboss:study-preferences"));
+    void qc.invalidateQueries({ queryKey: ["profile"] });
+  }
+  const syncPreference = (preferences: StudyPreferences) => { void savePreferences(preferences).catch(() => toast.error("Saved on this device. Sync failed; please try again.")); };
 
   // Bank payout states
   const [savedBank, setSavedBank] = useState("");
@@ -184,6 +194,15 @@ function SettingsPage() {
 
   useEffect(() => {
     if (profile) {
+      const preferences = profile.study_plan?.["preferences"] as StudyPreferences | undefined;
+      if (preferences) {
+        if (preferences.studyGoalMinutes != null) { setStudyGoalMinutes(preferences.studyGoalMinutes); localStorage.setItem("syllaboss_study_goal", String(preferences.studyGoalMinutes)); }
+        if (preferences.studyReminders != null) { setStudyReminders(preferences.studyReminders); localStorage.setItem("syllaboss_study_reminders", String(preferences.studyReminders)); }
+        if (preferences.rewardAlerts != null) { setRewardAlerts(preferences.rewardAlerts); localStorage.setItem("syllaboss_reward_alerts", String(preferences.rewardAlerts)); }
+        if (preferences.idleTimeoutMinutes != null) setIdleTimeoutMinutes(preferences.idleTimeoutMinutes);
+        if (preferences.soundEnabled != null) setSoundEnabled(preferences.soundEnabled);
+        if (preferences.bank) { setSavedBank(preferences.bank.name); setSavedAccountNum(preferences.bank.accountNumber); setSavedAccountName(preferences.bank.accountName); }
+      }
       setFullName(profile.full_name || "");
       setUsername(profile.username || "");
       setAvatarUrl(profile.avatar_url || "");
@@ -386,7 +405,7 @@ function SettingsPage() {
     toast.success("Test notification triggered on your device!");
   };
 
-  const handleSaveBankDetails = () => {
+  const handleSaveBankDetails = async () => {
     if (!savedBank) {
       toast.error("Please select or enter a bank.");
       return;
@@ -402,6 +421,7 @@ function SettingsPage() {
 
     setIsSavingBank(true);
     try {
+      await savePreferences({ bank: { name: savedBank, accountNumber: savedAccountNum, accountName: savedAccountName } });
       localStorage.setItem("syllaboss_saved_bank", savedBank);
       localStorage.setItem("syllaboss_saved_acct", savedAccountNum);
       localStorage.setItem("syllaboss_saved_name", savedAccountName);
@@ -442,7 +462,8 @@ function SettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-20">
+    <div data-settings-screen className="max-w-3xl mx-auto space-y-6 pb-20">
+      <PromoCodeEntry />
       <PageHeader
         eyebrow="Preferences & Account"
         title="Settings"
@@ -580,6 +601,7 @@ function SettingsPage() {
               checked={studyReminders}
               onChange={(e) => {
                 setStudyReminders(e.target.checked);
+                syncPreference({ studyReminders: e.target.checked });
                 localStorage.setItem("syllaboss_study_reminders", String(e.target.checked));
                 toast.success(e.target.checked ? "Study reminders enabled." : "Study reminders disabled.");
               }}
@@ -597,6 +619,7 @@ function SettingsPage() {
               checked={rewardAlerts}
               onChange={(e) => {
                 setRewardAlerts(e.target.checked);
+                syncPreference({ rewardAlerts: e.target.checked });
                 localStorage.setItem("syllaboss_reward_alerts", String(e.target.checked));
                 toast.success(e.target.checked ? "Reward alerts enabled." : "Reward alerts disabled.");
               }}
@@ -670,15 +693,18 @@ function SettingsPage() {
               onChange={(e) => {
                 const val = Number(e.target.value);
                 setStudyGoalMinutes(val);
+                syncPreference({ studyGoalMinutes: val });
                 localStorage.setItem("syllaboss_study_goal", String(val));
                 toast.success(`Daily focus target set to ${val} minutes.`);
               }}
               className="rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value={30}>30 Minutes</option>
-              <option value={60}>1 Hour (Recommended)</option>
+              <option value={60}>1 Hour</option>
               <option value={90}>1.5 Hours</option>
               <option value={120}>2 Hours</option>
+              <option value={150}>2.5 Hours</option>
+              <option value={180}>3 Hours</option>
             </select>
           </div>
 

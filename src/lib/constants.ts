@@ -7,7 +7,7 @@ export const PLAN_NAME = "SyllaPlus";
 
 // SyllaPlus 1.3x Earning Multiplier
 export const SYLLAPLUS_EARNINGS_MULTIPLIER = 1.3;
-export const SYLLAPLUS_PRICE_NAIRA = 7999;
+export const SYLLAPLUS_PRICE_NAIRA = 6999;
 
 // Regional & International Pricing Models
 export const REGIONAL_COUNTRIES = [
@@ -22,16 +22,16 @@ export const SYLLAPLUS_PRICING = {
   regional: {
     currency: "NGN",
     symbol: "₦",
-    weekly: 2499,
-    monthly: 7999,
-    yearly: 80000,
+    weekly: 1999,
+    monthly: 6999,
+    yearly: 68999,
   },
   international: {
     currency: "USD",
     symbol: "$",
-    weekly: 4.99,
-    monthly: 13.99,
-    yearly: 119.99,
+    weekly: null,
+    monthly: 12.99,
+    yearly: 109.99,
   },
 };
 

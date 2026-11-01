@@ -1,3 +1,6 @@
+import { reportStudyError } from "@/lib/membership/report-error";
+import { StudyModePanel, type StudyMode } from "@/components/chat/study-mode-panel";
+import { useMembership } from "@/hooks/use-membership";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -193,6 +196,9 @@ function AssistantPage() {
     });
   };
   const [showMenuDrawer, setShowMenuDrawer] = useState(false);
+  const [studyMode, setStudyMode] = useState<StudyMode | null>(null);
+  const { data: membership } = useMembership();
+  const hasPlusAccess = membership?.paid ?? false;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -254,7 +260,7 @@ function AssistantPage() {
   const [gradingTheory, setGradingTheory] = useState(false);
 
   // Flashcards Configuration & State (Up to 50 cards)
-  const [flashcardCount, setFlashcardCount] = useState<number>(10);
+  const [flashcardCount, setFlashcardCount] = useState<number>(5);
   const [flashcardType, setFlashcardType] = useState<"qa" | "fill_blank">("qa");
   const [flashcards, setFlashcards] = useState<Flashcard[] | null>(null);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -818,43 +824,7 @@ function AssistantPage() {
   const [isAssignmentMode, setIsAssignmentMode] = useState(false);
 
   // Prefill typing bar with customizable prompt template when clicking study action buttons
-  function prepareStudyPrompt(mode: "mcq" | "theory" | "flashcards" | "summary" | "assignment") {
-    setShowDropUpMenu(false);
-    setShowMenuDrawer(false);
-    const docTitle = activeDocContext?.title;
-
-    let template = "";
-    if (mode === "mcq") {
-      template = docTitle
-        ? `Generate 20 MCQ questions on "${docTitle}": `
-        : "Generate 20 MCQ questions on: ";
-    } else if (mode === "theory") {
-      template = docTitle
-        ? `Generate 10 theory exam questions on "${docTitle}": `
-        : "Generate 10 theory exam questions on: ";
-    } else if (mode === "flashcards") {
-      template = docTitle
-        ? `Generate 20 study flashcards on "${docTitle}": `
-        : "Generate 20 study flashcards on: ";
-    } else if (mode === "summary") {
-      template = docTitle
-        ? `Write a detailed, high-yield exam summary for "${docTitle}": `
-        : "Write a detailed, high-yield exam summary on: ";
-    } else if (mode === "assignment") {
-      setIsAssignmentMode(true);
-      template = "[Assignment Help] ";
-    }
-
-    setInput(template);
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(template.length, template.length);
-        textareaRef.current.style.height = "auto";
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
-      }
-    }, 50);
-  }
+  function prepareStudyPrompt(mode: "mcq" | "theory" | "flashcards" | "summary" | "assignment") { setShowDropUpMenu(false); setShowMenuDrawer(false); setShowModesMenu(false); setStudyMode(mode); }
 
   // Study Intent Detector (Automatically route "give me 20 questions", "give me 30 flashcards", etc.)
   function detectStudyIntent(text: string) {
@@ -971,7 +941,7 @@ function AssistantPage() {
       }).catch(() => {});
     } catch (err: any) {
       console.error("Boss AI query execution error:", err);
-      toast.error("Boss AI was unable to generate a response. Please retry.");
+      reportStudyError(err, "Boss AI was unable to generate a response. Please retry.");
     } finally {
       setThinking(false);
     }
@@ -1037,7 +1007,7 @@ function AssistantPage() {
     setShowDocMenu(false);
     setThinking(true);
 
-    const countToUse = countOverride || mcqCount;
+    const countToUse = Math.min(countOverride || mcqCount, hasPlusAccess ? 50 : 5);
     const modeToUse = modeOverride || mcqMode;
     toast.loading(`Preparing ${countToUse} practice questions...`, { id: "mcq-gen" });
 
@@ -1105,7 +1075,7 @@ function AssistantPage() {
       toast.success(`${res.quizData.questions.length} Practice Questions Ready!`, { id: "mcq-gen" });
     } catch (err: any) {
       console.error("MCQ generation error:", err);
-      toast.error("Failed to generate quiz questions. Please retry.", { id: "mcq-gen" });
+      reportStudyError(err, "Failed to generate quiz questions. Please retry.", { id: "mcq-gen" });
     } finally {
       setThinking(false);
     }
@@ -1124,7 +1094,7 @@ function AssistantPage() {
     setShowDocMenu(false);
     setThinking(true);
 
-    const countToUse = countOverride || theoryCount;
+    const countToUse = Math.min(countOverride || theoryCount, hasPlusAccess ? 50 : 5);
     const modeToUse = modeOverride || theoryMode;
     toast.loading(`Preparing ${countToUse} theory questions with exam marking...`, { id: "theory-gen" });
 
@@ -1192,7 +1162,7 @@ function AssistantPage() {
       toast.success(`${res.quizData.questions.length} Theory Questions prepared!`, { id: "theory-gen" });
     } catch (err: any) {
       console.error("Theory generation error:", err);
-      toast.error("Failed to generate theory questions. Please retry.", { id: "theory-gen" });
+      reportStudyError(err, "Failed to generate theory questions. Please retry.", { id: "theory-gen" });
     } finally {
       setThinking(false);
     }
@@ -1211,7 +1181,7 @@ function AssistantPage() {
     setShowDocMenu(false);
     setThinking(true);
 
-    const countToUse = countOverride || flashcardCount;
+    const countToUse = Math.min(countOverride || flashcardCount, hasPlusAccess ? 50 : 5);
     const typeToUse = typeOverride || flashcardType;
     toast.loading(`Generating ${countToUse} 3D flashcards...`, { id: "fc-gen" });
 
@@ -1277,7 +1247,7 @@ function AssistantPage() {
       toast.success(`${res.flashcardsData.cards.length} Flashcards ready to study!`, { id: "fc-gen" });
     } catch (err: any) {
       console.error("Flashcards generation error:", err);
-      toast.error("Could not generate flashcards. Please retry.", { id: "fc-gen" });
+      reportStudyError(err, "Could not generate flashcards. Please retry.", { id: "fc-gen" });
     } finally {
       setThinking(false);
     }
@@ -1864,7 +1834,7 @@ function AssistantPage() {
                   type="button"
                   onClick={() => {
                     setShowModesMenu(false);
-                    setIsMcqConfigOpen(true);
+                    prepareStudyPrompt("mcq");
                   }}
                   className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
                 >
@@ -1880,7 +1850,7 @@ function AssistantPage() {
                   <div
                     onClick={() => {
                       setShowModesMenu(false);
-                      setIsTheoryConfigOpen(true);
+                      prepareStudyPrompt("theory");
                     }}
                     className="flex items-center justify-between cursor-pointer text-xs font-semibold text-foreground hover:text-brand transition-colors"
                   >
@@ -1921,7 +1891,7 @@ function AssistantPage() {
                   type="button"
                   onClick={() => {
                     setShowModesMenu(false);
-                    setIsFlashcardConfigOpen(true);
+                    prepareStudyPrompt("flashcards");
                   }}
                   className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-brand/10 hover:text-brand transition-all"
                 >
@@ -1937,7 +1907,7 @@ function AssistantPage() {
                   type="button"
                   onClick={() => {
                     setShowModesMenu(false);
-                    setIsAssignmentModalOpen(true);
+                    prepareStudyPrompt("assignment");
                   }}
                   className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-brass/10 hover:text-brass-ink transition-all"
                 >
@@ -1953,7 +1923,7 @@ function AssistantPage() {
                   type="button"
                   onClick={() => {
                     setShowModesMenu(false);
-                    triggerSummarize();
+                    prepareStudyPrompt("summary");
                   }}
                   className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-rose-500/10 hover:text-rose-600 transition-all"
                 >
@@ -1981,6 +1951,15 @@ function AssistantPage() {
             </div>
           )}
 
+          {studyMode && <StudyModePanel mode={studyMode} maxCount={hasPlusAccess ? 50 : 5} hasContext={!!activeDocContext || messages.some((message) => message.role === "user" && !/^(hi|hello|hey|test|thanks)[!.?\s]*$/i.test(message.content.trim()))} busy={thinking} close={() => setStudyMode(null)} generate={(topic, count, fromConversation) => {
+            const selectedTopic = topic || (fromConversation ? activeDocContext?.title || [...messages].reverse().find((message) => message.role === "user")?.content.slice(0, 200) || "" : "");
+            if (!selectedTopic.trim()) { toast.error("Add a topic first so Boss AI knows what to generate."); return; }
+            const selectedMode = studyMode; setStudyMode(null);
+            if (selectedMode === "mcq") void startMcqQuiz(count, undefined, selectedTopic, selectedTopic);
+            else if (selectedMode === "theory") void startTheoryQuiz(count, undefined, selectedTopic, selectedTopic);
+            else if (selectedMode === "flashcards") void startFlashcards(count, undefined, selectedTopic, selectedTopic);
+            else void handleSend(selectedMode === "summary" ? "Summarize this topic: " + selectedTopic : "Help me work through this problem: " + selectedTopic);
+          }}/>}
           {/* Autogrowing Typing Capsule */}
           <div className="boss-composer rounded-2xl sm:rounded-3xl border border-border bg-card p-3 shadow-xs focus-within:border-forest/50">
             <textarea

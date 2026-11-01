@@ -1,3 +1,4 @@
+import { getDownloadUrlServerFn } from "@/lib/membership/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Download, Eye, FileText, Loader2, X, Sparkles, BookOpen, GraduationCap, Building2, Star } from "lucide-react";
@@ -12,7 +13,7 @@ import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, type Material } from "@/integrations/turso/client";
 import { LEVELS, MATERIAL_TYPES, POINTS_NAME } from "@/lib/constants";
-import { getDownloadUrlServerFn, recordMaterialViewServerFn } from "@/lib/upload.functions";
+import { recordMaterialViewServerFn } from "@/lib/upload.functions";
 
 const searchSchema = z.object({
   q: z.string().catch("").default(""),

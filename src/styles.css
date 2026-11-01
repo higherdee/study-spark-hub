@@ -5,6 +5,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+[data-membership="plus"] ins.adsbygoogle,
+[data-membership="plus"] .google-auto-placed { display: none !important; }
+.study-flashcard-face[data-flashcard-color="0"] { --study-card-paper: #e4eee2; }
+.study-flashcard-face[data-flashcard-color="1"] { --study-card-paper: #f6e8dc; }
+.study-flashcard-face[data-flashcard-color="2"] { --study-card-paper: #e1edf3; }
+.study-flashcard-face[data-flashcard-color="3"] { --study-card-paper: #ece5f3; }
+.study-flashcard-face[data-flashcard-color="4"] { --study-card-paper: #f1edcf; }
+.study-flashcard-face { background: var(--study-card-paper, var(--card)); }
+.dark .study-flashcard-face { background: color-mix(in srgb, var(--study-card-paper) 13%, #15251f); }
+
 /*
  * Syllaboss design system — "Scholar's Ledger"
  *
@@ -893,3 +903,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 @keyframes study-thinking { 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) { .boss-thinking-dots { animation: none; } }
 @media (max-width: 640px) { .boss-transcript { padding: 1.25rem 1rem; } .boss-workspace { border-inline: 0; } }
+@media (max-width: 1023px) {
+  body:has([data-chat-active="true"]) [data-mobile-tabs] { display: none; }
+  body:has([data-chat-active="true"]) #app-main-content { padding-bottom: env(safe-area-inset-bottom); }
+  [data-settings-screen] input, [data-settings-screen] select { font-size: 16px; }
+}

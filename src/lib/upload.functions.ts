@@ -20,27 +20,16 @@ import { getCurrentUserIdOrNull, requireAdmin, requireCurrentUserId, requireSelf
 
 export const getDownloadUrlServerFn = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
-    z.object({ materialId: z.string(), userId: z.string().optional() }).parse(d)
+    z.object({ materialId: z.string(), userId: z.string().optional(), grantId: z.string().uuid().optional() }).parse(d)
   )
   .handler(async ({ data }) => {
     const userId = await requireCurrentUserId();
     if (data.userId && data.userId !== userId) throw new Error("Forbidden");
-    const material = await import("@/integrations/turso/client.server").then((db) => db.getMaterialById(data.materialId));
-    if (!material) throw new Error("Material not found");
-    if (material.status !== "verified" && material.user_id !== userId && !(await import("@/lib/auth.server").then(({ requireAdmin }) => requireAdmin()))) {
-      throw new Error("This material is not available for download.");
-    }
-    const filePath = await recordMaterialDownload(data.materialId, userId);
-    // If filePath is an external URL or missing, route to our resilient material streaming endpoint
-    if (!filePath || filePath.startsWith("http://") || filePath.startsWith("https://")) {
-      return { downloadUrl: `/api/materials?id=${data.materialId}&download=true` };
-    }
-    try {
-      const downloadUrl = await getSignedDownloadUrl(filePath, 300);
-      return { downloadUrl };
-    } catch {
-      return { downloadUrl: `/api/materials?id=${data.materialId}&download=true` };
-    }
+    if (!data.grantId) throw new Error("Complete the material access step before downloading.");
+    const { completeMaterialGate, validateMaterialGrant } = await import("@/lib/membership/policy.server");
+    const completed = await completeMaterialGate(userId, data.grantId);
+    if (!await validateMaterialGrant(data.materialId, "download", data.grantId)) throw new Error("This access link belongs to another material.");
+    return { downloadUrl: completed.url };
   });
 
 export const getPreviewUrlServerFn = createServerFn({ method: "POST" })

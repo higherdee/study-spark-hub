@@ -44,6 +44,7 @@ scripts/inspect-*
 scripts/list-*
 scripts/dump-*
 scripts/check-*
+!scripts/check-client-secrets.mjs
 scripts/find-*
 scripts/export-*
 scripts/purge-*

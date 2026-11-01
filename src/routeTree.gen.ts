@@ -22,12 +22,18 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as ApiBillingRouteImport } from './routes/api/billing'
+import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing-webhook'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiDownloadRouteImport } from './routes/api/download'
 import { Route as ApiHarvesterRouteImport } from './routes/api/harvester'
 import { Route as ApiMaterialsRouteImport } from './routes/api/materials'
+import { Route as ApiMembershipRouteImport } from './routes/api/membership'
+import { Route as ApiMembershipMaintenanceRouteImport } from './routes/api/membership-maintenance'
 import { Route as ApiMobileRouteImport } from './routes/api/mobile'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
+import { Route as BillingCheckoutRouteImport } from './routes/billing/checkout'
+import { Route as BillingReturnRouteImport } from './routes/billing/return'
 import { Route as ScholarUsernameRouteImport } from './routes/scholar.$username'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -35,6 +41,7 @@ import { Route as AuthenticatedAdminBroadcastRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminComplaintsRouteImport } from './routes/_authenticated/admin.complaints'
 import { Route as AuthenticatedAdminHarvesterRouteImport } from './routes/_authenticated/admin.harvester'
 import { Route as AuthenticatedAdminMaterialsRouteImport } from './routes/_authenticated/admin.materials'
+import { Route as AuthenticatedAdminPromosRouteImport } from './routes/_authenticated/admin.promos'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminWithdrawalsRouteImport } from './routes/_authenticated/admin.withdrawals'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard.index'
@@ -112,6 +119,16 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiBillingRoute = ApiBillingRouteImport.update({
+  id: '/api/billing',
+  path: '/api/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingWebhookRoute = ApiBillingWebhookRouteImport.update({
+  id: '/api/billing-webhook',
+  path: '/api/billing-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -132,6 +149,17 @@ const ApiMaterialsRoute = ApiMaterialsRouteImport.update({
   path: '/api/materials',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMembershipRoute = ApiMembershipRouteImport.update({
+  id: '/api/membership',
+  path: '/api/membership',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMembershipMaintenanceRoute =
+  ApiMembershipMaintenanceRouteImport.update({
+    id: '/api/membership-maintenance',
+    path: '/api/membership-maintenance',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiMobileRoute = ApiMobileRouteImport.update({
   id: '/api/mobile',
   path: '/api/mobile',
@@ -140,6 +168,16 @@ const ApiMobileRoute = ApiMobileRouteImport.update({
 const ApiUploadRoute = ApiUploadRouteImport.update({
   id: '/api/upload',
   path: '/api/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingCheckoutRoute = BillingCheckoutRouteImport.update({
+  id: '/billing/checkout',
+  path: '/billing/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingReturnRoute = BillingReturnRouteImport.update({
+  id: '/billing/return',
+  path: '/billing/return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScholarUsernameRoute = ScholarUsernameRouteImport.update({
@@ -179,6 +217,12 @@ const AuthenticatedAdminMaterialsRoute =
   AuthenticatedAdminMaterialsRouteImport.update({
     id: '/materials',
     path: '/materials',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPromosRoute =
+  AuthenticatedAdminPromosRouteImport.update({
+    id: '/promos',
+    path: '/promos',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
@@ -266,18 +310,25 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/api/billing': typeof ApiBillingRoute
+  '/api/billing-webhook': typeof ApiBillingWebhookRoute
   '/api/chat': typeof ApiChatRoute
   '/api/download': typeof ApiDownloadRoute
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
+  '/api/membership': typeof ApiMembershipRoute
+  '/api/membership-maintenance': typeof ApiMembershipMaintenanceRoute
   '/api/mobile': typeof ApiMobileRoute
   '/api/upload': typeof ApiUploadRoute
+  '/billing/checkout': typeof BillingCheckoutRoute
+  '/billing/return': typeof BillingReturnRoute
   '/scholar/$username': typeof ScholarUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
   '/admin/materials': typeof AuthenticatedAdminMaterialsRoute
+  '/admin/promos': typeof AuthenticatedAdminPromosRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
@@ -303,18 +354,25 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/api/billing': typeof ApiBillingRoute
+  '/api/billing-webhook': typeof ApiBillingWebhookRoute
   '/api/chat': typeof ApiChatRoute
   '/api/download': typeof ApiDownloadRoute
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
+  '/api/membership': typeof ApiMembershipRoute
+  '/api/membership-maintenance': typeof ApiMembershipMaintenanceRoute
   '/api/mobile': typeof ApiMobileRoute
   '/api/upload': typeof ApiUploadRoute
+  '/billing/checkout': typeof BillingCheckoutRoute
+  '/billing/return': typeof BillingReturnRoute
   '/scholar/$username': typeof ScholarUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
   '/admin/materials': typeof AuthenticatedAdminMaterialsRoute
+  '/admin/promos': typeof AuthenticatedAdminPromosRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
@@ -344,18 +402,25 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/api/billing': typeof ApiBillingRoute
+  '/api/billing-webhook': typeof ApiBillingWebhookRoute
   '/api/chat': typeof ApiChatRoute
   '/api/download': typeof ApiDownloadRoute
   '/api/harvester': typeof ApiHarvesterRoute
   '/api/materials': typeof ApiMaterialsRoute
+  '/api/membership': typeof ApiMembershipRoute
+  '/api/membership-maintenance': typeof ApiMembershipMaintenanceRoute
   '/api/mobile': typeof ApiMobileRoute
   '/api/upload': typeof ApiUploadRoute
+  '/billing/checkout': typeof BillingCheckoutRoute
+  '/billing/return': typeof BillingReturnRoute
   '/scholar/$username': typeof ScholarUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/_authenticated/admin/broadcast': typeof AuthenticatedAdminBroadcastRoute
   '/_authenticated/admin/complaints': typeof AuthenticatedAdminComplaintsRoute
   '/_authenticated/admin/harvester': typeof AuthenticatedAdminHarvesterRoute
   '/_authenticated/admin/materials': typeof AuthenticatedAdminMaterialsRoute
+  '/_authenticated/admin/promos': typeof AuthenticatedAdminPromosRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/_authenticated/dashboard/assistant': typeof AuthenticatedDashboardAssistantRoute
@@ -385,18 +450,25 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/onboarding'
+    | '/api/billing'
+    | '/api/billing-webhook'
     | '/api/chat'
     | '/api/download'
     | '/api/harvester'
     | '/api/materials'
+    | '/api/membership'
+    | '/api/membership-maintenance'
     | '/api/mobile'
     | '/api/upload'
+    | '/billing/checkout'
+    | '/billing/return'
     | '/scholar/$username'
     | '/u/$username'
     | '/admin/broadcast'
     | '/admin/complaints'
     | '/admin/harvester'
     | '/admin/materials'
+    | '/admin/promos'
     | '/admin/users'
     | '/admin/withdrawals'
     | '/dashboard/assistant'
@@ -422,18 +494,25 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/onboarding'
+    | '/api/billing'
+    | '/api/billing-webhook'
     | '/api/chat'
     | '/api/download'
     | '/api/harvester'
     | '/api/materials'
+    | '/api/membership'
+    | '/api/membership-maintenance'
     | '/api/mobile'
     | '/api/upload'
+    | '/billing/checkout'
+    | '/billing/return'
     | '/scholar/$username'
     | '/u/$username'
     | '/admin/broadcast'
     | '/admin/complaints'
     | '/admin/harvester'
     | '/admin/materials'
+    | '/admin/promos'
     | '/admin/users'
     | '/admin/withdrawals'
     | '/dashboard/assistant'
@@ -462,18 +541,25 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/onboarding'
+    | '/api/billing'
+    | '/api/billing-webhook'
     | '/api/chat'
     | '/api/download'
     | '/api/harvester'
     | '/api/materials'
+    | '/api/membership'
+    | '/api/membership-maintenance'
     | '/api/mobile'
     | '/api/upload'
+    | '/billing/checkout'
+    | '/billing/return'
     | '/scholar/$username'
     | '/u/$username'
     | '/_authenticated/admin/broadcast'
     | '/_authenticated/admin/complaints'
     | '/_authenticated/admin/harvester'
     | '/_authenticated/admin/materials'
+    | '/_authenticated/admin/promos'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/withdrawals'
     | '/_authenticated/dashboard/assistant'
@@ -500,12 +586,18 @@ export interface RootRouteChildren {
   MaterialsRoute: typeof MaterialsRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  ApiBillingRoute: typeof ApiBillingRoute
+  ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiDownloadRoute: typeof ApiDownloadRoute
   ApiHarvesterRoute: typeof ApiHarvesterRoute
   ApiMaterialsRoute: typeof ApiMaterialsRoute
+  ApiMembershipRoute: typeof ApiMembershipRoute
+  ApiMembershipMaintenanceRoute: typeof ApiMembershipMaintenanceRoute
   ApiMobileRoute: typeof ApiMobileRoute
   ApiUploadRoute: typeof ApiUploadRoute
+  BillingCheckoutRoute: typeof BillingCheckoutRoute
+  BillingReturnRoute: typeof BillingReturnRoute
   ScholarUsernameRoute: typeof ScholarUsernameRoute
   UUsernameRoute: typeof UUsernameRoute
 }
@@ -603,6 +695,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/billing': {
+      id: '/api/billing'
+      path: '/api/billing'
+      fullPath: '/api/billing'
+      preLoaderRoute: typeof ApiBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing-webhook': {
+      id: '/api/billing-webhook'
+      path: '/api/billing-webhook'
+      fullPath: '/api/billing-webhook'
+      preLoaderRoute: typeof ApiBillingWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -631,6 +737,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMaterialsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/membership': {
+      id: '/api/membership'
+      path: '/api/membership'
+      fullPath: '/api/membership'
+      preLoaderRoute: typeof ApiMembershipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/membership-maintenance': {
+      id: '/api/membership-maintenance'
+      path: '/api/membership-maintenance'
+      fullPath: '/api/membership-maintenance'
+      preLoaderRoute: typeof ApiMembershipMaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mobile': {
       id: '/api/mobile'
       path: '/api/mobile'
@@ -643,6 +763,20 @@ declare module '@tanstack/react-router' {
       path: '/api/upload'
       fullPath: '/api/upload'
       preLoaderRoute: typeof ApiUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing/checkout': {
+      id: '/billing/checkout'
+      path: '/billing/checkout'
+      fullPath: '/billing/checkout'
+      preLoaderRoute: typeof BillingCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing/return': {
+      id: '/billing/return'
+      path: '/billing/return'
+      fullPath: '/billing/return'
+      preLoaderRoute: typeof BillingReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scholar/$username': {
@@ -692,6 +826,13 @@ declare module '@tanstack/react-router' {
       path: '/materials'
       fullPath: '/admin/materials'
       preLoaderRoute: typeof AuthenticatedAdminMaterialsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/promos': {
+      id: '/_authenticated/admin/promos'
+      path: '/promos'
+      fullPath: '/admin/promos'
+      preLoaderRoute: typeof AuthenticatedAdminPromosRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/users': {
@@ -786,6 +927,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminComplaintsRoute: typeof AuthenticatedAdminComplaintsRoute
   AuthenticatedAdminHarvesterRoute: typeof AuthenticatedAdminHarvesterRoute
   AuthenticatedAdminMaterialsRoute: typeof AuthenticatedAdminMaterialsRoute
+  AuthenticatedAdminPromosRoute: typeof AuthenticatedAdminPromosRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminWithdrawalsRoute: typeof AuthenticatedAdminWithdrawalsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -796,6 +938,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminComplaintsRoute: AuthenticatedAdminComplaintsRoute,
   AuthenticatedAdminHarvesterRoute: AuthenticatedAdminHarvesterRoute,
   AuthenticatedAdminMaterialsRoute: AuthenticatedAdminMaterialsRoute,
+  AuthenticatedAdminPromosRoute: AuthenticatedAdminPromosRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminWithdrawalsRoute: AuthenticatedAdminWithdrawalsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
@@ -863,12 +1006,18 @@ const rootRouteChildren: RootRouteChildren = {
   MaterialsRoute: MaterialsRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  ApiBillingRoute: ApiBillingRoute,
+  ApiBillingWebhookRoute: ApiBillingWebhookRoute,
   ApiChatRoute: ApiChatRoute,
   ApiDownloadRoute: ApiDownloadRoute,
   ApiHarvesterRoute: ApiHarvesterRoute,
   ApiMaterialsRoute: ApiMaterialsRoute,
+  ApiMembershipRoute: ApiMembershipRoute,
+  ApiMembershipMaintenanceRoute: ApiMembershipMaintenanceRoute,
   ApiMobileRoute: ApiMobileRoute,
   ApiUploadRoute: ApiUploadRoute,
+  BillingCheckoutRoute: BillingCheckoutRoute,
+  BillingReturnRoute: BillingReturnRoute,
   ScholarUsernameRoute: ScholarUsernameRoute,
   UUsernameRoute: UUsernameRoute,
 }

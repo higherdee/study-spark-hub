@@ -40,6 +40,9 @@ export function useProfile() {
       institution: null,
       course: null,
       department: null,
+      level: null,
+      phone: null,
+      referral_source: null,
       points: 0,
       current_streak: 0,
       sylla_plus: false,
@@ -67,7 +70,7 @@ export function useProfile() {
         let p = await getProfileServerFn({ data: { userId: user.id } });
         if (!p) {
           // Auto-provision profile in Turso immediately via server function
-          p = await upsertProfileServerFn({
+          await upsertProfileServerFn({
             data: {
               id: user.id,
               email: user.email,
@@ -75,6 +78,7 @@ export function useProfile() {
               onboarding_step: 0,
             },
           });
+          p = await getProfileServerFn({ data: { userId: user.id } });
         }
         return p;
       } catch (err) {

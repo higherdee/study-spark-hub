@@ -190,7 +190,7 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
           )}
         >
           {/* FRONT FACE (Question / Concept) */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-2xl border border-border/80 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-ink/95">
+          <div data-flashcard-color={currentIndex % 5} className="study-flashcard-face absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-2xl border border-border/80 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-ink/95">
             {/* Index card header margin tab */}
             <div className="flex items-center justify-between pb-2 border-b border-border/40">
               <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10">
@@ -217,7 +217,7 @@ export function InChatFlashcardsWidget({ data, onSelectCount }: InChatFlashcards
           </div>
 
           {/* BACK FACE (Answer / Solution / Formula) */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl border border-brand/40 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-ink/95 bg-linear-to-b from-brand/5 to-transparent">
+          <div data-flashcard-color={currentIndex % 5} className="study-flashcard-face absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl border border-brand/40 bg-card p-5 sm:p-6 flex flex-col justify-between shadow-md hover:shadow-lg transition-all dark:bg-ink/95 bg-linear-to-b from-brand/5 to-transparent">
             {/* Index card header margin tab */}
             <div className="flex items-center justify-between pb-2 border-b border-border/40">
               <span className="text-[10px] font-bold uppercase tracking-wider text-brand dark:text-brand flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand/10">

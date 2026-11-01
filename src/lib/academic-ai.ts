@@ -1,3 +1,4 @@
+import { parseStudyArray } from "./ai/study-json";
 import { askGeminiAI } from "./gemini";
 import type { Profile } from "@/integrations/turso/client";
 
@@ -175,136 +176,35 @@ Output ONLY JSON:
 /**
  * Generate Practice Questions (Objective or Theory)
  */
-export async function generatePracticeQuestions(
-  materialTitle: string,
-  contextText: string,
-  mode: "objective" | "theory",
-  count: number = 5
-): Promise<QuizQuestion[]> {
-  const prompt = `Generate ${count} university exam practice questions based on this study content.
-Material: "${materialTitle}"
-Content:
-"${contextText.slice(0, 2000)}"
-
-Question format requested: ${mode.toUpperCase()} (${mode === "objective" ? "Multiple Choice with 4 options A, B, C, D" : "Essay/Theory question requiring structured explanation"}).
-
-Output ONLY a JSON array of objects:
-[
-  {
-    "id": "q1",
-    "type": "${mode}",
-    "question": "Question text here?",
-    ${mode === "objective" ? `"options": ["Option A", "Option B", "Option C", "Option D"], "correctOptionIndex": 0,` : ""}
-    "modelAnswer": "Comprehensive model answer or key points expected for full marks",
-    "explanation": "Detailed pedagogical explanation of why this is correct"
+export async function generatePracticeQuestions(materialTitle: string, contextText: string, mode: "objective" | "theory", count = 5, fetcher?: typeof fetch): Promise<QuizQuestion[]> {
+  if (!Number.isInteger(count) || count < 1 || count > 50) throw new Error("Choose between 1 and 50 questions.");
+  const prompt = `Create exactly ${count} useful university practice questions about ${materialTitle}. Use this source when supplied:\n${contextText.slice(0, 16000)}\nMode: ${mode}. Return ONLY a JSON array. Each item must have question, modelAnswer, explanation${mode === "objective" ? ", four string options, and correctOptionIndex (integer 0..3)" : ""}. Keep every item concise and complete. Do not invent sources, use generic stock questions, or create placeholder answers.`;
+  const raw = await askGeminiAI(prompt, { temperature: 0.25, ...(fetcher ? { fetcher } : {}) });
+  const items = parseStudyArray(raw).filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
+  const questions: QuizQuestion[] = [];
+  for (const item of items) {
+    if (typeof item["question"] !== "string" || !item["question"].trim() || typeof item["modelAnswer"] !== "string" || !item["modelAnswer"].trim()) continue;
+    const options = Array.isArray(item["options"]) ? item["options"].filter((option): option is string => typeof option === "string" && !!option.trim()).slice(0, 4) : [];
+    const answer = Number(item["correctOptionIndex"]);
+    if (mode === "objective" && (options.length !== 4 || !Number.isInteger(answer) || answer < 0 || answer > 3)) continue;
+    questions.push({ id: `q_${questions.length + 1}`, type: mode, question: item["question"], modelAnswer: item["modelAnswer"], explanation: typeof item["explanation"] === "string" ? item["explanation"] : item["modelAnswer"], ...(mode === "objective" ? { options, correctOptionIndex: answer } : {}) });
   }
-]`;
-
-  try {
-    const raw = await askGeminiAI(prompt);
-    const match = raw.match(/\[[\s\S]*\]/);
-    if (match) {
-      const list = JSON.parse(match[0]);
-      return list.map((q: any, i: number) => ({
-        id: q.id || `q_${i + 1}`,
-        type: mode,
-        question: q.question || `Question ${i + 1}`,
-        options: q.options || (mode === "objective" ? ["Option A", "Option B", "Option C", "Option D"] : undefined),
-        correctOptionIndex: typeof q.correctOptionIndex === "number" ? q.correctOptionIndex : 0,
-        modelAnswer: q.modelAnswer || "Model answer.",
-        explanation: q.explanation || "Detailed explanation.",
-      }));
-    }
-  } catch (err) {
-    console.error("Failed to generate questions:", err);
-  }
-
-  // Fallback default questions: guarantee EXACT count requested
-  const fallbackList: QuizQuestion[] = [];
-  const coreTopics = [
-    "Fundamental Definitions and Boundary Regimes",
-    "Governing Principles and Standard Derivations",
-    "Practical Exam Applications and Key Calculations",
-    "Comparative Analysis of Critical Regimes",
-    "Common Examination Pitfalls and Error Reductions",
-    "Experimental Validation and Analytical Verification",
-    "Theoretical Assumptions and Validity Constraints",
-    "High-Yield Semester Examination Problem Types",
-  ];
-
-  for (let i = 0; i < count; i++) {
-    const topic = coreTopics[i % coreTopics.length];
-    fallbackList.push({
-      id: `q_${i + 1}`,
-      type: mode,
-      question: mode === "objective"
-        ? `Regarding ${materialTitle}, which statement accurately addresses ${topic.toLowerCase()}?`
-        : `Explain the significance of ${topic} in the study of ${materialTitle}. Detail all key formulas and boundary conditions.`,
-      options: mode === "objective" ? [
-        `Accurately defines the core physical/mathematical parameters under standard exam conditions.`,
-        `Represents a negligible artifact dismissed in standard derivations.`,
-        `Contradicts fundamental conservation theorems across university coursework.`,
-        `Applicable only in non-standard theoretical edge cases.`,
-      ] : undefined,
-      correctOptionIndex: 0,
-      modelAnswer: `A comprehensive answer requires defining the core theorems of ${topic.toLowerCase()}, detailing governing formulas, and applying standard examination proofs.`,
-      explanation: `Tests foundational understanding of ${topic.toLowerCase()} for university semester examinations.`,
-    });
-  }
-
-  return fallbackList;
+  if (questions.length < count) throw new Error("Boss AI could not produce a complete set of valid questions. Please try again.");
+  return questions.slice(0, count);
 }
 
 /**
  * Interactive Marking & Scoring of Theory Answers
  */
-export async function gradeTheoryAnswer(
-  question: string,
-  modelAnswer: string,
-  studentAnswer: string
-): Promise<{ score: number; maxScore: number; feedback: string; strengths: string[]; areasToImprove: string[] }> {
-  const prompt = `Grade this university student's theory examination response out of 10 marks.
-Question: "${question}"
-Expected Model Answer / Rubric:
-"${modelAnswer}"
-
-Student's Written Response:
-"${studentAnswer}"
-
-Output ONLY JSON:
-{
-  "score": integer between 0 and 10,
-  "maxScore": 10,
-  "feedback": "Honest, constructive academic critique",
-  "strengths": ["Clear definition", "Proper terminology"],
-  "areasToImprove": ["Missing derivation step", "Should mention real-world application"]
-}`;
-
-  try {
-    const raw = await askGeminiAI(prompt);
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (match) {
-      const parsed = JSON.parse(match[0]);
-      return {
-        score: Math.max(0, Math.min(10, Number(parsed.score) || 7)),
-        maxScore: 10,
-        feedback: parsed.feedback || "Good attempt with solid conceptual grasp.",
-        strengths: Array.isArray(parsed.strengths) ? parsed.strengths : ["Good effort", "Clear explanation"],
-        areasToImprove: Array.isArray(parsed.areasToImprove) ? parsed.areasToImprove : ["Expand on technical details"],
-      };
-    }
-  } catch (err) {
-    console.error("Grading failed:", err);
-  }
-
-  const lengthBonus = studentAnswer.trim().length > 80 ? 8 : 5;
-  return {
-    score: lengthBonus,
-    maxScore: 10,
-    feedback: "Your response covers the core elements. Elaborate with more technical terminology for maximum marks.",
-    strengths: ["Relevant points raised", "Demonstrates foundational understanding"],
-    areasToImprove: ["Add specific formulas or citations to back up claims"],
-  };
+export async function gradeTheoryAnswer(question: string, modelAnswer: string, studentAnswer: string, fetcher?: typeof fetch): Promise<{ score: number; maxScore: number; feedback: string; strengths: string[]; areasToImprove: string[] }> {
+  if (!studentAnswer.trim()) return { score: 0, maxScore: 10, feedback: "No answer was submitted.", strengths: [], areasToImprove: ["Submit an answer to receive feedback."] };
+  const prompt = `Mark this practice answer out of 10 using the supplied rubric. Award partial credit for correct reasoning. Do not assume missing work. Explain the score.\nQuestion: ${question.slice(0, 6000)}\nRubric: ${modelAnswer.slice(0, 6000)}\nStudent answer: ${studentAnswer.slice(0, 12000)}\nReturn ONLY JSON with score (0..10), feedback, strengths (string array), areasToImprove (string array).`;
+  const raw = await askGeminiAI(prompt, { temperature: 0.1, ...(fetcher ? { fetcher } : {}) });
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("This answer could not be marked. Please retry.");
+  const value = JSON.parse(match[0]);
+  if (typeof value.score !== "number" || !Number.isFinite(value.score) || value.score < 0 || value.score > 10 || typeof value.feedback !== "string") throw new Error("This answer could not be marked. Please retry.");
+  return { score: Math.round(value.score * 10) / 10, maxScore: 10, feedback: value.feedback, strengths: Array.isArray(value.strengths) ? value.strengths.filter((item: unknown) => typeof item === "string") : [], areasToImprove: Array.isArray(value.areasToImprove) ? value.areasToImprove.filter((item: unknown) => typeof item === "string") : [] };
 }
 
 /**
@@ -313,7 +213,8 @@ Output ONLY JSON:
 export async function generateFlashcards(
   materialTitle: string,
   contextText: string,
-  count: number = 6
+  count: number = 5,
+  fetcher?: typeof fetch
 ): Promise<Flashcard[]> {
   const prompt = `Create ${count} high-yield study flashcards for quick revision.
 Topic: "${materialTitle}"
@@ -330,37 +231,19 @@ Output ONLY a JSON array of objects:
 ]`;
 
   try {
-    const raw = await askGeminiAI(prompt);
+    const raw = await askGeminiAI(prompt, fetcher ? { fetcher } : {});
     const match = raw.match(/\[[\s\S]*\]/);
     if (match) {
       const list = JSON.parse(match[0]);
       return list.map((fc: any, i: number) => ({
         id: fc.id || `fc_${i + 1}`,
-        front: fc.front || `Concept ${i + 1}`,
-        back: fc.back || "Definition",
-      }));
+        front: typeof fc.front === "string" ? fc.front.trim() : "",
+        back: typeof fc.back === "string" ? fc.back.trim() : "",
+      })).filter((fc: Flashcard) => fc.front && fc.back).slice(0, count);
     }
   } catch (err) {
     console.error("Flashcards generation failed:", err);
   }
 
-  const fallbackCards: Flashcard[] = [];
-  const cardTopics = [
-    ["Core Law & Theorem", "Governing equations and boundary assumptions required for exam derivations."],
-    ["Key Exam Trap", "Common pitfalls in calculations and unit conversions across semester tests."],
-    ["Mnemonic & Memory Aid", "Systematic memory anchor to recall the sequence of proof steps instantly."],
-    ["Application Domain", "Real-world engineering, legal, or medical implementation scenarios."],
-    ["Exam Scoring Rubric", "Primary markers examined by university professors for full mark allocation."],
-  ];
-
-  for (let i = 0; i < count; i++) {
-    const [label, desc] = cardTopics[i % cardTopics.length];
-    fallbackCards.push({
-      id: `fc_${i + 1}`,
-      front: `${label}: ${materialTitle} (#${i + 1})`,
-      back: desc,
-    });
-  }
-
-  return fallbackCards;
+  throw new Error("Flashcards could not be generated. Please try again.");
 }

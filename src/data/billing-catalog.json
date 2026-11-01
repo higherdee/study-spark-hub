@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "fxUpdatedAt": "2026-10-30T00:02:31.000Z",
+  "markets": {
+    "NG": {
+      "currency": "USD",
+      "equivalentCurrency": "NGN",
+      "weekly": 149,
+      "equivalentWeekly": 199900,
+      "monthly": 520,
+      "equivalentMonthly": 699900,
+      "yearly": 5127,
+      "equivalentYearly": 6899900
+    },
+    "GH": {
+      "currency": "USD",
+      "equivalentCurrency": "GHS",
+      "weekly": 149,
+      "equivalentWeekly": 1727,
+      "monthly": 520,
+      "equivalentMonthly": 6046,
+      "yearly": 5127,
+      "equivalentYearly": 59601
+    },
+    "KE": {
+      "currency": "USD",
+      "equivalentCurrency": "KES",
+      "weekly": 149,
+      "equivalentWeekly": 19303,
+      "monthly": 520,
+      "equivalentMonthly": 67584,
+      "yearly": 5127,
+      "equivalentYearly": 666275
+    },
+    "ZA": {
+      "currency": "USD",
+      "equivalentCurrency": "ZAR",
+      "weekly": 149,
+      "equivalentWeekly": 2465,
+      "monthly": 520,
+      "equivalentMonthly": 8630,
+      "yearly": 5127,
+      "equivalentYearly": 85076
+    },
+    "EG": {
+      "currency": "USD",
+      "equivalentCurrency": "EGP",
+      "weekly": 149,
+      "equivalentWeekly": 8309,
+      "monthly": 520,
+      "equivalentMonthly": 29091,
+      "yearly": 5127,
+      "equivalentYearly": 286787
+    },
+    "RW": {
+      "currency": "USD",
+      "equivalentCurrency": "RWF",
+      "weekly": 149,
+      "equivalentWeekly": 2203,
+      "monthly": 520,
+      "equivalentMonthly": 7713,
+      "yearly": 5127,
+      "equivalentYearly": 76043
+    },
+    "UG": {
+      "currency": "USD",
+      "equivalentCurrency": "UGX",
+      "weekly": 149,
+      "equivalentWeekly": 6392,
+      "monthly": 520,
+      "equivalentMonthly": 22380,
+      "yearly": 5127,
+      "equivalentYearly": 220632
+    },
+    "TZ": {
+      "currency": "USD",
+      "equivalentCurrency": "TZS",
+      "weekly": 149,
+      "equivalentWeekly": 390889,
+      "monthly": 520,
+      "equivalentMonthly": 1368601,
+      "yearly": 5127,
+      "equivalentYearly": 13492223
+    },
+    "ET": {
+      "currency": "USD",
+      "equivalentCurrency": "ETB",
+      "weekly": 149,
+      "equivalentWeekly": 23982,
+      "monthly": 520,
+      "equivalentMonthly": 83966,
+      "yearly": 5127,
+      "equivalentYearly": 827774
+    },
+    "CM": {
+      "currency": "USD",
+      "equivalentCurrency": "XAF",
+      "weekly": 149,
+      "equivalentWeekly": 876,
+      "monthly": 520,
+      "equivalentMonthly": 3069,
+      "yearly": 5127,
+      "equivalentYearly": 30251
+    },
+    "SN": {
+      "currency": "USD",
+      "equivalentCurrency": "XOF",
+      "weekly": 149,
+      "equivalentWeekly": 876,
+      "monthly": 520,
+      "equivalentMonthly": 3069,
+      "yearly": 5127,
+      "equivalentYearly": 30251
+    },
+    "CI": {
+      "currency": "USD",
+      "equivalentCurrency": "XOF",
+      "weekly": 149,
+      "equivalentWeekly": 876,
+      "monthly": 520,
+      "equivalentMonthly": 3069,
+      "yearly": 5127,
+      "equivalentYearly": 30251
+    },
+    "MA": {
+      "currency": "USD",
+      "equivalentCurrency": "MAD",
+      "weekly": 149,
+      "equivalentWeekly": 1462,
+      "monthly": 520,
+      "equivalentMonthly": 5119,
+      "yearly": 5127,
+      "equivalentYearly": 50466
+    },
+    "DZ": {
+      "currency": "USD",
+      "equivalentCurrency": "DZD",
+      "weekly": 149,
+      "equivalentWeekly": 20093,
+      "monthly": 520,
+      "equivalentMonthly": 70351,
+      "yearly": 5127,
+      "equivalentYearly": 693550
+    },
+    "TN": {
+      "currency": "USD",
+      "equivalentCurrency": "TND",
+      "weekly": 149,
+      "equivalentWeekly": 4466,
+      "monthly": 520,
+      "equivalentMonthly": 15636,
+      "yearly": 5127,
+      "equivalentYearly": 154144
+    },
+    "IN": {
+      "currency": "USD",
+      "equivalentCurrency": "INR",
+      "weekly": 149,
+      "equivalentWeekly": 14106,
+      "monthly": 520,
+      "equivalentMonthly": 49388,
+      "yearly": 5127,
+      "equivalentYearly": 486885
+    },
+    "PK": {
+      "currency": "USD",
+      "equivalentCurrency": "PKR",
+      "weekly": 149,
+      "equivalentWeekly": 41079,
+      "monthly": 520,
+      "equivalentMonthly": 143828,
+      "yearly": 5127,
+      "equivalentYearly": 1417916
+    },
+    "NP": {
+      "currency": "USD",
+      "equivalentCurrency": "NPR",
+      "weekly": 149,
+      "equivalentWeekly": 22569,
+      "monthly": 520,
+      "equivalentMonthly": 79020,
+      "yearly": 5127,
+      "equivalentYearly": 779013
+    }
+  },
+  "history": {
+    "sandbox": {
+      "paddle": {
+        "pri_01m679p31znx84j7zavetvkety": "monthly",
+        "pri_01m679p39m3x6zkfcasjse5drx": "yearly"
+      },
+      "paystack": {
+        "PLN_5h3k0e9jgg07idm": "weekly",
+        "PLN_mzqwqvty2vjnu5z": "monthly",
+        "PLN_dh3s3frkrmm3w8b": "yearly"
+      },
+      "bachs": {
+        "prod_f0f0016cb01544769218": "weekly",
+        "prod_085d81499cad4d8ca1dc": "monthly",
+        "prod_93e8c93161964b1aadfc": "yearly"
+      }
+    },
+    "live": {
+      "paddle": {},
+      "paystack": {},
+      "bachs": {}
+    }
+  },
+  "environments": {
+    "sandbox": {
+      "paddle": {
+        "monthly": "pri_01m679p31znx84j7zavetvkety",
+        "yearly": "pri_01m679p39m3x6zkfcasjse5drx"
+      },
+      "paystack": {
+        "weekly": "PLN_5h3k0e9jgg07idm",
+        "monthly": "PLN_mzqwqvty2vjnu5z",
+        "yearly": "PLN_dh3s3frkrmm3w8b"
+      },
+      "bachs": {
+        "weekly": "prod_f0f0016cb01544769218",
+        "monthly": "prod_085d81499cad4d8ca1dc",
+        "yearly": "prod_93e8c93161964b1aadfc"
+      }
+    },
+    "live": {
+      "paddle": {},
+      "paystack": {},
+      "bachs": {}
+    }
+  },
+  "fxAttribution": "https://www.exchangerate-api.com",
+  "providerPolicy": {
+    "regionalProvider": "bachs",
+    "regionalCollection": "automatic",
+    "regionalChargeCurrency": "USD",
+    "internationalProvider": "paddle",
+    "firstRenewalExtraDays": 7
+  }
+}

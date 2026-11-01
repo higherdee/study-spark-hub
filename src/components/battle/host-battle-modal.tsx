@@ -38,6 +38,7 @@ import {
 } from "@/lib/battle.functions";
 import { getMaterialsForChatServerFn } from "@/lib/community.functions";
 import { transcribeVoiceAudioServerFn } from "@/lib/ai/study-assistant.functions";
+import { useMembership } from "@/hooks/use-membership";
 import { battleAudio } from "@/lib/battle-audio";
 
 interface HostBattleModalProps {
@@ -83,6 +84,8 @@ export function HostBattleModal({
   currentUser,
   onBattleCreated,
 }: HostBattleModalProps) {
+  const membership = useMembership();
+  const maxQuestions = membership.data?.paid ? 50 : 5;
   // Battle Config State
   const [battleTitle, setBattleTitle] = useState("");
   const [mode, setMode] = useState<"mcq" | "theory">("mcq");
@@ -192,21 +195,21 @@ export function HostBattleModal({
   };
 
   // File Upload Handler
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = typeof reader.result === "string" ? reader.result : "";
+    try {
+      if (!/\.txt$/i.test(file.name) || file.size > 1024 * 1024) throw new Error("Choose a text file under 1 MB. For PDFs, select a library material.");
+      const text = (await file.text()).trim();
+      if (text.length < 40) throw new Error("Add a clear passage of at least 40 characters to study.");
       setUploadedFile({
         name: file.name,
-        content: text.slice(0, 4000) || `Extracted syllabus context for ${file.name}`,
+        content: text.slice(0, 16000),
       });
       if (!battleTitle) setBattleTitle(file.name.replace(/\.[^/.]+$/, ""));
       toast.success(`Loaded: ${file.name}`);
-    };
-    reader.readAsText(file);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "This file could not be read."); }
   };
 
   // Voice Prompt Recording via MediaRecorder + Groq Whisper
@@ -270,7 +273,11 @@ export function HostBattleModal({
 
   // Launch Battle
   const handleLaunchBattle = async () => {
-    const finalTitle = battleTitle.trim() || (isDirectPeer ? `1v1 Challenge: ${groupTitle}` : `Study Battle: ${groupTitle}`);
+    const topic = sourceType === "topic" ? topicPrompt.trim() : sourceType === "voice" ? voiceTranscript.trim() : sourceType === "file" ? uploadedFile?.content : selectedLibraryMat?.id;
+    if (!topic || topic.length < 3) { toast.error("Choose a topic or source before generating the battle questions."); return; }
+    const count = customQuestionCount ? Number(customQuestionCount) : questionCount;
+    if (!Number.isInteger(count) || count < 1 || count > maxQuestions) { toast.error(`Choose between 1 and ${maxQuestions} questions.`); return; }
+    const finalTitle = battleTitle.trim() || (sourceType === "library" ? selectedLibraryMat?.title : sourceType === "file" ? uploadedFile?.name : topic.slice(0, 100)) || "Study battle";
 
     if (selectedFighterIds.length === 0) {
       toast.error("Select at least one opponent or contestant.");
@@ -302,11 +309,9 @@ export function HostBattleModal({
           mode,
           sourceSummary,
           sourceContext,
+          sourceMaterialId: sourceType === "library" ? selectedLibraryMat?.id : undefined,
           timePerQuestion: mode === "mcq" ? timePerQuestion : null,
-          questionCount:
-            customQuestionCount && Number(customQuestionCount) > 0
-              ? Number(customQuestionCount)
-              : questionCount,
+          questionCount: count,
           stakeAmount,
           fighterIds: selectedFighterIds,
           sponsoredIds: sponsoredFighterIds,
@@ -499,9 +504,9 @@ export function HostBattleModal({
                       ) : (
                         <label className="flex flex-col items-center justify-center p-5 border border-dashed border-border rounded-xl cursor-pointer hover:border-forest/50 bg-card hover:bg-surface-container-low/50 transition-colors">
                           <Upload className="size-5 text-forest/70 mb-1.5" />
-                          <span className="text-xs font-semibold text-ink">Upload Lecture Note or Past Exam PDF</span>
-                          <span className="text-[11px] text-muted-foreground mt-0.5">Boss AI scans questions directly from syllabus text</span>
-                          <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="hidden" />
+                          <span className="text-xs font-semibold text-ink">Upload a text passage</span>
+                          <span className="text-[11px] text-muted-foreground mt-0.5">Text files up to 1 MB. Choose Library for PDF notes.</span>
+                          <input type="file" accept=".txt,text/plain" onChange={handleFileUpload} className="hidden" />
                         </label>
                       )}
                     </div>
@@ -682,7 +687,7 @@ export function HostBattleModal({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {[5, 10, 15, 20].map((count) => (
+                    {(maxQuestions === 5 ? [5] : [5, 10, 15, 20]).map((count) => (
                       <button
                         key={count}
                         type="button"
@@ -702,6 +707,9 @@ export function HostBattleModal({
                     ))}
                     <Input
                       value={customQuestionCount}
+                      type="number"
+                      min={1}
+                      max={maxQuestions}
                       onChange={(e) => {
                         const val = Number(e.target.value);
                         setCustomQuestionCount(e.target.value);

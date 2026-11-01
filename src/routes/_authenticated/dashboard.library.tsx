@@ -1,3 +1,4 @@
+import { getDownloadUrlServerFn } from "@/lib/membership/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
@@ -27,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import { getMaterials, getTotalMaterialsCount, type Material } from "@/integrations/turso/client";
 import { LEVELS, MATERIAL_TYPES, POINTS_NAME } from "@/lib/constants";
-import { getDownloadUrlServerFn, recordMaterialViewServerFn } from "@/lib/upload.functions";
+import { recordMaterialViewServerFn } from "@/lib/upload.functions";
 
 const librarySearchSchema = z.object({
   q: z.string().catch("").default(""),

@@ -8,6 +8,8 @@ import { CHAT_MODEL, createGateway, reasoningOptions } from "@/lib/ai/gateway.se
 import { getLovableAiGatewayRunId, withLovableAiGatewayRunIdHeader } from "@/lib/ai/run-id";
 
 import { CLERK_SECRET_KEY } from "@/integrations/clerk";
+import { beginAiRequest, settleAiRequest, enforceChatRetention } from "@/lib/membership/policy.server";
+import { MembershipLimitError } from "@/lib/membership/policy";
 
 export const Route = createFileRoute("/api/chat")({
   server: {
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/api/chat")({
         const body = (await request.json()) as { messages?: UIMessage[]; threadId?: string };
         const messages = body.messages ?? [];
         if (!body.threadId || messages.length === 0) return new Response("Bad request", { status: 400 });
+        await enforceChatRetention(userId);
 
         const tRs = await turso.execute({
           sql: "SELECT id, title FROM chat_threads WHERE id = ? AND user_id = ? LIMIT 1",
@@ -39,6 +42,12 @@ export const Route = createFileRoute("/api/chat")({
         const threadRow = tRs.rows[0] as unknown as Record<string, unknown>;
         const threadId = String(threadRow['id']);
         const threadTitle = String(threadRow['title']);
+        let allowance;
+        try { allowance = await beginAiRequest(userId); }
+        catch (error) {
+          if (error instanceof MembershipLimitError) return Response.json({ error: error.message, upgrade: true }, { status: error.status, headers: error.retryAfter ? { "Retry-After": String(error.retryAfter) } : {} });
+          return new Response("Membership could not be checked. Please retry.", { status: 503 });
+        }
 
         const last = messages[messages.length - 1]!;
         if (last.role === "user") {
@@ -69,6 +78,10 @@ Study plan: ${JSON.stringify(profile?.study_plan ?? {})}`;
           messages: await convertToModelMessages(messages),
           abortSignal: request.signal,
           providerOptions: reasoningOptions("medium"),
+          maxOutputTokens: allowance.limit,
+          onFinish: async ({ usage }) => { await settleAiRequest(allowance, usage.outputTokens); },
+          onError: async () => { await settleAiRequest(allowance); },
+          onAbort: async () => { await settleAiRequest(allowance); },
         });
 
         const response = result.toUIMessageStreamResponse({
