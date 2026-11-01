@@ -9,7 +9,8 @@ if (publicNames.length) {
   process.exit(1);
 }
 if (!process.argv.includes("--env-only")) {
-  if (!existsSync(".output/public")) throw new Error("Build output is required for the client credential check.");
+  const publicDirectory = process.env.VERCEL ? ".vercel/output/static" : ".output/public";
+  if (!existsSync(publicDirectory)) throw new Error("Build output is required for the client credential check.");
   const exposed = new Set();
   async function scan(directory) {
     for (const item of await readdir(directory, { withFileTypes: true })) {
@@ -21,7 +22,7 @@ if (!process.argv.includes("--env-only")) {
       }
     }
   }
-  await scan(".output/public");
+  await scan(publicDirectory);
   if (exposed.size) {
     console.error(`Server credentials found in client output: ${[...exposed].join(", ")}`);
     process.exit(1);
