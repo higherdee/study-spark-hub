@@ -47,13 +47,13 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val Forest = Color(0xFF153E32)
-private val Paper = Color(0xFFF6F5EF)
-private val Ink = Color(0xFF1E3029)
-private val Muted = Color(0xFF6E7C73)
-private val Sage = Color(0xFFE5EBDD)
-private val Lime = Color(0xFFE6D9BC)
-private val Line = Color(0xFFE1E5DC)
+internal val Forest = Color(0xFF153E32)
+internal val Paper = Color(0xFFF6F5EF)
+internal val Ink = Color(0xFF1E3029)
+internal val Muted = Color(0xFF6E7C73)
+internal val Sage = Color(0xFFE5EBDD)
+internal val Lime = Color(0xFFE6D9BC)
+internal val Line = Color(0xFFE1E5DC)
 private val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Paper, surface = Paper, onSurface = Ink, secondaryContainer = Sage, onSecondaryContainer = Forest, outline = Line)
 internal class ChatState {
     val messages = mutableStateListOf<Pair<String, String>>()
@@ -73,14 +73,34 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun Syllaboss() {
+    AutomaticAppUpdates()
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("syllaboss-native", 0) }
     val scope = rememberCoroutineScope()
     val user by Clerk.userFlow.collectAsState()
+    var settingsRevision by remember { mutableIntStateOf(0) }
+    val verifiedFocus = rememberNativeFocus(user?.id, settingsRevision)
     val initialized by Clerk.isInitialized.collectAsState()
     val authComplete by Clerk.isAuthFlowCompleteFlow.collectAsState()
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var peerChatActive by remember { mutableStateOf(false) }
     var auth by rememberSaveable { mutableStateOf(false) }
+    var acceptedTerms by rememberSaveable { mutableStateOf(prefs.getString("accepted-terms", "") == "2026-10-31") }
+    var consentError by remember { mutableStateOf<String?>(null) }
+    var consentRetry by remember { mutableIntStateOf(0) }
+    LaunchedEffect(user?.id, acceptedTerms, consentRetry) {
+        val id = user?.id ?: return@LaunchedEffect
+        if (acceptedTerms && prefs.getString("recorded-terms-$id", "") != "2026-10-31") {
+            try {
+                StudyApi.endpoint("/api/membership", JSONObject().put("action", "accept-terms").put("version", "2026-10-31").put("accepted", true))
+                prefs.edit().putString("recorded-terms-$id", "2026-10-31").apply()
+                consentError = null
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                consentError = "Your terms acceptance could not be saved. Check your connection and retry."
+            }
+        }
+    }
     var authWaitExpired by remember { mutableStateOf(false) }
     LaunchedEffect(auth, initialized) {
         authWaitExpired = false
@@ -89,6 +109,7 @@ class MainActivity : ComponentActivity() {
     var welcomed by rememberSaveable { mutableStateOf(prefs.getBoolean("welcomed", false)) }
     var focus by rememberSaveable { mutableStateOf(false) }
     var secondary by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(Unit) { val link=(context as? android.app.Activity)?.intent?.data;if(link?.scheme=="syllaboss"&&link.host=="billing") secondary="billing" }
     var reader by remember { mutableStateOf<Material?>(null) }
     SideEffect {
         val activity = context as android.app.Activity
@@ -120,9 +141,16 @@ class MainActivity : ComponentActivity() {
     BackHandler(enabled = auth || focus || reader != null || secondary.isNotBlank() || tab != 0) {
         when { reader != null -> reader = null; focus -> focus = false; auth -> auth = false; secondary.isNotBlank() -> secondary = ""; else -> tab = 0 }
     }
-    if (reader != null) { DocumentScreen(reader!!, { reader = null }); return }
-    if (focus) { FocusScreen(prefs, { focus = false }); return }
+    if (reader != null) { DocumentScreen(reader!!, { reader = null }, { reader = null; auth = true }); return }
+    if (focus) { VerifiedFocusScreen(verifiedFocus, user != null, { focus = false }); return }
     if (auth) {
+        if (!acceptedTerms) {
+            NativeAccountConsent(onBack = { auth = false }, onAccept = {
+                prefs.edit().putString("accepted-terms", "2026-10-31").apply()
+                acceptedTerms = true
+            })
+            return
+        }
         Scaffold { padding ->
             if (initialized) AuthView(modifier = Modifier.padding(padding).imePadding(), clerkTheme = com.clerk.api.ui.ClerkTheme(colors = com.clerk.api.ui.ClerkColors(primary=Forest,background=Paper,foreground=Ink,mutedForeground=Muted,input=Color.White,inputForeground=Ink,border=Line,primaryForeground=Color.White)), logo = { BrandWordmark() }, onDismiss = { auth = false })
             else if (authWaitExpired) Column(Modifier.fillMaxSize().padding(padding).padding(28.dp), verticalArrangement = Arrangement.Center) {
@@ -135,9 +163,14 @@ class MainActivity : ComponentActivity() {
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         }; return
     }
+    if (consentError != null && user != null) {
+        AlertDialog(onDismissRequest = {}, title = { Text("Save your account agreement") }, text = { Text(consentError!!) }, confirmButton = { TextButton(onClick = { consentRetry++ }) { Text("Retry") } }, dismissButton = { TextButton(onClick = { scope.launch { Clerk.auth.signOut() } }) { Text("Sign out") } })
+    }
     if (secondary == "upload") { UploadScreen { secondary = "" }; return }
-    if (secondary == "peers") { PeersScreen { secondary = "" }; return }
+    if (secondary == "peers") { NativePeersScreen({ secondary = "" }, {}); return }
     if (secondary == "profile") { ProfileScreen(space?.optJSONObject("profile"), { secondary = "" }, { secondary = ""; refresh++ }); return }
+    if (secondary == "settings") { NativeSettingsScreen { secondary = ""; settingsRevision++ }; return }
+    if (secondary == "billing") { NativeBillingScreen { secondary = "" }; return }
     if (!welcomed) {
         WelcomeScreen(onStart = { prefs.edit().putBoolean("welcomed", true).apply(); welcomed = true; auth = true }, onExplore = { prefs.edit().putBoolean("welcomed", true).apply(); welcomed = true })
         return
@@ -145,21 +178,22 @@ class MainActivity : ComponentActivity() {
     Scaffold(
         containerColor = Paper,
         bottomBar = {
-            NavigationBar(containerColor = Paper, tonalElevation = 0.dp) {
-                listOf(Triple("Today", Icons.Outlined.WbSunny, 0), Triple("Library", Icons.Outlined.MenuBook, 1), Triple("Boss AI", Icons.Outlined.AutoAwesome, 2), Triple("Your space", Icons.Outlined.PersonOutline, 3)).forEach { (name, icon, index) ->
+            if (!(tab == 3 && peerChatActive)) NavigationBar(containerColor = Paper, tonalElevation = 0.dp) {
+                listOf(Triple("Today", Icons.Outlined.WbSunny, 0), Triple("Library", Icons.Outlined.MenuBook, 1), Triple("Boss AI", Icons.Outlined.AutoAwesome, 2), Triple("Peers", Icons.Outlined.Groups, 3), Triple("Your space", Icons.Outlined.PersonOutline, 4)).forEach { (name, icon, index) ->
                     NavigationBarItem(selected = tab == index, onClick = { tab = index }, icon = { Icon(icon, name, Modifier.size(23.dp)) }, label = { Text(name, fontSize = 11.sp, fontWeight = FontWeight.Medium) }, colors = NavigationBarItemDefaults.colors(indicatorColor = Sage, selectedIconColor = Forest, selectedTextColor = Forest, unselectedIconColor = Muted, unselectedTextColor = Muted))
                 }
             }
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize().padding(padding).pointerInput(user?.id) { awaitPointerEventScope { while (true) { awaitPointerEvent(); verifiedFocus.touch() } } }) {
             AnimatedContent(targetState = tab, label = "Study tab", transitionSpec = {
                 (fadeIn(tween(220, easing=CubicBezierEasing(.23f,1f,.32f,1f))) + slideInHorizontally(tween(240)) { if(targetState > initialState) it/12 else -it/12 }).togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { if(targetState > initialState) -it/12 else it/12 })
             }) { selectedTab -> when (selectedTab) {
-                0 -> TodayScreen(materials, saved, space?.optJSONObject("profile"), loading, error, { refresh++ }, { tab = 1 }, { tab = 2 }, { focus = true }, { reader = it }, { toggleSave(it) }, { tab = 3 })
+                0 -> TodayScreen(materials, saved, space?.optJSONObject("profile"), loading, error, { refresh++ }, { tab = 1 }, { tab = 2 }, { focus = true }, { reader = it }, { toggleSave(it) }, { tab = 4 })
                 1 -> LibraryScreen(materials, saved, loading, error, { refresh++ }, { reader = it }, { toggleSave(it) })
                 2 -> ProfessionalChat(user?.id, chat, scope, { auth = true })
-                3 -> SpaceScreen(user != null, space, spaceError, saved, { auth = true }, { refresh++ }, { reader = it }, { destination -> if (user == null) auth = true else secondary = destination }, {
+                3 -> if (user == null) Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) { Text("Find your study people.", fontFamily = WebsiteDisplay, fontSize = 30.sp); Spacer(Modifier.height(16.dp)); Button(onClick = { auth = true }) { Text("Sign in to Peers") } } else NativePeersScreen({ tab = 0 }, { peerChatActive = it })
+                4 -> SpaceScreen(user != null, space, spaceError, saved, { auth = true }, { refresh++ }, { reader = it }, { destination -> if (user == null) auth = true else secondary = destination }, {
                     scope.launch { Clerk.auth.signOut().onFailure { spaceError = "Could not sign out. Try again." } }
                 })
             } }
@@ -214,7 +248,7 @@ class MainActivity : ComponentActivity() {
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Forest).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Eyebrow("Focus session", Lime); Icon(Icons.Outlined.NorthEast, null, tint = Lime, modifier = Modifier.size(20.dp)) }
                 Display("Study with\ndirection.", Color.White, 37)
-                Text("25 quiet minutes. One small step forward.", color = Color(0xFFBED0C3), fontSize = 13.sp)
+                Text("30 minutes at a time. Keep your momentum.", color = Color(0xFFBED0C3), fontSize = 13.sp)
                 Button(onClick = focus, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Start a focus session", fontWeight = FontWeight.SemiBold) }
             }
         }
@@ -305,7 +339,7 @@ class MainActivity : ComponentActivity() {
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(Triple("Student profile", "Your course and institution", "profile"), Triple("Share a material", "Help the next student", "upload"), Triple("Study together", "Your course, your people", "peers")).forEach { (title, subtitle, destination) ->
+                listOf(Triple("Student profile", "Your course and institution", "profile"), Triple("SyllaPlus membership", "Plans, payments and renewal", "billing"), Triple("Settings & promo codes", "Study preferences, rewards and your account", "settings"), Triple("Share a material", "Help the next student", "upload"), Triple("Study together", "Your course, your people", "peers")).forEach { (title, subtitle, destination) ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).clickable { navigate(destination) }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(when (destination) { "upload" -> Icons.Outlined.UploadFile; "profile" -> Icons.Outlined.PersonOutline; else -> Icons.Outlined.Groups }, null, tint = Forest)
                         Column(Modifier.weight(1f).padding(horizontal = 16.dp)) { Text(title, fontWeight = FontWeight.Medium); Text(subtitle, fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 4.dp)) }
@@ -333,28 +367,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun FocusScreen(prefs: android.content.SharedPreferences, back: () -> Unit) {
-    var remaining by rememberSaveable { mutableLongStateOf(prefs.getLong("focus_remaining", 25 * 60L)) }
-    var end by rememberSaveable { mutableLongStateOf(prefs.getLong("focus_end", 0L)) }
-    var running by rememberSaveable { mutableStateOf(end > 0L) }
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val seconds = if (running) ((end - now) / 1000L).coerceAtLeast(0) else remaining
-    fun persist() { prefs.edit().putLong("focus_remaining", remaining).putLong("focus_end", if (running) end else 0L).apply() }
-    LaunchedEffect(running) { while (running) { now = System.currentTimeMillis(); if (now >= end) { running = false; remaining = 0; persist() }; delay(250) } }
-    Column(Modifier.fillMaxSize().background(Forest).safeDrawingPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, "Back", tint = Color.White) }; Spacer(Modifier.weight(1f)); Eyebrow("Your focus space", Lime); Spacer(Modifier.weight(1f)); Spacer(Modifier.width(48.dp)) }
-        Spacer(Modifier.weight(1f)); Display(if (seconds == 0L) "A little further." else "Just this moment.", Color.White, 32); Spacer(Modifier.height(14.dp)); Text(if (seconds == 0L) "Session complete. Take a breath." else "One task. A little less noise.", color = Color(0xFFB7CDBE), fontSize = 14.sp)
-        Box(Modifier.padding(vertical = 48.dp).size(265.dp), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(progress = { seconds / 1500f }, modifier = Modifier.fillMaxSize(), color = Lime, trackColor = Color(0xFF365849), strokeWidth = 5.dp)
-            Text("%02d:%02d".format(seconds / 60, seconds % 60), fontSize = 65.sp, fontFamily = FontFamily.Serif, color = Color.White, letterSpacing = (-2).sp)
+@Composable private fun DocumentScreen(material: Material, back: () -> Unit, signIn: () -> Unit) {
+    val account by Clerk.userFlow.collectAsState()
+    if(account==null) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(28.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
+            TextButton(onClick=back){Text("Back to library")}
+            BrandWordmark()
+            Spacer(Modifier.height(30.dp))
+            Text("Sign in to read this material",fontFamily=WebsiteDisplay,fontSize=34.sp,lineHeight=38.sp)
+            Text(material.title,fontSize=18.sp)
+            Text("Keep your notes, downloads and study history together in your Syllaboss account.",color=Muted,lineHeight=25.sp)
+            Button(onClick=signIn,modifier=Modifier.fillMaxWidth().heightIn(min=54.dp)){Text("Sign in or create account")}
         }
-        Button(onClick = { if (seconds == 0L) { remaining = 1500; running = false } else if (running) { remaining = seconds; running = false } else { now = System.currentTimeMillis(); end = now + remaining * 1000; running = true }; persist() }, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest)) { Icon(if (running) Icons.Outlined.Pause else Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(10.dp)); Text(if (seconds == 0L) "Start another session" else if (running) "Pause session" else "Start focusing", fontWeight = FontWeight.SemiBold) }
-        TextButton(onClick = { remaining = 1500; end = 0; running = false; persist() }) { Text("Reset timer", color = Color(0xFFB7CDBE)) }
-        Spacer(Modifier.weight(1f)); Text("Focus time is kept on this device.\nReward points remain managed by your account.", color = Color(0xFFB7CDBE), fontSize = 11.sp, lineHeight = 17.sp)
+        return
     }
-}
-
-@Composable private fun DocumentScreen(material: Material, back: () -> Unit) {
     val context = LocalContext.current
     var file by remember { mutableStateOf<File?>(null) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -362,14 +388,19 @@ class MainActivity : ComponentActivity() {
     var page by rememberSaveable { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var retry by remember { mutableIntStateOf(0) }
+    var promotionSeconds by remember { mutableIntStateOf(0) }
     var zoom by remember(page) { mutableFloatStateOf(1f) }
     var panX by remember(page) { mutableFloatStateOf(0f) }
     var panY by remember(page) { mutableFloatStateOf(0f) }
     LaunchedEffect(material.id, retry) {
         error = null
         try {
+            val gate = StudyApi.call(body = JSONObject().put("action", "start-material").put("materialId", material.id).put("intent", "preview"))
+            promotionSeconds = gate.optInt("seconds")
+            while (promotionSeconds > 0) { kotlinx.coroutines.delay(1000); promotionSeconds-- }
+            val access = StudyApi.call(body = JSONObject().put("action", "complete-material").put("id", gate.getString("id")))
             val f = File(context.cacheDir, "read-${material.id.replace(Regex("[^A-Za-z0-9-]"), "")}.pdf")
-            if (!f.exists()) StudyApi.pdf(material.id, f)
+            StudyApi.pdf(access.getString("url"), f)
             file = f
         } catch (e: Exception) { error = e.message ?: "Unable to open document." }
     }
@@ -396,16 +427,24 @@ class MainActivity : ComponentActivity() {
             } catch (e: Exception) { error = "This PDF could not be rendered. Try downloading it again."; f.delete() }
         }
     }
-    Scaffold(topBar = { TopAppBar(title = { Text(material.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 16.sp) }, navigationIcon = { IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, "Back to library") } }) }, bottomBar = {
+    Scaffold(topBar = { TopAppBar(title = { Text(material.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 16.sp) }, navigationIcon = { IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, "Back to library") } }, actions = { NativeMaterialActions(material) }) }, bottomBar = {
         Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { page-- }, enabled = page > 0) { Icon(Icons.Outlined.ChevronLeft, "Previous page") }; Text(if (pages > 0) "${page + 1} / $pages" else "Opening document…", fontSize = 13.sp); IconButton(onClick = { page++ }, enabled = page + 1 < pages) { Icon(Icons.Outlined.ChevronRight, "Next page") }
         }
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-            when { error != null -> Column(Modifier.padding(24.dp)) { StateMessage(error!!) { file = null; retry++ } }
+            when { promotionSeconds > 0 -> Column(Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    BrandWordmark()
+                    Text("Make more room for learning.", fontFamily = WebsiteDisplay, fontSize = 30.sp)
+                    Text("SyllaPlus includes library study with Boss AI, more downloads and longer chat history.", color = Muted)
+                    Text("Your document opens in $promotionSeconds seconds.")
+                    Text("Subscribe today and get seven extra days before your first renewal.", fontSize = 13.sp, color = Muted)
+                }
+                error != null -> Column(Modifier.padding(24.dp)) { StateMessage(error!!) { file = null; retry++ } }
                 bitmap != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp)) { Image(bitmap!!.asImageBitmap(), contentDescription = "${material.title}, page ${page + 1}. Pinch to zoom.", modifier = Modifier.fillMaxWidth().aspectRatio(bitmap!!.width.toFloat() / bitmap!!.height).pointerInput(page) { detectTransformGestures { _, pan, scale, _ -> zoom = (zoom * scale).coerceIn(1f, 4f); panX = if (zoom > 1f) panX + pan.x else 0f; panY = if (zoom > 1f) panY + pan.y else 0f } }.graphicsLayer(scaleX = zoom, scaleY = zoom, translationX = panX, translationY = panY)) }
                 else -> CircularProgressIndicator()
             }
+            if (bitmap != null) NativeReaderTools(material)
         }
     }
 }

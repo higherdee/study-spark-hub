@@ -10,11 +10,21 @@ android {
         applicationId 'org.syllaboss.app'
         minSdk 24
         targetSdk 35
-        versionCode 4
-        versionName '2.1.0'
+        versionCode 5
+        versionName '2.2.0'
+        if (providers.gradleProperty('syllabossVersionCode').isPresent()) versionCode providers.gradleProperty('syllabossVersionCode').get().toInteger()
+        if (providers.gradleProperty('syllabossVersionName').isPresent()) versionName providers.gradleProperty('syllabossVersionName').get()
         buildConfigField 'String', 'CLERK_KEY', '"pk_live_Y2xlcmsuc3lsbGFib3NzLm9yZyQ"'
+        buildConfigField 'String', 'API_BASE_URL', '"https://syllaboss.org"'
     }
-    buildTypes { release { minifyEnabled false } }
+    buildTypes {
+        debug {
+            def previewApi = providers.gradleProperty('syllabossApiBaseUrl').getOrElse('https://syllaboss.org')
+            if (!(previewApi == 'https://syllaboss.org' || previewApi == 'http://10.0.2.2:5173')) throw new GradleException('Use the Syllaboss site or the local emulator preview backend.')
+            buildConfigField 'String', 'API_BASE_URL', '"' + previewApi + '"'
+        }
+        release { minifyEnabled false }
+    }
     buildFeatures { compose true; buildConfig true }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

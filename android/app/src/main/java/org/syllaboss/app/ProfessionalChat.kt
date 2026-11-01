@@ -42,6 +42,9 @@ import org.json.JSONObject
     var histories by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var loadingHistory by remember { mutableStateOf(false) }
     var loadingChat by remember { mutableStateOf(false) }
+    var studyMode by remember { mutableStateOf<String?>(null) }
+    var maxStudyItems by remember { mutableIntStateOf(5) }
+    LaunchedEffect(userId) { if(userId!=null) try { maxStudyItems=if(StudyApi.call("membership").optBoolean("paid")) 50 else 5 } catch(_:Exception){} }
     fun rememberThread() { userId?.let { prefs.edit().putString("active-chat:$it",chat.threadId).apply() } }
     fun newChat() { chat.messages.clear();chat.threadId=null;chat.title="New conversation";chat.error=null;rememberThread() }
     fun openThread(id: String) {
@@ -126,11 +129,11 @@ import org.json.JSONObject
                             if(role=="assistant") Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {OfficialMark(24.dp);Text("Boss AI",fontWeight=FontWeight.SemiBold,fontSize=13.sp)}
                             if(role=="user") androidx.compose.foundation.text.selection.SelectionContainer {Text(text,modifier=Modifier.padding(start=24.dp).clip(RoundedCornerShape(20.dp,20.dp,5.dp,20.dp)).background(MaterialTheme.colorScheme.primary).padding(16.dp),color=MaterialTheme.colorScheme.onPrimary,fontSize=16.sp,lineHeight=25.sp)}
                             else {
-                                NativeAnswer(text,Modifier.fillMaxWidth().padding(top=12.dp))
+                                NativeStudyMessage(text,Modifier.fillMaxWidth().padding(top=12.dp))
                                 Row(Modifier.padding(top=8.dp),verticalAlignment=Alignment.CenterVertically) {
                                     var copied by remember {mutableStateOf(false)}
-                                    TextButton(onClick={clipboard.setText(AnnotatedString(text));copied=true}) {Icon(if(copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text(if(copied) "Copied" else "Copy",fontSize=12.sp)}
-                                    TextButton(onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {type="text/plain";putExtra(Intent.EXTRA_TEXT,text)},"Share answer"))}) {Icon(Icons.Outlined.Share,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text("Share",fontSize=12.sp)}
+                                    TextButton(onClick={clipboard.setText(AnnotatedString(studyPlainText(text)));copied=true}) {Icon(if(copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text(if(copied) "Copied" else "Copy",fontSize=12.sp)}
+                                    TextButton(onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {type="text/plain";putExtra(Intent.EXTRA_TEXT,studyPlainText(text))},"Share answer"))}) {Icon(Icons.Outlined.Share,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text("Share",fontSize=12.sp)}
                                 }
                             }
                         }
@@ -142,6 +145,13 @@ import org.json.JSONObject
         }
         chat.error?.let {Text(it,color=MaterialTheme.colorScheme.error,fontSize=13.sp,modifier=Modifier.padding(horizontal=20.dp,vertical=8.dp))}
         if(userId==null) TextButton(onClick=signIn,modifier=Modifier.fillMaxWidth()) {Text("Sign in to chat with Boss")}
+        studyMode?.let { mode -> NativeStudyModePanel(mode,maxStudyItems,chat.messages.any { it.first=="user" && it.second.length>30 },chat.sending,{studyMode=null}) { topic,count,useChat ->
+            if(userId==null) signIn() else { chat.sending=true;chat.error=null;scope.launch {
+                try { val body=JSONObject().put("action","study-generate").put("mode",mode).put("topic",topic).put("count",count).put("useConversation",useChat);chat.threadId?.let{body.put("threadId",it)}; val result=StudyApi.call(body=body);chat.threadId=result.getString("threadId");rememberThread();chat.messages.add("assistant" to result.getString("content"));studyMode=null }
+                catch(e:Exception){chat.error=e.message ?: "Study items could not be generated."}finally{chat.sending=false}
+            } }
+        } }
+        Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) { listOf("Flashcards" to "flashcards","MCQ" to "objective","Theory" to "theory").forEach { (label,mode) -> TextButton(onClick={studyMode=mode},enabled=!chat.sending){Text(label,fontSize=12.sp)} } }
         Column(Modifier.padding(horizontal=16.dp,vertical=8.dp).fillMaxWidth().border(1.dp,MaterialTheme.colorScheme.outline,RoundedCornerShape(24.dp)).background(Color.White,RoundedCornerShape(24.dp)).padding(12.dp)) {
             BasicComposer(chat.input,{chat.input=it.take(6000)},{send(chat.input)},!chat.sending)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {

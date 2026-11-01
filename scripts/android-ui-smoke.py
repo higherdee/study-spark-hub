@@ -32,14 +32,15 @@ for node in library.iter('node'):
 else: raise AssertionError('No material row available to open')
 tap(title);time.sleep(15)
 reader=snapshot('reader')
-assert any(re.fullmatch(r'1 / [1-9]\d*', n.get('text','')) for n in reader.iter('node')), 'Native document rendering did not complete'
+# Guest browsing must never bypass the private material access grant.
+assert any('Sign in to read this material' in n.get('text','') for n in reader.iter('node')), 'Guest material access did not show the account gate'
 adb('shell','input','keyevent','4');time.sleep(2)
 tap('Boss AI');snapshot('boss')
 tap('Your space');snapshot('space')
 tap('Today');tap('Start a focus session');snapshot('focus')
-tap('Start focusing');time.sleep(3)
 timer=snapshot('focus-running')
-assert any('Pause session' in n.get('text','') for n in timer.iter('node'))
+assert any('Sign in to save focus time' in n.get('text','') for n in timer.iter('node')), 'Guest focus should explain account-backed progress'
 adb('shell','input','keyevent','4');time.sleep(2)
-tap('Your space');tap('Sign in or create account');time.sleep(10);snapshot('sign-in')
+tap('Your space');tap('Sign in or create account');time.sleep(10);consent=snapshot('sign-in')
+assert any('Clear terms.' in n.get('text','') for n in consent.iter('node')), 'Account creation must show terms before authentication'
 print('Native library, Boss AI, account and focus navigation verified.')

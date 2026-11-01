@@ -18,11 +18,13 @@ object StudyApi {
     private fun fetch(request: Request): okhttp3.Response = try {
         http.newCall(request).execute()
     } catch (_: java.io.IOException) { throw IllegalStateException("Could not connect. Check your internet connection and try again.") }
-    suspend fun call(resource: String = "library", body: JSONObject? = null): JSONObject {
+    suspend fun call(resource: String = "library", body: JSONObject? = null): JSONObject = endpoint("/api/mobile?resource=$resource", body, body != null || !resource.startsWith("library"))
+    suspend fun endpoint(path: String, body: JSONObject? = null, authenticated: Boolean = true): JSONObject {
+        require(path.startsWith("/api/")) { "Invalid service address." }
         var token: String? = null
-        if (body != null || !resource.startsWith("library")) Clerk.session?.fetchToken()?.onSuccess { token = it.jwt }
+        if (authenticated) Clerk.session?.fetchToken()?.onSuccess { token = it.jwt }
         return withContext(Dispatchers.IO) {
-            val request = Request.Builder().url("https://syllaboss.org/api/mobile?resource=$resource")
+            val request = Request.Builder().url(BuildConfig.API_BASE_URL + path)
             token?.let { request.header("Authorization", "Bearer $it") }
             if (body != null) request.post(body.toString().toRequestBody("application/json".toMediaType()))
             fetch(request.build()).use { response ->
@@ -32,12 +34,21 @@ object StudyApi {
             }
         }
     }
-    suspend fun pdf(id: String, target: java.io.File) = withContext(Dispatchers.IO) {
-        fetch(Request.Builder().url("https://syllaboss.org/api/materials?id=${java.net.URLEncoder.encode(id, "UTF-8")}").build()).use { response ->
+    suspend fun pdf(accessUrl: String, target: java.io.File) = withContext(Dispatchers.IO) {
+        require(accessUrl.startsWith("/api/materials?")) { "Invalid document access link." }
+        fetch(Request.Builder().url(BuildConfig.API_BASE_URL + accessUrl).build()).use { response ->
             if (!response.isSuccessful) throw IllegalStateException("This document is unavailable. Please retry.")
             val content = response.body
             if (content.contentType().toString().substringBefore(';') !in listOf("application/pdf", "image/jpeg", "image/png", "image/webp")) throw IllegalStateException("This document format is not supported.")
             content.byteStream().use { input -> target.outputStream().use { input.copyTo(it) } }
+        }
+    }
+    suspend fun saveDocument(accessUrl: String, context: android.content.Context, uri: android.net.Uri) = withContext(Dispatchers.IO) {
+        require(accessUrl.startsWith("/api/materials?")) { "Invalid download address." }
+        fetch(Request.Builder().url(BuildConfig.API_BASE_URL + accessUrl).build()).use { response ->
+            if (!response.isSuccessful) throw IllegalStateException("Your download could not complete. Please try again.")
+            val output=context.contentResolver.openOutputStream(uri) ?: throw IllegalStateException("Choose another location to save this file.")
+            output.use { out -> response.body.byteStream().use { it.copyTo(out) } }
         }
     }
     suspend fun upload(context: android.content.Context, uri: android.net.Uri, fields: Map<String, String>): JSONObject {
@@ -54,7 +65,7 @@ object StudyApi {
             val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             fields.forEach { (k, v) -> body.addFormDataPart(k, v) }
             body.addFormDataPart("file", "study-material.pdf", bytes.toRequestBody("application/pdf".toMediaType()))
-            fetch(Request.Builder().url("https://syllaboss.org/api/upload").header("Authorization", "Bearer $token").post(body.build()).build()).use { response ->
+            fetch(Request.Builder().url(BuildConfig.API_BASE_URL + "/api/upload").header("Authorization", "Bearer $token").post(body.build()).build()).use { response ->
                 val result = runCatching { JSONObject(response.body.string()) }.getOrElse { throw IllegalStateException("Upload unavailable. Try again later.") }
                 if (!response.isSuccessful) throw IllegalStateException(result.optString("error", "Upload failed. Please retry."))
                 result

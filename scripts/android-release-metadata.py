@@ -14,8 +14,8 @@ assetlinks = [{"relation": ["delegate_permission/common.handle_all_urls"], "targ
 (release / "assetlinks.json").write_text(json.dumps(assetlinks, indent=2) + "\n")
 apk = (release / "syllaboss.apk").read_bytes()
 gradle = Path("android/app/build.gradle").read_text()
-version = re.search(r"versionName\s+'([^']+)'", gradle).group(1)
-version_code = int(re.search(r"versionCode\s+(\d+)", gradle).group(1))
+version = sys.argv[2] if len(sys.argv) > 2 else re.search(r"versionName\s+'([^']+)'", gradle).group(1)
+version_code = int(sys.argv[3]) if len(sys.argv) > 3 else int(re.search(r"versionCode\s+(\d+)", gradle).group(1))
 (release / "release.json").write_text(json.dumps({
     "version": version, "versionCode": version_code, "package": "org.syllaboss.app", "minimumAndroid": "7.0",
     "bytes": len(apk), "sha256": hashlib.sha256(apk).hexdigest(), "certificateSha256": fingerprint,

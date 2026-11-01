@@ -67,4 +67,5 @@ models.txt
 # Generated Android and visual-check output
 .taste-skill/
 android/.gradle/
+android/.kotlin/
 android/**/build/

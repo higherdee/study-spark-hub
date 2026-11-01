@@ -1,5 +1,11 @@
 name: Build Android APK
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+      - 'scripts/android-release-metadata.py'
   workflow_dispatch:
     inputs:
       bootstrap_signing:
@@ -11,7 +17,10 @@ on:
         type: boolean
         default: false
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: android-release-main
+  cancel-in-progress: true
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -30,7 +39,7 @@ jobs:
       - name: Install build platform
         run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
       - name: Build Android release
-        run: gradle -p android assembleRelease assembleDebug --no-daemon
+        run: gradle -p android assembleRelease assembleDebug --no-daemon -PsyllabossVersionCode="$((100 + GITHUB_RUN_NUMBER))" -PsyllabossVersionName="2.2.$GITHUB_RUN_NUMBER"
       - name: Verify runtime manifest components
         run: python3 scripts/android-verify-manifest.py android/app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
       - name: Enable emulator acceleration
@@ -91,7 +100,25 @@ jobs:
           "$TOOLS/zipalign" -c -p 4 release/syllaboss.apk
           keytool -exportcert -keystore signing/release.p12 -storepass:file signing/password.txt \
             -alias syllaboss -file release/signing-certificate.der
-          python3 scripts/android-release-metadata.py release
+          python3 scripts/android-release-metadata.py release "2.2.$GITHUB_RUN_NUMBER" "$((100 + GITHUB_RUN_NUMBER))"
+      - name: Publish verified native update
+        if: ${{ github.ref == 'refs/heads/main' && !inputs.unsigned_only }}
+        run: |
+          set -euo pipefail
+          cp release/syllaboss.apk public/downloads/syllaboss-native.apk
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          metadata = json.loads(Path('release/release.json').read_text())
+          metadata.update(downloadUrl='/downloads/syllaboss-native.apk', channel='stable', interface='native-android')
+          Path('public/downloads/android-release.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          PY
+          git config user.name 'Syllaboss release'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add public/downloads/syllaboss-native.apk public/downloads/android-release.json
+          git commit -m "Publish verified Android 2.2.$GITHUB_RUN_NUMBER update"
+          git pull --rebase=false --ff-only origin main
+          git push origin HEAD:main
       - name: Prepare aligned release for local signing
         if: ${{ inputs.unsigned_only }}
         run: |
