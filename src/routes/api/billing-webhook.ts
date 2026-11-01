@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/billing-webhook")({ server: { handler
       if (!event || typeof event !== "object" || !event.data) return new Response("Invalid event", { status: 400 });
       if (provider === "paystack" && event.data.domain && event.data.domain !== (environment === "live" ? "live" : "test")) return new Response("Wrong payment environment", { status: 400 });
       const kind = String(provider === "bachs" ? event.type : provider === "paddle" ? event.event_type : event.event);
-      const relevant = provider === "bachs" ? ["subscription.", "payment.", "checkout."].some((prefix) => kind.startsWith(prefix)) : provider === "paddle" ? kind.startsWith("subscription.") || kind === "transaction.completed" : kind.startsWith("subscription.") || ["charge.success", "invoice.payment_failed", "invoice.update"].includes(kind);
+      const relevant = provider === "bachs" ? ["subscription.", "customer.subscription.", "invoice.", "collection.", "payment.", "checkout."].some((prefix) => kind.startsWith(prefix)) : provider === "paddle" ? kind.startsWith("subscription.") || kind === "transaction.completed" : kind.startsWith("subscription.") || ["charge.success", "invoice.payment_failed", "invoice.update"].includes(kind);
       if (!relevant) return Response.json({ received: true });
       const id = paymentEventId(provider, raw, event);
       await enqueueEvent(provider, environment, id, JSON.stringify(queuedEvent(provider, event)));

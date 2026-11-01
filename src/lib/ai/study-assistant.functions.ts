@@ -275,6 +275,7 @@ export const askBossAiServerFn = createServerFn({ method: "POST" })
       taskType: z.enum(["general", "quiz", "theory-grade", "flashcards", "summary"]).default("general"),
       docContext: z
         .object({
+          id: z.string().min(1).max(100).optional(),
           title: z.string(),
           course: z.string(),
           text: z.string(),
@@ -286,6 +287,12 @@ export const askBossAiServerFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const memberUserId = await authorizeStudyData(data);
     if (data.docContext || data.attachedMaterial) await requireLibraryAiAccess(memberUserId);
+    const materialId = data.docContext?.id || data.attachedMaterial?.id;
+    if (materialId) {
+      const { answerDocumentQuestion } = await import("@/lib/document-study.server");
+      const result = await answerDocumentQuestion(memberUserId, { materialId, message: data.query, threadId: data.threadId });
+      return { userMessageId: result.userMessageId, assistantMessageId: result.assistantMessageId, response: result.answer };
+    }
     return withAiAllowance(memberUserId, async () => {
 
     const userMsgId = crypto.randomUUID();
@@ -717,6 +724,7 @@ export const generateStudyQuizServerFn = createServerFn({ method: "POST" })
       threadId: z.string(),
       title: z.string(),
       context: z.string().default(""),
+      sourceMaterialId: z.string().min(1).max(100).optional(),
       mode: z.enum(["objective", "theory"]).default("objective"),
       count: z.number().min(1).max(50).default(5),
       markingMode: z.enum(["as_you_go", "at_the_end"]).default("as_you_go"),
@@ -856,6 +864,13 @@ ${
 }`
 }`;
 
+      if (data.sourceMaterialId) {
+        const { generateFromStoredDocument } = await import("@/lib/document-study.server");
+        const raw = await generateFromStoredDocument(memberUserId,data.sourceMaterialId,prompt);
+        const items = repairAndParseJsonArray(raw);
+        if (!Array.isArray(items) || !items.length) throw new Error("The document could not be used to generate valid study items. No generic topic-based set has been substituted.");
+        return items;
+      }
       const models = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
       for (const model of models) {
         try {
@@ -1049,6 +1064,7 @@ export const generateStudyFlashcardsServerFn = createServerFn({ method: "POST" }
       threadId: z.string(),
       title: z.string(),
       context: z.string().default(""),
+      sourceMaterialId: z.string().min(1).max(100).optional(),
       type: z.enum(["qa", "fill_blank"]).default("qa"),
       count: z.number().min(1).max(50).default(5),
       userPrompt: z.string().optional(),
@@ -1155,6 +1171,13 @@ Constraints:
   }
 ]`;
 
+      if (data.sourceMaterialId) {
+        const { generateFromStoredDocument } = await import("@/lib/document-study.server");
+        const raw = await generateFromStoredDocument(memberUserId,data.sourceMaterialId,prompt);
+        const items = repairAndParseJsonArray(raw);
+        if (!Array.isArray(items) || !items.length) throw new Error("The document could not be used to generate valid study items. No generic topic-based set has been substituted.");
+        return items;
+      }
       const models = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
       for (const model of models) {
         try {
@@ -1316,185 +1339,9 @@ Constraints:
 
 // 12. Grade Theory Answer using Multimodal Gemini Vision (for handwritten photos) or Groq LPU
 export const gradeTheoryAnswerServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) =>
-    z.object({
-      question: z.string(),
-      modelAnswer: z.string(),
-      studentAnswer: z.string().default(""),
-      imageBase64: z.string().optional(),
-      mimeType: z.string().optional(),
-    }).parse(d)
-  )
-  .handler(async ({ data }) => {
-    const memberUserId = await authorizeStudyData(data);
-    return withAiAllowance(memberUserId, async () => {
-
-    // 1. VISION CASE: Student snapped or uploaded a photo of handwritten notes/working
-    if (data.imageBase64) {
-      try {
-        const visionPrompt = `You are a strict, fair university examination marker.
-The student has submitted a photograph of their handwritten solution, mathematical derivation, calculation, or diagram.
-Optional typed notes from student: "${data.studentAnswer || "None provided"}"
-
-Question:
-"${data.question}"
-
-Official Rubric / Model Answer:
-"${data.modelAnswer}"
-
-Marking Instructions:
-1. Perform OCR to read and transcribe all handwritten text, formulas, algebraic steps, numbers, diagrams, and final conclusions in the image.
-2. Directly verify the mathematical derivations, formulas, intermediate steps, and arithmetic against the official model answer and rubric.
-3. Award an honest, realistic score out of 10 marks:
-   - Award marks for correct methodology, key definitions, correct formula application, intermediate steps, and final answers with units.
-   - Deduct marks for algebraic or arithmetic errors, missing steps, wrong formulas, or illegible work.
-4. DO NOT USE EMOJIS WHATSOEVER.
-5. Return ONLY a valid JSON object matching this schema:
-{
-  "transcription": "Brief summary of the handwritten steps read from the image",
-  "score": integer between 0 and 10,
-  "maxScore": 10,
-  "verdict": "Excellent" | "Good" | "Needs Revision",
-  "feedback": "Detailed, constructive academic assessment directly referencing the student's handwritten steps and pointing out exact errors or strengths",
-  "strengths": ["Clear initial formula stated", "Correct intermediate step"],
-  "areasToImprove": ["Calculation error in line 3", "Missing units on final answer"]
-}`;
-
-        const visionRaw = await askGeminiVisionAI(
-          visionPrompt,
-          data.imageBase64,
-          data.mimeType || "image/jpeg",
-          {
-            temperature: 0.2,
-            responseMimeType: "application/json", fetcher: budgetedAiFetch}
-        );
-
-        const match = visionRaw.match(/\{[\s\S]*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0]);
-          const score = Math.max(0, Math.min(10, Number(parsed.score) || 0));
-          const verdict =
-            parsed.verdict ||
-            (score >= 8 ? "Excellent" : score >= 5 ? "Good" : "Needs Revision");
-          return {
-            score,
-            maxScore: 10,
-            verdict,
-            feedback: String(
-              parsed.feedback || "Handwritten response analyzed against university rubric."
-            ),
-            transcription: parsed.transcription ? String(parsed.transcription) : undefined,
-            strengths: Array.isArray(parsed.strengths)
-              ? parsed.strengths.map(String)
-              : ["Handwritten derivation evaluated"],
-            areasToImprove: Array.isArray(parsed.areasToImprove)
-              ? parsed.areasToImprove.map(String)
-              : ["Ensure all mathematical steps are fully shown"],
-          };
-        }
-      } catch (visionErr: any) {
-        console.warn("Gemini vision grading error:", visionErr?.message);
-      }
-    }
-
-    // 2. TEXT CASE: Student typed or transcribed text response
-    const groqKey = getGroqApiKey();
-
-    const prompt = `Grade this university student's theory examination response out of 10 marks against the official rubric.
-Question: "${data.question}"
-Expected Model Answer / Rubric:
-"${data.modelAnswer}"
-
-Student's Written Response:
-"${data.studentAnswer}"
-
-Constraints:
-- DO NOT USE EMOJIS WHATSOEVER.
-- Award marks strictly based on technical accuracy, coverage of rubric key points, and correct mathematical/conceptual reasoning.
-- Output ONLY valid JSON:
-{
-  "score": integer between 0 and 10,
-  "maxScore": 10,
-  "verdict": "Excellent" | "Good" | "Needs Revision",
-  "feedback": "Honest, constructive academic critique with specific advice",
-  "strengths": ["Key definition stated accurately", "Logical progression"],
-  "areasToImprove": ["Missing derivation step", "Should cite standard units"]
-}`;
-
-    // Try active Groq models
-    const activeModels = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
-    for (const model of activeModels) {
-      try {
-        const res = await budgetedAiFetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${groqKey}`,
-          },
-          signal: AbortSignal.timeout(16000),
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: "You are a university examination marker. Output ONLY valid JSON." },
-              { role: "user", content: prompt },
-            ],
-            temperature: 0.2,
-          }),
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          const text = json.choices?.[0]?.message?.content || "";
-          const match = text.match(/\{[\s\S]*\}/);
-          if (match) {
-            const parsed = JSON.parse(match[0]);
-            const score = Math.max(0, Math.min(10, Number(parsed.score) || 5));
-            const verdict =
-              parsed.verdict ||
-              (score >= 8 ? "Excellent" : score >= 5 ? "Good" : "Needs Revision");
-            return {
-              score,
-              maxScore: 10,
-              verdict,
-              feedback: String(parsed.feedback || "Response evaluated against university rubric."),
-              strengths: Array.isArray(parsed.strengths) ? parsed.strengths.map(String) : ["Core points covered"],
-              areasToImprove: Array.isArray(parsed.areasToImprove) ? parsed.areasToImprove.map(String) : ["Review specific rubric requirements"],
-            };
-          }
-        }
-      } catch (err: any) {
-        console.warn(`Groq grading with ${model} error:`, err?.message);
-      }
-    }
-
-    // Secondary Engine: Gemini Text Fallback
-    try {
-      const geminiText = await askGeminiAI(prompt, {
-        temperature: 0.2,
-        responseMimeType: "application/json", fetcher: budgetedAiFetch});
-      const match = geminiText.match(/\{[\s\S]*\}/);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        const score = Math.max(0, Math.min(10, Number(parsed.score) || 5));
-        const verdict =
-          parsed.verdict ||
-          (score >= 8 ? "Excellent" : score >= 5 ? "Good" : "Needs Revision");
-        return {
-          score,
-          maxScore: 10,
-          verdict,
-          feedback: String(parsed.feedback || "Response marked against university rubric."),
-          strengths: Array.isArray(parsed.strengths) ? parsed.strengths.map(String) : ["Concepts addressed"],
-          areasToImprove: Array.isArray(parsed.areasToImprove) ? parsed.areasToImprove.map(String) : ["Provide deeper step-by-step working"],
-        };
-      }
-    } catch (gErr: any) {
-      console.warn("Gemini text grading fallback error:", gErr?.message);
-    }
-
-    throw new Error("Your answer could not be marked because the grading service is unavailable. Please try again; no score has been assigned.");
-
-    });
+  .validator((d: unknown) => z.object({ question:z.string().min(1).max(12000),modelAnswer:z.string().max(16000),studentAnswer:z.string().max(24000).default(""),imageBase64:z.string().max(16000000).optional(),mimeType:z.enum(["image/jpeg","image/png","image/webp"]).optional(),maxScore:z.number().min(1).max(100).default(10) }).parse(d))
+  .handler(async ({data}) => {
+    const userId=await authorizeStudyData(data);
+    const {gradeTheoryAnswer}=await import("@/lib/academic-ai");
+    return withAiAllowance(userId,()=>gradeTheoryAnswer(data.question,data.modelAnswer,data.studentAnswer,budgetedAiFetch,data.imageBase64?{base64:data.imageBase64,mimeType:data.mimeType||"image/jpeg"}:undefined,data.maxScore));
   });
-
-

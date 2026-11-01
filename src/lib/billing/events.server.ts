@@ -28,7 +28,7 @@ export function paymentEventId(provider: BillingProvider, raw: string, event: Js
 // Store only the identifiers needed to retrieve canonical provider records,
 // not card authorizations, addresses, names, emails, or full invoice payloads.
 export function queuedEvent(provider: BillingProvider, event: Json) {
-  if (provider === "bachs") return { type: event["type"], data: { id: event["data"]?.id, subscription_id: event["data"]?.subscription_id, checkout_id: event["data"]?.checkout_id, payment_id: event["data"]?.payment_id } };
+  if (provider === "bachs") return { type: event["type"], data: { id: event["data"]?.id, subscription_id: event["data"]?.subscription_id || event["data"]?.subscription?.subscription_id, checkout_id: event["data"]?.checkout_id, payment_id: event["data"]?.payment_id } };
   return provider === "paddle"
     ? { event_type: event["event_type"], occurred_at: event["occurred_at"], data: { id: event["data"]?.id, subscription_id: event["data"]?.subscription_id } }
     : { event: event["event"], data: { id: event["data"]?.id, reference: event["data"]?.["reference"], subscription_code: event["data"]?.["subscription_code"],
@@ -216,7 +216,10 @@ export async function verifyPaystackPayment(reference: string, environment: Bill
 async function processEvent(provider: BillingProvider, environment: BillingEnvironment, event: Json) {
   if (provider === "bachs") {
     const kind = String(event["type"]);
-    if (kind.startsWith("subscription.")) return synchronizeBachs(String(event["data"]?.subscription_id || event["data"]?.id), environment);
+    if (kind.startsWith("subscription.") || kind.startsWith("customer.subscription.") || kind.startsWith("invoice.")) {
+      const subscriptionId=event["data"]?.subscription_id || event["data"]?.subscription?.subscription_id || (kind.includes("subscription.")?event["data"]?.id:null);
+      if(subscriptionId) return synchronizeBachs(String(subscriptionId),environment);
+    }
     const checkout = event["data"]?.checkout_id;
     if (checkout) return verifyBachsCheckout(String(checkout), environment);
     const paymentId = event["data"]?.payment_id || (kind.startsWith("payment.") ? event["data"]?.id : null);

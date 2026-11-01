@@ -1,5 +1,6 @@
 import { parseStudyArray } from "./ai/study-json";
-import { askGeminiAI } from "./gemini";
+import { askGeminiAI, askGeminiVisionAI } from "./gemini";
+import { theoryMarkingPrompt, parseTheoryMarking } from "./ai/theory-marking";
 import type { Profile } from "@/integrations/turso/client";
 
 export interface QuizQuestion {
@@ -10,6 +11,7 @@ export interface QuizQuestion {
   correctOptionIndex?: number | undefined; // 0, 1, 2, 3
   modelAnswer: string;
   explanation: string;
+  marks?: number;
 }
 
 export interface Flashcard {
@@ -196,17 +198,13 @@ export async function generatePracticeQuestions(materialTitle: string, contextTe
 /**
  * Interactive Marking & Scoring of Theory Answers
  */
-export async function gradeTheoryAnswer(question: string, modelAnswer: string, studentAnswer: string, fetcher?: typeof fetch): Promise<{ score: number; maxScore: number; feedback: string; strengths: string[]; areasToImprove: string[] }> {
-  if (!studentAnswer.trim()) return { score: 0, maxScore: 10, feedback: "No answer was submitted.", strengths: [], areasToImprove: ["Submit an answer to receive feedback."] };
-  const prompt = `Mark this practice answer out of 10 using the supplied rubric. Award partial credit for correct reasoning. Do not assume missing work. Explain the score.\nQuestion: ${question.slice(0, 6000)}\nRubric: ${modelAnswer.slice(0, 6000)}\nStudent answer: ${studentAnswer.slice(0, 12000)}\nReturn ONLY JSON with score (0..10), feedback, strengths (string array), areasToImprove (string array).`;
-  const raw = await askGeminiAI(prompt, { temperature: 0.1, ...(fetcher ? { fetcher } : {}) });
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("This answer could not be marked. Please retry.");
-  const value = JSON.parse(match[0]);
-  if (typeof value.score !== "number" || !Number.isFinite(value.score) || value.score < 0 || value.score > 10 || typeof value.feedback !== "string") throw new Error("This answer could not be marked. Please retry.");
-  return { score: Math.round(value.score * 10) / 10, maxScore: 10, feedback: value.feedback, strengths: Array.isArray(value.strengths) ? value.strengths.filter((item: unknown) => typeof item === "string") : [], areasToImprove: Array.isArray(value.areasToImprove) ? value.areasToImprove.filter((item: unknown) => typeof item === "string") : [] };
+export async function gradeTheoryAnswer(question: string, modelAnswer: string, studentAnswer: string, fetcher?: typeof fetch, image?: { base64: string; mimeType: string }, maxScore = 10) {
+  if (!studentAnswer.trim() && !image) return { score: 0, maxScore, verdict: "Needs Revision", feedback: "No answer was submitted.", criteria: [], strengths: [], areasToImprove: ["Submit an answer to receive feedback."], transcription: undefined, referenceIssue: null };
+  const prompt = theoryMarkingPrompt({question,modelAnswer,studentAnswer},maxScore);
+  const options = {temperature:0.1,responseMimeType:"application/json",...(fetcher?{fetcher}:{})};
+  const raw = image ? await askGeminiVisionAI(prompt,image.base64,image.mimeType,options) : await askGeminiAI(prompt,options);
+  return parseTheoryMarking(raw,maxScore);
 }
-
 /**
  * Generate Flashcards
  */

@@ -695,6 +695,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
           studentAnswer: currentAnswer,
           imageBase64: currentImage?.base64,
           mimeType: currentImage?.mimeType,
+          maxScore: currentQ.marks || 10,
         },
       });
 
@@ -908,7 +909,7 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
         <div className="p-3.5 rounded-2xl border border-brand/30 bg-brand/10 text-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-bold text-forest flex items-center gap-1.5">
-              <Award className="size-3.5" /> Mark: {currentFeedback.score} / 10 ({currentFeedback.verdict})
+              <Award className="size-3.5" /> {currentFeedback.score} / {currentFeedback.maxScore || 10} marks · {currentFeedback.verdict}
             </span>
             <button
               type="button"
@@ -929,6 +930,8 @@ export function InChatTheoryWidget({ data, onSelectCount }: InChatTheoryWidgetPr
           )}
 
           <AiMessageRenderer content={currentFeedback.feedback} className="text-xs text-muted-foreground leading-relaxed" />
+          {currentFeedback.criteria?.length > 0 && <div className="overflow-hidden rounded-xl border border-border bg-card"><div className="border-b px-4 py-3 text-sm font-semibold">How your answer was marked</div>{currentFeedback.criteria.map((criterion:any,index:number)=><div key={index} className="border-b border-border/60 px-4 py-3 last:border-0"><div className="flex items-start justify-between gap-4"><span className="text-sm font-medium">{criterion.criterion}</span><span className="shrink-0 text-sm font-semibold tabular-nums">{criterion.earned} / {criterion.possible}</span></div>{criterion.evidence&&<blockquote className="mt-2 border-l-2 border-brand/30 pl-3 text-sm italic text-muted-foreground">“{criterion.evidence}”</blockquote>}<p className="mt-2 text-sm leading-6 text-muted-foreground">{criterion.reason}</p></div>)}</div>}
+          {currentFeedback.referenceIssue&&<p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">Reference note: {currentFeedback.referenceIssue}</p>}
 
           {currentFeedback.strengths && currentFeedback.strengths.length > 0 && (
             <div className="space-y-0.5 pt-1">

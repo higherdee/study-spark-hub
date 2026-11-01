@@ -1,4 +1,5 @@
 import { reportStudyError } from "@/lib/membership/report-error";
+import {DocumentFocusBar} from "@/components/document-focus-bar";
 import { StudyModePanel, type StudyMode } from "@/components/chat/study-mode-panel";
 import { useMembership } from "@/hooks/use-membership";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -267,6 +268,7 @@ function AssistantPage() {
   const [cardFlipped, setCardFlipped] = useState(false);
 
   // Active Attached Document Context
+  const [documentFocus,setDocumentFocus]=useState("");
   const [activeDocContext, setActiveDocContext] = useState<{
     id?: string;
     title: string;
@@ -736,7 +738,7 @@ function AssistantPage() {
       id: mat.id,
       title: mat.title,
       course: mat.course_code ? `${mat.course_code} - ${mat.course}` : mat.course,
-      text: mat.description || `Campus study material for ${mat.course} at ${mat.institution}.`,
+      text: "",
     });
     setIsLibraryModalOpen(false);
 
@@ -915,7 +917,7 @@ function AssistantPage() {
         data: {
           userId: user!.id,
           threadId: targetThreadId,
-          query: queryText,
+          query: activeDocContext?.id && documentFocus ? `${documentFocus}\n${queryText}` : queryText,
           taskType: "general",
           docContext: activeDocContext ?? undefined,
         },
@@ -1051,6 +1053,7 @@ function AssistantPage() {
           threadId: targetThreadId,
           title,
           context: sample,
+          sourceMaterialId: activeDocContext?.id,
           mode: "objective",
           count: countToUse,
           markingMode: modeToUse,
@@ -1138,6 +1141,7 @@ function AssistantPage() {
           threadId: targetThreadId,
           title,
           context: sample,
+          sourceMaterialId: activeDocContext?.id,
           mode: "theory",
           count: countToUse,
           markingMode: modeToUse,
@@ -1224,6 +1228,7 @@ function AssistantPage() {
           threadId: targetThreadId,
           title,
           context: sample,
+          sourceMaterialId: activeDocContext?.id,
           type: typeToUse,
           count: countToUse,
           userPrompt,
@@ -1419,6 +1424,7 @@ function AssistantPage() {
       {/* MAIN CHAT & INTERACTIVE WORKSPACE */}
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+        {activeDocContext?.id&&<DocumentFocusBar key={activeDocContext.id} id={activeDocContext.id} title={activeDocContext.title} focus={documentFocus} change={setDocumentFocus} detach={()=>{setActiveDocContext(null);setDocumentFocus("");}}/>}
         {/* Mobile Header (Top-Right Recent Menu + New Chat) */}
         <div className="md:hidden flex items-center justify-between px-3.5 py-2 border-b border-border/50 bg-card/85 backdrop-blur-md shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
@@ -1612,7 +1618,7 @@ function AssistantPage() {
                       "boss-message-content rounded-2xl px-4 py-3 text-[15px] leading-relaxed",
                       m.role === "user"
                         ? "max-w-[88%] bg-forest text-white font-medium rounded-br-xs"
-                        : "w-full max-w-[96%] md:max-w-[92%] bg-card text-ink border border-border rounded-bl-xs"
+                        : "w-full max-w-full bg-transparent text-ink border-0 shadow-none"
                     )}
                   >
                     {/* Attached material badge */}
@@ -1621,10 +1627,10 @@ function AssistantPage() {
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-xs flex items-center gap-1.5 text-forest">
                             <CheckCircle2 className="size-3.5 text-brand" />
-                            Registered to Library
+                            Source document
                           </span>
                           <span className="rounded-full bg-accent text-forest px-2 py-0.5 text-[10px] font-bold font-mono">
-                            +25 SyllaPoints
+                            Attached
                           </span>
                         </div>
                         <p className="mt-1 font-bold text-xs">{m.attachedMaterial.title}</p>
