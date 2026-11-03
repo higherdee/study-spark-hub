@@ -31,6 +31,7 @@ import { Route as ApiMaterialsRouteImport } from './routes/api/materials'
 import { Route as ApiMembershipRouteImport } from './routes/api/membership'
 import { Route as ApiMembershipMaintenanceRouteImport } from './routes/api/membership-maintenance'
 import { Route as ApiMobileRouteImport } from './routes/api/mobile'
+import { Route as ApiStudyMediaRouteImport } from './routes/api/study-media'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as BillingCheckoutRouteImport } from './routes/billing/checkout'
 import { Route as BillingReturnRouteImport } from './routes/billing/return'
@@ -163,6 +164,11 @@ const ApiMembershipMaintenanceRoute =
 const ApiMobileRoute = ApiMobileRouteImport.update({
   id: '/api/mobile',
   path: '/api/mobile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStudyMediaRoute = ApiStudyMediaRouteImport.update({
+  id: '/api/study-media',
+  path: '/api/study-media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUploadRoute = ApiUploadRouteImport.update({
@@ -319,6 +325,7 @@ export interface FileRoutesByFullPath {
   '/api/membership': typeof ApiMembershipRoute
   '/api/membership-maintenance': typeof ApiMembershipMaintenanceRoute
   '/api/mobile': typeof ApiMobileRoute
+  '/api/study-media': typeof ApiStudyMediaRoute
   '/api/upload': typeof ApiUploadRoute
   '/billing/checkout': typeof BillingCheckoutRoute
   '/billing/return': typeof BillingReturnRoute
@@ -363,6 +370,7 @@ export interface FileRoutesByTo {
   '/api/membership': typeof ApiMembershipRoute
   '/api/membership-maintenance': typeof ApiMembershipMaintenanceRoute
   '/api/mobile': typeof ApiMobileRoute
+  '/api/study-media': typeof ApiStudyMediaRoute
   '/api/upload': typeof ApiUploadRoute
   '/billing/checkout': typeof BillingCheckoutRoute
   '/billing/return': typeof BillingReturnRoute
@@ -411,6 +419,7 @@ export interface FileRoutesById {
   '/api/membership': typeof ApiMembershipRoute
   '/api/membership-maintenance': typeof ApiMembershipMaintenanceRoute
   '/api/mobile': typeof ApiMobileRoute
+  '/api/study-media': typeof ApiStudyMediaRoute
   '/api/upload': typeof ApiUploadRoute
   '/billing/checkout': typeof BillingCheckoutRoute
   '/billing/return': typeof BillingReturnRoute
@@ -459,6 +468,7 @@ export interface FileRouteTypes {
     | '/api/membership'
     | '/api/membership-maintenance'
     | '/api/mobile'
+    | '/api/study-media'
     | '/api/upload'
     | '/billing/checkout'
     | '/billing/return'
@@ -503,6 +513,7 @@ export interface FileRouteTypes {
     | '/api/membership'
     | '/api/membership-maintenance'
     | '/api/mobile'
+    | '/api/study-media'
     | '/api/upload'
     | '/billing/checkout'
     | '/billing/return'
@@ -550,6 +561,7 @@ export interface FileRouteTypes {
     | '/api/membership'
     | '/api/membership-maintenance'
     | '/api/mobile'
+    | '/api/study-media'
     | '/api/upload'
     | '/billing/checkout'
     | '/billing/return'
@@ -595,6 +607,7 @@ export interface RootRouteChildren {
   ApiMembershipRoute: typeof ApiMembershipRoute
   ApiMembershipMaintenanceRoute: typeof ApiMembershipMaintenanceRoute
   ApiMobileRoute: typeof ApiMobileRoute
+  ApiStudyMediaRoute: typeof ApiStudyMediaRoute
   ApiUploadRoute: typeof ApiUploadRoute
   BillingCheckoutRoute: typeof BillingCheckoutRoute
   BillingReturnRoute: typeof BillingReturnRoute
@@ -756,6 +769,13 @@ declare module '@tanstack/react-router' {
       path: '/api/mobile'
       fullPath: '/api/mobile'
       preLoaderRoute: typeof ApiMobileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/study-media': {
+      id: '/api/study-media'
+      path: '/api/study-media'
+      fullPath: '/api/study-media'
+      preLoaderRoute: typeof ApiStudyMediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/upload': {
@@ -1015,6 +1035,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMembershipRoute: ApiMembershipRoute,
   ApiMembershipMaintenanceRoute: ApiMembershipMaintenanceRoute,
   ApiMobileRoute: ApiMobileRoute,
+  ApiStudyMediaRoute: ApiStudyMediaRoute,
   ApiUploadRoute: ApiUploadRoute,
   BillingCheckoutRoute: BillingCheckoutRoute,
   BillingReturnRoute: BillingReturnRoute,
@@ -1024,13 +1045,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -224,11 +224,11 @@ export async function joinStudyGroup(groupId: string, userId: string): Promise<b
 export async function getGroupMessages(groupId: string, limit = 60, userId?: string): Promise<GroupMessage[]> {
   if (!userId) throw new Error("Sign in to view group messages.");
   const rs = await turso.execute({
-    sql: `SELECT gm.* FROM group_messages gm JOIN study_group_members sgm ON sgm.group_id = gm.group_id WHERE gm.group_id = ? AND sgm.user_id = ? ORDER BY gm.created_at ASC LIMIT ?`,
+    sql: `SELECT gm.* FROM group_messages gm JOIN study_group_members sgm ON sgm.group_id = gm.group_id WHERE gm.group_id = ? AND sgm.user_id = ? ORDER BY gm.created_at DESC, gm.rowid DESC LIMIT ?`,
     args: [groupId, userId, limit],
   });
 
-  return rs.rows.map((r: any) => ({
+  return [...rs.rows].reverse().map((r: any) => ({
     id: String(r.id),
     group_id: String(r.group_id),
     user_id: String(r.user_id),
@@ -511,13 +511,13 @@ export async function getDirectMessages(conversationId: string, limit = 80, user
       JOIN profiles p ON p.id = m.sender_id
       LEFT JOIN materials mat ON mat.id = m.material_id
       WHERE m.conversation_id = ? AND (EXISTS (SELECT 1 FROM direct_conversations c WHERE c.id = m.conversation_id AND (c.user1_id = ? OR c.user2_id = ?)))
-      ORDER BY m.created_at ASC
+      ORDER BY m.created_at DESC, m.rowid DESC
       LIMIT ?
     `,
     args: [conversationId, userId, userId, limit],
   });
 
-  return rs.rows.map((r: any) => ({
+  return [...rs.rows].reverse().map((r: any) => ({
     id: String(r.id),
     conversation_id: String(r.conversation_id),
     sender_id: String(r.sender_id),
@@ -539,6 +539,7 @@ export async function sendDirectMessage(data: {
   conversationId: string;
   senderId: string;
   content: string;
+  previewText?: string;
   materialId?: string;
 }): Promise<DirectMessage> {
   const membership = await turso.execute({ sql: "SELECT 1 FROM direct_conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1", args: [data.conversationId, data.senderId, data.senderId] });
@@ -554,7 +555,7 @@ export async function sendDirectMessage(data: {
 
   await turso.execute({
     sql: `UPDATE direct_conversations SET last_message_text = ?, last_message_at = datetime('now') WHERE id = ?`,
-    args: [data.content.slice(0, 100), data.conversationId],
+    args: [(data.previewText || data.content).slice(0, 100), data.conversationId],
   });
 
   const pRs = await turso.execute({

@@ -1,0 +1,163 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+package org.syllaboss.app
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.clerk.api.Clerk
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+
+internal fun JSONObject.objects(key: String): List<JSONObject> {
+    val a = optJSONArray(key) ?: return emptyList()
+    return (0 until a.length()).mapNotNull { a.optJSONObject(it) }
+}
+internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
+
+@Composable internal fun PeerConversation(target: String, title: String, group: Boolean, back: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val account by Clerk.userFlow.collectAsState()
+    var messages by remember(target) { mutableStateOf<List<JSONObject>>(emptyList()) }
+    var draft by remember(target) { mutableStateOf("") }
+    var attachment by remember(target) { mutableStateOf<JSONObject?>(null) }
+    var showPicker by remember { mutableStateOf(false) }
+    var battle by remember { mutableStateOf<String?>(null) }
+    var material by remember { mutableStateOf<Material?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var loaded by remember(target) { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    var refresh by remember { mutableIntStateOf(0) }
+    val state = rememberLazyListState()
+    val resource = if (group) "messages&group=" else "direct-messages&thread="
+    LaunchedEffect(target, refresh, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    val next = StudyApi.call(resource + target.asQuery()).objects("messages")
+                    val atEnd = !loaded || !state.canScrollForward || messages.isEmpty()
+                    if (next.lastOrNull()?.optString("id") != messages.lastOrNull()?.optString("id") || next.size != messages.size) {
+                        messages = next
+                        if (atEnd && next.isNotEmpty()) state.requestScrollToItem(next.lastIndex)
+                    }
+                    loaded = true
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    if (!loaded) error = e.message ?: "Unable to load this conversation."
+                }
+                delay(8000)
+            }
+        }
+    }
+    androidx.activity.compose.BackHandler(material != null) { material = null }
+    material?.let { DocumentScreen(it, { material = null }, {}); return }
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Column { Text(title, maxLines = 1); Text(if (group) "Study group" else "Direct message", fontSize = 12.sp, color = Muted) } },
+            navigationIcon = { IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, "Back") } },
+            actions = { TextButton(onClick = { battle = "" }) { Icon(Icons.Outlined.Bolt, null); Text("Battles") } }
+        )
+    }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
+            if (!loaded && error.isBlank()) LinearProgressIndicator(Modifier.fillMaxWidth())
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = state, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (loaded && messages.isEmpty()) item {
+                    Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Outlined.Forum, null, tint = Forest)
+                        Text("Start the conversation", fontFamily = WebsiteDisplay, fontSize = 25.sp)
+                        Text("Ask a question, share notes, or start a battle.", color = Muted, fontSize = 13.sp)
+                    }
+                }
+                items(messages, key = { it.getString("id") }) { message ->
+                    val raw = message.optString("content")
+                    val envelope = remember(raw) { runCatching { JSONObject(raw) }.getOrNull() }
+                    val media = envelope?.optJSONObject("syllabossAttachment")
+                    val marker = remember(raw) { Regex("\\[(?:STUDY_BATTLE|BATTLE_RECEIPT):([a-fA-F0-9-]{36})]").find(raw) }
+                    val own = account?.id == message.optString(if (group) "user_id" else "sender_id")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
+                        Surface(shape = RoundedCornerShape(18.dp), color = if (own) Sage else MaterialTheme.colorScheme.surfaceContainer) {
+                            Column(Modifier.widthIn(max = 300.dp).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (!own) Text(message.optString(if (group) "user_name" else "sender_name"), color = Forest, fontSize = 12.sp)
+                                if (marker != null) TextButton(onClick = { battle = marker.groupValues[1] }) { Icon(Icons.Outlined.Bolt, null); Text("Open study battle") }
+                                else {
+                                    val caption = if (media != null) envelope?.optString("text").orEmpty() else raw
+                                    if (caption.isNotBlank()) SelectionContainer { Text(caption, lineHeight = 21.sp) }
+                                }
+                                if (media != null) NativeAttachmentMessage(media)
+                                val id = message.optString("material_id").takeUnless { it == "null" }.orEmpty()
+                                if (marker == null && id.isNotBlank()) TextButton(onClick = {
+                                    scope.launch {
+                                        try { material = Material.from(StudyApi.call("shared-material&id=" + id.asQuery()).getJSONObject("material")) }
+                                        catch (e: Exception) { if (e is CancellationException) throw e; error = e.message.orEmpty() }
+                                    }
+                                }) { Icon(Icons.Outlined.Description, null); Text(message.optString("material_title", "Open library material"), maxLines = 2) }
+                            }
+                        }
+                    }
+                }
+            }
+            if (error.isNotBlank()) Text(error, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            AnimatedVisibility(attachment != null, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Attachment, null, tint = Forest)
+                    Text(attachment?.optString("title").orEmpty(), Modifier.weight(1f).padding(horizontal = 8.dp), maxLines = 1)
+                    IconButton(onClick = { attachment = null }, enabled = !busy) { Icon(Icons.Outlined.Close, "Remove attachment") }
+                }
+            }
+            Surface(color = Paper, tonalElevation = 0.dp) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.Bottom) {
+                    IconButton(onClick = { showPicker = true }, enabled = !busy) { Icon(Icons.Outlined.AddCircleOutline, "Attach file or library material") }
+                    OutlinedTextField(draft, { draft = it.take(3000) }, Modifier.weight(1f), enabled = !busy, placeholder = { Text("Message…") }, maxLines = 4, shape = RoundedCornerShape(22.dp))
+                    if (draft.isBlank() && attachment == null) VoiceNoteButton(!busy, { uri, duration ->
+                        busy = true
+                        scope.launch {
+                            try { attachment = StudyApi.media(context, uri, target = target, duration = duration); error = "" }
+                            catch (e: Exception) { if (e is CancellationException) throw e; error = e.message.orEmpty() }
+                            finally { busy = false }
+                        }
+                    }, { error = it })
+                    else FilledIconButton(onClick = {
+                        val body = JSONObject().put("action", if (group) "group-message" else "direct-message")
+                            .put(if (group) "group" else "conversationId", target).put("content", draft.trim())
+                        attachment?.let { body.put(if (it.optBoolean("library")) "materialId" else "attachmentId", it.getString("id")) }
+                        busy = true; error = ""
+                        scope.launch {
+                            try {
+                                val sent = StudyApi.call(body = body).getJSONObject("message")
+                                messages = (messages + sent).distinctBy { it.getString("id") }
+                                state.requestScrollToItem(messages.lastIndex)
+                                draft = ""; attachment = null; refresh++
+                            } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message ?: "Message could not be sent." }
+                            finally { busy = false }
+                        }
+                    }, enabled = !busy, modifier = Modifier.padding(start = 4.dp).size(48.dp)) { Icon(Icons.Outlined.ArrowUpward, "Send message") }
+                }
+            }
+        }
+    }
+    if (showPicker) NativeSourceSheet(target, { showPicker = false }, { attachment = it }, { error = it })
+    battle?.let { NativeBattleSheet(target, it, { battle = null }) }
+}

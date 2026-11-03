@@ -44,9 +44,16 @@ import org.json.JSONObject
     var loadingChat by remember { mutableStateOf(false) }
     var studyMode by remember { mutableStateOf<String?>(null) }
     var maxStudyItems by remember { mutableIntStateOf(5) }
+    var sourceMenu by remember {mutableStateOf(false)}
+    var resumeMode by remember {mutableStateOf<String?>(null)}
+    var mediaBusy by remember {mutableStateOf(false)}
+    var focusedPage by remember {mutableStateOf("")}
+    var focusedLine by remember {mutableStateOf("")}
+    var showPassage by remember {mutableStateOf(false)}
+    val focusManager=LocalFocusManager.current
     LaunchedEffect(userId) { if(userId!=null) try { maxStudyItems=if(StudyApi.call("membership").optBoolean("paid")) 50 else 5 } catch(_:Exception){} }
     fun rememberThread() { userId?.let { prefs.edit().putString("active-chat:$it",chat.threadId).apply() } }
-    fun newChat() { chat.messages.clear();chat.threadId=null;chat.title="New conversation";chat.error=null;rememberThread() }
+    fun newChat() { chat.messages.clear();chat.threadId=null;chat.source=null;focusedPage="";focusedLine="";chat.title="New conversation";chat.error=null;rememberThread() }
     fun openThread(id: String) {
         if(chat.sending) return
         loadingChat=true;chat.error=null
@@ -56,7 +63,7 @@ import org.json.JSONObject
                 val messages=data.getJSONArray("messages")
                 chat.messages.clear()
                 for(i in 0 until messages.length()) { val m=messages.getJSONObject(i);chat.messages.add(m.getString("role") to m.getString("content")) }
-                chat.threadId=id;chat.title=data.optString("title","Study conversation");rememberThread();showHistory=false
+                if (chat.threadId != id) { chat.source=null; focusedPage=""; focusedLine="" }; chat.threadId=id;chat.title=data.optString("title","Study conversation");rememberThread();showHistory=false
             } catch(e: Exception){chat.error=e.message}
             finally {loadingChat=false}
         }
@@ -73,7 +80,8 @@ import org.json.JSONObject
         chat.messages.add("user" to question)
         scope.launch {
             try {
-                val body=JSONObject().put("message",question)
+                val scopePrefix=if(focusedPage.isNotBlank())"On page $focusedPage${if(focusedLine.isNotBlank())", line $focusedLine" else ""}: " else  ""
+                val body=if(chat.source!=null)JSONObject().put("action","document-chat").put("materialId",chat.source!!.getString("id")).put("message",scopePrefix+question)else JSONObject().put("message",question)
                 chat.threadId?.let { body.put("threadId",it) }
                 val result=StudyApi.call(body=body)
                 chat.threadId=result.getString("threadId")
@@ -87,6 +95,12 @@ import org.json.JSONObject
     }
     val nearBottom by remember { derivedStateOf { list.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it>=chat.messages.size-2 } ?: true } }
     LaunchedEffect(chat.messages.size,chat.sending) { if(chat.messages.isNotEmpty() && (nearBottom || chat.messages.last().first=="user")) list.animateScrollToItem(chat.messages.lastIndex) }
+    if(sourceMenu)NativeSourceSheet(onDismiss={sourceMenu=false;resumeMode?.let{studyMode=it;resumeMode=null}},onPicked={chat.source=it;focusedPage="";focusedLine=""},onError={chat.error=it})
+    if(showPassage)AlertDialog(onDismissRequest={showPassage=false},title={Text("Focus on a passage")},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Text("Use PDF page numbers. Lines follow the document’s extracted reading order.",fontSize=14.sp,color=Muted)
+        OutlinedTextField(focusedPage,{focusedPage=it.filter(Char::isDigit).take(4)},label={Text("Page (optional)")},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
+        OutlinedTextField(focusedLine,{focusedLine=it.filter(Char::isDigit).take(4)},label={Text("Line (optional)")},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
+    }},confirmButton={TextButton(onClick={showPassage=false}){Text("Use passage")}},dismissButton={TextButton(onClick={focusedPage="";focusedLine="";showPassage=false}){Text("Whole document")}})
     if(showHistory) ModalBottomSheet(onDismissRequest={showHistory=false},containerColor=MaterialTheme.colorScheme.background) {
         LazyColumn(Modifier.fillMaxWidth().heightIn(max=560.dp).navigationBarsPadding(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             item { Text("Conversations",fontFamily=WebsiteDisplay,fontSize=30.sp);Text("Pick up where you left off.",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=14.sp,modifier=Modifier.padding(top=8.dp)) }
@@ -108,6 +122,9 @@ import org.json.JSONObject
             IconButton(onClick={newChat()},enabled=!chat.sending) {Icon(Icons.Outlined.EditNote,"New conversation")}
         }
         HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=.5f))
+        chat.source?.let{source->Surface(color=Sage,shape=RoundedCornerShape(16.dp),modifier=Modifier.padding(horizontal=16.dp,vertical=8.dp)){
+            Row(Modifier.padding(start=14.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.Description,null,tint=Forest,modifier=Modifier.size(20.dp));Column(Modifier.weight(1f).padding(12.dp)){Text(source.optString("title"),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=13.sp,fontWeight=FontWeight.SemiBold);TextButton(onClick={showPassage=true},contentPadding=PaddingValues(0.dp),modifier=Modifier.height(28.dp)){Text(if(focusedPage.isBlank())"Whole document · choose a passage" else "Page $focusedPage${if(focusedLine.isNotBlank())" · line $focusedLine" else ""}",fontSize=12.sp)}};IconButton(onClick={chat.source=null;focusedPage="";focusedLine=""}){Icon(Icons.Outlined.Close,"Detach source")}}
+        }}
         if(loadingChat) LinearProgressIndicator(Modifier.fillMaxWidth())
         if(chat.messages.isEmpty()) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
@@ -145,18 +162,23 @@ import org.json.JSONObject
         }
         chat.error?.let {Text(it,color=MaterialTheme.colorScheme.error,fontSize=13.sp,modifier=Modifier.padding(horizontal=20.dp,vertical=8.dp))}
         if(userId==null) TextButton(onClick=signIn,modifier=Modifier.fillMaxWidth()) {Text("Sign in to chat with Boss")}
-        studyMode?.let { mode -> NativeStudyModePanel(mode,maxStudyItems,chat.messages.any { it.first=="user" && it.second.length>30 },chat.sending,{studyMode=null}) { topic,count,useChat ->
+        studyMode?.let { mode -> NativeStudyModePanel(mode,maxStudyItems,chat.messages.any { it.first=="user" && it.second.isNotBlank() },chat.sending,{studyMode=null},sourceTitle=chat.source?.optString("title"),error=chat.error,onAttach={resumeMode=mode;studyMode=null;sourceMenu=true}) { topic,count,useChat ->
             if(userId==null) signIn() else { chat.sending=true;chat.error=null;scope.launch {
-                try { val body=JSONObject().put("action","study-generate").put("mode",mode).put("topic",topic).put("count",count).put("useConversation",useChat);chat.threadId?.let{body.put("threadId",it)}; val result=StudyApi.call(body=body);chat.threadId=result.getString("threadId");rememberThread();chat.messages.add("assistant" to result.getString("content"));studyMode=null }
+                try { val scopePrefix=if(focusedPage.isNotBlank())"Page $focusedPage${if(focusedLine.isNotBlank())" line $focusedLine" else ""}. " else "";val body=JSONObject().put("action","study-generate").put("mode",mode).put("topic",scopePrefix+topic).put("count",count).put("useConversation",useChat);chat.threadId?.let{body.put("threadId",it)};chat.source?.let{body.put("sourceMaterialId",it.getString("id"))}; val result=StudyApi.call(body=body);chat.threadId=result.getString("threadId");rememberThread();chat.messages.add("assistant" to result.getString("content"));studyMode=null }
                 catch(e:Exception){chat.error=e.message ?: "Study items could not be generated."}finally{chat.sending=false}
             } }
         } }
-        Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) { listOf("Flashcards" to "flashcards","MCQ" to "objective","Theory" to "theory").forEach { (label,mode) -> TextButton(onClick={studyMode=mode},enabled=!chat.sending){Text(label,fontSize=12.sp)} } }
+        Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) { listOf("Flashcards" to "flashcards","MCQ" to "objective","Theory" to "theory").forEach { (label,mode) -> TextButton(onClick={focusManager.clearFocus();studyMode=mode},enabled=!chat.sending){Icon(if(mode=="flashcards")Icons.Outlined.Style else if(mode=="objective")Icons.Outlined.Checklist else Icons.Outlined.EditNote,null,Modifier.size(16.dp));Spacer(Modifier.width(5.dp));Text(label,fontSize=12.sp)} } }
+        if(mediaBusy)LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal=20.dp))
         Column(Modifier.padding(horizontal=16.dp,vertical=8.dp).fillMaxWidth().border(1.dp,MaterialTheme.colorScheme.outline,RoundedCornerShape(24.dp)).background(Color.White,RoundedCornerShape(24.dp)).padding(12.dp)) {
             BasicComposer(chat.input,{chat.input=it.take(6000)},{send(chat.input)},!chat.sending)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-                Text("Explain · Practise · Revise",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                FilledIconButton(onClick={send(chat.input)},enabled=chat.input.isNotBlank()&&!chat.sending,modifier=Modifier.size(42.dp)) {Icon(Icons.Outlined.ArrowUpward,"Send question")}
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    IconButton(onClick={if(userId==null)signIn()else{focusManager.clearFocus();sourceMenu=true}},enabled=!chat.sending&&!mediaBusy){Icon(Icons.Outlined.Add,"Attach file, library material, or photo",tint=Forest)}
+                    VoiceNoteButton(enabled=!chat.sending&&!mediaBusy,onVoice={uri,_->mediaBusy=true;scope.launch{try{val voice=StudyApi.media(context,uri,purpose="transcribe");chat.input=(chat.input+" "+voice.getString("transcript")).trim().take(6000)}catch(e:Exception){chat.error=e.message}finally{mediaBusy=false}}},onError={chat.error=it})
+                    Text("Ask · Learn · Practise",fontSize=11.sp,color=Muted)
+                }
+                FilledIconButton(onClick={send(chat.input)},enabled=chat.input.isNotBlank()&&!chat.sending&&!mediaBusy,modifier=Modifier.size(42.dp)) {Icon(Icons.Outlined.ArrowUpward,"Send question")}
             }
         }
         Text("AI can make mistakes. Check important answers.",fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.align(Alignment.CenterHorizontally).padding(bottom=8.dp))

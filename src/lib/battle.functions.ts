@@ -134,18 +134,20 @@ export const getBattleDetailsServerFn = createServerFn({ method: "GET" })
     const actor = await requireCurrentUserId();
     const battle = await getStudyBattle(data.battleId);
     const participants = await getBattleParticipants(data.battleId);
-    if (!battle) return { battle, participants };
+    if (!battle) return { battle, participants: [] };
     await getStudyGroupMembersWithBalances(battle.group_id, actor);
     if (battle.status !== "completed") {
+      const visible = participants.map(p => p.user_id === actor ? p : { ...p, answers_json: null });
       try {
         const questions = JSON.parse(battle.questions_json);
         for (const question of questions) {
           delete question.correctAnswer;
           delete question.correctOptionIndex;
           delete question.modelAnswer;
+          delete question.explanation;
         }
-        return { battle: { ...battle, questions_json: JSON.stringify(questions) }, participants };
-      } catch { return { battle: { ...battle, questions_json: "[]" }, participants }; }
+        return { battle: { ...battle, questions_json: JSON.stringify(questions) }, participants: visible };
+      } catch { return { battle: { ...battle, questions_json: "[]" }, participants: visible }; }
     }
     return { battle, participants };
   });
@@ -266,8 +268,8 @@ export const submitBattleAnswersServerFn = createServerFn({ method: "POST" })
         // Drop conclusion receipt in chat
         const winnerNames = fighters.filter((f) => f.score === highestScore).map((f) => f.user_name).join(", ");
         const receiptMsg = await sendBattleAnnouncementMessage({
-          targetId: data.groupId,
-          userId: "system",
+          targetId: battle.group_id,
+          userId: battle.host_id,
           userName: "⚡ Boss Battle Arena",
           userInstitution: "Campus Arena",
           content: `🏆 [BATTLE_RECEIPT:${data.battleId}] Match Complete!\nWinner(s): ${winnerNames} (${highestScore} pts) • Pot of ${battle.total_pot} pts awarded!`,
@@ -316,7 +318,7 @@ export const nudgeSlowpokesServerFn = createServerFn({ method: "POST" })
     const slowpokeNames = slowpokes.map((s) => `@${s.userName}`).join(", ");
     const nudgeMsg = await sendGroupMessage({
       groupId: data.groupId,
-      userId: "system",
+      userId: battle.host_id,
       userName: "⚡ Boss Battle Arena",
       userInstitution: "Campus Arena",
       content: `⏳ [BATTLE_NUDGE] ${data.hostName} is nudging slowpokes: ${slowpokeNames}! Drop your solutions for "${data.battleTitle}" so grading can start!`,
@@ -362,7 +364,7 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
 
     await withAiAllowance(actor, async () => {
     for (const fighter of submittedFighters) {
-      let answers: Record<string, { text?: string; imageBase64?: string; audioTranscript?: string }> = {};
+      let answers: Record<string, { text?: string; imageBase64?: string; imageAttachmentId?: string; audioTranscript?: string }> = {};
       try {
         const saved = JSON.parse(fighter.answers_json || "{}");
         answers = saved.answers || saved;
@@ -379,8 +381,16 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
         const combinedText = [studentAns.text, studentAns.audioTranscript].filter(Boolean).join(" \n[Voice Derivation]: ");
 
         try {
-          if (combinedText.trim()) {
-            const grading = await gradeTheoryAnswer(q.question, q.modelAnswer || q.explanation || "", combinedText, budgetedAiFetch);
+          const { peerAttachment, readStudyMedia } = await import("./study-media.server");
+          let image: { base64: string; mimeType: string } | undefined;
+          if (studentAns.imageAttachmentId) {
+            const attachment = await peerAttachment(fighter.user_id, battle.group_id, studentAns.imageAttachmentId);
+            if (!attachment.mime.startsWith("image/")) throw new Error("Theory answers require an image.");
+            const file = await readStudyMedia(fighter.user_id, attachment.id);
+            image = { base64: Buffer.from(file.bytes).toString("base64"), mimeType: attachment.mime };
+          }
+          if (combinedText.trim() || image) {
+            const grading = await gradeTheoryAnswer(q.question, q.modelAnswer || q.explanation || "", combinedText, budgetedAiFetch, image);
             totalScore += grading.score;
             evaluations.push(grading);
           } else {
@@ -416,7 +426,7 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
     // Drop completion receipt in chat
     const receiptMsg = await sendGroupMessage({
       groupId: data.groupId,
-      userId: "system",
+      userId: battle.host_id,
       userName: "⚡ Boss Battle Arena",
       userInstitution: "Campus Arena",
       content: `🏆 [BATTLE_RECEIPT:${data.battleId}] Theory Showdown Graded!\nWinner(s): ${winnerNames} with ${maxScore} pts! Pot of ${battle.total_pot} pts distributed!`,

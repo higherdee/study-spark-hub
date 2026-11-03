@@ -21,6 +21,28 @@ async function identity(request: Request) {
   if (profile?.suspended) throw new Error("Unauthorized");
   return claims.sub;
 }
+const peerInput = z.object({
+  content: z.string().trim().max(3000).default(""),
+  attachmentId: z.string().uuid().optional(),
+  materialId: z.string().max(100).optional(),
+});
+async function peerContent(actor: string, target: string, input: z.infer<typeof peerInput>) {
+  if (input.attachmentId && input.materialId) throw new Error("Attach one item at a time.");
+  if (input.attachmentId) {
+    const { peerAttachment } = await import("@/lib/study-media.server");
+    const media = await peerAttachment(actor,target,input.attachmentId);
+    return { content: JSON.stringify({ text: input.content, syllabossAttachment: media }), previewText: input.content || (media.mime.startsWith("audio/") ? "Voice note" : media.title) };
+  }
+  if (input.materialId) {
+    const material = (await turso.execute({
+      sql: "SELECT id,title,course_code FROM materials WHERE id=? AND status='verified'", args: [input.materialId],
+    })).rows[0];
+    if (!material) throw new Error("Library material is unavailable.");
+    return { content: input.content || "Shared a library material", materialId: input.materialId, materialTitle: String(material['title']), materialCourseCode: String(material['course_code'] ?? "") };
+  }
+  if (!input.content) throw new Error("Enter a message.");
+  return { content: input.content };
+}
 export const Route = createFileRoute("/api/mobile")({
   server: { handlers: {
     GET: async ({ request }) => {
@@ -32,8 +54,18 @@ export const Route = createFileRoute("/api/mobile")({
           return json({ materials: materials.map(({ id, title, course, course_code, institution, level, material_type, page_count, file_size, mime_type }) =>
             ({ id, title, course, course_code, institution, level, material_type, page_count, file_size, mime_type })) });
         }
+        if (resource === "shared-material") {
+          const material = (await turso.execute({
+            sql: "SELECT id,title,course,course_code,institution,material_type,page_count,mime_type FROM materials WHERE id=? AND status='verified'",
+            args: [(url.searchParams.get("id") || "").slice(0,100)],
+          })).rows[0];
+          return material ? json({material}) : json({error:"This library material is unavailable."},404);
+        }
         const userId = await identity(request);
         if (resource === "membership") return json(await membershipSnapshot(userId));
+        if (resource === "source") { const {loadDocumentContext}=await import("@/lib/document-study.server"); const doc=await loadDocumentContext(userId,(url.searchParams.get("id")||"").slice(0,100)); return json({id:doc.material.id,title:doc.material.title,pages:doc.pages}); }
+        if (resource === "battle-members" || resource === "battles") { const target=(url.searchParams.get("target")||"").slice(0,100); const {getStudyGroupMembersWithBalances}=await import("@/integrations/turso/community.server"); const members=await getStudyGroupMembersWithBalances(target,userId); if(resource==="battle-members")return json({members}); return json({battles:(await turso.execute({sql:"SELECT id,title,mode,status,question_count,total_pot,host_name FROM study_battles WHERE group_id=? ORDER BY created_at DESC LIMIT 20",args:[target]})).rows}); }
+        if (resource === "battle") {const {getBattleDetailsServerFn}=await import("@/lib/battle.functions");return json(await getBattleDetailsServerFn({data:{battleId:(url.searchParams.get("id")||"").slice(0,100)}}));}
         if (resource === "settings") { const profile = await getProfile(userId); return json({ profile, preferences: profile?.study_plan?.["preferences"] || {} }); }
         if (resource === "focus") return json(await focusSnapshot(userId));
         if (resource === "reviews") return json(await materialReviews(userId, (url.searchParams.get("material") || "").slice(0, 100)));
@@ -65,6 +97,7 @@ export const Route = createFileRoute("/api/mobile")({
         return json({ error: "Unknown resource" }, 404);
       } catch (error) {
         if (error instanceof Error && error.message === "Unauthorized") return json({ error: "Sign in to continue." }, 401);
+        if (error instanceof MembershipLimitError) return json({ error: error.message }, 403);
         console.error("Mobile API request failed", error instanceof Error ? error.message : "Unknown error");
         return json({ error: "Unable to load this right now. Please try again." }, 503);
       }
@@ -73,6 +106,21 @@ export const Route = createFileRoute("/api/mobile")({
       let userId: string;
       try { userId = await identity(request); } catch { return json({ error: "Sign in to continue." }, 401); }
       const body = await request.json().catch(() => null);
+      if(typeof body?.action==="string"&&body.action.startsWith("battle-")){
+        try{
+          const actions=await import("@/lib/battle.functions");const profile=await getProfile(userId);const name=profile?.full_name||"Student";
+          if(body.action==="battle-create"){
+            const input=z.object({target:z.string().min(1).max(100),title:z.string().trim().min(3).max(200),mode:z.enum(["mcq","theory"]),count:z.number().int().min(1).max(50),fighterIds:z.array(z.string().min(1).max(100)).max(20),stake:z.number().int().min(0).max(10000).default(0),sourceMaterialId:z.string().min(1).max(100).optional()}).parse(body);
+            return json(await actions.createStudyBattleServerFn({data:{groupId:input.target,hostId:userId,hostName:name,title:input.title,mode:input.mode,questionCount:input.count,fighterIds:input.fighterIds,stakeAmount:input.stake,...(input.sourceMaterialId?{sourceMaterialId:input.sourceMaterialId}:{})}}));
+          }
+          const input=z.object({battleId:z.string().uuid(),target:z.string().min(1).max(100),answersJson:z.string().max(100000).optional()}).parse(body);
+          const {getStudyBattle}=await import("@/integrations/turso/community.server");const battle=await getStudyBattle(input.battleId);if(!battle||battle.group_id!==input.target)throw new Error("Battle not found in this conversation.");
+          if(body.action==="battle-join")return json(await actions.joinBattleEscrowServerFn({data:{battleId:input.battleId,groupId:input.target,userId,userName:name}}));
+          if(body.action==="battle-submit"&&input.answersJson)return json(await actions.submitBattleAnswersServerFn({data:{battleId:input.battleId,groupId:input.target,userId,userName:name,score:0,answersJson:input.answersJson}}));
+          if(body.action==="battle-grade")return json(await actions.forceGradeBattleServerFn({data:{battleId:input.battleId,groupId:input.target,hostId:userId}}));
+          return json({error:"Unknown battle action."},400);
+        }catch(e){return json({error:e instanceof z.ZodError?"Check the battle details.":e instanceof Error?e.message:"Battle unavailable."},400);}
+      }
       if (["preferences", "study-heartbeat", "start-material", "complete-material", "document-chat", "start-direct", "direct-message", "redeem-promo", "study-generate", "grade-theory", "review"].includes(body?.action)) {
         try {
           if (body.action === "study-generate") { const { nativeStudySet } = await import("@/lib/native-study.server"); return json(await nativeStudySet(userId, body)); }
@@ -83,13 +131,14 @@ export const Route = createFileRoute("/api/mobile")({
           if (body.action === "complete-material") return json(await completeMaterialGate(userId, z.string().uuid().parse(body.id)));
           if (body.action === "document-chat") { const input = z.object({ materialId: z.string().min(1).max(100), message: z.string().trim().min(1).max(6000), threadId: z.string().uuid().optional() }).parse(body); return json(await answerDocumentQuestion(userId, input)); }
           if (body.action === "start-direct") return json(await getOrCreatePeerConversation(userId, z.string().min(1).max(100).parse(body.peerId)));
-          if (body.action === "direct-message") { const input = z.object({ conversationId: z.string().min(1).max(100), content: z.string().trim().min(1).max(3000) }).parse(body); return json({ message: await sendDirectMessage({ ...input, senderId: userId }) }); }
+          if (body.action === "direct-message") { const input = peerInput.extend({ conversationId: z.string().min(1).max(100) }).parse(body); return json({ message: await sendDirectMessage({ conversationId: input.conversationId, senderId: userId, ...await peerContent(userId,input.conversationId,input) }) }); }
           if (body.action === "redeem-promo") { const { redeemPromo } = await import("@/lib/membership/promos.server"); return json(await redeemPromo(userId, { code: body.code, requestId: body.requestId })); }
           if (body.action === "review") { const input = z.object({ materialId: z.string().min(1).max(100), rating: z.number().int().min(1).max(5), review: z.string().trim().max(1500).default("") }).parse(body); await materialReviews(userId, input.materialId); const { rateMaterial } = await import("@/integrations/turso/client.server"); return json(await rateMaterial(input.materialId, userId, input.rating, input.review)); }
         } catch (error) {
           if (error instanceof Error && /^(Enter a topic|Add a topic|Conversation not found|Boss AI could not generate)/.test(error.message)) return json({ error: error.message },400);
           if (error instanceof Error && error.message.startsWith("This promo code")) return json({ error: error.message }, 400);
           if (error instanceof MembershipLimitError) return json({ error: error.message, upgrade: /SyllaPlus|Free accounts|1,000/i.test(error.message), retryAfter: error.retryAfter }, error.status);
+          if(error instanceof Error && /document|photo|mark|reference|response needs|SyllaPlus/i.test(error.message))return json({error:error.message},400);
           return json({ error: error instanceof z.ZodError ? "Check your details and try again." : "This request could not complete. Check your connection and retry." }, error instanceof z.ZodError ? 400 : 503);
         }
       }
@@ -100,15 +149,15 @@ export const Route = createFileRoute("/api/mobile")({
         catch { return json({ error: "Profile could not be saved. Please retry." }, 503); }
       }
       if (body?.action === "join" || body?.action === "group-message") {
-        const groupAction = z.object({ action: z.enum(["join", "group-message"]), group: z.string().min(1).max(100), content: z.string().trim().min(1).max(3000).optional() }).safeParse(body);
+        const groupAction = peerInput.extend({ action: z.enum(["join", "group-message"]), group: z.string().min(1).max(100) }).safeParse(body);
         if (!groupAction.success) return json({ error: "Enter a valid group and message." }, 400);
         try {
           const group = await turso.execute({ sql: "SELECT id FROM study_groups WHERE id = ? LIMIT 1", args: [groupAction.data.group] });
           if (!group.rows.length) return json({ error: "Study group not found." }, 404);
           if (body.action === "join") return (await joinStudyGroup(groupAction.data.group, userId)) ? json({ success: true }) : json({ error: "Could not join this group." }, 400);
-          if (!groupAction.data.content) return json({ error: "Enter a message." }, 400);
+
           const profile = await getProfile(userId);
-          return json({ message: await sendGroupMessage({ groupId: groupAction.data.group, userId, userName: profile?.full_name || "Student", ...(profile?.institution ? { userInstitution: profile.institution } : {}), content: groupAction.data.content }) });
+          return json({ message: await sendGroupMessage({ groupId: groupAction.data.group, userId, userName: profile?.full_name || "Student", ...(profile?.institution ? { userInstitution: profile.institution } : {}), ...await peerContent(userId,groupAction.data.group,groupAction.data) }) });
         } catch { return json({ error: "Join the study group before posting. Please try again." }, 403); }
       }
       const parsed = z.object({ message: z.string().trim().min(1).max(6000), threadId: z.string().uuid().optional(), history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(12000) })).max(12).default([]) }).safeParse(body);

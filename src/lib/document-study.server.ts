@@ -36,9 +36,12 @@ export function selectDocumentExcerpt(text: string, question: string, limit = 16
   return chunks.sort((a, b) => b.score - a.score || a.offset - b.offset).slice(0, Math.floor(limit / 2200)).sort((a, b) => a.offset - b.offset).map((chunk) => chunk.text).join("\n\n[Another document excerpt]\n\n").slice(0, limit);
 }
 export async function loadDocumentContext(userId: string, materialId: string) {
-  await requireLibraryAiAccess(userId);
-  const material = await getMaterialById(materialId);
-  if (!material || material.status !== "verified" && material.user_id !== userId || !material.file_path?.startsWith("materials/")) throw new Error("This study material is unavailable.");
+  const libraryMaterial = await getMaterialById(materialId);
+  if (libraryMaterial) await requireLibraryAiAccess(userId);
+  const material = libraryMaterial ?? await (await import("./study-media.server")).ownedStudyDocument(userId, materialId);
+  if (!material || (libraryMaterial && ((libraryMaterial.status !== "verified" && libraryMaterial.user_id !== userId) || !libraryMaterial.file_path?.startsWith("materials/")))) {
+    throw new Error("This study material is unavailable.");
+  }
   await ensureDocumentCache();
   const fileKey = `lines-v2:${material.file_path}:${material.file_size}`;
   const cached = (await turso.execute({ sql: "SELECT text,pages FROM material_text_cache WHERE material_id=? AND file_key=?", args: [materialId, fileKey] })).rows[0];
@@ -67,7 +70,6 @@ export async function loadDocumentContext(userId: string, materialId: string) {
 }
 export async function answerDocumentQuestion(userId: string, input: { materialId: string; message: string; threadId?: string | undefined }) {
   await enforceChatRetention(userId);
-  await requireLibraryAiAccess(userId);
   return withAiAllowance(userId, async () => {
     const document = await loadDocumentContext(userId, input.materialId);
     const threadId = input.threadId || crypto.randomUUID();

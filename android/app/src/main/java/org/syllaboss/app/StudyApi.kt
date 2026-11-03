@@ -15,6 +15,22 @@ import java.util.concurrent.TimeUnit
 
 object StudyApi {
     private val http = OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(75, TimeUnit.SECONDS).build()
+    private suspend fun token(): String { var value:String?=null;Clerk.session?.fetchToken()?.onSuccess {value=it.jwt};return value ?: throw IllegalStateException("Sign in to use chat attachments.") }
+    suspend fun media(context:android.content.Context,uri:android.net.Uri,purpose:String="study",target:String?=null,duration:Int=0):JSONObject {
+        val jwt=token()
+        return withContext(Dispatchers.IO){
+            var name="study-attachment";context.contentResolver.query(uri,arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),null,null,null)?.use {if(it.moveToFirst())name=it.getString(0)}
+            val bytes=context.contentResolver.openInputStream(uri)?.use{input->val out=java.io.ByteArrayOutputStream(); val buffer=ByteArray(8192); while(out.size()<=3*1024*1024){val n=input.read(buffer);if(n<0)break;out.write(buffer,0,n)};out.toByteArray()} ?: throw IllegalStateException("This file could not be opened.")
+            if(bytes.isEmpty()||bytes.size>3*1024*1024)throw IllegalStateException("Choose a chat file smaller than 3 MB.")
+            val body=MultipartBody.Builder().setType(MultipartBody.FORM).addFormDataPart("purpose",purpose).addFormDataPart("duration",duration.toString()).apply{target?.let{addFormDataPart("target",it)}}.addFormDataPart("file",name,bytes.toRequestBody((context.contentResolver.getType(uri)?:"application/octet-stream").toMediaType())).build()
+            fetch(Request.Builder().url(BuildConfig.API_BASE_URL+"/api/study-media").header("Authorization","Bearer $jwt").post(body).build()).use{response->val data=runCatching{JSONObject(response.body.string())}.getOrElse{throw IllegalStateException("Attachment service unavailable. Please retry.")};if(!response.isSuccessful)throw IllegalStateException(data.optString("error","Attachment could not be uploaded."));data}
+        }
+    }
+    suspend fun downloadMedia(context:android.content.Context,id:String):java.io.File {
+        require(Regex("[0-9a-fA-F-]{36}").matches(id)) { "Invalid attachment." }
+        require(id.matches(Regex("[a-fA-F0-9-]{36}"))) {"Invalid attachment."};val jwt=token()
+        return withContext(Dispatchers.IO){fetch(Request.Builder().url(BuildConfig.API_BASE_URL+"/api/study-media?id=$id").header("Authorization","Bearer $jwt").build()).use{response->if(!response.isSuccessful)throw IllegalStateException("You cannot open this attachment. Check that you belong to this conversation.");val dir=java.io.File(context.cacheDir,"chat-media").apply{mkdirs()};val target=java.io.File(dir,id);response.body.byteStream().use{input->target.outputStream().use{input.copyTo(it)}};target}}
+    }
     private fun fetch(request: Request): okhttp3.Response = try {
         http.newCall(request).execute()
     } catch (_: java.io.IOException) { throw IllegalStateException("Could not connect. Check your internet connection and try again.") }

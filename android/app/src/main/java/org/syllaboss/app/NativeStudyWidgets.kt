@@ -11,17 +11,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 
-@Composable internal fun NativeStudyModePanel(mode: String, maxCount: Int, hasContext: Boolean, busy: Boolean, dismiss: () -> Unit, generate: (String, Int, Boolean) -> Unit) {
-    var topic by remember(mode) { mutableStateOf("") }; var count by remember(mode) { mutableIntStateOf(5) }; var useChat by remember(mode) { mutableStateOf(false) }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable internal fun NativeStudyModePanel(mode: String, maxCount: Int, hasContext: Boolean, busy: Boolean, dismiss: () -> Unit, sourceTitle:String?=null,error:String?=null,onAttach:()->Unit={},generate: (String, Int, Boolean) -> Unit) {
+    var topic by remember(mode) { mutableStateOf("") }; var count by remember(mode) { mutableIntStateOf(5) }; var useChat by remember(mode) { mutableStateOf(hasContext) }
     LaunchedEffect(maxCount) { count = count.coerceIn(1,maxCount) }
-    Surface(color=MaterialTheme.colorScheme.surfaceContainer,shape=RoundedCornerShape(20.dp),modifier=Modifier.padding(horizontal=16.dp,vertical=6.dp)) {
-        Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) { Text(if(mode=="objective") "Practice questions" else mode.replaceFirstChar { it.uppercase() }); TextButton(onClick=dismiss,enabled=!busy) { Text("Close") } }
+    ModalBottomSheet(onDismissRequest={if(!busy)dismiss()},containerColor=Paper,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true)) {
+        Column(Modifier.fillMaxWidth().imePadding().heightIn(max=560.dp).verticalScroll(rememberScrollState()).padding(horizontal=24.dp).padding(bottom=24.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+            Text(if(mode=="objective") "Build your practice" else if(mode=="theory")"Work through theory" else "Make it memorable",fontFamily=WebsiteDisplay,fontSize=29.sp,lineHeight=33.sp)
+            Text("Choose your source, then make a set to study at your pace.",color=Muted,fontSize=14.sp)
+            OutlinedButton(onClick=onAttach,enabled=!busy,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)){Icon(Icons.Outlined.AttachFile,null,Modifier.size(18.dp));Spacer(Modifier.width(8.dp));Text(sourceTitle?:"Add a file or library material",maxLines=1)}
             OutlinedTextField(topic,{topic=it.take(300)},label={Text("What are you studying?")},placeholder={Text("For example, cell division")},modifier=Modifier.fillMaxWidth(),enabled=!busy,singleLine=true)
             if(hasContext) Row(verticalAlignment=Alignment.CenterVertically) { Checkbox(useChat,{useChat=it},enabled=!busy); Text("Use this conversation",fontSize=13.sp) }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) { Text("$count items"); TextButton(onClick={count=(count-1).coerceAtLeast(1)},enabled=!busy&&count>1){Text("−")}; TextButton(onClick={count=(count+1).coerceAtMost(maxCount)},enabled=!busy&&count<maxCount){Text("+")} }
-            Button(onClick={generate(topic.trim(),count,useChat)},enabled=!busy&&(topic.isNotBlank()||hasContext&&useChat),modifier=Modifier.fillMaxWidth()) { Text(if(busy) "Generating…" else "Generate") }
+            error?.let { Text(it, color=MaterialTheme.colorScheme.error, fontSize=13.sp) }
+            Button(onClick={generate(topic.trim(),count,useChat)},enabled=!busy&&(topic.isNotBlank()||hasContext&&useChat||sourceTitle!=null),modifier=Modifier.fillMaxWidth().heightIn(min=52.dp),shape=RoundedCornerShape(16.dp)) { Text(if(busy) "Building your set…" else "Generate ${if(mode=="flashcards")"flashcards" else  if(mode=="objective")"MCQs" else "theory questions"}" ) }
         }
     }
 }
@@ -49,11 +62,12 @@ internal fun studyPlainText(text: String): String = runCatching {
     if (items == null || items.length() == 0) { NativeAnswer(data?.optString("text",text) ?: text,modifier); return }
     var index by remember(text) { mutableIntStateOf(0) }; var flipped by remember(text,index) { mutableStateOf(false) }; var selection by remember(text,index) { mutableIntStateOf(-1) }
     var answer by remember(text,index) { mutableStateOf("") }; var result by remember(text,index) { mutableStateOf<JSONObject?>(null) }; var error by remember(text,index) { mutableStateOf("") }; var busy by remember(text,index) { mutableStateOf(false) }
+    var solution by remember(text,index){mutableStateOf<SolutionPhoto?>(null)}
     val scope = rememberCoroutineScope(); val current = items.getJSONObject(index); val mode=set!!.optString("mode"); val colors=listOf(Color(0xFFE2EBD7),Color(0xFFF4E4C9),Color(0xFFDBE8F1),Color(0xFFF0DDE1),Color(0xFFE6DFF1))
     Column(modifier,verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Text(set.optString("topic"),fontFamily=WebsiteDisplay,fontSize=24.sp)
         if(mode=="flashcards") {
-            Card(onClick={flipped=!flipped},colors=CardDefaults.cardColors(containerColor=colors[index%colors.size]),shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth().heightIn(min=210.dp)) { Column(Modifier.padding(24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) { Text(if(flipped) "THE ANSWER" else "THINK IT THROUGH",fontSize=11.sp,color=Forest); NativeAnswer(current.optString(if(flipped) "back" else "front")); Text("Tap to ${if(flipped) "see the question" else "reveal the answer"}",fontSize=12.sp,color=Muted) } }
+            Card(onClick={flipped=!flipped},colors=CardDefaults.cardColors(containerColor=colors[index%colors.size]),shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth().heightIn(min=210.dp)) { Column(Modifier.padding(24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) { Text(if(flipped) "THE ANSWER" else "THINK IT THROUGH",fontSize=11.sp,color=Forest); AnimatedContent(targetState=flipped,transitionSpec={fadeIn(tween(160)).togetherWith(fadeOut(tween(100)))},label="Reveal flashcard"){back->NativeAnswer(current.optString(if(back) "back" else "front"))}; Text("Tap to ${if(flipped) "see the question" else "reveal the answer"}",fontSize=12.sp,color=Muted) } }
         } else {
             NativeAnswer(current.optString("question"))
             val options = current.optJSONArray("options")
@@ -62,7 +76,8 @@ internal fun studyPlainText(text: String): String = runCatching {
                 if(selection>=0) { Text(if(selection==current.optInt("correctOptionIndex")) "Correct. Well done." else "The correct answer is ${('A'.code+current.optInt("correctOptionIndex")).toChar()}.",color=Forest); NativeAnswer(current.optString("explanation",current.optString("modelAnswer"))) }
             } else {
                 OutlinedTextField(answer,{answer=it.take(12000)},label={Text("Work through your answer")},modifier=Modifier.fillMaxWidth(),minLines=3,enabled=!busy)
-                Button(onClick={busy=true;error="";scope.launch { try { result=StudyApi.call(body=JSONObject().put("action","grade-theory").put("question",current.optString("question")).put("modelAnswer",current.optString("modelAnswer")).put("studentAnswer",answer)) } catch(e:Exception){error=e.message ?: "Your answer could not be marked."} finally{busy=false} }},enabled=answer.isNotBlank()&&!busy) { Text(if(busy) "Marking…" else "Mark my answer") }
+                SolutionPhotoPicker(solution,!busy,{solution=it},{error=it})
+                Button(onClick={busy=true;error="";scope.launch { try { val body=JSONObject().put("action","grade-theory").put("question",current.optString("question")).put("modelAnswer",current.optString("modelAnswer")).put("studentAnswer",answer).put("maxScore",current.optInt("marks",10));solution?.let{body.put("imageBase64",it.base64)};result=StudyApi.call(body=body) } catch(e:Exception){error=e.message ?: "Your answer could not be marked."} finally{busy=false} }},enabled=(answer.isNotBlank()||solution!=null)&&!busy) { Text(if(busy) "Reading your working…" else "Mark my answer") }
                 result?.let { assessment ->
                     Text("${assessment.optDouble("score")} / ${assessment.optInt("maxScore",10)} marks",fontSize=24.sp,fontFamily=WebsiteDisplay)
                     NativeAnswer(assessment.optString("feedback"))

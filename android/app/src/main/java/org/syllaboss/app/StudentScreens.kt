@@ -85,21 +85,22 @@ import org.json.JSONObject
     var group by remember { mutableStateOf<JSONObject?>(null) }
     LaunchedEffect(group?.optString("id")) { onChatOpen(group != null) }
     DisposableEffect(Unit) { onDispose { onChatOpen(false) } }
-    var messages by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
+
     var loading by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var input by rememberSaveable { mutableStateOf("") }
+
     var refresh by remember { mutableIntStateOf(0) }
     LaunchedEffect(group?.optString("id"), refresh, groupQuery) {
+        if (group != null) return@LaunchedEffect
         loading = true; error = null
         try {
             if (group == null) { delay(300); val a = StudyApi.call("groups&q=" + java.net.URLEncoder.encode(groupQuery, "UTF-8")).getJSONArray("groups"); groups = (0 until a.length()).map { a.getJSONObject(it) } }
-            else { val a = StudyApi.call("messages&group=" + java.net.URLEncoder.encode(group!!.getString("id"), "UTF-8")).getJSONArray("messages"); messages = (0 until a.length()).map { a.getJSONObject(it) } }
         } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message ?: "Unable to load study groups." }
         finally { loading = false }
     }
     androidx.activity.compose.BackHandler(group != null) { group = null }
+    group?.takeIf { it.optBoolean("is_member") }?.let { PeerConversation(it.getString("id"), it.optString("name"), true) { group = null }; return }
     Scaffold(topBar = { TopAppBar(title = { Text(group?.optString("name") ?: "Study together", maxLines = 1) }, navigationIcon = { IconButton(onClick = { if (group != null) group = null else back() }) { Icon(Icons.Outlined.ArrowBack, "Back") } }, actions = { IconButton(onClick = { refresh++ }) { Icon(Icons.Outlined.Refresh, "Refresh discussion") } }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -108,23 +109,13 @@ import org.json.JSONObject
                 item { Text("Find your people.", fontSize = 30.sp, fontWeight = FontWeight.SemiBold); Text("A shared question is a good place to start.", modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 item { OutlinedTextField(groupQuery, { groupQuery = it.take(100) }, placeholder = { Text("Search a group or course") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(18.dp)) }
                 if (!loading && groups.isEmpty()) item { Text("No study groups are available yet. Check back soon.") }
-                items(groups) { g -> OutlinedCard(onClick = { group = g; messages = emptyList() }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent)) { Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(g.optString("name"), fontWeight = FontWeight.SemiBold, fontSize = 19.sp); Text(g.optString("description").takeUnless { it == "null" } ?: "A space to learn together.", fontSize = 13.sp); Text("${g.optInt("member_count")} members · ${if (g.optBoolean("is_member")) "Joined" else "Open group"}", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp) } } }
+                items(groups) { g -> OutlinedCard(onClick = { group = g }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent)) { Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(g.optString("name"), fontWeight = FontWeight.SemiBold, fontSize = 19.sp); Text(g.optString("description").takeUnless { it == "null" } ?: "A space to learn together.", fontSize = 13.sp); Text("${g.optInt("member_count")} members · ${if (g.optBoolean("is_member")) "Joined" else "Open group"}", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp) } } }
             } else {
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    if (!loading && messages.isEmpty()) item { Text(if (group!!.optBoolean("is_member")) "Be the first to ask a question." else "Join this study group to read and take part in the conversation.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    items(messages) { m -> Column(verticalArrangement = Arrangement.spacedBy(5.dp)) { Text(m.optString("user_name"), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary); androidx.compose.foundation.text.selection.SelectionContainer { Text(m.optString("content"), lineHeight = 23.sp) }; HorizontalDivider(Modifier.padding(top = 10.dp)) } }
-                }
+                Text("Join this study group to read and take part in the conversation.", Modifier.padding(20.dp), color = Muted)
                 if (!group!!.optBoolean("is_member")) Button(onClick = {
                     busy = true
                     scope.launch { try { StudyApi.call(body = JSONObject().put("action", "join").put("group", group!!.getString("id"))); group = JSONObject(group.toString()).put("is_member", true); refresh++ } catch (e: Exception) { error = e.message } finally { busy = false } }
                 }, enabled = !busy, modifier = Modifier.padding(20.dp).fillMaxWidth().height(54.dp)) { Text(if (busy) "Joining…" else "Join this study group") }
-                else Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(input, { input = it.take(3000) }, placeholder = { Text("Ask your group…") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(22.dp), maxLines = 4)
-                    FilledIconButton(onClick = {
-                        busy = true; error = null
-                        scope.launch { try { StudyApi.call(body = JSONObject().put("action", "group-message").put("group", group!!.getString("id")).put("content", input.trim())); input = ""; refresh++ } catch (e: Exception) { error = e.message } finally { busy = false } }
-                    }, enabled = input.isNotBlank() && !busy, modifier = Modifier.size(48.dp)) { Icon(Icons.Outlined.ArrowUpward, "Send to study group") }
-                }
             }
         }
     }

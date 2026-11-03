@@ -88,6 +88,38 @@ import { BattleLobbyCard } from "@/components/battle/battle-lobby-card";
 import { BattleArenaModal } from "@/components/battle/battle-arena-modal";
 import { cn } from "@/lib/utils";
 
+function peerMedia(content: string): { text: string; id: string; title: string; mime: string } | null {
+  if (!content?.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(content);
+    const media = parsed?.syllabossAttachment;
+    if (!media || typeof media.id !== "string" || !/^[a-f0-9-]{36}$/i.test(media.id)) return null;
+    return { id: media.id, text: String(parsed.text || ""), title: String(media.title || "Attachment"), mime: String(media.mime || "") };
+  } catch { return null; }
+}
+
+function PeerMediaAttachment({ media }: { media: NonNullable<ReturnType<typeof peerMedia>> }) {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+  const audio = media.mime.startsWith("audio/");
+  async function load() {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/study-media?id=" + encodeURIComponent(media.id));
+      if (!response.ok) throw new Error();
+      setUrl(URL.createObjectURL(await response.blob()));
+    } catch { setError("Could not open this attachment. Try again."); }
+    finally { setBusy(false); }
+  }
+  return <div className="space-y-2">
+    {media.text && <p className="whitespace-pre-wrap break-words">{media.text}</p>}
+    {url ? audio ? <audio className="max-w-full" controls src={url} /> : <a className="underline" href={url} download={media.title}>Download {media.title}</a>
+      : <button type="button" className="rounded-lg border border-current/25 px-3 py-2 text-left text-xs font-medium" onClick={load} disabled={busy}>{busy ? "Loading…" : audio ? "Load voice note" : "Open " + media.title}</button>}
+    {error && <p role="alert" className="text-xs">{error}</p>}
+  </div>;
+}
 export const Route = createFileRoute("/_authenticated/dashboard/community")({
   head: () => ({
     meta: [
@@ -910,7 +942,7 @@ export function CommunityPage() {
                       </div>
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                      {c.last_message_text || `@${c.peer.username}`}
+                      {(peerMedia(c.last_message_text || "")?.text || (peerMedia(c.last_message_text || "") ? "Attachment" : c.last_message_text)) || `@${c.peer.username}`}
                     </p>
                   </div>
                 </div>
@@ -1053,7 +1085,8 @@ export function CommunityPage() {
                 </div>
               ) : (
                 chatMessages.map((msg: any) => {
-                  const battleMatch = msg.content?.match(/\[(STUDY_BATTLE|BATTLE_RECEIPT):([a-zA-Z0-9-]+)\]/);
+                  const media = peerMedia(msg.content);
+                  const battleMatch = !media && msg.content?.match(/\[(STUDY_BATTLE|BATTLE_RECEIPT):([a-zA-Z0-9-]+)\]/);
                   if (battleMatch) {
                     const battleId = battleMatch[2];
                     return (
@@ -1139,7 +1172,7 @@ export function CommunityPage() {
                           </div>
                         )}
 
-                        {isBossAi ? (
+                        {media ? <PeerMediaAttachment media={media} /> : isBossAi ? (
                           <AiMessageRenderer content={msg.content} className="text-xs [&_p]:mb-1 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs" />
                         ) : (
                           <p className="whitespace-pre-wrap break-words">{msg.content}</p>

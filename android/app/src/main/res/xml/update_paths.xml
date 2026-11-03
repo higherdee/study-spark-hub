@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<paths xmlns:android="http://schemas.android.com/apk/res/android"><cache-path name="verified_updates" path="app-updates/" /></paths>
+<paths xmlns:android="http://schemas.android.com/apk/res/android"><cache-path name="verified_updates" path="app-updates/" /><cache-path name="chat_media" path="chat-media/" /></paths>

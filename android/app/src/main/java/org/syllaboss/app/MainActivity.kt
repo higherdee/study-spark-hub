@@ -54,7 +54,7 @@ internal val Muted = Color(0xFF6E7C73)
 internal val Sage = Color(0xFFE5EBDD)
 internal val Lime = Color(0xFFE6D9BC)
 internal val Line = Color(0xFFE1E5DC)
-private val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Paper, surface = Paper, onSurface = Ink, secondaryContainer = Sage, onSecondaryContainer = Forest, outline = Line)
+private val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Paper, surface = Paper, onSurface = Ink, secondaryContainer = Sage, onSecondaryContainer = Forest, outline = Line, surfaceContainer = Color(0xFFEAECE5), surfaceContainerHigh = Color(0xFFE2E7DD), secondary = Forest, tertiary = Forest)
 internal class ChatState {
     val messages = mutableStateListOf<Pair<String, String>>()
     var input by mutableStateOf("")
@@ -62,6 +62,7 @@ internal class ChatState {
     var error by mutableStateOf<String?>(null)
     var threadId by mutableStateOf<String?>(null)
     var title by mutableStateOf("New conversation")
+    var source by mutableStateOf<JSONObject?>(null)
 }
 
 class MainActivity : ComponentActivity() {
@@ -84,6 +85,7 @@ class MainActivity : ComponentActivity() {
     val authComplete by Clerk.isAuthFlowCompleteFlow.collectAsState()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var peerChatActive by remember { mutableStateOf(false) }
+    val keyboardVisible = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     var auth by rememberSaveable { mutableStateOf(false) }
     var acceptedTerms by rememberSaveable { mutableStateOf(prefs.getString("accepted-terms", "") == "2026-10-31") }
     var consentError by remember { mutableStateOf<String?>(null) }
@@ -178,14 +180,14 @@ class MainActivity : ComponentActivity() {
     Scaffold(
         containerColor = Paper,
         bottomBar = {
-            if (!(tab == 3 && peerChatActive)) NavigationBar(containerColor = Paper, tonalElevation = 0.dp) {
+            if (!(tab == 3 && peerChatActive) && !keyboardVisible) NavigationBar(containerColor = Paper, tonalElevation = 0.dp) {
                 listOf(Triple("Today", Icons.Outlined.WbSunny, 0), Triple("Library", Icons.Outlined.MenuBook, 1), Triple("Boss AI", Icons.Outlined.AutoAwesome, 2), Triple("Peers", Icons.Outlined.Groups, 3), Triple("Your space", Icons.Outlined.PersonOutline, 4)).forEach { (name, icon, index) ->
                     NavigationBarItem(selected = tab == index, onClick = { tab = index }, icon = { Icon(icon, name, Modifier.size(23.dp)) }, label = { Text(name, fontSize = 11.sp, fontWeight = FontWeight.Medium) }, colors = NavigationBarItemDefaults.colors(indicatorColor = Sage, selectedIconColor = Forest, selectedTextColor = Forest, unselectedIconColor = Muted, unselectedTextColor = Muted))
                 }
             }
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).pointerInput(user?.id) { awaitPointerEventScope { while (true) { awaitPointerEvent(); verifiedFocus.touch() } } }) {
+        Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).pointerInput(user?.id) { awaitPointerEventScope { while (true) { awaitPointerEvent(); verifiedFocus.touch() } } }) {
             AnimatedContent(targetState = tab, label = "Study tab", transitionSpec = {
                 (fadeIn(tween(220, easing=CubicBezierEasing(.23f,1f,.32f,1f))) + slideInHorizontally(tween(240)) { if(targetState > initialState) it/12 else -it/12 }).togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { if(targetState > initialState) -it/12 else it/12 })
             }) { selectedTab -> when (selectedTab) {
@@ -367,7 +369,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun DocumentScreen(material: Material, back: () -> Unit, signIn: () -> Unit) {
+@Composable internal fun DocumentScreen(material: Material, back: () -> Unit, signIn: () -> Unit) {
     val account by Clerk.userFlow.collectAsState()
     if(account==null) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().padding(28.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
