@@ -3,7 +3,7 @@ import { bachs } from "./bachs.server";
 import { CLERK_SECRET_KEY } from "@/integrations/clerk";
 import { getProfile, turso } from "@/integrations/turso/client.server";
 import { hasSubscriptionAccess, normalizeCountry, type BillingEnvironment, type BillingProvider, type BillingSummary, type PlanId } from "./catalog";
-import { billingEnvironment, checkoutQuote, paddle, paddleClientToken, paystack, providerConfigured, providerPlanId, siteOrigin } from "./providers.server";
+import { billingEnvironment, checkoutQuote, paddle, paddleClientToken, paystack, providerConfigured, checkoutProductId, siteOrigin } from "./providers.server";
 import { bestSubscription, bonusAlreadyClaimed, claimBillingOperation, createCheckout, findCheckout, findCustomer, listSubscriptions, projectMembership, readyCheckout, releaseBillingOperation, rememberCustomer } from "./store.server";
 
 export class BillingError extends Error {
@@ -76,7 +76,8 @@ export async function startCheckout(userId: string, input: { id: string; plan: P
   catch (error) { throw new BillingError(error instanceof Error ? error.message : "Choose a valid country and plan.", error instanceof Error && /Weekly|Choose/.test(error.message) ? 400 : 503); }
   if (!providerConfigured(quote.provider, environment)) throw new BillingError("Checkout for your billing country is not ready yet.", 503);
   if ((await listSubscriptions(userId, environment)).some((sub) => hasSubscriptionAccess(sub))) throw new BillingError("You already have SyllaPlus. Use Manage billing to change or cancel your plan.", 409);
-  const priceId = providerPlanId(quote.provider, input.plan, environment);
+  const priceId = checkoutProductId(quote, environment);
+  if (!priceId) throw new BillingError("Checkout for this plan is being configured.", 503);
   let record = await createCheckout({ id: input.id, userId, environment, ...quote, priceId, providerReference: null, checkoutUrl: null, state: "creating" });
   if (record.checkoutUrl && record.state === "pending") return { id: record.id, url: record.checkoutUrl, environment };
   if (record.state !== "creating") throw new BillingError("This checkout has already been used. Refresh your membership.", 409);

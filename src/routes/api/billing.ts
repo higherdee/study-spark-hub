@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { waitUntil } from "@vercel/functions";
 import { PLAN_IDS, normalizeCountry } from "@/lib/billing/catalog";
-import { billingEnvironment, checkoutQuote, providerConfigured } from "@/lib/billing/providers.server";
+import { billingEnvironment, checkoutProductId, checkoutQuote, providerConfigured } from "@/lib/billing/providers.server";
 import { BillingError, billingIdentity, billingSummary, cancelRenewal, managementUrl, publicCheckoutConfiguration, startCheckout } from "@/lib/billing/service.server";
 import { checkoutByReference, findCheckout } from "@/lib/billing/store.server";
 import { drainBillingEvents, synchronizePaddle, verifyBachsCheckout, verifyPaystackPayment } from "@/lib/billing/events.server";
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/api/billing")({
           const plans = country ? PLAN_IDS.flatMap((plan) => {
             try {
               const quote = checkoutQuote(country, plan);
-              return [{ ...quote, ready: process.env["BILLING_ENABLED"] === "true" && providerConfigured(quote.provider), bonusDays: 7 }];
+              return [{ ...quote, ready: process.env["BILLING_ENABLED"] === "true" && Boolean(checkoutProductId(quote)) && providerConfigured(quote.provider), bonusDays: 7 }];
             } catch { return []; }
           }) : [];
           return json({ ...configuration, country, plans });

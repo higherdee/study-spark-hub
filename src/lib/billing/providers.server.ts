@@ -36,6 +36,13 @@ export function providerPlanId(provider: BillingProvider, plan: PlanId, environm
   return process.env[prefix] || catalog[plan] || "";
 }
 
+export function checkoutProductId(quote: ReturnType<typeof checkoutQuote>, environment = billingEnvironment()) {
+  if (quote.provider === "bachs" && quote.tier === "international") {
+    return process.env[`BACHS_${environment.toUpperCase()}_INTERNATIONAL_PRODUCT_${quote.plan.toUpperCase()}`] || "";
+  }
+  return providerPlanId(quote.provider, quote.plan, environment);
+}
+
 export function providerConfigured(provider: BillingProvider, environment = billingEnvironment()) {
   // Regional checkout is being connected to the owner's Bachs account.
   // Keep the previous Paystack adapter inactive, including in sandbox.
@@ -47,6 +54,12 @@ export function providerConfigured(provider: BillingProvider, environment = bill
 }
 
 export function planForProviderId(provider: BillingProvider, id: string, environment: BillingEnvironment) {
+  if (provider === "bachs" && id) {
+    const international = PLAN_IDS.find(plan =>
+      process.env[`BACHS_${environment.toUpperCase()}_INTERNATIONAL_PRODUCT_${plan.toUpperCase()}`] === id
+    );
+    if (international) return international;
+  }
   const current = PLAN_IDS.find((plan) => !!id && providerPlanId(provider, plan, environment) === id);
   if (current) return current;
   const history = configuredCatalog.history[environment][provider] as Record<string, PlanId>;
@@ -87,7 +100,9 @@ export interface MarketPrices {
 
 export function checkoutQuote(country: string, plan: PlanId) {
   const base = quoteFor(country, plan);
-  if (base.tier === "international") return base;
+  if (base.tier === "international") {
+    return process.env["BILLING_BACHS_ONLY"] === "true" ? { ...base, provider: "bachs" as const } : base;
+  }
   const market = (configuredCatalog.markets as Record<string, MarketPrices>)[country];
   if (!market || !Number.isSafeInteger(market[plan]) || market[plan] <= 0) throw new Error("Pricing for your billing country is being configured.");
   const equivalent = market[({ weekly: "equivalentWeekly", monthly: "equivalentMonthly", yearly: "equivalentYearly" } as const)[plan]];
