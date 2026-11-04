@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -19,6 +20,9 @@ import java.util.Calendar
 import java.util.UUID
 
 @Composable internal fun NativeSettingsScreen(back: () -> Unit) {
+    val context = LocalContext.current
+    val display = remember(context) { context.getSharedPreferences("syllaboss-native", 0) }
+    var localCurrency by remember { mutableStateOf(display.getBoolean("billing-local-display", false)) }
     val scope = rememberCoroutineScope()
     var loaded by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -47,6 +51,14 @@ import java.util.UUID
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text("Your pace. Your preferences.", fontFamily = WebsiteDisplay, fontSize = 28.sp)
             Text("These settings are shared with your Syllaboss account on the web.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ListItem(
+                headlineContent = { Text("Show local currency first") },
+                supportingContent = { Text("On this device. Uses a local estimate when available and still shows the checkout charge in USD.") },
+                trailingContent = { Switch(localCurrency, { enabled ->
+                    localCurrency = enabled
+                    display.edit().putBoolean("billing-local-display", enabled).apply()
+                }) },
+            )
             if (!loaded && message.isBlank()) CircularProgressIndicator()
             listOf(Triple("Study reminders", reminders, { value: Boolean -> reminders = value }), Triple("Reward alerts", rewards, { value: Boolean -> rewards = value }), Triple("Study sounds", sound, { value: Boolean -> sound = value })).forEach { (label, checked, change) ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text(label); Switch(checked, change, enabled = loaded && !busy) }

@@ -53,7 +53,17 @@ import java.util.UUID
         } catch(e:Exception) {if(e is kotlinx.coroutines.CancellationException) throw e;error=e.message ?: "Billing could not be loaded."}
     }
     fun open(url:String) { val uri=Uri.parse(url);require(uri.scheme=="https"){"Secure checkout is unavailable."};context.startActivity(Intent(Intent.ACTION_VIEW,uri)) }
-    fun money(amount:Int,currency:String):String { val formatter=java.text.NumberFormat.getCurrencyInstance();formatter.currency=java.util.Currency.getInstance(currency);return formatter.format(amount/100.0) }
+    val localFirst = context.getSharedPreferences("syllaboss-native", 0).getBoolean("billing-local-display", false)
+    fun money(amount: Int, code: String): String {
+        val currency = java.util.Currency.getInstance(code)
+        val digits = currency.defaultFractionDigits.coerceAtLeast(0)
+        val formatter = java.text.NumberFormat.getCurrencyInstance().apply {
+            this.currency = currency
+            minimumFractionDigits = digits
+            maximumFractionDigits = digits
+        }
+        return formatter.format(java.math.BigDecimal.valueOf(amount.toLong(), digits))
+    }
     val plans=catalog?.optJSONArray("plans");val plan=plans?.let { (0 until it.length()).map{n->it.getJSONObject(n)}.firstOrNull{p->p.optString("plan")==selected} }
     val subscription=summary?.optJSONObject("subscription");val hasSubscription=subscription?.optBoolean("hasAccess")==true
     Scaffold(topBar={TopAppBar(title={Text("SyllaPlus")},navigationIcon={IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,"Back")}})}) {padding->
@@ -73,7 +83,17 @@ import java.util.UUID
                     }
                 }
             }
-            if(plans!=null) for(i in 0 until plans.length()) {val p=plans.getJSONObject(i);OutlinedCard(onClick={selected=p.getString("plan");agreed=false;checkoutId=UUID.randomUUID().toString()},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),colors=CardDefaults.outlinedCardColors(containerColor=if(selected==p.optString("plan")) Sage else MaterialTheme.colorScheme.surface)) { Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) { Text(p.getString("plan").replaceFirstChar{it.uppercase()},fontSize=20.sp);Text("${money(p.getInt("amount"),p.getString("currency"))} / ${p.getString("plan").removeSuffix("ly")}");if(!p.isNull("approximateAmount")) Text("Approximately ${money(p.getInt("approximateAmount"),p.getString("approximateCurrency"))} in your local currency.",fontSize=12.sp);Text(if(selected==p.optString("plan")) "Selected" else "Choose this plan",fontSize=12.sp) } } }
+            if(plans!=null) for(i in 0 until plans.length()) {val p=plans.getJSONObject(i);OutlinedCard(onClick={selected=p.getString("plan");agreed=false;checkoutId=UUID.randomUUID().toString()},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),colors=CardDefaults.outlinedCardColors(containerColor=if(selected==p.optString("plan")) Sage else MaterialTheme.colorScheme.surface)) { Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) { Text(p.getString("plan").replaceFirstChar{it.uppercase()},fontSize=20.sp);val charge = money(p.getInt("amount"), p.getString("currency"))
+                val estimate = if (p.isNull("approximateAmount") || p.isNull("approximateCurrency")) null
+                    else money(p.getInt("approximateAmount"), p.getString("approximateCurrency"))
+                if (localFirst && estimate != null) {
+                    Text("About $estimate")
+                    Text("Checkout charge: $charge", fontSize = 12.sp)
+                } else {
+                    Text(charge)
+                    if (estimate != null) Text("About $estimate in your local currency", fontSize = 12.sp)
+                }
+                Text(if(selected==p.optString("plan")) "Selected" else "Choose this plan",fontSize=12.sp) } } }
             if(hasSubscription) {Text("Membership: ${subscription!!.optString("status")}");Text("Current period ends ${subscription.optString("periodEnd")}");if(!subscription.isNull("cancelAt")) Text("Renewal is canceled. Access continues until the confirmed period end.")}
             else {
                 Text(if (summary?.optInt("firstRenewalBonusDays", 0) == 7) "Pay when you subscribe. Seven extra days are added before your first renewal, once per account. Subsequent renewals follow the selected schedule." else "Pay when you subscribe. Your seven-day renewal extension has already been used; renewals follow the selected schedule.",fontSize=13.sp)
