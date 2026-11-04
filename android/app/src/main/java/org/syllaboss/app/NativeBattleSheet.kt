@@ -35,6 +35,7 @@ import org.json.JSONObject
     var topic by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf("mcq") }
     var count by remember { mutableIntStateOf(5) }
+    var stake by remember { mutableStateOf("") }
     var fighters by remember { mutableStateOf(setOf<String>()) }
     var busy by remember { mutableStateOf(false) }
     var loaded by remember { mutableStateOf(false) }
@@ -42,6 +43,7 @@ import org.json.JSONObject
     var revision by remember { mutableIntStateOf(0) }
     val answers = remember(selected) { mutableStateMapOf<Int, Any>() }
     val photos = remember(selected) { mutableStateMapOf<Int, SolutionPhoto>() }
+    var questionIndex by remember(selected) { mutableIntStateOf(0) }
 
     LaunchedEffect(selected, revision) {
         loaded = false
@@ -50,6 +52,14 @@ import org.json.JSONObject
             else detail = StudyApi.call("battle&id=" + selected.asQuery())
         } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message.orEmpty() }
         finally { loaded = true }
+    }
+    LaunchedEffect(selected, busy) {
+        if (selected.isBlank() || busy) return@LaunchedEffect
+        while (true) {
+            kotlinx.coroutines.delay(5000)
+            try { detail = StudyApi.call("battle&id=" + selected.asQuery()) }
+            catch (e: Exception) { if (e is CancellationException) throw e }
+        }
     }
     LaunchedEffect(create) {
         if (create) try { members = StudyApi.call("battle-members&target=" + target.asQuery()).objects("members") }
@@ -74,7 +84,7 @@ import org.json.JSONObject
             if (!loaded || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
             if (create) {
-                Text("Pick a topic and invite people in this conversation. Friendly battles cost no points.", color = Muted)
+                Text("Pick a topic and invite people in this conversation. You can play for free or set a SyllaPoints stake.", color = Muted)
                 OutlinedTextField(topic, { topic = it.take(200) }, label = { Text("Topic") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(mode == "mcq", { mode = "mcq" }, { Text("Multiple choice") })
@@ -83,8 +93,15 @@ import org.json.JSONObject
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("$count questions", Modifier.weight(1f))
                     IconButton(onClick = { count-- }, enabled = count > 1) { Icon(Icons.Outlined.Remove, "Fewer questions") }
-                    IconButton(onClick = { count++ }, enabled = count < 5) { Icon(Icons.Outlined.Add, "More questions") }
+                    IconButton(onClick = { count++ }, enabled = count < 50) { Icon(Icons.Outlined.Add, "More questions") }
                 }
+                OutlinedTextField(
+                    stake, { stake = it.filter(Char::isDigit).take(5) },
+                    label = { Text("Stake per player (optional)") },
+                    supportingText = { Text("Leave blank for a friendly match. Your stake is deducted when you host.") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                )
                 OutlinedButton(onClick = { picker = true }) { Icon(Icons.Outlined.Attachment, null); Text(source?.optString("title") ?: "Use course material") }
                 if (source != null) TextButton(onClick = { source = null }) { Text("Remove material") }
                 members.filter { it.optString("id") != user?.id }.forEach { member ->
@@ -95,10 +112,10 @@ import org.json.JSONObject
                     }
                 }
                 Button(onClick = {
-                    val body = JSONObject().put("action", "battle-create").put("title", topic.trim()).put("mode", mode).put("count", count).put("fighterIds", JSONArray(fighters.toList()))
+                    val body = JSONObject().put("action", "battle-create").put("title", topic.trim()).put("mode", mode).put("count", count).put("fighterIds", JSONArray(fighters.toList())).put("stake", stake.toIntOrNull() ?: 0)
                     source?.let { body.put("sourceMaterialId", it.getString("id")) }
                     action(body) { create = false; selected = it.optString("id") }
-                }, enabled = !busy && topic.trim().length >= 3 && fighters.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Create and invite") }
+                }, enabled = !busy && topic.trim().length >= 3 && fighters.isNotEmpty() && (stake.toIntOrNull() ?: 0) <= 10000, modifier = Modifier.fillMaxWidth()) { Text("Create and invite") }
             } else if (selected.isBlank()) {
                 Button(onClick = { create = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Bolt, null); Text("Start a friendly battle") }
                 if (loaded && list.isEmpty()) Text("No battles yet. Challenge your study partners to a quick round.", color = Muted)
@@ -119,11 +136,31 @@ import org.json.JSONObject
                     val self = players.find { it.optString("user_id") == user?.id }
                     val personalStatus = self?.optString("status")
                     val theory = battle.optString("mode") == "theory"
+                    val invited = players.count { it.optString("status") == "invited" && it.optString("role") == "fighter" }
+                    val waiting = status == "lobby" && invited > 0 && players.count {
+                        it.optString("role") == "fighter" && it.optString("status") in listOf("joined", "submitted")
+                    } < 2
                     val questions = remember(battle.optString("questions_json")) {
                         runCatching { JSONArray(battle.optString("questions_json")) }.getOrElse { JSONArray() }
                     }
                     Text(battle.optString("title"), fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                     Text("${questions.length()} questions · ${status.replaceFirstChar { it.uppercase() }}", color = Muted)
+                    if (waiting) {
+                        val started = remember(selected) {
+                            runCatching {
+                                java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", java.util.Locale.US)
+                                    .parse(battle.optString("created_at"))?.time
+                            }.getOrNull() ?: System.currentTimeMillis()
+                        }
+                        var seconds by remember(selected) { mutableIntStateOf(0) }
+                        LaunchedEffect(started) {
+                            while (true) {
+                                seconds = ((System.currentTimeMillis() - started) / 1000).coerceAtLeast(0).toInt()
+                                kotlinx.coroutines.delay(1000)
+                            }
+                        }
+                        Text("Waiting for an opponent · %02d:%02d".format(seconds / 60, seconds % 60), color = Muted)
+                    }
                     if (status == "completed") players.filter { it.optString("status") == "submitted" }.sortedByDescending { it.optInt("score") }.forEachIndexed { i, player ->
                         ListItem(headlineContent = { Text("${i + 1}. ${player.optString("user_name")}") }, trailingContent = { Text("${player.optInt("score")}%") })
                     }
@@ -131,9 +168,11 @@ import org.json.JSONObject
                         if (personalStatus == "invited") {
                             val stake = battle.optInt("stake_amount")
                             Button(onClick = { action(battleAction("battle-join")) }, enabled = !busy) { Text(if (stake > 0) "Join · $stake points" else "Join battle") }
-                        } else if (personalStatus == "joined" && self?.optString("role") == "fighter") {
-                            for (i in 0 until questions.length()) {
-                                val q = questions.optJSONObject(i) ?: continue
+                        } else if (!waiting && personalStatus == "joined" && self?.optString("role") == "fighter") {
+                            questions.optJSONObject(questionIndex)?.let { q ->
+                                val i = questionIndex
+                                Text("Question ${i + 1} of ${questions.length()}", color = Muted, fontSize = 13.sp)
+                                LinearProgressIndicator(progress = { (i + 1f) / questions.length() }, modifier = Modifier.fillMaxWidth())
                                 Text("${i + 1}. ${q.optString("question")}", fontWeight = FontWeight.SemiBold)
                                 if (theory) { OutlinedTextField(answers[i] as? String ?: "", { answers[i] = it.take(3000) }, placeholder = { Text("Explain your answer") }, modifier = Modifier.fillMaxWidth(), minLines = 2); SolutionPhotoPicker(photos[i], !busy, { if(it == null) photos.remove(i) else photos[i] = it }, { error = it }) }
                                 else {
@@ -143,6 +182,11 @@ import org.json.JSONObject
                                         FilterChip(answers[i] == j, { answers[i] = j }, { Text(label) }, modifier = Modifier.fillMaxWidth())
                                     }
                                 }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                OutlinedButton(onClick = { questionIndex-- }, enabled = !busy && questionIndex > 0) { Text("Previous") }
+                                Text("${answers.keys.union(photos.keys).size} answered", modifier = Modifier.align(Alignment.CenterVertically), color = Muted)
+                                Button(onClick = { questionIndex++ }, enabled = !busy && questionIndex + 1 < questions.length()) { Text("Next") }
                             }
                             Button(onClick = {
                                 if (!theory) {
@@ -173,7 +217,7 @@ import org.json.JSONObject
                                     }
                                 }
                             }, enabled = !busy && (photos.isNotEmpty() || answers.values.any { it !is String || it.isNotBlank() }), modifier = Modifier.fillMaxWidth()) { Text("Submit answers") }
-                        } else if (personalStatus == "submitted") Text("Answers submitted. Check back for the results.", color = Forest)
+                        } else if (personalStatus == "submitted") Text("Answers submitted. Check back for the results.", color = MaterialTheme.colorScheme.primary)
                         if (battle.optString("host_id") == user?.id && players.any { it.optString("status") == "submitted" && it.optString("role") == "fighter" }) {
                             OutlinedButton(onClick = { finish = true }, enabled = !busy) { Text("Finish and grade") }
                         }

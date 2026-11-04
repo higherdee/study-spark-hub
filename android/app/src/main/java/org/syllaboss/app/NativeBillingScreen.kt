@@ -24,14 +24,25 @@ import java.util.UUID
 
 @Composable internal fun NativeBillingScreen(back: () -> Unit) {
     val context=LocalContext.current;val scope=rememberCoroutineScope()
-    var country by rememberSaveable { mutableStateOf(Locale.getDefault().country.takeIf { it.length==2 } ?: "") }
+    var country by rememberSaveable { mutableStateOf("") }
+    var showRegions by remember { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<JSONObject?>(null) };var summary by remember { mutableStateOf<JSONObject?>(null) }
     var selected by rememberSaveable { mutableStateOf("monthly") };var agreed by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) };var error by remember { mutableStateOf("") };var cancelConfirm by remember { mutableStateOf(false) };var refresh by remember { mutableIntStateOf(0) }
     var checkoutId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     LaunchedEffect(country,refresh) {
-        if(country.length!=2) {catalog=null;return@LaunchedEffect};error=""
-        try { catalog=StudyApi.endpoint("/api/billing?resource=catalog&country=$country",authenticated=false);summary=StudyApi.endpoint("/api/billing?country=$country") } catch(e:Exception) {if(e is kotlinx.coroutines.CancellationException) throw e;error=e.message ?: "Billing could not be loaded."}
+        error=""
+        try {
+            val result = StudyApi.endpoint("/api/billing?resource=catalog" + if (country.length == 2) "&country=$country" else "", authenticated = false)
+            val detected = result.optString("country").takeIf { it.length == 2 }
+                ?: Locale.getDefault().country.takeIf { it.length == 2 }
+            if (country.isBlank() && detected != null) {
+                country = detected
+                return@LaunchedEffect
+            }
+            catalog = result
+            summary = StudyApi.endpoint("/api/billing" + if (country.length == 2) "?country=$country" else "")
+        } catch(e:Exception) {if(e is kotlinx.coroutines.CancellationException) throw e;error=e.message ?: "Billing could not be loaded."}
     }
     fun open(url:String) { val uri=Uri.parse(url);require(uri.scheme=="https"){"Secure checkout is unavailable."};context.startActivity(Intent(Intent.ACTION_VIEW,uri)) }
     fun money(amount:Int,currency:String):String { val formatter=java.text.NumberFormat.getCurrencyInstance();formatter.currency=java.util.Currency.getInstance(currency);return formatter.format(amount/100.0) }
@@ -42,7 +53,18 @@ import java.util.UUID
             BrandWordmark();Text("Keep your momentum.",fontFamily=WebsiteDisplay,fontSize=34.sp)
             Text("More AI study time, library materials alongside Boss AI, more downloads and longer conversation history.",color=MaterialTheme.colorScheme.onSurfaceVariant)
             if(catalog?.optString("environment")=="sandbox") Text("Payment testing mode. Test purchases do not activate a live membership.",color=MaterialTheme.colorScheme.primary,fontSize=13.sp)
-            OutlinedTextField(country,{country=it.uppercase().filter(Char::isLetter).take(2);agreed=false;checkoutId=UUID.randomUUID().toString()},label={Text("Billing country (two-letter code)")},supportingText={Text("For example NG, GH, KE, US or GB. Choose the country of your billing address.")},singleLine=true,enabled=!busy,modifier=Modifier.fillMaxWidth())
+            Box {
+                OutlinedButton(onClick = { showRegions = true }, enabled = !busy) {
+                    Text(if (country.isBlank()) "Choose billing region" else "Billing region · ${Locale("", country).displayCountry}")
+                }
+                DropdownMenu(expanded = showRegions, onDismissRequest = { showRegions = false }) {
+                    Locale.getISOCountries().sortedBy { Locale("", it).displayCountry }.forEach { code ->
+                        DropdownMenuItem(text = { Text(Locale("", code).displayCountry) }, onClick = {
+                            country = code; agreed = false; checkoutId = UUID.randomUUID().toString(); showRegions = false
+                        })
+                    }
+                }
+            }
             if(plans!=null) for(i in 0 until plans.length()) {val p=plans.getJSONObject(i);OutlinedCard(onClick={selected=p.getString("plan");agreed=false;checkoutId=UUID.randomUUID().toString()},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),colors=CardDefaults.outlinedCardColors(containerColor=if(selected==p.optString("plan")) Sage else MaterialTheme.colorScheme.surface)) { Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) { Text(p.getString("plan").replaceFirstChar{it.uppercase()},fontSize=20.sp);Text("${money(p.getInt("amount"),p.getString("currency"))} / ${p.getString("plan").removeSuffix("ly")}");if(!p.isNull("approximateAmount")) Text("Approximately ${money(p.getInt("approximateAmount"),p.getString("approximateCurrency"))} in your local currency.",fontSize=12.sp);Text(if(selected==p.optString("plan")) "Selected" else "Choose this plan",fontSize=12.sp) } } }
             if(hasSubscription) {Text("Membership: ${subscription!!.optString("status")}");Text("Current period ends ${subscription.optString("periodEnd")}");if(!subscription.isNull("cancelAt")) Text("Renewal is canceled. Access continues until the confirmed period end.")}
             else {

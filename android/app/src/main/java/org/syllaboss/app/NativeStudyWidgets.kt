@@ -67,13 +67,13 @@ internal fun studyPlainText(text: String): String = runCatching {
     Column(modifier,verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Text(set.optString("topic"),fontFamily=WebsiteDisplay,fontSize=24.sp)
         if(mode=="flashcards") {
-            Card(onClick={flipped=!flipped},colors=CardDefaults.cardColors(containerColor=colors[index%colors.size]),shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth().heightIn(min=210.dp)) { Column(Modifier.padding(24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) { Text(if(flipped) "THE ANSWER" else "THINK IT THROUGH",fontSize=11.sp,color=Forest); AnimatedContent(targetState=flipped,transitionSpec={fadeIn(tween(160)).togetherWith(fadeOut(tween(100)))},label="Reveal flashcard"){back->NativeAnswer(current.optString(if(back) "back" else "front"))}; Text("Tap to ${if(flipped) "see the question" else "reveal the answer"}",fontSize=12.sp,color=Muted) } }
+            Card(onClick={flipped=!flipped},colors=CardDefaults.cardColors(containerColor=colors[index%colors.size]),shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth().heightIn(min=210.dp)) { Column(Modifier.padding(24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) { Text(if(flipped) "THE ANSWER" else "THINK IT THROUGH",fontSize=11.sp,color=MaterialTheme.colorScheme.primary); AnimatedContent(targetState=flipped,transitionSpec={fadeIn(tween(160)).togetherWith(fadeOut(tween(100)))},label="Reveal flashcard"){back->NativeAnswer(current.optString(if(back) "back" else "front"))}; Text("Tap to ${if(flipped) "see the question" else "reveal the answer"}",fontSize=12.sp,color=Muted) } }
         } else {
             NativeAnswer(current.optString("question"))
             val options = current.optJSONArray("options")
             if((mode=="objective"||mode=="mcq") && options != null) {
                 for(n in 0 until options.length()) OutlinedButton(onClick={selection=n},enabled=selection<0,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp)) { Text("${('A'.code+n).toChar()}. ${options.getString(n)}",modifier=Modifier.fillMaxWidth()) }
-                if(selection>=0) { Text(if(selection==current.optInt("correctOptionIndex")) "Correct. Well done." else "The correct answer is ${('A'.code+current.optInt("correctOptionIndex")).toChar()}.",color=Forest); NativeAnswer(current.optString("explanation",current.optString("modelAnswer"))) }
+                if(selection>=0) { Text(if(selection==current.optInt("correctOptionIndex")) "Correct. Well done." else "The correct answer is ${('A'.code+current.optInt("correctOptionIndex")).toChar()}.",color=MaterialTheme.colorScheme.primary); NativeAnswer(current.optString("explanation",current.optString("modelAnswer"))) }
             } else {
                 OutlinedTextField(answer,{answer=it.take(12000)},label={Text("Work through your answer")},modifier=Modifier.fillMaxWidth(),minLines=3,enabled=!busy)
                 SolutionPhotoPicker(solution,!busy,{solution=it},{error=it})

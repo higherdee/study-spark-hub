@@ -130,6 +130,7 @@ export async function askGeminiAI(
         reasoning?: boolean;
         skipGroq?: boolean;
         maxOutputTokens?: number;
+        groqModel?: string;
       }
 ): Promise<string> {
   const opts: Exclude<NonNullable<typeof options>, string> = typeof options === "string" ? { systemPrompt: options } : options || {};
@@ -162,7 +163,8 @@ export async function askGeminiAI(
         }
       }
 
-      for (const groqModel of opts.reasoning ? [GROQ_MODELS[0]!] : GROQ_MODELS) {
+      const models = opts.groqModel ? [opts.groqModel] : opts.reasoning ? [GROQ_MODELS[0]!] : GROQ_MODELS;
+      for (const groqModel of models) {
         try {
           const bodyPayload: any = {
             model: groqModel,

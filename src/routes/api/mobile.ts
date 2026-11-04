@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { verifyToken } from "@clerk/backend";
+import { waitUntil } from "@vercel/functions";
+import { giftCashoutInput, giftCashoutOptions, requestGiftCashout } from "@/lib/gift-cashout.server";
 import { z } from "zod";
 import { CLERK_SECRET_KEY } from "@/integrations/clerk";
 import { turso, getMaterials, getProfile, getLeaderboard, upsertProfile } from "@/integrations/turso/client.server";
@@ -12,6 +14,7 @@ import { focusHeartbeat, focusSnapshot } from "@/lib/focus.server";
 import { answerDocumentQuestion } from "@/lib/document-study.server";
 import { materialReviews } from "@/lib/material-reviews.functions";
 import { MembershipLimitError } from "@/lib/membership/policy";
+import { acceptDirectRequest, createStudyGroup, directRequestState, getDirectUnreadTotal, markDirectMessagesRead } from "@/integrations/turso/community.server";
 
 const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 async function identity(request: Request) {
@@ -44,6 +47,20 @@ async function peerContent(actor: string, target: string, input: z.infer<typeof 
   if (!input.content) throw new Error("Enter a message.");
   return { content: input.content };
 }
+
+function queuePeerAnswer(userId: string, target: string, content: string, group: boolean) {
+  if (!/@bossai\b/i.test(content)) return;
+  const query = content.replace(/@bossai\b/gi, "").trim();
+  if (!query) return;
+  waitUntil((async () => {
+    if (!group && await directRequestState(target, userId) !== "accepted") return;
+    const { askBossAiServerFn } = await import("@/lib/ai/study-assistant.functions");
+    const { response } = await askBossAiServerFn({ data: { userId, query, taskType: "general" } });
+    const reply = "**Boss AI**:\n" + response;
+    if (group) await sendGroupMessage({ groupId: target, userId, userName: "Boss AI", content: reply });
+    else await sendDirectMessage({ conversationId: target, senderId: userId, content: reply });
+  })().catch(() => console.warn("Peer AI reply could not be completed.")));
+}
 export const Route = createFileRoute("/api/mobile")({
   server: { handlers: {
     GET: async ({ request }) => {
@@ -64,15 +81,25 @@ export const Route = createFileRoute("/api/mobile")({
         }
         const userId = await identity(request);
         if (resource === "membership") return json(await membershipSnapshot(userId));
+        if (resource === "gift-cashout") return json({ options: giftCashoutOptions(request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry")) });
         if (resource === "source") { const {loadDocumentContext}=await import("@/lib/document-study.server"); const doc=await loadDocumentContext(userId,(url.searchParams.get("id")||"").slice(0,100)); return json({id:doc.material.id,title:doc.material.title,pages:doc.pages}); }
-        if (resource === "battle-members" || resource === "battles") { const target=(url.searchParams.get("target")||"").slice(0,100); const {getStudyGroupMembersWithBalances}=await import("@/integrations/turso/community.server"); const members=await getStudyGroupMembersWithBalances(target,userId); if(resource==="battle-members")return json({members}); return json({battles:(await turso.execute({sql:"SELECT id,title,mode,status,question_count,total_pot,host_name FROM study_battles WHERE group_id=? ORDER BY created_at DESC LIMIT 20",args:[target]})).rows}); }
+        if (resource === "battle-members" || resource === "battles") { const target=(url.searchParams.get("target")||"").slice(0,100); const {getStudyGroupMembersWithBalances}=await import("@/integrations/turso/community.server"); const members=await getStudyGroupMembersWithBalances(target,userId); if(resource==="battle-members")return json({members}); return json({battles:(await turso.execute({sql:"SELECT b.id,b.title,b.mode,b.status,b.question_count,b.total_pot,COALESCE('@' || NULLIF(p.username,''), 'Student') AS host_name FROM study_battles b LEFT JOIN profiles p ON p.id=b.host_id WHERE b.group_id=? ORDER BY b.created_at DESC LIMIT 20",args:[target]})).rows}); }
         if (resource === "battle") {const {getBattleDetailsServerFn}=await import("@/lib/battle.functions");return json(await getBattleDetailsServerFn({data:{battleId:(url.searchParams.get("id")||"").slice(0,100)}}));}
         if (resource === "settings") { const profile = await getProfile(userId); return json({ profile, preferences: profile?.study_plan?.["preferences"] || {} }); }
         if (resource === "focus") return json(await focusSnapshot(userId));
         if (resource === "reviews") return json(await materialReviews(userId, (url.searchParams.get("material") || "").slice(0, 100)));
         if (resource === "peers") return json({ peers: await searchPeers((url.searchParams.get("q") || "").slice(0, 100), userId) });
         if (resource === "direct-conversations") return json({ conversations: await getStudentConversations(userId) });
-        if (resource === "direct-messages") return json({ messages: await getDirectMessages((url.searchParams.get("thread") || "").slice(0, 100), 80, userId) });
+        if (resource === "direct-unread") return json({ total: await getDirectUnreadTotal(userId) });
+        if (resource === "direct-request") return json({ requestState: await directRequestState((url.searchParams.get("thread") || "").slice(0, 100), userId) });
+        if (resource === "direct-messages") {
+          const conversation = (url.searchParams.get("thread") || "").slice(0, 100);
+          const [messages, requestState] = await Promise.all([
+            getDirectMessages(conversation, 80, userId),
+            directRequestState(conversation, userId),
+          ]);
+          return json({ messages, requestState });
+        }
         if (resource === "conversations" || resource === "conversation") await enforceChatRetention(userId);
         if (resource === "conversations") {
           const result = await turso.execute({ sql: "SELECT id, title, updated_at FROM chat_threads WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50", args: [userId] });
@@ -107,6 +134,36 @@ export const Route = createFileRoute("/api/mobile")({
       let userId: string;
       try { userId = await identity(request); } catch { return json({ error: "Sign in to continue." }, 401); }
       const body = await request.json().catch(() => null);
+      if (body?.action === "gift-cashout") {
+        const input = giftCashoutInput.safeParse(body);
+        if (!input.success) return json({ error: "Choose a gift card and enter a delivery email." }, 400);
+        try {
+          const country = request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry");
+          return json({ withdrawalId: await requestGiftCashout(userId, country, input.data) });
+        } catch (error) {
+          return json({ error: error instanceof Error ? error.message : "Cashout could not be requested." }, 400);
+        }
+      }
+      if (body?.action === "create-group") {
+        const input = z.object({ name: z.string().trim().min(3).max(80), description: z.string().trim().max(300).default("") }).safeParse(body);
+        if (!input.success) return json({ error: "Enter a group name of 3–80 characters." }, 400);
+        try {
+          return json({ group: { ...await createStudyGroup({ ...input.data, userId }), is_member: true } });
+        } catch {
+          return json({ error: "Could not create the group. Try again." }, 503);
+        }
+      }
+      if (body?.action === "direct-accept" || body?.action === "direct-read") {
+        const id = z.string().min(1).max(100).safeParse(body.conversationId);
+        if (!id.success) return json({ error: "Invalid conversation." }, 400);
+        try {
+          if (body.action === "direct-accept") await acceptDirectRequest(id.data, userId);
+          else await markDirectMessagesRead(id.data, userId);
+          return json({ success: true });
+        } catch (error) {
+          return json({ error: error instanceof Error ? error.message : "Conversation unavailable." }, 403);
+        }
+      }
       if(typeof body?.action==="string"&&body.action.startsWith("battle-")){
         try{
           const actions=await import("@/lib/battle.functions");const profile=await getProfile(userId);const name=profile?.full_name||"Student";
@@ -132,7 +189,12 @@ export const Route = createFileRoute("/api/mobile")({
           if (body.action === "complete-material") return json(await completeMaterialGate(userId, z.string().uuid().parse(body.id)));
           if (body.action === "document-chat") { const input = z.object({ materialId: z.string().min(1).max(100), message: z.string().trim().min(1).max(6000), threadId: z.string().uuid().optional() }).parse(body); return json(await answerDocumentQuestion(userId, input)); }
           if (body.action === "start-direct") return json(await getOrCreatePeerConversation(userId, z.string().min(1).max(100).parse(body.peerId)));
-          if (body.action === "direct-message") { const input = peerInput.extend({ conversationId: z.string().min(1).max(100) }).parse(body); return json({ message: await sendDirectMessage({ conversationId: input.conversationId, senderId: userId, ...await peerContent(userId,input.conversationId,input) }) }); }
+          if (body.action === "direct-message") {
+            const input = peerInput.extend({ conversationId: z.string().min(1).max(100) }).parse(body);
+            const message = await sendDirectMessage({ conversationId: input.conversationId, senderId: userId, ...await peerContent(userId, input.conversationId, input) });
+            queuePeerAnswer(userId, input.conversationId, input.content, false);
+            return json({ message });
+          }
           if (body.action === "redeem-promo") { const { redeemPromo } = await import("@/lib/membership/promos.server"); return json(await redeemPromo(userId, { code: body.code, requestId: body.requestId })); }
           if (body.action === "review") { const input = z.object({ materialId: z.string().min(1).max(100), rating: z.number().int().min(1).max(5), review: z.string().trim().max(1500).default("") }).parse(body); await materialReviews(userId, input.materialId); const { rateMaterial } = await import("@/integrations/turso/client.server"); return json(await rateMaterial(input.materialId, userId, input.rating, input.review)); }
         } catch (error) {
@@ -158,7 +220,9 @@ export const Route = createFileRoute("/api/mobile")({
           if (body.action === "join") return (await joinStudyGroup(groupAction.data.group, userId)) ? json({ success: true }) : json({ error: "Could not join this group." }, 400);
 
           const profile = await getProfile(userId);
-          return json({ message: await sendGroupMessage({ groupId: groupAction.data.group, userId, userName: profile?.full_name || "Student", ...(profile?.institution ? { userInstitution: profile.institution } : {}), ...await peerContent(userId,groupAction.data.group,groupAction.data) }) });
+          const message = await sendGroupMessage({ groupId: groupAction.data.group, userId, userName: "Student", ...(profile?.institution ? { userInstitution: profile.institution } : {}), ...await peerContent(userId, groupAction.data.group, groupAction.data) });
+          queuePeerAnswer(userId, groupAction.data.group, groupAction.data.content, true);
+          return json({ message });
         } catch { return json({ error: "Join the study group before posting. Please try again." }, 403); }
       }
       const parsed = z.object({ message: z.string().trim().min(1).max(6000), threadId: z.string().uuid().optional(), history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(12000) })).max(12).default([]) }).safeParse(body);

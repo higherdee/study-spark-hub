@@ -1154,7 +1154,7 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
     sql: `
       SELECT 
         p.id, 
-        p.full_name, 
+        CASE WHEN p.username IS NULL OR p.username='' THEN 'Student' ELSE '@' || p.username END AS full_name,
         p.username,
         p.avatar_url,
         p.institution, 

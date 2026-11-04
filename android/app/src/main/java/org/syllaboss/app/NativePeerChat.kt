@@ -51,17 +51,26 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
     var loaded by remember(target) { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var refresh by remember { mutableIntStateOf(0) }
+    var requestState by remember(target) { mutableStateOf("") }
     val state = rememberLazyListState()
     val resource = if (group) "messages&group=" else "direct-messages&thread="
     LaunchedEffect(target, refresh, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 try {
-                    val next = StudyApi.call(resource + target.asQuery()).objects("messages")
+                    val response = StudyApi.call(resource + target.asQuery())
+                    val next = response.objects("messages")
+                    if (!group) {
+                        requestState = response.optString("requestState")
+                        if (next.any { it.optString("sender_id") != account?.id && !it.optBoolean("is_read") }) {
+                            StudyApi.call(body = JSONObject().put("action", "direct-read").put("conversationId", target))
+                        }
+                    }
                     val atEnd = !loaded || !state.canScrollForward || messages.isEmpty()
-                    if (next.lastOrNull()?.optString("id") != messages.lastOrNull()?.optString("id") || next.size != messages.size) {
+                    val changed = next.lastOrNull()?.optString("id") != messages.lastOrNull()?.optString("id") || next.size != messages.size
+                    if (changed || next.map { it.optString("receipt") } != messages.map { it.optString("receipt") }) {
                         messages = next
-                        if (atEnd && next.isNotEmpty()) state.requestScrollToItem(next.lastIndex)
+                        if (changed && atEnd && next.isNotEmpty()) state.requestScrollToItem(next.lastIndex)
                     }
                     loaded = true
                 } catch (e: Exception) {
@@ -86,7 +95,7 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
             LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = state, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (loaded && messages.isEmpty()) item {
                     Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Outlined.Forum, null, tint = Forest)
+                        Icon(Icons.Outlined.Forum, null, tint = MaterialTheme.colorScheme.primary)
                         Text("Start the conversation", fontFamily = WebsiteDisplay, fontSize = 25.sp)
                         Text("Ask a question, share notes, or start a battle.", color = Muted, fontSize = 13.sp)
                     }
@@ -100,13 +109,20 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
                         Surface(shape = RoundedCornerShape(18.dp), color = if (own) Sage else MaterialTheme.colorScheme.surfaceContainer) {
                             Column(Modifier.widthIn(max = 300.dp).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (!own) Text(message.optString(if (group) "user_name" else "sender_name"), color = Forest, fontSize = 12.sp)
+                                if (!own) Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(message.optString(if (group) "user_name" else "sender_name"), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
+                                    if (message.optBoolean("sender_verified")) Icon(Icons.Outlined.Verified, "Verified administrator", Modifier.padding(start = 4.dp).size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
                                 if (marker != null) TextButton(onClick = { battle = marker.groupValues[1] }) { Icon(Icons.Outlined.Bolt, null); Text("Open study battle") }
                                 else {
                                     val caption = if (media != null) envelope?.optString("text").orEmpty() else raw
                                     if (caption.isNotBlank()) SelectionContainer { Text(caption, lineHeight = 21.sp) }
                                 }
                                 if (media != null) NativeAttachmentMessage(media)
+                                if (own && !group) Text(
+                                    when (message.optString("receipt")) { "read" -> "Read"; "delivered" -> "Delivered"; else -> "Sent" },
+                                    color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, modifier = Modifier.align(Alignment.End)
+                                )
                                 val id = message.optString("material_id").takeUnless { it == "null" }.orEmpty()
                                 if (marker == null && id.isNotBlank()) TextButton(onClick = {
                                     scope.launch {
@@ -122,12 +138,24 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
             if (error.isNotBlank()) Text(error, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
             AnimatedVisibility(attachment != null, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Attachment, null, tint = Forest)
+                    Icon(Icons.Outlined.Attachment, null, tint = MaterialTheme.colorScheme.primary)
                     Text(attachment?.optString("title").orEmpty(), Modifier.weight(1f).padding(horizontal = 8.dp), maxLines = 1)
                     IconButton(onClick = { attachment = null }, enabled = !busy) { Icon(Icons.Outlined.Close, "Remove attachment") }
                 }
             }
-            Surface(color = Paper, tonalElevation = 0.dp) {
+            if (!group && requestState in listOf("incoming", "outgoing")) {
+                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (requestState == "incoming") "Accept this message request to reply." else "Waiting for the recipient to accept.", Modifier.weight(1f), color = Muted)
+                    if (requestState == "incoming") Button(onClick = {
+                        busy = true
+                        scope.launch {
+                            try { StudyApi.call(body = JSONObject().put("action", "direct-accept").put("conversationId", target)); requestState = "accepted"; refresh++ }
+                            catch (e: Exception) { if (e is CancellationException) throw e; error = e.message.orEmpty() }
+                            finally { busy = false }
+                        }
+                    }, enabled = !busy) { Text("Accept") }
+                }
+            } else Surface(color = Paper, tonalElevation = 0.dp) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.Bottom) {
                     IconButton(onClick = { showPicker = true }, enabled = !busy) { Icon(Icons.Outlined.AddCircleOutline, "Attach file or library material") }
                     OutlinedTextField(draft, { draft = it.take(3000) }, Modifier.weight(1f), enabled = !busy, placeholder = { Text("Message…") }, maxLines = 4, shape = RoundedCornerShape(22.dp))
@@ -149,6 +177,7 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
                                 val sent = StudyApi.call(body = body).getJSONObject("message")
                                 messages = (messages + sent).distinctBy { it.getString("id") }
                                 state.requestScrollToItem(messages.lastIndex)
+                                if (!group && requestState == "new") requestState = "outgoing"
                                 draft = ""; attachment = null; refresh++
                             } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message ?: "Message could not be sent." }
                             finally { busy = false }

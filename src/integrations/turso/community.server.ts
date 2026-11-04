@@ -224,7 +224,12 @@ export async function joinStudyGroup(groupId: string, userId: string): Promise<b
 export async function getGroupMessages(groupId: string, limit = 60, userId?: string): Promise<GroupMessage[]> {
   if (!userId) throw new Error("Sign in to view group messages.");
   const rs = await turso.execute({
-    sql: `SELECT gm.* FROM group_messages gm JOIN study_group_members sgm ON sgm.group_id = gm.group_id WHERE gm.group_id = ? AND sgm.user_id = ? ORDER BY gm.created_at DESC, gm.rowid DESC LIMIT ?`,
+    sql: `SELECT gm.*, p.username AS public_username
+          FROM group_messages gm
+          JOIN study_group_members sgm ON sgm.group_id = gm.group_id
+          LEFT JOIN profiles p ON p.id = gm.user_id
+          WHERE gm.group_id = ? AND sgm.user_id = ?
+          ORDER BY gm.created_at DESC, gm.rowid DESC LIMIT ?`,
     args: [groupId, userId, limit],
   });
 
@@ -232,7 +237,7 @@ export async function getGroupMessages(groupId: string, limit = 60, userId?: str
     id: String(r.id),
     group_id: String(r.group_id),
     user_id: String(r.user_id),
-    user_name: String(r.user_name),
+    user_name: r.user_id === "boss-ai" ? "Boss AI" : r.public_username ? `@${r.public_username}` : "Student",
     user_institution: r.user_institution ? String(r.user_institution) : null,
     content: String(r.content),
     material_id: r.material_id ? String(r.material_id) : null,
@@ -257,6 +262,9 @@ export async function sendGroupMessage(data: {
 }): Promise<GroupMessage> {
   const membership = await turso.execute({ sql: "SELECT 1 FROM study_group_members WHERE group_id = ? AND user_id = ? LIMIT 1", args: [data.groupId, data.userId] });
   if (!membership.rows.length) throw new Error("Join this study group before posting.");
+  const { rows } = await turso.execute({ sql: "SELECT username FROM profiles WHERE id=?", args: [data.userId] });
+  const username = rows[0]?.["username"];
+  const publicName = username ? `@${username}` : "Student";
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -267,7 +275,7 @@ export async function sendGroupMessage(data: {
       id,
       data.groupId,
       data.userId,
-      data.userName,
+      publicName,
       data.userInstitution || null,
       data.content.trim(),
       data.materialId || null,
@@ -281,7 +289,7 @@ export async function sendGroupMessage(data: {
     id,
     group_id: data.groupId,
     user_id: data.userId,
-    user_name: data.userName,
+    user_name: publicName,
     user_institution: data.userInstitution || null,
     content: data.content.trim(),
     material_id: data.materialId || null,
@@ -311,6 +319,8 @@ export type DirectConversation = {
 };
 
 export type DirectMessage = {
+  receipt?: "sent" | "delivered" | "read";
+  sender_verified?: boolean;
   id: string;
   conversation_id: string;
   sender_id: string;
@@ -342,7 +352,7 @@ export async function searchPeers(query: string, currentUserId?: string, limit =
   return rs.rows.map((r: any) => ({
     id: String(r.id),
     username: String(r.username || r.id.slice(-6)),
-    full_name: String(r.full_name || "Scholar"),
+    full_name: r.username ? `@${r.username}` : "Student",
     avatar_url: r.avatar_url ? String(r.avatar_url) : null,
     institution: r.institution ? String(r.institution) : null,
     course: r.course ? String(r.course) : null,
@@ -429,7 +439,7 @@ export async function getOrCreatePeerConversation(user1Id: string, user2Id: stri
   const peer: PeerUser = {
     id: user2Id,
     username: p?.username || user2Id.slice(-6),
-    full_name: p?.full_name || "Scholar",
+    full_name: p?.username ? `@${p.username}` : "Student",
     avatar_url: p?.avatar_url || null,
     institution: p?.institution || null,
     course: p?.course || null,
@@ -443,6 +453,62 @@ export async function getOrCreatePeerConversation(user1Id: string, user2Id: stri
 /**
  * Retrieves all direct conversations for a user with real unread counts
  */
+let dmSchema: Promise<unknown> | undefined;
+function ensureDirectReceipts() {
+  dmSchema ??= turso.batch([
+    "CREATE TABLE IF NOT EXISTS direct_message_acceptance (conversation_id TEXT PRIMARY KEY, accepted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+    "CREATE TABLE IF NOT EXISTS direct_message_delivery (message_id TEXT PRIMARY KEY, delivered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+  ], "write").catch(error => { dmSchema = undefined; throw error; });
+  return dmSchema;
+}
+
+export async function directRequestState(conversationId: string, userId: string) {
+  await ensureDirectReceipts();
+  const { rows } = await turso.execute({
+    sql: `SELECT c.id, a.conversation_id AS accepted,
+      (SELECT sender_id FROM direct_messages WHERE conversation_id=c.id ORDER BY rowid LIMIT 1) AS first_sender,
+      (SELECT COUNT(DISTINCT sender_id) FROM direct_messages WHERE conversation_id=c.id) AS senders
+      FROM direct_conversations c LEFT JOIN direct_message_acceptance a ON a.conversation_id=c.id
+      WHERE c.id=? AND (c.user1_id=? OR c.user2_id=?)`,
+    args: [conversationId, userId, userId],
+  });
+  const row = rows[0];
+  if (!row) throw new Error("Conversation not found.");
+  if (row["accepted"] || Number(row["senders"]) > 1) return "accepted";
+  if (!row["first_sender"]) return "new";
+  return row["first_sender"] === userId ? "outgoing" : "incoming";
+}
+
+export async function acceptDirectRequest(conversationId: string, userId: string) {
+  const state = await directRequestState(conversationId, userId);
+  if (state === "accepted") return;
+  if (state !== "incoming") throw new Error("Only the recipient can accept this request.");
+  await turso.execute({
+    sql: "INSERT OR IGNORE INTO direct_message_acceptance(conversation_id) VALUES(?)",
+    args: [conversationId],
+  });
+}
+
+export async function getDirectUnreadTotal(userId: string): Promise<number> {
+  await ensureDirectReceipts();
+  const result = await turso.execute({
+    sql: `SELECT COUNT(*) AS total, SUM(CASE WHEN d.message_id IS NULL THEN 1 ELSE 0 END) AS undelivered
+          FROM direct_messages m JOIN direct_conversations c ON c.id=m.conversation_id
+          LEFT JOIN direct_message_delivery d ON d.message_id=m.id
+          WHERE (c.user1_id=? OR c.user2_id=?) AND m.sender_id<>? AND COALESCE(m.is_read,0)=0`,
+    args: [userId, userId, userId],
+  });
+  if (Number(result.rows[0]?.["undelivered"]) > 0) {
+    await turso.execute({
+      sql: `INSERT OR IGNORE INTO direct_message_delivery(message_id)
+            SELECT m.id FROM direct_messages m JOIN direct_conversations c ON c.id=m.conversation_id
+            WHERE (c.user1_id=? OR c.user2_id=?) AND m.sender_id<>? AND COALESCE(m.is_read,0)=0`,
+      args: [userId, userId, userId],
+    });
+  }
+  return Number(result.rows[0]?.["total"] ?? 0);
+}
+
 export async function getStudentConversations(userId: string): Promise<DirectConversation[]> {
   const rs = await turso.execute({
     sql: `
@@ -471,7 +537,7 @@ export async function getStudentConversations(userId: string): Promise<DirectCon
     peer: {
       id: String(r.peer_id),
       username: String(r.peer_username || r.peer_id.slice(-6)),
-      full_name: String(r.peer_full_name || "Scholar"),
+      full_name: r.peer_username ? `@${r.peer_username}` : "Student",
       avatar_url: r.peer_avatar_url ? String(r.peer_avatar_url) : null,
       institution: r.peer_institution ? String(r.peer_institution) : null,
       course: r.peer_course ? String(r.peer_course) : null,
@@ -501,14 +567,17 @@ export async function markDirectMessagesRead(conversationId: string, readerUserI
  */
 export async function getDirectMessages(conversationId: string, limit = 80, userId?: string): Promise<DirectMessage[]> {
   if (!userId) throw new Error("Sign in to view direct messages.");
+  await ensureDirectReceipts();
   const rs = await turso.execute({
     sql: `
       SELECT 
-        m.id, m.conversation_id, m.sender_id, m.content, m.material_id, m.created_at, m.is_read,
-        p.username as sender_username, p.full_name as sender_name, p.avatar_url as sender_avatar,
+        m.id, m.conversation_id, m.sender_id, m.content, m.material_id, m.created_at, m.is_read, d.delivered_at,
+        p.username as sender_username, p.avatar_url as sender_avatar,
+        EXISTS(SELECT 1 FROM user_roles WHERE user_id=m.sender_id AND role='admin') AS sender_verified,
         mat.title as mat_title, mat.course as mat_course
       FROM direct_messages m
       JOIN profiles p ON p.id = m.sender_id
+      LEFT JOIN direct_message_delivery d ON d.message_id = m.id
       LEFT JOIN materials mat ON mat.id = m.material_id
       WHERE m.conversation_id = ? AND (EXISTS (SELECT 1 FROM direct_conversations c WHERE c.id = m.conversation_id AND (c.user1_id = ? OR c.user2_id = ?)))
       ORDER BY m.created_at DESC, m.rowid DESC
@@ -516,12 +585,17 @@ export async function getDirectMessages(conversationId: string, limit = 80, user
     `,
     args: [conversationId, userId, userId, limit],
   });
+  const incoming = rs.rows.filter(row => row["sender_id"] !== userId && !row["delivered_at"]);
+  if (incoming.length) await turso.batch(incoming.map(row => ({
+    sql: "INSERT OR IGNORE INTO direct_message_delivery(message_id) VALUES(?)",
+    args: [String(row["id"])],
+  })), "write");
 
   return [...rs.rows].reverse().map((r: any) => ({
     id: String(r.id),
     conversation_id: String(r.conversation_id),
     sender_id: String(r.sender_id),
-    sender_name: String(r.sender_username ? `@${r.sender_username}` : r.sender_name || "Scholar"),
+    sender_name: r.sender_username ? `@${r.sender_username}` : "Student",
     sender_avatar: r.sender_avatar ? String(r.sender_avatar) : null,
     content: String(r.content),
     material_id: r.material_id ? String(r.material_id) : null,
@@ -529,6 +603,8 @@ export async function getDirectMessages(conversationId: string, limit = 80, user
     material_course: r.mat_course ? String(r.mat_course) : null,
     created_at: String(r.created_at),
     is_read: Boolean(r.is_read),
+    sender_verified: Boolean(r.sender_verified),
+    receipt: r.is_read ? "read" : r.delivered_at || r.sender_id !== userId ? "delivered" : "sent",
   }));
 }
 
@@ -542,15 +618,25 @@ export async function sendDirectMessage(data: {
   previewText?: string;
   materialId?: string;
 }): Promise<DirectMessage> {
-  const membership = await turso.execute({ sql: "SELECT 1 FROM direct_conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?) LIMIT 1", args: [data.conversationId, data.senderId, data.senderId] });
-  if (!membership.rows.length) throw new Error("Conversation not found.");
+  await ensureDirectReceipts();
+  const { isUserAdmin } = await import("./client.server");
+  const admin = await isUserAdmin(data.senderId);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await turso.execute({
+  const inserted = await turso.execute({
     sql: `INSERT INTO direct_messages (id, conversation_id, sender_id, content, material_id, created_at, is_read)
-          VALUES (?, ?, ?, ?, ?, datetime('now'), 0)`,
-    args: [id, data.conversationId, data.senderId, data.content.trim(), data.materialId || null],
+          SELECT ?, c.id, ?, ?, ?, datetime('now'), 0 FROM direct_conversations c
+          WHERE c.id=? AND (c.user1_id=? OR c.user2_id=?)
+            AND (?=1 OR EXISTS (SELECT 1 FROM direct_message_acceptance a WHERE a.conversation_id=c.id)
+              OR (SELECT COUNT(DISTINCT sender_id) FROM direct_messages WHERE conversation_id=c.id)>1
+              OR NOT EXISTS (SELECT 1 FROM direct_messages WHERE conversation_id=c.id))`,
+    args: [id, data.senderId, data.content.trim(), data.materialId || null, data.conversationId, data.senderId, data.senderId, admin ? 1 : 0],
+  });
+  if (!inserted.rowsAffected) throw new Error("Send one message and wait for the recipient to accept, or accept the incoming request to reply.");
+  if (admin) await turso.execute({
+    sql: "INSERT OR IGNORE INTO direct_message_acceptance(conversation_id) VALUES(?)",
+    args: [data.conversationId],
   });
 
   await turso.execute({
@@ -579,7 +665,7 @@ export async function sendDirectMessage(data: {
     id,
     conversation_id: data.conversationId,
     sender_id: data.senderId,
-    sender_name: sender?.username ? `@${sender.username}` : sender?.full_name || "Scholar",
+    sender_name: sender?.username ? `@${sender.username}` : "Student",
     sender_avatar: sender?.avatar_url || null,
     content: data.content.trim(),
     material_id: data.materialId || null,
@@ -587,6 +673,8 @@ export async function sendDirectMessage(data: {
     material_course: matCourse,
     created_at: now,
     is_read: false,
+    sender_verified: admin,
+    receipt: "sent",
   };
 }
 
@@ -722,7 +810,7 @@ export async function getStudyGroupMembersWithBalances(groupId: string, requeste
     });
     return pRs.rows.map((r: any) => ({
       id: String(r.id),
-      full_name: String(r.full_name || "Student"),
+      full_name: r.username ? `@${r.username}` : "Student",
       username: r.username ? String(r.username) : null,
       avatar_url: r.avatar_url ? String(r.avatar_url) : null,
       points: Number(r.points) || 0,
@@ -744,7 +832,7 @@ export async function getStudyGroupMembersWithBalances(groupId: string, requeste
 
   return rs.rows.map((r: any) => ({
     id: String(r.id),
-    full_name: String(r.full_name || "Student"),
+    full_name: r.username ? `@${r.username}` : "Student",
     username: r.username ? String(r.username) : null,
     avatar_url: r.avatar_url ? String(r.avatar_url) : null,
     points: Number(r.points) || 0,
@@ -970,7 +1058,7 @@ export async function createStudyBattleRecord(data: {
  */
 export async function getStudyBattle(battleId: string): Promise<StudyBattle | null> {
   const rs = await turso.execute({
-    sql: `SELECT * FROM study_battles WHERE id = ? LIMIT 1`,
+    sql: `SELECT b.*, p.username AS host_username FROM study_battles b LEFT JOIN profiles p ON p.id=b.host_id WHERE b.id = ? LIMIT 1`,
     args: [battleId],
   });
   if (rs.rows.length === 0) return null;
@@ -979,7 +1067,7 @@ export async function getStudyBattle(battleId: string): Promise<StudyBattle | nu
     id: String(r.id),
     group_id: String(r.group_id),
     host_id: String(r.host_id),
-    host_name: String(r.host_name),
+    host_name: r.host_username ? `@${r.host_username}` : "Student",
     title: String(r.title),
     mode: r.mode as "mcq" | "theory",
     source_summary: r.source_summary ? String(r.source_summary) : null,
@@ -1000,7 +1088,7 @@ export async function getStudyBattle(battleId: string): Promise<StudyBattle | nu
  */
 export async function getBattleParticipants(battleId: string): Promise<BattleParticipant[]> {
   const rs = await turso.execute({
-    sql: `SELECT * FROM battle_participants WHERE battle_id = ? ORDER BY created_at ASC`,
+    sql: `SELECT b.*, p.username AS public_username FROM battle_participants b LEFT JOIN profiles p ON p.id=b.user_id WHERE b.battle_id = ? ORDER BY b.created_at ASC`,
     args: [battleId],
   });
 
@@ -1008,7 +1096,7 @@ export async function getBattleParticipants(battleId: string): Promise<BattlePar
     id: String(r.id),
     battle_id: String(r.battle_id),
     user_id: String(r.user_id),
-    user_name: String(r.user_name),
+    user_name: r.public_username ? `@${r.public_username}` : "Student",
     avatar_url: r.avatar_url ? String(r.avatar_url) : null,
     role: r.role as "fighter" | "spectator",
     status: r.status as "invited" | "joined" | "submitted" | "declined",

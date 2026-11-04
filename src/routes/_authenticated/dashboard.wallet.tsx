@@ -1,4 +1,4 @@
-﻿import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Coins,
@@ -112,20 +112,21 @@ function WalletPage() {
   const [showPlusModal, setShowPlusModal] = useState(false);
 
   // Dynamic Gift Card Options ($5, $10, $20) converted based on local currency rate
-  const giftCardOptions = useMemo(() => getGiftCardOptions(isRegional), [isRegional]);
+  const { data: verifiedGiftOptions } = useQuery<GiftCardDenomination[]>({
+    queryKey: ["gift-cashout-options", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const response = await fetch("/api/mobile?resource=gift-cashout");
+      if (!response.ok) throw new Error("Could not load gift card prices.");
+      return (await response.json()).options;
+    },
+  });
+  const giftCardOptions = useMemo(() => verifiedGiftOptions ?? getGiftCardOptions(isRegional), [verifiedGiftOptions, isRegional]);
 
   // Amount in points to cash out
   const [amount, setAmount] = useState(MINIMUM_WITHDRAWAL_POINTS);
 
-  // Bank transfers are currently available only in supported regions.
-  const [payoutMethod, setPayoutMethod] = useState<"bank" | "giftcard">(() => {
-    return isRegional ? "bank" : "giftcard";
-  });
-
-  // Ensure payoutMethod matches user region when geo finishes loading
-  useEffect(() => {
-    if (!isRegional && payoutMethod === "bank") setPayoutMethod("giftcard");
-  }, [isRegional]);
+  const payoutMethod: "bank" | "giftcard" = "giftcard" as "bank" | "giftcard";
 
   // Bank payout states (Regional only)
   const [bankQuery, setBankQuery] = useState("");
@@ -279,15 +280,9 @@ function WalletPage() {
 
     setBusy(true);
     try {
+      if (!verifiedGiftOptions) throw new Error("Gift card prices have not loaded. Try again in a moment.");
       await requestWithdrawalServerFn({
-        data: {
-          userId: user.id,
-          points: pointsToWithdraw,
-          bankName: finalBankName,
-          accountNumber: finalAccountNumber,
-          accountName: finalAccountName,
-          payoutMethod,
-        },
+        data: { brand: selectedBrandId, amount: activeDenom.amountUsd, email: giftCardEmail.trim() },
       });
 
       toast.success(
@@ -464,58 +459,7 @@ function WalletPage() {
             )}
           </div>
 
-          {/* Method selector strictly tailored to user's location */}
-          <div className="space-y-2">
-            <Label>Payout Method</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {isRegional ? (
-                // Regional user: Bank transfer (Bachs) OR Digital Gift Cards
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setPayoutMethod("bank")}
-                    className={cn(
-                      "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
-                      payoutMethod === "bank"
-                        ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                        : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
-                    )}
-                  >
-                    <Building2 className="size-4" />
-                    <span className="text-xs">Bank Transfer</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPayoutMethod("giftcard")}
-                    className={cn(
-                      "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
-                      payoutMethod === "giftcard"
-                        ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                        : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
-                    )}
-                  >
-                    <Gift className="size-4" />
-                    <span className="text-xs">Digital Gift Card</span>
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setPayoutMethod("giftcard")}
-                  className={cn(
-                    "p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1.5",
-                    payoutMethod === "giftcard"
-                      ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                      : "border-border/60 bg-card text-muted-foreground hover:bg-secondary/40"
-                  )}
-                >
-                  <Gift className="size-4" />
-                  <span className="text-xs">Digital Gift Card</span>
-                </button>
-              )}
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">Choose a digital gift card and provide a delivery email.</p>
 
           {/* Form Variant 1: Bank Transfer (Regional) */}
           {payoutMethod === "bank" && (

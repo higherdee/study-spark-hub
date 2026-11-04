@@ -62,7 +62,7 @@ internal fun mediaFile(context:android.content.Context,extension:String):Pair<Fi
             if(!library){
                 listOf(Triple("Upload a file","PDF or image · up to 3 MB",Icons.Outlined.UploadFile),Triple("Course library","Notes and past questions",Icons.Outlined.MenuBook),Triple("Take a photo","A page, diagram, or written question",Icons.Outlined.PhotoCamera)).forEachIndexed{index,item->
                     Surface(onClick={if(!busy)when(index){0->picker.launch(arrayOf("application/pdf","image/*"));1->library=true;else->try{cameraUri=mediaFile(context,".jpg").second;camera.launch(cameraUri!!)}catch(_:Exception){error="No camera app is available. Choose a photo from your files."}}},shape=RoundedCornerShape(18.dp),color=androidx.compose.ui.graphics.Color.White,modifier=Modifier.fillMaxWidth()){
-                        Row(Modifier.padding(18.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){Icon(item.third,null,tint=Forest);Column(Modifier.weight(1f)){Text(item.first,fontWeight=FontWeight.SemiBold);Text(item.second,color=Muted,fontSize=12.sp)};Icon(Icons.Outlined.ChevronRight,null,tint=Muted)}
+                        Row(Modifier.padding(18.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){Icon(item.third,null,tint=MaterialTheme.colorScheme.primary);Column(Modifier.weight(1f)){Text(item.first,fontWeight=FontWeight.SemiBold);Text(item.second,color=Muted,fontSize=12.sp)};Icon(Icons.Outlined.ChevronRight,null,tint=Muted)}
                     }
                 }
             }else{
@@ -94,7 +94,7 @@ internal fun mediaFile(context:android.content.Context,extension:String):Pair<Fi
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->if(granted)start()else onError("Microphone permission is needed to record. You can still type your message.")}
     LaunchedEffect(recording){if(recording)while(recording){delay(1000);seconds++;if(seconds>=120)stop()}}
     DisposableEffect(Unit){onDispose{runCatching{recorder?.stop()};recorder?.release();player?.release()}}
-    IconButton(onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start()else permission.launch(Manifest.permission.RECORD_AUDIO)},enabled=enabled&&!recording&&!preview){Icon(Icons.Outlined.Mic,"Record a voice note",tint=Forest)}
+    IconButton(onClick={if(ContextCompat.checkSelfPermission(context,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)start()else permission.launch(Manifest.permission.RECORD_AUDIO)},enabled=enabled&&!recording&&!preview){Icon(Icons.Outlined.Mic,"Record a voice note",tint=MaterialTheme.colorScheme.primary)}
     if(recording||preview)AlertDialog(onDismissRequest={if(recording)stop()else{player?.release();player=null;preview=false}},icon={Icon(if(recording)Icons.Outlined.Mic else Icons.Outlined.GraphicEq,null)},title={Text(if(recording)"Recording your voice" else "Review your voice note")},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
         Text("%d:%02d".format(seconds/60,seconds%60),fontFamily=WebsiteDisplay,fontSize=36.sp)
         Text(if(recording)"Up to two minutes. Stop when you’re ready." else "Listen first, then use this recording or try again.",color=Muted)
@@ -133,7 +133,7 @@ internal suspend fun compactPhoto(context:android.content.Context,uri:Uri):Solut
             if(audio&&player!=null){player?.start();playing=true}else{val file=StudyApi.downloadMedia(context,media.getString("id"));if(audio){player=MediaPlayer().apply{setDataSource(file.absolutePath);prepare();setOnCompletionListener{playing=false};start()};playing=true}else{val uri=FileProvider.getUriForFile(context,"${context.packageName}.updates",file);context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri,media.optString("mime","application/pdf")).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))}}
         }catch(e:Exception){error=e.message?:"Attachment could not be opened."}finally{busy=false}}}}},shape=RoundedCornerShape(16.dp),color=Sage){
             Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                if(busy)CircularProgressIndicator(Modifier.size(22.dp),strokeWidth=2.dp)else Icon(if(audio){if(playing)Icons.Outlined.Pause else Icons.Outlined.PlayArrow}else Icons.Outlined.Description,null,tint=Forest)
+                if(busy)CircularProgressIndicator(Modifier.size(22.dp),strokeWidth=2.dp)else Icon(if(audio){if(playing)Icons.Outlined.Pause else Icons.Outlined.PlayArrow}else Icons.Outlined.Description,null,tint=MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f)){Text(if(audio)"Voice note" else  media.optString("title","Document"),fontWeight=FontWeight.Medium,maxLines=2);Text(if(audio)"${media.optInt("duration")} seconds · tap to ${if(playing)"pause" else "play"}" else "Tap to open · ${(media.optInt("bytes")/1024).coerceAtLeast(1)} KB",fontSize=12.sp,color=Muted)}
             }
         }

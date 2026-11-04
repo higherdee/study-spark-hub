@@ -2,6 +2,13 @@
 package org.syllaboss.app
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +41,34 @@ import java.net.URLEncoder
     var busy by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
+    var ownQr by remember { mutableStateOf("") }
+    val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
+        val raw = result.contents ?: return@rememberLauncherForActivityResult
+        val username = Regex("^syllaboss:peer:@([A-Za-z0-9_.-]{1,40})$", RegexOption.IGNORE_CASE).matchEntire(raw.trim())?.groupValues?.get(1)
+        if (username == null) error = "This is not a Syllaboss peer QR code."
+        else scope.launch {
+            busy = true; error = ""
+            try {
+                val peer = StudyApi.call("peers&q=" + username.asQuery()).objects("peers")
+                    .firstOrNull { it.optString("username").equals(username, ignoreCase = true) }
+                    ?: throw IllegalStateException("No other student has that username.")
+                active = StudyApi.call(body = JSONObject().put("action", "start-direct").put("peerId", peer.getString("id")))
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                error = e.message ?: "Could not open this chat."
+            } finally { busy = false }
+        }
+    }
+    if (ownQr.isNotBlank()) {
+        val code = remember(ownQr) {
+            val matrix = QRCodeWriter().encode("syllaboss:peer:@$ownQr", BarcodeFormat.QR_CODE, 320, 320)
+            val pixels = IntArray(320 * 320) { index -> if (matrix[index % 320, index / 320]) android.graphics.Color.BLACK else android.graphics.Color.WHITE }
+            android.graphics.Bitmap.createBitmap(pixels, 320, 320, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+        }
+        AlertDialog(onDismissRequest = { ownQr = "" }, title = { Text("Your SyllaID · @$ownQr") },
+            text = { Image(code, "Syllaboss peer QR code for @$ownQr", Modifier.fillMaxWidth().aspectRatio(1f)) },
+            confirmButton = { TextButton(onClick = { ownQr = "" }) { Text("Close") } })
+    }
     fun array(result: JSONObject, key: String): List<JSONObject> { val a = result.optJSONArray(key) ?: return emptyList(); return (0 until a.length()).map { a.getJSONObject(it) } }
     LaunchedEffect(active?.optString("id")) { onChatOpen(active != null) }
     DisposableEffect(Unit) { onDispose { onChatOpen(false) } }
@@ -55,6 +90,19 @@ import java.net.URLEncoder
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
             if (active == null) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(enabled = !busy, onClick = {
+                            scope.launch {
+                                try {
+                                    ownQr = StudyApi.call("settings").optJSONObject("profile")?.optString("username").orEmpty().takeUnless { it == "null" }.orEmpty()
+                                    if (ownQr.isBlank()) error = "Set a username in your profile first."
+                                } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; error = e.message.orEmpty() }
+                            }
+                        }) { Text("My QR code") }
+                        OutlinedButton(enabled = !busy, onClick = {
+                            scanner.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt("Scan a Syllaboss peer QR code").setBeepEnabled(false))
+                        }) { Text("Scan a peer") }
+                    }
                     Text("A good question starts a conversation.", fontFamily = WebsiteDisplay, fontSize = 27.sp)
                     Text("Search a student's @username to start a chat, or find a course group below.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                     OutlinedTextField(query, { query = it.take(100) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search @username") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, shape = RoundedCornerShape(18.dp))
@@ -63,7 +111,7 @@ import java.net.URLEncoder
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (query.isBlank()) {
                         if (!loading && conversations.isEmpty()) item { Text("Your conversations will appear here. Search a username to say hello.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        items(conversations) { c -> val peer = c.optJSONObject("peer") ?: JSONObject(); OutlinedCard(onClick = { active = c }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(18.dp)) { Text("@${peer.optString("username")}", fontWeight = FontWeight.SemiBold); Text(c.optString("last_message_text").takeUnless { it == "null" } ?: "Start a conversation", maxLines = 2, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
+                        items(conversations) { c -> val peer = c.optJSONObject("peer") ?: JSONObject(); OutlinedCard(onClick = { active = c }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(18.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("@${peer.optString("username")}", fontWeight = FontWeight.SemiBold); val unread = c.optInt("unread_count"); if (unread > 0) Badge { Text(if (unread > 99) "99+" else unread.toString()) } }; Text(c.optString("last_message_text").takeUnless { it == "null" } ?: "Start a conversation", maxLines = 2, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
                     } else {
                         if (!loading && peers.isEmpty()) item { Text("No username matches yet. Check the spelling or try another username.") }
                         items(peers) { peer -> OutlinedCard(onClick = {

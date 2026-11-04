@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { turso } from "@/integrations/turso/client.server";
+import { membershipAccess } from "@/lib/membership/policy.server";
 import {
   getStudyGroupMembersWithBalances,
+  directRequestState,
   createStudyBattleRecord,
   getStudyBattle,
   getBattleParticipants,
@@ -19,8 +22,47 @@ import {
 import { generatePracticeQuestions, gradeTheoryAnswer } from "@/lib/academic-ai";
 import { broadcastChatMessage } from "@/lib/supabase-realtime";
 import { withAiAllowance, budgetedAiFetch } from "@/lib/membership/ai.server";
-import { membershipAccess } from "@/lib/membership/policy.server";
-import { generationCount } from "@/lib/membership/policy";
+
+async function generateLargeBattle(userId: string, title: string, source: string, mode: "objective" | "theory", count: number) {
+  const day = new Date().toISOString().slice(0, 10);
+  const limit = await membershipAccess(userId) ? 5 : 1;
+  await turso.execute("CREATE TABLE IF NOT EXISTS large_battle_budget (user_id TEXT PRIMARY KEY, day TEXT NOT NULL, attempts INTEGER NOT NULL)");
+  const claimed = await turso.execute({
+    sql: `INSERT INTO large_battle_budget(user_id, day, attempts) VALUES(?,?,1)
+          ON CONFLICT(user_id) DO UPDATE SET day=excluded.day,
+          attempts=CASE WHEN large_battle_budget.day=excluded.day THEN attempts+1 ELSE 1 END
+          WHERE large_battle_budget.day<>excluded.day OR attempts<? RETURNING attempts`,
+    args: [userId, day, limit],
+  });
+  if (!claimed.rows.length) throw new Error("You have used today's allowance for battles with more than five questions.");
+
+  const boundedFetch: typeof fetch = (input, init) => {
+    const url = String(input);
+    const body = JSON.parse(String(init?.body || "{}"));
+    if (url.includes("api.groq.com/")) {
+      body.reasoning_effort = "low";
+      body.max_completion_tokens = 3000;
+    } else {
+      body.generationConfig = { ...body.generationConfig, maxOutputTokens: 3000 };
+    }
+    return fetch(input, { ...init, body: JSON.stringify(body) });
+  };
+  const questions: Awaited<ReturnType<typeof generatePracticeQuestions>> = [];
+  try {
+    while (questions.length < count) {
+      const previous = questions.map(question => question.question).join("\n");
+      const batch = await generatePracticeQuestions(title, `${source.slice(0, 10500)}\nAvoid repeating these earlier questions:\n${previous}`, mode, Math.min(10, count - questions.length), boundedFetch, "openai/gpt-oss-20b");
+      for (const question of batch) {
+        if (questions.some(item => item.question.trim().toLowerCase() === question.question.trim().toLowerCase())) throw new Error("Boss AI repeated a battle question. Please try again.");
+        questions.push({ ...question, id: `q_${questions.length + 1}` });
+      }
+    }
+    return questions;
+  } catch (error) {
+    await turso.execute({ sql: "UPDATE large_battle_budget SET attempts=MAX(0,attempts-1) WHERE user_id=? AND day=?", args: [userId, day] });
+    throw error;
+  }
+}
 
 /**
  * Fetch all group members with live point balances for the battle host drawer
@@ -58,8 +100,13 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
     await requireSelfOrAdmin(data.hostId);
     if (data.fighterIds.length > 20 || (data.stakeAmount ?? 0) < 0 || (data.stakeAmount ?? 0) > 10000) throw new Error("Invalid battle setup.");
     const members = await getStudyGroupMembersWithBalances(data.groupId, data.hostId);
+    const direct = await turso.execute({ sql: "SELECT 1 FROM direct_conversations WHERE id=?", args: [data.groupId] });
+    if (direct.rows.length && await directRequestState(data.groupId, data.hostId) !== "accepted") {
+      throw new Error("Accept the message request before starting a battle in this DM.");
+    }
+    const hostName = members.find(member => member.id === data.hostId)?.full_name ?? "Student";
     if (data.fighterIds.some(id => !members.some(member => member.id === id))) throw new Error("Invite students who belong to this conversation.");
-    const questionCount = generationCount(data.questionCount || 5, await membershipAccess(data.hostId));
+    const questionCount = z.number().int().min(1).max(50).parse(data.questionCount ?? 5);
     const modeType = data.mode === "mcq" ? "objective" : "theory";
     let sourceContext = data.sourceContext || data.title;
     if (data.sourceMaterialId) {
@@ -70,13 +117,9 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
     }
 
     // 1. Generate questions using Boss AI
-    const questions = await withAiAllowance(data.hostId, () => generatePracticeQuestions(
-      data.title,
-      sourceContext,
-      modeType,
-      questionCount,
-      budgetedAiFetch
-    ));
+    const questions = questionCount <= 5
+      ? await withAiAllowance(data.hostId, () => generatePracticeQuestions(data.title, sourceContext, modeType, questionCount, budgetedAiFetch))
+      : await generateLargeBattle(data.hostId, data.title, sourceContext, modeType, questionCount);
 
     const battleId = crypto.randomUUID();
 
@@ -85,7 +128,7 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
       id: battleId,
       groupId: data.groupId,
       hostId: data.hostId,
-      hostName: data.hostName,
+      hostName,
       hostAvatar: data.hostAvatar,
       title: data.title,
       mode: data.mode,
@@ -107,7 +150,7 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
     const battleMessage = await sendBattleAnnouncementMessage({
       targetId: data.groupId,
       userId: data.hostId,
-      userName: data.hostName,
+      userName: hostName,
       userInstitution: "Campus Arena",
       content: `⚡ [STUDY_BATTLE:${battle.id}] ${data.title} (${modeLabel}${stakeLabel})`,
       materialId: battle.id,

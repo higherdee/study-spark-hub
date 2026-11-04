@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.repeatOnLifecycle
 import com.clerk.api.Clerk
 import com.clerk.ui.auth.AuthView
 import com.clerk.api.network.serialization.onFailure
@@ -48,13 +49,21 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 internal val Forest = Color(0xFF153E32)
-internal val Paper = Color(0xFFF6F5EF)
-internal val Ink = Color(0xFF1E3029)
-internal val Muted = Color(0xFF6E7C73)
-internal val Sage = Color(0xFFE5EBDD)
 internal val Lime = Color(0xFFE6D9BC)
-internal val Line = Color(0xFFE1E5DC)
-private val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Paper, surface = Paper, onSurface = Ink, secondaryContainer = Sage, onSecondaryContainer = Forest, outline = Line, surfaceContainer = Color(0xFFEAECE5), surfaceContainerHigh = Color(0xFFE2E7DD), secondary = Forest, tertiary = Forest)
+internal val Paper: Color @Composable get() = MaterialTheme.colorScheme.surface
+internal val Ink: Color @Composable get() = MaterialTheme.colorScheme.onSurface
+internal val Muted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+internal val Sage: Color @Composable get() = MaterialTheme.colorScheme.secondaryContainer
+internal val Line: Color @Composable get() = MaterialTheme.colorScheme.outline
+private val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Color(0xFFF6F5EF), surface = Color(0xFFF6F5EF), onSurface = Color(0xFF1E3029), onSurfaceVariant = Color(0xFF607067), secondaryContainer = Color(0xFFE5EBDD), onSecondaryContainer = Forest, outline = Color(0xFFE1E5DC), surfaceContainer = Color(0xFFEAECE5), surfaceContainerHigh = Color(0xFFE2E7DD), secondary = Forest, tertiary = Forest)
+private val darkColors = darkColorScheme(
+    primary = Color(0xFF9ADBBE), onPrimary = Color(0xFF0C3024),
+    background = Color(0xFF111B17), surface = Color(0xFF111B17),
+    onSurface = Color(0xFFE3EDE5), onSurfaceVariant = Color(0xFFB1C2B6),
+    surfaceContainer = Color(0xFF1B2922), surfaceContainerHigh = Color(0xFF25372E),
+    secondaryContainer = Color(0xFF254B3B), onSecondaryContainer = Color(0xFFC0E6D2),
+    outline = Color(0xFF50675A), secondary = Color(0xFFADD0BB), tertiary = Lime,
+)
 internal class ChatState {
     val messages = mutableStateListOf<Pair<String, String>>()
     var input by mutableStateOf("")
@@ -69,16 +78,33 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { MaterialTheme(colorScheme = appColors, typography = websiteTypography()) { Syllaboss() } }
+        val preferences = getSharedPreferences("syllaboss-native", 0)
+        setContent {
+            var dark by remember { mutableStateOf(preferences.getBoolean("dark-appearance", false)) }
+            MaterialTheme(colorScheme = if (dark) darkColors else appColors, typography = websiteTypography()) {
+                Syllaboss(dark) { enabled -> dark = enabled; preferences.edit().putBoolean("dark-appearance", enabled).apply() }
+            }
+        }
     }
 }
 
-@Composable private fun Syllaboss() {
+@Composable private fun Syllaboss(dark: Boolean, setDark: (Boolean) -> Unit) {
     AutomaticAppUpdates()
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("syllaboss-native", 0) }
     val scope = rememberCoroutineScope()
     val user by Clerk.userFlow.collectAsState()
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    var peerUnread by remember(user?.id) { mutableIntStateOf(0) }
+    LaunchedEffect(user?.id, lifecycle) {
+        if (user != null) lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            while (true) {
+                try { peerUnread = StudyApi.call("direct-unread").optInt("total") }
+                catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e }
+                kotlinx.coroutines.delay(15000)
+            }
+        }
+    }
     var settingsRevision by remember { mutableIntStateOf(0) }
     val verifiedFocus = rememberNativeFocus(user?.id, settingsRevision)
     val initialized by Clerk.isInitialized.collectAsState()
@@ -115,7 +141,9 @@ class MainActivity : ComponentActivity() {
     var reader by remember { mutableStateOf<Material?>(null) }
     SideEffect {
         val activity = context as android.app.Activity
-        WindowCompat.getInsetsController(activity.window, activity.window.decorView).isAppearanceLightStatusBars = (welcomed || auth) && !focus
+        val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+        controller.isAppearanceLightStatusBars = (welcomed || auth) && !focus && !dark
+        controller.isAppearanceLightNavigationBars = !dark
     }
     var materials by remember { mutableStateOf(runCatching { val a = JSONArray(prefs.getString("library", "[]")); (0 until a.length()).map { Material.from(a.getJSONObject(it)) } }.getOrDefault(emptyList())) }
     var loading by remember { mutableStateOf(true) }
@@ -173,6 +201,8 @@ class MainActivity : ComponentActivity() {
     if (secondary == "profile") { ProfileScreen(space?.optJSONObject("profile"), { secondary = "" }, { secondary = ""; refresh++ }); return }
     if (secondary == "settings") { NativeSettingsScreen { secondary = ""; settingsRevision++ }; return }
     if (secondary == "billing") { NativeBillingScreen { secondary = "" }; return }
+    if (secondary == "cashout") { NativeGiftCashout(space?.optJSONObject("profile")?.optInt("points") ?: 0, { secondary = "" }, { refresh++ }); return }
+    if (secondary == "pdf") { PdfWorkshop { secondary = "" }; return }
     if (!welcomed) {
         WelcomeScreen(onStart = { prefs.edit().putBoolean("welcomed", true).apply(); welcomed = true; auth = true }, onExplore = { prefs.edit().putBoolean("welcomed", true).apply(); welcomed = true })
         return
@@ -182,7 +212,11 @@ class MainActivity : ComponentActivity() {
         bottomBar = {
             if (!(tab == 3 && peerChatActive) && !keyboardVisible) NavigationBar(containerColor = Paper, tonalElevation = 0.dp) {
                 listOf(Triple("Today", Icons.Outlined.WbSunny, 0), Triple("Library", Icons.Outlined.MenuBook, 1), Triple("Boss AI", Icons.Outlined.AutoAwesome, 2), Triple("Peers", Icons.Outlined.Groups, 3), Triple("Your space", Icons.Outlined.PersonOutline, 4)).forEach { (name, icon, index) ->
-                    NavigationBarItem(selected = tab == index, onClick = { tab = index }, icon = { Icon(icon, name, Modifier.size(23.dp)) }, label = { Text(name, fontSize = 11.sp, fontWeight = FontWeight.Medium) }, colors = NavigationBarItemDefaults.colors(indicatorColor = Sage, selectedIconColor = Forest, selectedTextColor = Forest, unselectedIconColor = Muted, unselectedTextColor = Muted))
+                    NavigationBarItem(selected = tab == index, onClick = { tab = index }, icon = {
+                        BadgedBox(badge = { if (index == 3 && peerUnread > 0) Badge { Text(if (peerUnread > 99) "99+" else peerUnread.toString()) } }) {
+                            Icon(icon, name, Modifier.size(23.dp))
+                        }
+                    }, label = { Text(name, fontSize = 11.sp, fontWeight = FontWeight.Medium) }, colors = NavigationBarItemDefaults.colors(indicatorColor = Sage, selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer, selectedTextColor = MaterialTheme.colorScheme.primary, unselectedIconColor = Muted, unselectedTextColor = Muted))
                 }
             }
         }
@@ -191,11 +225,11 @@ class MainActivity : ComponentActivity() {
             AnimatedContent(targetState = tab, label = "Study tab", transitionSpec = {
                 (fadeIn(tween(220, easing=CubicBezierEasing(.23f,1f,.32f,1f))) + slideInHorizontally(tween(240)) { if(targetState > initialState) it/12 else -it/12 }).togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { if(targetState > initialState) -it/12 else it/12 })
             }) { selectedTab -> when (selectedTab) {
-                0 -> TodayScreen(materials, saved, space?.optJSONObject("profile"), loading, error, { refresh++ }, { tab = 1 }, { tab = 2 }, { focus = true }, { reader = it }, { toggleSave(it) }, { tab = 4 })
+                0 -> TodayScreen(materials, saved, space?.optJSONObject("profile"), loading, error, { refresh++ }, { tab = 1 }, { tab = 2 }, { focus = true }, { secondary = if (user == null) "" else "pdf"; if (user == null) auth = true }, { reader = it }, { toggleSave(it) }, { tab = 4 })
                 1 -> LibraryScreen(materials, saved, loading, error, { refresh++ }, { reader = it }, { toggleSave(it) })
                 2 -> ProfessionalChat(user?.id, chat, scope, { auth = true })
                 3 -> if (user == null) Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) { Text("Find your study people.", fontFamily = WebsiteDisplay, fontSize = 30.sp); Spacer(Modifier.height(16.dp)); Button(onClick = { auth = true }) { Text("Sign in to Peers") } } else NativePeersScreen({ tab = 0 }, { peerChatActive = it })
-                4 -> SpaceScreen(user != null, space, spaceError, saved, { auth = true }, { refresh++ }, { reader = it }, { destination -> if (user == null) auth = true else secondary = destination }, {
+                4 -> SpaceScreen(user != null, space, spaceError, saved, dark, setDark, { auth = true }, { refresh++ }, { reader = it }, { destination -> if (user == null) auth = true else secondary = destination }, {
                     scope.launch { Clerk.auth.signOut().onFailure { spaceError = "Could not sign out. Try again." } }
                 })
             } }
@@ -224,7 +258,7 @@ class MainActivity : ComponentActivity() {
         BrandWordmark(onDark=true)
         Column(Modifier.padding(vertical = 48.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Box(Modifier.size(150.dp).clip(RoundedCornerShape(40.dp)).background(Lime), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) { OfficialMark(82.dp); Text("Study with direction.", color = Forest, fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp)) }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) { OfficialMark(82.dp); Text("Study with direction.", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp)) }
             }
             Eyebrow("A study space for university life", Lime)
             Display("Your courses,\nin good company.", Color.White, 46)
@@ -237,7 +271,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun TodayScreen(materials: List<Material>, saved: List<Material>, profile: JSONObject?, loading: Boolean, error: String?, retry: () -> Unit, library: () -> Unit, boss: () -> Unit, focus: () -> Unit, open: (Material) -> Unit, save: (Material) -> Unit, account: () -> Unit) {
+@Composable private fun TodayScreen(materials: List<Material>, saved: List<Material>, profile: JSONObject?, loading: Boolean, error: String?, retry: () -> Unit, library: () -> Unit, boss: () -> Unit, focus: () -> Unit, pdfWorkshop: () -> Unit, open: (Material) -> Unit, save: (Material) -> Unit, account: () -> Unit) {
     val firstName = profile?.optString("full_name")?.substringBefore(" ")?.takeIf { it.isNotBlank() && it != "null" }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
         item {
@@ -251,18 +285,19 @@ class MainActivity : ComponentActivity() {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Eyebrow("Focus session", Lime); Icon(Icons.Outlined.NorthEast, null, tint = Lime, modifier = Modifier.size(20.dp)) }
                 Display("Study with\ndirection.", Color.White, 37)
                 Text("30 minutes at a time. Keep your momentum.", color = Color(0xFFBED0C3), fontSize = 13.sp)
-                Button(onClick = focus, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Start a focus session", fontWeight = FontWeight.SemiBold) }
+                Button(onClick = focus, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) { Text("View study time", fontWeight = FontWeight.SemiBold) }
             }
         }
+        item { OutlinedButton(onClick = pdfWorkshop, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.PictureAsPdf, null); Spacer(Modifier.width(8.dp)); Text("PDF workshop") } }
         item {
             Row(Modifier.fillMaxWidth().clickable(onClick = boss).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(52.dp).clip(RoundedCornerShape(17.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.AutoAwesome, null, tint = Forest) }
+                Box(Modifier.size(52.dp).clip(RoundedCornerShape(17.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary) }
                 Column(Modifier.weight(1f).padding(horizontal = 14.dp)) { Text("Stuck on something?", fontWeight = FontWeight.SemiBold, fontSize = 17.sp); Text("Work it out with Boss AI", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
-                Icon(Icons.Outlined.ArrowForward, null, tint = Forest, modifier = Modifier.size(20.dp))
+                Icon(Icons.Outlined.ArrowForward, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
             }
         }
         item { SectionTitle(if (saved.isEmpty()) "From the library" else "Your reading shelf", "See all", library) }
-        if (loading && materials.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = Forest) }
+        if (loading && materials.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary) }
         else if (error != null && materials.isEmpty()) item { StateMessage(error, retry) }
         else if (materials.isEmpty() && saved.isEmpty()) item { Text("New course materials will appear here when available.", color = Muted) }
         items((if (saved.isNotEmpty()) saved else materials).take(4), key = { it.id }) { m -> MaterialRow(m, saved.any { it.id == m.id }, { open(m) }, { save(m) }) }
@@ -272,13 +307,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun MaterialRow(m: Material, saved: Boolean, open: () -> Unit, save: () -> Unit) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White).clickable(onClick = open).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(47.dp, 58.dp).clip(RoundedCornerShape(10.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(if (m.type.contains("question")) Icons.Outlined.Quiz else Icons.Outlined.Description, null, tint = Forest) }
+        Box(Modifier.size(47.dp, 58.dp).clip(RoundedCornerShape(10.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(if (m.type.contains("question")) Icons.Outlined.Quiz else Icons.Outlined.Description, null, tint = MaterialTheme.colorScheme.primary) }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
-            Text(m.code.ifBlank { m.type.replace('_', ' ') }.uppercase(), fontSize = 10.sp, color = Forest, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+            Text(m.code.ifBlank { m.type.replace('_', ' ') }.uppercase(), fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
             Text(m.title, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp, bottom = 5.dp))
             Text(if (m.pages > 0) "${m.pages} pages · Verified" else "Verified material", fontSize = 11.sp, color = Muted)
         }
-        IconButton(onClick = save) { Icon(if (saved) Icons.Outlined.BookmarkAdded else Icons.Outlined.BookmarkBorder, if (saved) "Remove saved material" else "Save material", tint = Forest, modifier = Modifier.size(21.dp)) }
+        IconButton(onClick = save) { Icon(if (saved) Icons.Outlined.BookmarkAdded else Icons.Outlined.BookmarkBorder, if (saved) "Remove saved material" else "Save material", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp)) }
     }
 }
 
@@ -307,7 +342,7 @@ class MainActivity : ComponentActivity() {
         item { Eyebrow("Find your next read"); Spacer(Modifier.height(10.dp)); Display("The library.", size = 38); Spacer(Modifier.height(8.dp)); Text("Good material. Less searching.", color = Muted, fontSize = 14.sp) }
         item { OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Course, title, or school") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(18.dp)) }
         item { Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("All materials", "Past questions", "Notes", "Saved").forEach { label -> FilterChip(selected = filter == label, onClick = { filter = label }, label = { Text(label) }, shape = RoundedCornerShape(12.dp)) } } }
-        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Eyebrow("${list.size} materials"); IconButton(onClick = retry) { Icon(Icons.Outlined.Refresh, "Refresh materials", tint = Forest) } } }
+        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Eyebrow("${list.size} materials"); IconButton(onClick = retry) { Icon(Icons.Outlined.Refresh, "Refresh materials", tint = MaterialTheme.colorScheme.primary) } } }
         if (loading || searching) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         if (searchError != null) item { StateMessage(searchError!!) }
         if (error != null) item { StateMessage(error, retry) }
@@ -316,14 +351,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun SpaceScreen(signedIn: Boolean, space: JSONObject?, error: String?, saved: List<Material>, signIn: () -> Unit, retry: () -> Unit, open: (Material) -> Unit, navigate: (String) -> Unit, signOut: () -> Unit) {
+@Composable private fun SpaceScreen(signedIn: Boolean, space: JSONObject?, error: String?, saved: List<Material>, dark: Boolean, setDark: (Boolean) -> Unit, signIn: () -> Unit, retry: () -> Unit, open: (Material) -> Unit, navigate: (String) -> Unit, signOut: () -> Unit) {
     val context = LocalContext.current
     val profile = space?.optJSONObject("profile")
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
         item { Eyebrow("A place for your progress"); Spacer(Modifier.height(10.dp)); Display("Your space.", size = 38) }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(60.dp).clip(RoundedCornerShape(21.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.PersonOutline, null, tint = Forest, modifier = Modifier.size(30.dp)) }
+                Box(Modifier.size(60.dp).clip(RoundedCornerShape(21.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.PersonOutline, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp)) }
                 Column(Modifier.padding(start = 16.dp)) { Text(profile?.optString("full_name")?.takeUnless { it == "null" || it.isBlank() } ?: if (signedIn) "Syllaboss student" else "Make it yours", fontSize = 20.sp, fontWeight = FontWeight.SemiBold); Text(profile?.optString("course")?.takeUnless { it == "null" || it.isBlank() } ?: "Your learning, all together.", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp)) }
             }
         }
@@ -341,9 +376,9 @@ class MainActivity : ComponentActivity() {
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(Triple("Student profile", "Your course and institution", "profile"), Triple("SyllaPlus membership", "Plans, payments and renewal", "billing"), Triple("Settings & promo codes", "Study preferences, rewards and your account", "settings"), Triple("Share a material", "Help the next student", "upload"), Triple("Study together", "Your course, your people", "peers")).forEach { (title, subtitle, destination) ->
+                listOf(Triple("Student profile", "Your course and institution", "profile"), Triple("SyllaPlus membership", "Plans, payments and renewal", "billing"), Triple("Gift card cashout", "Redeem points for a gift card", "cashout"), Triple("Settings & promo codes", "Study preferences, rewards and your account", "settings"), Triple("Share a material", "Help the next student", "upload"), Triple("Study together", "Your course, your people", "peers")).forEach { (title, subtitle, destination) ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).clickable { navigate(destination) }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(when (destination) { "upload" -> Icons.Outlined.UploadFile; "profile" -> Icons.Outlined.PersonOutline; else -> Icons.Outlined.Groups }, null, tint = Forest)
+                        Icon(when (destination) { "upload" -> Icons.Outlined.UploadFile; "profile" -> Icons.Outlined.PersonOutline; else -> Icons.Outlined.Groups }, null, tint = MaterialTheme.colorScheme.primary)
                         Column(Modifier.weight(1f).padding(horizontal = 16.dp)) { Text(title, fontWeight = FontWeight.Medium); Text(subtitle, fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 4.dp)) }
                         Icon(Icons.Outlined.ChevronRight, null, tint = Muted)
                     }
@@ -351,8 +386,9 @@ class MainActivity : ComponentActivity() {
             }
         }
         item { SectionTitle("Saved for later") }
+        item { ListItem(headlineContent = { Text("Dark appearance") }, trailingContent = { Switch(checked = dark, onCheckedChange = setDark) }) }
         if (saved.isEmpty()) item { Text("Your saved materials live here. Bookmark a read from the library to get started.", color = Muted, lineHeight = 22.sp, fontSize = 14.sp) }
-        items(saved, key = { it.id }) { m -> Row(Modifier.fillMaxWidth().clickable { open(m) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.BookmarkBorder, null, tint = Forest); Text(m.title, modifier = Modifier.weight(1f).padding(horizontal = 14.dp), fontSize = 15.sp, maxLines = 2); Icon(Icons.Outlined.ChevronRight, null, tint = Muted) } }
+        items(saved, key = { it.id }) { m -> Row(Modifier.fillMaxWidth().clickable { open(m) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.BookmarkBorder, null, tint = MaterialTheme.colorScheme.primary); Text(m.title, modifier = Modifier.weight(1f).padding(horizontal = 14.dp), fontSize = 15.sp, maxLines = 2); Icon(Icons.Outlined.ChevronRight, null, tint = Muted) } }
         val ledger = space?.optJSONArray("ledger")
         if (ledger != null && ledger.length() > 0) {
             item { SectionTitle("Recent activity") }
@@ -361,7 +397,7 @@ class MainActivity : ComponentActivity() {
         val ranks = space?.optJSONArray("ranks")
         if (ranks != null && ranks.length() > 0) {
             item { SectionTitle("Campus leaders") }
-            items(minOf(5, ranks.length())) { i -> val rank = ranks.getJSONObject(i); Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("%02d".format(i + 1), color = Muted, fontSize = 13.sp); Text(rank.optString("full_name"), Modifier.weight(1f).padding(horizontal = 14.dp), fontSize = 14.sp); Text("${rank.optInt("points")} pts", color = Forest, fontWeight = FontWeight.Medium, fontSize = 13.sp) } }
+            items(minOf(5, ranks.length())) { i -> val rank = ranks.getJSONObject(i); Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("%02d".format(i + 1), color = Muted, fontSize = 13.sp); Text(rank.optString("full_name"), Modifier.weight(1f).padding(horizontal = 14.dp), fontSize = 14.sp); Text("${rank.optInt("points")} pts", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium, fontSize = 13.sp) } }
         }
         item { HorizontalDivider(color = Line) }
         item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://syllaboss.org/privacy"))) }) { Text("Privacy") }; TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://syllaboss.org/terms"))) }) { Text("Terms") }; if (signedIn) TextButton(onClick = signOut) { Text("Sign out") } } }
@@ -387,7 +423,7 @@ class MainActivity : ComponentActivity() {
     var file by remember { mutableStateOf<File?>(null) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var pages by remember { mutableIntStateOf(0) }
-    var page by rememberSaveable { mutableIntStateOf(0) }
+    var page by rememberSaveable(material.id) { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var retry by remember { mutableIntStateOf(0) }
     var promotionSeconds by remember { mutableIntStateOf(0) }
@@ -401,10 +437,23 @@ class MainActivity : ComponentActivity() {
             promotionSeconds = gate.optInt("seconds")
             while (promotionSeconds > 0) { kotlinx.coroutines.delay(1000); promotionSeconds-- }
             val access = StudyApi.call(body = JSONObject().put("action", "complete-material").put("id", gate.getString("id")))
-            val f = File(context.cacheDir, "read-${material.id.replace(Regex("[^A-Za-z0-9-]"), "")}.pdf")
-            StudyApi.pdf(access.getString("url"), f)
-            file = f
-        } catch (e: Exception) { error = e.message ?: "Unable to open document." }
+            val f = File.createTempFile("reader-", ".pdf", context.cacheDir)
+            try {
+                StudyApi.pdf(access.getString("url"), f)
+                file?.delete()
+                file = f
+            } catch (e: Exception) {
+                f.delete()
+                throw e
+            }
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            error = e.message ?: "Unable to open document."
+        }
+    }
+    DisposableEffect(file) {
+        val opened = file
+        onDispose { opened?.delete() }
     }
     LaunchedEffect(file, page) {
         file?.let { f ->
@@ -419,14 +468,18 @@ class MainActivity : ComponentActivity() {
                     PdfRenderer(ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)).use { pdf ->
                         val count = pdf.pageCount
                         pdf.openPage(page.coerceIn(0, count - 1)).use { p ->
-                            val b = Bitmap.createBitmap(1200, (1200f * p.height / p.width).toInt(), Bitmap.Config.ARGB_8888)
+                            val scale = 1600f / maxOf(p.width, p.height)
+                            val b = Bitmap.createBitmap((p.width * scale).toInt().coerceAtLeast(1), (p.height * scale).toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888)
                             b.eraseColor(android.graphics.Color.WHITE); p.render(b, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                             count to b
                         }
                     }
                 }
-                pages = rendered.first; bitmap = rendered.second
-            } catch (e: Exception) { error = "This PDF could not be rendered. Try downloading it again."; f.delete() }
+                pages = rendered.first; bitmap = rendered.second; error = null
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                error = "This page could not be rendered. Try again or open a different page."
+            }
         }
     }
     Scaffold(topBar = { TopAppBar(title = { Text(material.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 16.sp) }, navigationIcon = { IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, "Back to library") } }, actions = { NativeMaterialActions(material) }) }, bottomBar = {

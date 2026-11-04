@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.text.AnnotatedString
@@ -123,7 +124,7 @@ import org.json.JSONObject
         }
         HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=.5f))
         chat.source?.let{source->Surface(color=Sage,shape=RoundedCornerShape(16.dp),modifier=Modifier.padding(horizontal=16.dp,vertical=8.dp)){
-            Row(Modifier.padding(start=14.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.Description,null,tint=Forest,modifier=Modifier.size(20.dp));Column(Modifier.weight(1f).padding(12.dp)){Text(source.optString("title"),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=13.sp,fontWeight=FontWeight.SemiBold);TextButton(onClick={showPassage=true},contentPadding=PaddingValues(0.dp),modifier=Modifier.height(28.dp)){Text(if(focusedPage.isBlank())"Whole document · choose a passage" else "Page $focusedPage${if(focusedLine.isNotBlank())" · line $focusedLine" else ""}",fontSize=12.sp)}};IconButton(onClick={chat.source=null;focusedPage="";focusedLine=""}){Icon(Icons.Outlined.Close,"Detach source")}}
+            Row(Modifier.padding(start=14.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.Description,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(20.dp));Column(Modifier.weight(1f).padding(12.dp)){Text(source.optString("title"),maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=13.sp,fontWeight=FontWeight.SemiBold);TextButton(onClick={showPassage=true},contentPadding=PaddingValues(0.dp),modifier=Modifier.height(28.dp)){Text(if(focusedPage.isBlank())"Whole document · choose a passage" else "Page $focusedPage${if(focusedLine.isNotBlank())" · line $focusedLine" else ""}",fontSize=12.sp)}};IconButton(onClick={chat.source=null;focusedPage="";focusedLine=""}){Icon(Icons.Outlined.Close,"Detach source")}}
         }}
         if(loadingChat) LinearProgressIndicator(Modifier.fillMaxWidth())
         if(chat.messages.isEmpty()) {
@@ -174,7 +175,7 @@ import org.json.JSONObject
             BasicComposer(chat.input,{chat.input=it.take(6000)},{send(chat.input)},!chat.sending)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
                 Row(verticalAlignment=Alignment.CenterVertically){
-                    IconButton(onClick={if(userId==null)signIn()else{focusManager.clearFocus();sourceMenu=true}},enabled=!chat.sending&&!mediaBusy){Icon(Icons.Outlined.Add,"Attach file, library material, or photo",tint=Forest)}
+                    IconButton(onClick={if(userId==null)signIn()else{focusManager.clearFocus();sourceMenu=true}},enabled=!chat.sending&&!mediaBusy){Icon(Icons.Outlined.Add,"Attach file, library material, or photo",tint=MaterialTheme.colorScheme.primary)}
                     VoiceNoteButton(enabled=!chat.sending&&!mediaBusy,onVoice={uri,_->mediaBusy=true;scope.launch{try{val voice=StudyApi.media(context,uri,purpose="transcribe");chat.input=(chat.input+" "+voice.getString("transcript")).trim().take(6000)}catch(e:Exception){chat.error=e.message}finally{mediaBusy=false}}},onError={chat.error=it})
                     Text("Ask · Learn · Practise",fontSize=11.sp,color=Muted)
                 }
@@ -190,7 +191,8 @@ import org.json.JSONObject
 @Composable internal fun NativeAnswer(text:String,modifier:Modifier=Modifier) {
     val context=LocalContext.current
     val renderer=remember {Markwon.builder(context).usePlugin(TablePlugin.create(context)).usePlugin(MarkwonInlineParserPlugin.create()).usePlugin(JLatexMathPlugin.create(16f*context.resources.displayMetrics.scaledDensity){it.inlinesEnabled(true)}).build()}
-    AndroidView(modifier=modifier,factory={TextView(it).apply {textSize=16f;typeface=androidx.core.content.res.ResourcesCompat.getFont(it,R.font.hanken_grotesk);setTextColor(android.graphics.Color.rgb(30,48,41));setLineSpacing(8f,1.15f);setTextIsSelectable(true);setPadding(0,0,0,0)}},update={view->renderer.setMarkdown(view,normalizeMath(text))})
+    val answerColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    AndroidView(modifier=modifier,factory={TextView(it).apply {textSize=16f;typeface=androidx.core.content.res.ResourcesCompat.getFont(it,R.font.hanken_grotesk);setTextColor(android.graphics.Color.rgb(30,48,41));setLineSpacing(8f,1.15f);setTextIsSelectable(true);setPadding(0,0,0,0)}},update={view->view.setTextColor(answerColor); renderer.setMarkdown(view,normalizeMath(text))})
 }
 private fun normalizeMath(text: String): String {
     val pair = "${'$'}${'$'}"

@@ -80,6 +80,9 @@ import org.json.JSONObject
 
 @Composable internal fun PeersScreen(back: () -> Unit, onChatOpen: (Boolean) -> Unit = {}) {
     val scope = rememberCoroutineScope()
+    var create by rememberSaveable { mutableStateOf(false) }
+    var name by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
     var groups by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var groupQuery by rememberSaveable { mutableStateOf("") }
     var group by remember { mutableStateOf<JSONObject?>(null) }
@@ -89,6 +92,28 @@ import org.json.JSONObject
     var loading by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    if (create) AlertDialog(
+        onDismissRequest = { if (!busy) create = false },
+        title = { Text("Create a study group") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(name, { name = it.take(80) }, label = { Text("Group name") }, singleLine = true)
+            OutlinedTextField(description, { description = it.take(300) }, label = { Text("Description (optional)") }, maxLines = 3)
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        } },
+        confirmButton = { Button(enabled = name.trim().length >= 3 && !busy, onClick = {
+            busy = true; error = null
+            scope.launch {
+                try {
+                    group = StudyApi.call(body = JSONObject().put("action", "create-group").put("name", name.trim()).put("description", description.trim())).getJSONObject("group")
+                    name = ""; description = ""; create = false
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    error = e.message ?: "Could not create the group."
+                } finally { busy = false }
+            }
+        }) { Text(if (busy) "Creating…" else "Create group") } },
+        dismissButton = { TextButton(enabled = !busy, onClick = { create = false }) { Text("Cancel") } }
+    )
 
     var refresh by remember { mutableIntStateOf(0) }
     LaunchedEffect(group?.optString("id"), refresh, groupQuery) {
@@ -106,6 +131,7 @@ import org.json.JSONObject
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(20.dp), fontSize = 13.sp) }
             if (group == null) LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                item { Button(onClick = { error = null; create = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add, null); Text("Create study group") } }
                 item { Text("Find your people.", fontSize = 30.sp, fontWeight = FontWeight.SemiBold); Text("A shared question is a good place to start.", modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 item { OutlinedTextField(groupQuery, { groupQuery = it.take(100) }, placeholder = { Text("Search a group or course") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(18.dp)) }
                 if (!loading && groups.isEmpty()) item { Text("No study groups are available yet. Check back soon.") }

@@ -171,7 +171,7 @@ export async function getScholarFlexData(identifier: {
   if (!profileRow) return null;
 
   const userId = String(profileRow.id);
-  const fullName = String(profileRow.full_name || "Scholar");
+  const fullName = profileRow.username ? `@${profileRow.username}` : "Student";
   const username = String(profileRow.username || `scholar_${userId.slice(0, 6)}`);
   const avatarUrl = profileRow.avatar_url ? String(profileRow.avatar_url) : null;
   const institution = String(profileRow.institution || "Campus University");

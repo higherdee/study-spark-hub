@@ -178,10 +178,10 @@ Output ONLY JSON:
 /**
  * Generate Practice Questions (Objective or Theory)
  */
-export async function generatePracticeQuestions(materialTitle: string, contextText: string, mode: "objective" | "theory", count = 5, fetcher?: typeof fetch): Promise<QuizQuestion[]> {
+export async function generatePracticeQuestions(materialTitle: string, contextText: string, mode: "objective" | "theory", count = 5, fetcher?: typeof fetch, groqModel?: string): Promise<QuizQuestion[]> {
   if (!Number.isInteger(count) || count < 1 || count > 50) throw new Error("Choose between 1 and 50 questions.");
   const prompt = `Create exactly ${count} useful university practice questions about ${materialTitle}. Use this source when supplied:\n${contextText.slice(0, 16000)}\nMode: ${mode}. Return ONLY a JSON array. Each item must have question, modelAnswer, explanation${mode === "objective" ? ", four string options, and correctOptionIndex (integer 0..3)" : ""}. Keep every item concise and complete. Do not invent sources, use generic stock questions, or create placeholder answers.`;
-  const raw = await askGeminiAI(prompt, { temperature: 0.25, ...(fetcher ? { fetcher } : {}) });
+  const raw = await askGeminiAI(prompt, { temperature: 0.25, ...(fetcher ? { fetcher } : {}), ...(groqModel ? { groqModel } : {}) });
   const items = parseStudyArray(raw).filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
   const questions: QuizQuestion[] = [];
   for (const item of items) {

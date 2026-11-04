@@ -37,7 +37,7 @@ import org.json.JSONObject
         if (userId == null) return@LaunchedEffect
         try { StudyApi.call("settings").optJSONObject("preferences")?.let { state.goal = it.optInt("studyGoalMinutes",state.goal); state.idleMinutes = it.optInt("idleTimeoutMinutes",60) } } catch (_: Exception) { }
         while (isActive) {
-            val active = owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && !state.paused && System.currentTimeMillis() - state.lastInteraction < state.idleMinutes * 60000L
+            val active = owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
             try {
                 val receipt = StudyApi.call(body = JSONObject().put("action","study-heartbeat").put("active",active))
                 state.seconds = receipt.optInt("activeSeconds"); state.dailyMinutes = receipt.optInt("dailyMinutes"); state.connected = true
@@ -47,7 +47,7 @@ import org.json.JSONObject
         }
     }
     LaunchedEffect(userId, state.paused) {
-        while (isActive) { delay(1000); if (userId != null && !state.paused && state.connected && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && System.currentTimeMillis() - state.lastInteraction < state.idleMinutes * 60000L) state.seconds = minOf(1799,state.seconds + 1) }
+        while (isActive) { delay(1000); if (userId != null && state.connected && owner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) state.seconds = minOf(1799,state.seconds + 1) }
     }
     return state
 }
@@ -61,8 +61,7 @@ import org.json.JSONObject
             CircularProgressIndicator(progress={state.seconds/1800f},modifier=Modifier.fillMaxSize(),color=Lime,trackColor=Color(0xFF365849),strokeWidth=5.dp)
             Text("%02d:%02d".format(remaining/60,remaining%60),fontFamily=WebsiteDisplay,fontSize=65.sp,color=Color.White)
         }
-        Text(if (!signedIn) "Sign in to save focus time and earn points." else if (state.paused) "Paused. Take your time." else "Your timer runs while you study in Syllaboss.",color=Color(0xFFB7CDBE),fontSize=14.sp)
-        Button(onClick={ state.paused = !state.paused; state.touch() },enabled=signedIn,modifier=Modifier.fillMaxWidth().padding(top=24.dp).height(56.dp),shape=RoundedCornerShape(18.dp),colors=ButtonDefaults.buttonColors(containerColor=Lime,contentColor=Forest)) { Text(if(state.paused) "Resume focus" else "Pause focus") }
+        Text(if (!signedIn) "Sign in to save study time and earn points." else "Study time starts automatically while Syllaboss is open.",color=Color(0xFFB7CDBE),fontSize=14.sp)
         Spacer(Modifier.weight(1f)); Text(state.message.ifBlank { "Every completed 30-minute round is confirmed by your account. Rounds continue automatically." },fontSize=12.sp,color=Color(0xFFB7CDBE))
     }
 }

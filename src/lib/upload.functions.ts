@@ -1,4 +1,4 @@
-﻿import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSignedDownloadUrl } from "@/integrations/r2/client.server";
 import {
@@ -6,7 +6,7 @@ import {
   recordMaterialView,
   rateMaterial,
   getUserRating,
-  requestWithdrawal as tursoRequestWithdrawal,
+
   claimAppInstallBonus as tursoClaimInstall,
   syncSubscriptionStatus as tursoSyncSubscriptionStatus,
   recordStudySession as tursoRecordStudy,
@@ -15,7 +15,8 @@ import {
   createAnnouncement as tursoCreateAnnouncement,
   markNotificationRead as tursoMarkNotificationRead,
 } from "@/integrations/turso/client.server";
-import { MINIMUM_WITHDRAWAL_POINTS } from "@/lib/constants";
+import { getRequestHeader } from "@tanstack/react-start/server";
+import { giftCashoutInput, requestGiftCashout } from "@/lib/gift-cashout.server";
 import { getCurrentUserIdOrNull, requireAdmin, requireCurrentUserId, requireSelfOrAdmin } from "@/lib/auth.server";
 
 export const getDownloadUrlServerFn = createServerFn({ method: "POST" })
@@ -80,37 +81,11 @@ export const getUserRatingServerFn = createServerFn({ method: "POST" })
   });
 
 export const requestWithdrawalServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) =>
-    z
-      .object({
-        userId: z.string(),
-        points: z.number().int().positive().max(1_000_000),
-        bankName: z.string().trim().min(1).max(80),
-        accountNumber: z.string().trim().min(3).max(120),
-        accountName: z.string().trim().min(1).max(120),
-        payoutMethod: z.enum(["bank", "card", "giftcard"]).optional().default("bank"),
-      })
-      .parse(d)
-  )
+  .validator((data: unknown) => giftCashoutInput.parse(data))
   .handler(async ({ data }) => {
-    await requireSelfOrAdmin(data.userId);
-    if (data.payoutMethod === "card") throw new Error("Card payouts are unavailable. Choose a bank transfer or gift card.");
-    if (data.payoutMethod !== "giftcard" && data.points < MINIMUM_WITHDRAWAL_POINTS) {
-      throw new Error(`Minimum withdrawal is ${MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} SyllaPoints.`);
-    }
-    if (data.payoutMethod === "bank" && !/^\d{10}$/.test(data.accountNumber)) {
-      throw new Error("Enter a valid 10-digit bank account number.");
-    }
-
-    const id = await tursoRequestWithdrawal(
-      data.userId,
-      data.points,
-      data.bankName,
-      data.accountNumber,
-      data.accountName,
-      data.payoutMethod
-    );
-    return { withdrawalId: id };
+    const userId = await requireCurrentUserId();
+    const country = getRequestHeader("x-vercel-ip-country") || getRequestHeader("cf-ipcountry") || null;
+    return { withdrawalId: await requestGiftCashout(userId, country, data) };
   });
 
 export const claimAppInstallBonusServerFn = createServerFn({ method: "POST" })

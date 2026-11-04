@@ -332,9 +332,20 @@ export function CommunityPage() {
 
   // 5. Active Chat Messages Query
   const isDirect = activeChat?.type === "peer";
+  const { data: directRequest, refetch: refreshDirectRequest } = useQuery({
+    queryKey: ["direct-request", activeChat?.id],
+    enabled: isDirect && Boolean(activeChat?.id),
+    refetchInterval: 5000,
+    queryFn: async () => {
+      const response = await fetch(`/api/mobile?resource=direct-request&thread=${encodeURIComponent(activeChat!.id)}`);
+      if (!response.ok) throw new Error("Message request unavailable.");
+      return (await response.json()).requestState as string;
+    },
+  });
   const { data: chatMessages = [], refetch: refetchActiveMessages } = useQuery({
     queryKey: [isDirect ? "direct-messages" : "group-messages", activeChat?.id],
     enabled: Boolean(activeChat?.id),
+    refetchInterval: isDirect ? 5000 : false,
     queryFn: async () => {
       if (!activeChat) return [];
       if (activeChat.type === "peer") {
@@ -344,6 +355,16 @@ export function CommunityPage() {
       }
     },
   });
+
+  const lastUnread = isDirect && chatMessages.find(message =>
+    "sender_id" in message && message.sender_id !== user?.id && !message.is_read
+  );
+  useEffect(() => {
+    if (!lastUnread || !activeChat?.id || !user?.id || !document.hasFocus()) return;
+    void markDirectMessagesReadServerFn({
+      data: { conversationId: activeChat.id, readerUserId: user.id },
+    }).then(() => Promise.all([refetchActiveMessages(), refetchConversations()])).catch(() => {});
+  }, [lastUnread, activeChat?.id, user?.id, refetchActiveMessages, refetchConversations]);
 
   const hasInitializedDesktopChatRef = useRef(false);
 
@@ -680,7 +701,7 @@ export function CommunityPage() {
       const peer =
         peers.find(
           (p: any) => p.username?.toLowerCase() === scannedUsername.toLowerCase()
-        ) || peers[0];
+        );
 
       if (!peer) {
         toast.error(`Student @${scannedUsername} could not be found.`);
@@ -1137,6 +1158,7 @@ export function CommunityPage() {
                           )}
                         >
                           {senderDisplay}
+                          {msg.sender_verified && <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-primary" title="Verified Syllaboss administrator">Verified admin</span>}
                         </span>
                       )}
 
@@ -1190,7 +1212,7 @@ export function CommunityPage() {
                               minute: "2-digit",
                             })}
                           </span>
-                          {isMe && <CheckCheck className="size-3" />}
+                          {isMe && (isDirect ? <span>{msg.is_read ? "Read" : msg.receipt === "delivered" ? "Delivered" : "Sent"}</span> : <CheckCheck className="size-3" />)}
                         </div>
                       </div>
                     </div>
@@ -1200,6 +1222,17 @@ export function CommunityPage() {
               <div ref={messagesEndRef} />
             </div>
 
+            {isDirect && (directRequest === "incoming" || directRequest === "outgoing") && (
+              <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2 text-sm">
+                <span>{directRequest === "incoming" ? "Accept this message request to reply." : "Waiting for the recipient to accept your message."}</span>
+                {directRequest === "incoming" && <Button size="sm" onClick={async () => {
+                  const response = await fetch("/api/mobile", { method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "direct-accept", conversationId: activeChat?.id }) });
+                  if (response.ok) await refreshDirectRequest();
+                  else toast.error("Could not accept this request. Try again.");
+                }}>Accept</Button>}
+              </div>
+            )}
             {/* Telegram Feature: Replying Quote Banner */}
             {replyingToMessage && (
               <div className="px-3 py-1.5 bg-secondary/80 border-t border-border flex items-center justify-between text-xs">
@@ -1283,6 +1316,7 @@ export function CommunityPage() {
               <div className="rounded-2xl border border-border/80 bg-secondary/30 p-2 shadow-xs flex flex-col gap-1 focus-within:border-primary/50 focus-within:bg-card">
                 <textarea
                   ref={composerTextareaRef}
+                  disabled={isDirect && (directRequest === "incoming" || directRequest === "outgoing")}
                   value={messageInput}
                   onChange={(e) => {
                     setMessageInput(e.target.value);
@@ -1350,7 +1384,7 @@ export function CommunityPage() {
 
             {/* Custom Tactile Keyboard (In-flow directly beneath composer on mobile) */}
             <AnimatePresence>
-              {showCustomKeyboard && isMobile && (
+              {showCustomKeyboard && isMobile && directRequest !== "incoming" && directRequest !== "outgoing" && (
                 <MobileCustomKeyboard
                   value={messageInput}
                   onChange={(val) => {
@@ -1570,7 +1604,7 @@ export function CommunityPage() {
         open={isQrModalOpen}
         onOpenChange={setIsQrModalOpen}
         username={profile?.username || "scholar"}
-        fullName={profile?.full_name || "Scholar"}
+        fullName={profile?.username ? `@${profile.username}` : "Student"}
         avatarUrl={profile?.avatar_url}
         institution={profile?.institution}
         onOpenScanner={() => setIsScannerOpen(true)}
