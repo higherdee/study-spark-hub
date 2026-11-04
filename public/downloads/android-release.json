@@ -1,10 +1,10 @@
 {
-  "version": "2.2.23",
-  "versionCode": 123,
+  "version": "2.2.24",
+  "versionCode": 124,
   "package": "org.syllaboss.app",
   "minimumAndroid": "7.0",
   "bytes": 20692241,
-  "sha256": "4b4464313b51dcdc52deb77555127e8ebc61d5de646663333259a63045362b5c",
+  "sha256": "ef78b600448407655735b88d0af4b21e58aa962e70e73832a501c4f4355c8bda",
   "certificateSha256": "8C:CF:5C:D5:33:16:3C:B1:5F:B1:FA:15:32:EE:BD:4D:6C:6F:DB:36:E7:E6:39:89:3A:7F:3A:04:96:D4:48:62",
   "downloadUrl": "/downloads/syllaboss-native.apk",
   "requiresInternet": true,
