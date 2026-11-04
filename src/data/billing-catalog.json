@@ -203,7 +203,13 @@
     "live": {
       "paddle": {},
       "paystack": {},
-      "bachs": {}
+      "bachs": {
+        "prod_5d5abcaf3aa94be0ac41": "weekly",
+        "prod_cc31468317464152a2a3": "monthly",
+        "prod_9c23760f29b441f6a45c": "yearly",
+        "prod_e02aeff098ae4cce92ec": "monthly",
+        "prod_513215c305544862aec9": "yearly"
+      }
     }
   },
   "environments": {
@@ -226,7 +232,15 @@
     "live": {
       "paddle": {},
       "paystack": {},
-      "bachs": {}
+      "bachs": {
+        "weekly": "prod_5d5abcaf3aa94be0ac41",
+        "monthly": "prod_cc31468317464152a2a3",
+        "yearly": "prod_9c23760f29b441f6a45c"
+      },
+      "bachsInternational": {
+        "monthly": "prod_e02aeff098ae4cce92ec",
+        "yearly": "prod_513215c305544862aec9"
+      }
     }
   },
   "fxAttribution": "https://www.exchangerate-api.com",

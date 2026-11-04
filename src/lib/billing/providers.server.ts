@@ -38,7 +38,8 @@ export function providerPlanId(provider: BillingProvider, plan: PlanId, environm
 
 export function checkoutProductId(quote: ReturnType<typeof checkoutQuote>, environment = billingEnvironment()) {
   if (quote.provider === "bachs" && quote.tier === "international") {
-    return process.env[`BACHS_${environment.toUpperCase()}_INTERNATIONAL_PRODUCT_${quote.plan.toUpperCase()}`] || "";
+    const catalog = configuredCatalog.environments[environment] as { bachsInternational?: Partial<Record<PlanId, string>> };
+    return process.env[`BACHS_${environment.toUpperCase()}_INTERNATIONAL_PRODUCT_${quote.plan.toUpperCase()}`] || catalog.bachsInternational?.[quote.plan] || "";
   }
   return providerPlanId(quote.provider, quote.plan, environment);
 }
@@ -101,7 +102,9 @@ export interface MarketPrices {
 export function checkoutQuote(country: string, plan: PlanId) {
   const base = quoteFor(country, plan);
   if (base.tier === "international") {
-    return process.env["BILLING_BACHS_ONLY"] === "true" ? { ...base, provider: "bachs" as const } : base;
+    const override = process.env["BILLING_BACHS_ONLY"];
+    const bachsOnly = override === undefined ? billingEnvironment() === "live" : override === "true";
+    return bachsOnly ? { ...base, provider: "bachs" as const } : base;
   }
   const market = (configuredCatalog.markets as Record<string, MarketPrices>)[country];
   if (!market || !Number.isSafeInteger(market[plan]) || market[plan] <= 0) throw new Error("Pricing for your billing country is being configured.");
