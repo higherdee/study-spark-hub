@@ -37,8 +37,12 @@ export async function savePromo(actor: string, input: unknown) {
     await tx.commit(); return { id };
   } catch (e) { await tx.rollback(); throw e; } finally { tx.close(); }
 }
-export async function redeemPromo(userId: string, raw: unknown, now = Date.now()) {
+export async function redeemPromo(userId: string, raw: unknown, now = Date.now(), surface: "settings" | "checkout" = "settings") {
   const input = z.object({ code: z.string().trim().toUpperCase().max(32), requestId: z.string().uuid() }).strict().parse(raw);
+  const gift = input.code.startsWith("SYLLAGIFT-");
+  if (gift !== (surface === "checkout")) {
+    throw new Error(gift ? "Redeem this SyllaPlus gift code at checkout." : "Enter a SyllaPlus gift code.");
+  }
   await ensurePromoTables(); const tx = await turso.transaction("write");
   try {
     const previous = (await tx.execute({ sql: "SELECT effect,value,expires_at FROM membership_promo_claims WHERE user_id=? AND request_id=?", args: [userId, input.requestId] })).rows[0];
@@ -46,6 +50,9 @@ export async function redeemPromo(userId: string, raw: unknown, now = Date.now()
     const row = (await tx.execute({ sql: "SELECT * FROM membership_promos WHERE code=?", args: [input.code] })).rows[0];
     if (!row) throw new Error("This promo code is unavailable.");
     const p = promoInput.parse(JSON.parse(String(row["definition"])));
+    if (gift && (p.effect !== "plus_days" || p.maxUses !== 1 || ![7, 30].includes(p.value))) {
+      throw new Error("This SyllaPlus gift code is unavailable.");
+    }
     if (!p.enabled || now < Date.parse(p.startsAt) || now >= Date.parse(p.expiresAt)) throw new Error("This promo code is unavailable.");
     const counts = (await tx.execute({ sql: "SELECT COUNT(*) AS total,COALESCE(SUM(CASE WHEN user_id=? THEN 1 ELSE 0 END),0) AS own FROM membership_promo_claims WHERE promo_id=?", args: [userId, row["id"]!] })).rows[0]!;
     if (Number(counts["total"]) >= p.maxUses || Number(counts["own"]) >= p.perUser) throw new Error("This promo code has reached its redemption limit.");
@@ -53,7 +60,9 @@ export async function redeemPromo(userId: string, raw: unknown, now = Date.now()
     let expiresAt: string;
     if (p.effect === "plus_days") {
       const active = (await tx.execute({ sql: "SELECT MAX(expires_at) AS until FROM membership_promo_claims WHERE user_id=? AND effect='plus_days'", args: [userId] })).rows[0]?.["until"];
-      expiresAt = new Date(Math.max(now, Date.parse(String(active || "")) || 0) + p.value * 86400000).toISOString();
+      const activeUntil = typeof active === "string" ? Date.parse(active) : NaN;
+      const startsAt = Number.isFinite(activeUntil) ? Math.max(now, activeUntil) : now;
+      expiresAt = new Date(startsAt + p.value * 86400000).toISOString();
     } else {
       const d = new Date(now); expiresAt = p.effect === "ai_tokens" ? new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)).toISOString() : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString();
     }

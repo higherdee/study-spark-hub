@@ -53,6 +53,15 @@ export const Route = createFileRoute("/api/billing")({
       try {
         const userId = await billingIdentity(request);
         const input = await request.json().catch(() => null);
+        if (input?.action === "redeem-gift") {
+          const { redeemPromo } = await import("@/lib/membership/promos.server");
+          try {
+            const reward = await redeemPromo(userId, { code: input.code, requestId: input.requestId }, Date.now(), "checkout");
+            return json({ reward });
+          } catch {
+            return json({ error: "This gift code could not be redeemed. Check the code and its expiry." }, 400);
+          }
+        }
         if (input?.action === "checkout") {
           const parsed = z.object({ action: z.literal("checkout"), id: z.string().uuid(), plan: z.enum(PLAN_IDS), country: z.string().length(2), acceptedTerms: z.literal(true), recurringConsent: z.literal(true) }).strict().safeParse(input);
           if (!parsed.success) return json({ error: "Choose your country and plan, and agree to the payment terms before continuing." }, 400);

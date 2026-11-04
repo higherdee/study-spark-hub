@@ -34,3 +34,14 @@ it("rejects unavailable dates, malformed effects, and excessive access grants", 
   await savePromo("admin", campaign()); await expect(redeemPromo("a", { code: "STUDY7", requestId: crypto.randomUUID() }, Date.parse("2030-07-01T00:00:00Z"))).rejects.toThrow("unavailable");
   await expect(savePromo("admin", { ...campaign(), value: 1000 })).rejects.toThrow(); await expect(savePromo("admin", { ...campaign(), effect: "run_script" })).rejects.toThrow();
 });
+
+it("redeems a single-use gift code only at checkout without creating a paid subscription", async () => {
+  const code = "SYLLAGIFT-EXAMPLE";
+  await savePromo("admin", { ...campaign(), code, maxUses: 1, value: 30 });
+  const input = { code, requestId: crypto.randomUUID() };
+  await expect(redeemPromo("recipient", input, now)).rejects.toThrow("at checkout");
+  await expect(redeemPromo("recipient", input, now, "checkout")).resolves.toMatchObject({
+    effect: "plus_days", value: 30, expires_at: "2030-07-01T12:00:00.000Z",
+  });
+  await expect(redeemPromo("someone-else", { code, requestId: crypto.randomUUID() }, now, "checkout")).rejects.toThrow("limit");
+});

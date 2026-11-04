@@ -23,6 +23,9 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
   const [busy, setBusy] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [error, setError] = useState("");
+  const [giftCode, setGiftCode] = useState("");
+  const [giftNotice, setGiftNotice] = useState("");
+  const giftRequest = useRef("");
   const checkoutId = useRef<string | null>(null);
   const notified = useRef(false);
 
@@ -109,6 +112,24 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
         {!user ? <Button asChild className="min-h-12 w-full"><a href="/auth?mode=signin">Sign in to subscribe <ArrowRight className="ml-2 size-4" /></a></Button> : <Button className="min-h-12 w-full" disabled={busy || !consent || !quote?.ready} onClick={() => void checkout()}>{busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}Subscribe{quote ? ` — ${formatPrice(quote.amount, quote.currency)} today` : ""}<ArrowRight className="ml-2 size-4" /></Button>}
         {quote && !quote.ready && <p className="text-sm text-muted-foreground">Checkout for this region is being configured. No payment can be taken yet.</p>}
       </>}
+      <div className="space-y-2 rounded-xl border border-border p-3">
+        <label className="block text-sm font-semibold" htmlFor="syllaplus-gift">SyllaPlus gift code</label>
+        <input id="syllaplus-gift" value={giftCode} maxLength={32} disabled={busy} className="w-full rounded-lg border border-input bg-background px-3 py-2"
+          onChange={event => { setGiftCode(event.target.value); giftRequest.current = ""; }} />
+        <Button type="button" variant="outline" disabled={busy || !/^SYLLAGIFT-/i.test(giftCode.trim())} onClick={async () => {
+          setBusy(true); setError(""); setGiftNotice("");
+          try {
+            giftRequest.current ||= crypto.randomUUID();
+            const result = await request("/api/billing", { action: "redeem-gift", code: giftCode.trim(), requestId: giftRequest.current });
+            setGiftNotice(`${result.reward.value} days of SyllaPlus added.`);
+            setGiftCode(""); giftRequest.current = "";
+            await summary.refetch();
+          } catch (cause) {
+            setError(cause instanceof Error ? cause.message : "Could not redeem your gift code.");
+          } finally { setBusy(false); }
+        }}>Redeem gift code</Button>
+        {giftNotice && <p role="status" className="text-sm text-primary">{giftNotice}</p>}
+      </div>
       {(error || catalog.error || summary.error) && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error || (catalog.error || summary.error)?.message}</p>}
       <Button variant="ghost" className="min-h-11 w-full" onClick={() => { if (current?.hasAccess) onSuccess?.(); onClose(); }}>Back to my studies</Button>
     </DialogContent>

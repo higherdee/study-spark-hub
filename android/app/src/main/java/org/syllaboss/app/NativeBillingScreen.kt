@@ -30,6 +30,9 @@ import java.util.UUID
     var selected by rememberSaveable { mutableStateOf("monthly") };var agreed by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) };var error by remember { mutableStateOf("") };var cancelConfirm by remember { mutableStateOf(false) };var refresh by remember { mutableIntStateOf(0) }
     var checkoutId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
+    var giftCode by rememberSaveable { mutableStateOf("") }
+    var giftRequest by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
+    var giftNotice by rememberSaveable { mutableStateOf("") }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -70,6 +73,29 @@ import java.util.UUID
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
             BrandWordmark();Text("Keep your momentum.",fontFamily=WebsiteDisplay,fontSize=34.sp)
             Text("More AI study time, library materials alongside Boss AI, more downloads and longer conversation history.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedTextField(
+                value = giftCode,
+                onValueChange = { giftCode = it.take(32); giftRequest = UUID.randomUUID().toString() },
+                label = { Text("SyllaPlus gift code") },
+                singleLine = true,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedButton(enabled = !busy && giftCode.trim().startsWith("SYLLAGIFT-", ignoreCase = true), onClick = {
+                busy = true; error = ""; giftNotice = ""
+                scope.launch {
+                    try {
+                        val response = StudyApi.endpoint("/api/billing", JSONObject().put("action", "redeem-gift")
+                            .put("code", giftCode.trim()).put("requestId", giftRequest)).getJSONObject("reward")
+                        giftNotice = "${response.optInt("value")} days of SyllaPlus added."
+                        giftCode = ""; giftRequest = UUID.randomUUID().toString(); refresh++
+                    } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        error = e.message ?: "Could not redeem your gift code."
+                    } finally { busy = false }
+                }
+            }) { Text("Redeem gift code") }
+            if (giftNotice.isNotBlank()) Text(giftNotice, color = MaterialTheme.colorScheme.primary)
             if(catalog?.optString("environment")=="sandbox") Text("Payment testing mode. Test purchases do not activate a live membership.",color=MaterialTheme.colorScheme.primary,fontSize=13.sp)
             Box {
                 OutlinedButton(onClick = { showRegions = true }, enabled = !busy) {
