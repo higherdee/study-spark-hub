@@ -37,6 +37,21 @@ beforeEach(async () => {
 });
 
 describe("Bachs verified fulfillment", () => {
+  it("grants live SyllaPlus after a verified charge and advances access on renewal", async () => {
+    await turso.execute({ sql: "UPDATE billing_checkouts SET environment='live', price_id=? WHERE id='checkout'", args: [catalog.environments.live.bachs.monthly] });
+    await verifyBachsCheckout("session", "live");
+    expect((await turso.execute("SELECT sylla_plus FROM profiles WHERE id='owner'")).rows[0]?.["sylla_plus"]).toBe(1);
+    canonical = {
+      ...canonical,
+      status: "active",
+      trial_end: null,
+      current_period_start: "2030-02-08T00:00:00Z",
+      current_period_end: "2030-03-08T00:00:00Z",
+    };
+    await synchronizeBachs("sub", "live");
+    expect(await findSubscription("bachs", "live", "sub")).toMatchObject({ status: "active", periodEnd: "2030-03-08T00:00:00.000Z" });
+    expect(provider.extend).toHaveBeenCalledTimes(1);
+  });
   it("requires paid ownership, extends first renewal once, and keeps sandbox benefits isolated", async () => {
     await verifyBachsCheckout("session", "sandbox");
     await synchronizeBachs("sub", "sandbox");
@@ -59,6 +74,7 @@ describe("Bachs verified fulfillment", () => {
       throw new Error("Connection lost after provider committed the extension");
     });
     await expect(synchronizeBachs("sub", "sandbox")).rejects.toThrow("Connection lost");
+    expect(await findSubscription("bachs", "sandbox", "sub")).toMatchObject({ status: "active", periodEnd: "2030-02-01T00:00:00.000Z" });
     await synchronizeBachs("sub", "sandbox");
     expect(provider.extend).toHaveBeenCalledTimes(1);
     expect(await findSubscription("bachs", "sandbox", "sub")).toMatchObject({ periodEnd: "2030-02-08T00:00:00.000Z" });

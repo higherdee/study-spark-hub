@@ -65,12 +65,20 @@ export async function synchronizeBachs(id: string, environment: BillingEnvironme
   const previous = await findSubscription("bachs", environment, id);
   let end = iso(canonical.current_period_end);
   if (!end) throw new Error("Bachs paid period is unavailable.");
+  let bonusError: unknown;
   if (["active", "trialing"].includes(canonical.status) && !canonical.cancel_at_period_end) {
-    const bonus = await reserveFirstRenewalBonus(userId, "bachs", environment, id, new Date(Date.parse(end) + 7 * 86400000).toISOString());
-    if (bonus && !bonus.applied) {
-      if (iso(canonical.trial_end) !== bonus.target) canonical = await extendBachsFirstRenewal(id, bonus.target, environment);
-      if (iso(canonical.trial_end) !== bonus.target) throw new Error("Bachs first renewal extension is pending verification.");
-      await completeFirstRenewalBonus(userId, environment, id);
+    try {
+      const bonus = await reserveFirstRenewalBonus(userId, "bachs", environment, id, new Date(Date.parse(end) + 7 * 86400000).toISOString());
+      if (bonus && !bonus.applied) {
+        const extended = iso(canonical.trial_end) === bonus.target ? canonical : await extendBachsFirstRenewal(id, bonus.target, environment);
+        if (iso(extended.trial_end) !== bonus.target) throw new Error("Bachs first renewal extension is pending verification.");
+        canonical = extended;
+        await completeFirstRenewalBonus(userId, environment, id);
+      }
+    } catch (error) {
+      // The original charge is already verified. Grant its paid period and
+      // let the event retry reconcile the optional extension separately.
+      bonusError = error;
     }
   }
   end = canonical.status === "trialing" ? iso(canonical.trial_end) || end : iso(canonical.current_period_end) || end;
@@ -83,6 +91,7 @@ export async function synchronizeBachs(id: string, environment: BillingEnvironme
     cancelAt: canonical.cancel_at_period_end ? end : null, occurredAt: new Date().toISOString() });
   await linkCheckoutSubscription(record.id, id);
   await markCheckoutPaid(record.id);
+  if (bonusError) throw bonusError;
 }
 
 export async function synchronizePaddle(id: string, environment: BillingEnvironment, allowBonus = true) {

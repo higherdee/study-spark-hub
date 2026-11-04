@@ -30,6 +30,14 @@ import java.util.UUID
     var selected by rememberSaveable { mutableStateOf("monthly") };var agreed by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) };var error by remember { mutableStateOf("") };var cancelConfirm by remember { mutableStateOf(false) };var refresh by remember { mutableIntStateOf(0) }
     var checkoutId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) refresh++
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(country,refresh) {
         error=""
         try {
