@@ -37,9 +37,13 @@ assert any('Sign in to read this material' in n.get('text','') for n in reader.i
 adb('shell','input','keyevent','4');time.sleep(2)
 tap('Boss AI');snapshot('boss')
 tap('Your space');snapshot('space')
-tap('Today');tap('Start a focus session');snapshot('focus')
+tap('Today')
+today=snapshot('automatic-study')
+assert not any(n.get('text') == 'Start a focus session' for n in today.iter('node')), 'Study time must not have a manual start button'
+tap('View study time')
 timer=snapshot('focus-running')
-assert any('Sign in to save focus time' in n.get('text','') for n in timer.iter('node')), 'Guest focus should explain account-backed progress'
+assert any('Sign in to save study time' in n.get('text','') for n in timer.iter('node')), 'Guest study time should explain account-backed progress'
+assert not any(n.get('text') in {'Pause focus', 'Resume focus'} for n in timer.iter('node')), 'Study time must run automatically'
 adb('shell','input','keyevent','4');time.sleep(2)
 tap('Your space');tap('Sign in or create account');time.sleep(10);consent=snapshot('sign-in')
 assert any('Clear terms.' in n.get('text','') for n in consent.iter('node')), 'Account creation must show terms before authentication'

@@ -6,6 +6,8 @@ on:
       - 'android/**'
       - '.github/workflows/build-apk.yml'
       - 'scripts/android-release-metadata.py'
+      - 'scripts/android-launch-smoke.sh'
+      - 'scripts/android-ui-smoke.py'
   workflow_dispatch:
     inputs:
       bootstrap_signing:
