@@ -4,7 +4,8 @@ import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import type { InValue } from "@libsql/client";
 
 import { turso, getProfile } from "@/integrations/turso/client.server";
-import { CHAT_MODEL, createGateway, reasoningOptions } from "@/lib/ai/gateway.server";
+import { CHAT_MODEL, createGateway, GROQ_API_KEY } from "@/lib/ai/gateway.server";
+import { chatBudget, compactChatHistory } from "@/lib/ai/chat-cost";
 import { getLovableAiGatewayRunId, withLovableAiGatewayRunIdHeader } from "@/lib/ai/run-id";
 
 import { CLERK_SECRET_KEY } from "@/integrations/clerk";
@@ -50,6 +51,14 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         const last = messages[messages.length - 1]!;
+        const question = last.parts.flatMap(part => part.type === "text" ? [part.text] : []).join("\n");
+        const budget = chatBudget(question);
+        const history = compactChatHistory(
+          messages.slice(0, -1).filter(message => message.role === "user" || message.role === "assistant"),
+          message => message.parts.flatMap(part => part.type === "text" ? [part.text] : []).join("\n"),
+          (message, text) => ({ ...message, parts: [{ type: "text", text }] }),
+          budget,
+        );
         if (last.role === "user") {
           const userArgs: InValue[] = [
             crypto.randomUUID(),
@@ -67,18 +76,18 @@ export const Route = createFileRoute("/api/chat")({
 
         const profile = await getProfile(userId);
 
-        const system = `You are Boss, the Syllaboss study assistant for university students (mostly in Nigeria). Be warm, clear and practical. Explain concepts step by step, quiz the student when helpful, build study timetables, and summarise topics. Use markdown. Never help with exam malpractice.
-Student: ${profile?.full_name ?? "unknown"}; ${profile?.course ?? "course unknown"}, ${profile?.level ?? ""} at ${profile?.institution ?? "unknown institution"}.
-Study plan: ${JSON.stringify(profile?.study_plan ?? {})}`;
+        const system = `You are Boss, the Syllaboss study assistant for university students. ${budget.instruction} Use Markdown and never help with exam malpractice.
+Course: ${profile?.course ?? "unknown"}. Level: ${profile?.level ?? "unknown"}.`;
 
         const { provider, runIdFetch } = createGateway(getLovableAiGatewayRunId(request));
         const result = streamText({
-          model: provider.responses(CHAT_MODEL),
+          model: provider.responses(GROQ_API_KEY ? budget.model : CHAT_MODEL),
           system,
-          messages: await convertToModelMessages(messages),
+          messages: await convertToModelMessages([...history, last]),
           abortSignal: request.signal,
-          providerOptions: reasoningOptions("medium"),
-          maxOutputTokens: allowance.limit,
+          ...(GROQ_API_KEY ? { providerOptions: { openai: { reasoningEffort: budget.effort } } } : {}),
+          maxOutputTokens: Math.min(allowance.limit, budget.output),
+          maxRetries: 0,
           onFinish: async ({ usage }) => { await settleAiRequest(allowance, usage.outputTokens); },
           onError: async () => { await settleAiRequest(allowance); },
           onAbort: async () => { await settleAiRequest(allowance); },

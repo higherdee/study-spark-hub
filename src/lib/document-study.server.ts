@@ -89,7 +89,11 @@ export async function answerDocumentQuestion(userId: string, input: { materialId
       const file = await getFromR2(document.material.file_path);
       const vision=await documentVisionInput(new Uint8Array(file.bytes),document.material.mime_type||"application/pdf",input.message);
       answer = await askGeminiVisionAI(`${prompt}\n${vision.sourceNote}`, Buffer.from(vision.bytes).toString("base64"), document.material.mime_type || "application/pdf", { systemPrompt: system, temperature: 0.2, fetcher: budgetedAiFetch });
-    } else answer = await askGeminiAI(`${prompt}\nActual source content:\n${addressed?.text || document.text}`, { systemPrompt: system, temperature: 0.2, fetcher: budgetedAiFetch });
+    } else {
+      const wholeDocument = /\b(?:summari[sz]e|overview|entire|whole|all pages)\b/i.test(input.message);
+      const source = addressed?.text || (wholeDocument ? document.text : selectDocumentExcerpt(document.text, input.message));
+      answer = await askGeminiAI(`${prompt}\nActual source content:\n${source}`, { systemPrompt: system, temperature: 0.2, fetcher: budgetedAiFetch });
+    }
     const attachment = { id: document.material.id, title: document.material.title, course: document.material.course };
     const userMessageId = crypto.randomUUID(); const assistantMessageId = crypto.randomUUID();
     await turso.batch([

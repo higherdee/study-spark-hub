@@ -2,6 +2,7 @@ import { authorizeStudyData } from "@/lib/membership/study-access.server";
 import { withAiAllowance, budgetedAiFetch } from "@/lib/membership/ai.server";
 import { membershipAccess, requireLibraryAiAccess } from "@/lib/membership/policy.server";
 import { generationCount } from "@/lib/membership/policy";
+import { chatBudget, compactChatHistory } from "@/lib/ai/chat-cost";
 ﻿import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { turso } from "@/integrations/turso/client.server";
@@ -271,7 +272,7 @@ export const askBossAiServerFn = createServerFn({ method: "POST" })
     z.object({
       userId: z.string(),
       threadId: z.string().optional(),
-      query: z.string(),
+      query: z.string().trim().min(1).max(12000),
       taskType: z.enum(["general", "quiz", "theory-grade", "flashcards", "summary"]).default("general"),
       docContext: z
         .object({
@@ -294,6 +295,8 @@ export const askBossAiServerFn = createServerFn({ method: "POST" })
       return { userMessageId: result.userMessageId, assistantMessageId: result.assistantMessageId, response: result.answer };
     }
     return withAiAllowance(memberUserId, async () => {
+    const routineChat = data.taskType === "general" && !data.docContext;
+    const budget = chatBudget(data.query);
 
     const userMsgId = crypto.randomUUID();
     const userPayload = data.attachedMaterial
@@ -340,8 +343,8 @@ ${
     if (data.threadId) {
       try {
         const historyRs = await turso.execute({
-          sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND id != ? ORDER BY created_at DESC, rowid DESC LIMIT 16",
-          args: [data.threadId, userMsgId],
+          sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND user_id = ? AND id != ? ORDER BY created_at DESC, rowid DESC LIMIT ?",
+          args: [data.threadId, memberUserId, userMsgId, routineChat ? budget.historyCount : 16],
         });
         historyMessages = [...historyRs.rows].reverse()
           .map((row: any) => {
@@ -358,7 +361,7 @@ ${
             } catch {
               text = String(row.parts || "");
             }
-            const role = String(row.role) === "assistant" ? "assistant" : "user";
+            const role: "assistant" | "user" = String(row.role) === "assistant" ? "assistant" : "user";
             return { role, content: text.trim().slice(0, 1800) };
           })
           .filter((m) => m.content.length > 0);
@@ -366,14 +369,20 @@ ${
         console.warn("Could not retrieve thread history for Boss AI:", err?.message);
       }
     }
+    if (routineChat) {
+      historyMessages = compactChatHistory(historyMessages, message => message.content, (message, content) => ({ ...message, content }), budget);
+    }
 
+    const system = routineChat
+      ? `You are Boss, the Syllaboss tutor for university students. ${budget.instruction} Show essential steps and units for calculations. Use Markdown and LaTeX where useful, avoid emojis, and never invent sources or assist exam malpractice.`
+      : systemInstruction;
     const payloadMessages = [
-      { role: "system", content: systemInstruction },
+      { role: "system", content: system },
       ...historyMessages,
       { role: "user", content: data.query },
     ];
 
-    const modelsToTry = pickBestGroqModel(data.taskType);
+    const modelsToTry = routineChat ? [budget.model] : pickBestGroqModel(data.taskType);
     let aiResponseText = "";
     const groqKey = getGroqApiKey();
 
@@ -391,7 +400,8 @@ ${
               model,
               messages: payloadMessages,
               temperature: data.taskType === "quiz" ? 0.3 : 0.7,
-              max_tokens: 4096,
+              max_completion_tokens: routineChat ? budget.output : 4096,
+              ...(routineChat ? { reasoning_effort: budget.effort } : {}),
             }),
           });
 
@@ -422,7 +432,8 @@ ${
             : data.query;
 
         const geminiResult = await askGeminiAI(geminiContextPrompt, {
-          systemPrompt: systemInstruction,
+          systemPrompt: system,
+          ...(routineChat ? { skipGroq: true, maxOutputTokens: budget.output } : {}),
           temperature: data.taskType === "quiz" ? 0.3 : 0.7, fetcher: budgetedAiFetch});
         if (
           geminiResult &&

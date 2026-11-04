@@ -128,13 +128,15 @@ export async function askGeminiAI(
         temperature?: number;
         responseMimeType?: string;
         reasoning?: boolean;
+        skipGroq?: boolean;
+        maxOutputTokens?: number;
       }
 ): Promise<string> {
   const opts: Exclude<NonNullable<typeof options>, string> = typeof options === "string" ? { systemPrompt: options } : options || {};
   const groqApiKey = getGroqApiKey();
 
   // 1. PRIMARY ENGINE: Groq Cloud (Ultra-fast LPU inference)
-  if (groqApiKey) {
+  if (groqApiKey && !opts.skipGroq) {
     try {
       // Build OpenAI-compatible messages for Groq
       const groqMessages: Array<{ role: string; content: string }> = [];
@@ -225,6 +227,7 @@ export async function askGeminiAI(
 
     const generationConfig: Record<string, any> = {
       temperature: opts.temperature ?? 0.7,
+      ...(opts.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : {}),
     };
     if (opts.responseMimeType) {
       generationConfig.responseMimeType = opts.responseMimeType;

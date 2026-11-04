@@ -5,6 +5,7 @@ import { CLERK_SECRET_KEY } from "@/integrations/clerk";
 import { turso, getMaterials, getProfile, getLeaderboard, upsertProfile } from "@/integrations/turso/client.server";
 import { getStudyGroups, getGroupMessages, joinStudyGroup, sendGroupMessage, searchPeers, getStudentConversations, getDirectMessages, getOrCreatePeerConversation, sendDirectMessage } from "@/integrations/turso/community.server";
 import { withAiAllowance, budgetedAiFetch } from "@/lib/membership/ai.server";
+import { chatBudget, compactChatHistory } from "@/lib/ai/chat-cost";
 import { enforceChatRetention, membershipSnapshot, startMaterialGate, completeMaterialGate } from "@/lib/membership/policy.server";
 import { preferencePatch } from "@/lib/membership/preferences";
 import { focusHeartbeat, focusSnapshot } from "@/lib/focus.server";
@@ -173,20 +174,50 @@ export const Route = createFileRoute("/api/mobile")({
         if (parsed.data.threadId) {
           const owned = await turso.execute({ sql: "SELECT id FROM chat_threads WHERE id = ? AND user_id = ? LIMIT 1", args: [threadId, userId] });
           if (!owned.rows.length) return json({ error: "Conversation not found." }, 404);
-        } else await turso.execute({ sql: "INSERT INTO chat_threads (id, user_id, title) VALUES (?, ?, ?)", args: [threadId, userId, parsed.data.message.slice(0, 60)] });
-        const prior = await turso.execute({ sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 12", args: [threadId, userId] });
-        const history = [...prior.rows].reverse().map(row => ({ role: String(row['role']), content: readText(row['parts']).slice(0, 12000) })).filter(message => ["user", "assistant"].includes(message.role) && message.content);
-        await turso.execute({ sql: "INSERT INTO chat_messages (id, thread_id, user_id, message_id, role, parts) VALUES (?, ?, ?, ?, 'user', ?)", args: [crypto.randomUUID(), threadId, userId, crypto.randomUUID(), JSON.stringify([{ type: "text", text: parsed.data.message }])] });
+        }
+        const budget = chatBudget(parsed.data.message);
+        const prior = await turso.execute({
+          sql: "SELECT role, parts FROM chat_messages WHERE thread_id = ? AND user_id = ? AND role IN ('user','assistant') ORDER BY created_at DESC, rowid DESC LIMIT ?",
+          args: [threadId, userId, budget.historyCount],
+        });
+        const history = compactChatHistory(
+          [...prior.rows].reverse().map(row => ({ role: String(row['role']), content: readText(row['parts']) })),
+          message => message.content,
+          (message, content) => ({ ...message, content }),
+          budget,
+        );
         const response = await budgetedAiFetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, signal: AbortSignal.timeout(55000),
-          body: JSON.stringify({ model: "openai/gpt-oss-120b", max_completion_tokens: 3000, messages: [{ role: "system", content: "You are Boss, Syllaboss's study tutor for Nigerian university students. Answer the exact question first. Use clear Markdown headings only when useful, concise paragraphs, worked examples and properly formatted LaTeX maths. For code, use fenced code blocks with a language. Be professional, encouraging and precise; avoid filler and invented citations. State uncertainty and ask one focused question when essential context is missing. Help students understand, practise and revise. Never assist exam malpractice. Never claim to read an attachment or source you were not given." }, ...history, { role: "user", content: parsed.data.message }] }),
+          body: JSON.stringify({
+            model: budget.model,
+            max_completion_tokens: budget.output,
+            reasoning_effort: budget.effort,
+            messages: [
+              { role: "system", content: `You are Boss, Syllaboss's study tutor for Nigerian university students. ${budget.instruction} Use Markdown and LaTeX where helpful. State uncertainty, never invent sources, and never assist exam malpractice.` },
+              ...history,
+              { role: "user", content: parsed.data.message },
+            ],
+          }),
         });
         if (!response.ok) throw new Error("AI provider unavailable");
         const result = await response.json();
         const answer = result.choices?.[0]?.message?.content;
         if (typeof answer !== "string" || !answer.trim()) throw new Error("Empty AI response");
-        await turso.execute({ sql: "INSERT INTO chat_messages (id, thread_id, user_id, message_id, role, parts) VALUES (?, ?, ?, ?, 'assistant', ?)", args: [crypto.randomUUID(), threadId, userId, crypto.randomUUID(), JSON.stringify([{ type: "text", text: answer }])] });
-        await turso.execute({ sql: "UPDATE chat_threads SET updated_at = datetime('now') WHERE id = ? AND user_id = ?", args: [threadId, userId] });
+        const messages = [
+          { role: "user", text: parsed.data.message },
+          { role: "assistant", text: answer },
+        ];
+        await turso.batch([
+          ...(!parsed.data.threadId ? [{
+            sql: "INSERT INTO chat_threads (id, user_id, title) VALUES (?, ?, ?)",
+            args: [threadId, userId, parsed.data.message.slice(0, 60)],
+          }] : []),
+          ...messages.map(({ role, text }) => ({
+            sql: "INSERT INTO chat_messages (id, thread_id, user_id, message_id, role, parts) VALUES (?, ?, ?, ?, ?, ?)",
+            args: [crypto.randomUUID(), threadId, userId, crypto.randomUUID(), role, JSON.stringify([{ type: "text", text }])],
+          })),
+          { sql: "UPDATE chat_threads SET updated_at = datetime('now') WHERE id = ? AND user_id = ?", args: [threadId, userId] },
+        ], "write");
         return json({ answer, threadId });
         });
       } catch (error) { return error instanceof MembershipLimitError ? json({ error: error.message, upgrade: true, retryAfter: error.retryAfter }, error.status) : json({ error: "Boss could not answer right now. Please retry." }, 503); }
