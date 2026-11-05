@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.util.UUID
 
 @Composable
 internal fun NativeGiftCashout(points: Int, back: () -> Unit, refreshBalance: () -> Unit) {
@@ -18,6 +19,9 @@ internal fun NativeGiftCashout(points: Int, back: () -> Unit, refreshBalance: ()
     val brands = remember { linkedMapOf("amazon" to "Amazon", "apple" to "Apple", "visa" to "Visa", "steam" to "Steam") }
     var brand by remember { mutableStateOf("amazon") }
     var options by remember { mutableStateOf(emptyList<JSONObject>()) }
+    var membershipGifts by remember { mutableStateOf(emptyList<JSONObject>()) }
+    var giftRequestId by remember { mutableStateOf(UUID.randomUUID().toString()) }
+    var giftResult by remember { mutableStateOf("") }
     var amount by remember { mutableIntStateOf(5) }
     var email by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -26,7 +30,7 @@ internal fun NativeGiftCashout(points: Int, back: () -> Unit, refreshBalance: ()
     var error by remember { mutableStateOf("") }
     var retry by remember { mutableIntStateOf(0) }
     LaunchedEffect(retry) {
-        try { options = StudyApi.call("gift-cashout").objects("options"); error = "" }
+        try { val response = StudyApi.call("gift-cashout"); options = response.objects("options"); membershipGifts = response.objects("membershipGifts"); error = "" }
         catch (e: Exception) { if (e is CancellationException) throw e; error = e.message ?: "Could not load gift cards." }
     }
     val cost = options.find { it.optInt("amountUsd") == amount }?.optInt("points")
@@ -34,6 +38,26 @@ internal fun NativeGiftCashout(points: Int, back: () -> Unit, refreshBalance: ()
         Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().verticalScroll(rememberScrollState()).padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Turn points into a gift card", style = MaterialTheme.typography.headlineMedium)
             Text("Balance · ${points} SyllaPoints")
+            Text("SyllaPlus gifts", style = MaterialTheme.typography.titleLarge)
+            Text("Get a single-use code instantly in your Peers inbox. Redeem at checkout or give it to a friend. Codes expire after three months.")
+            membershipGifts.forEach { gift ->
+                val days = gift.optInt("days")
+                val required = gift.optInt("points")
+                OutlinedButton(enabled = !busy && points >= required, modifier = Modifier.fillMaxWidth(), onClick = {
+                    busy = true; error = ""
+                    scope.launch {
+                        try {
+                            val result = StudyApi.call(body = JSONObject().put("action", "membership-gift").put("requestId", giftRequestId).put("days", days)).getJSONObject("gift")
+                            giftResult = "${result.optString("code")}\nDelivered to your Peers inbox."
+                            giftRequestId = UUID.randomUUID().toString()
+                            refreshBalance()
+                        } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message ?: "Could not issue your gift." }
+                        finally { busy = false }
+                    }
+                }) { Text("${days} days · ${required} points") }
+            }
+            if (giftResult.isNotBlank()) Text(giftResult)
+            HorizontalDivider()
             Text("An administrator reviews your request and arranges delivery to the email you provide.")
             brands.forEach { (key, label) ->
                 FilterChip(selected = brand == key, enabled = !busy && !submitted, onClick = { brand = key }, label = { Text(label) })

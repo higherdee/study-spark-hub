@@ -25,6 +25,7 @@ import java.util.UUID
 @Composable internal fun NativeBillingScreen(back: () -> Unit) {
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var country by rememberSaveable { mutableStateOf("") }
+    var bankTransfer by rememberSaveable { mutableStateOf(false) }
     var showRegions by remember { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<JSONObject?>(null) };var summary by remember { mutableStateOf<JSONObject?>(null) }
     var selected by rememberSaveable { mutableStateOf("monthly") };var agreed by rememberSaveable { mutableStateOf(false) }
@@ -52,6 +53,7 @@ import java.util.UUID
                 return@LaunchedEffect
             }
             catalog = result
+            if (!result.optBoolean("bankTransfer")) bankTransfer = false
             summary = StudyApi.endpoint("/api/billing" + if (country.length == 2) "?country=$country" else "")
         } catch(e:Exception) {if(e is kotlinx.coroutines.CancellationException) throw e;error=e.message ?: "Billing could not be loaded."}
     }
@@ -123,10 +125,12 @@ import java.util.UUID
             if(hasSubscription) {Text("Membership: ${subscription!!.optString("status")}");Text("Current period ends ${subscription.optString("periodEnd")}");if(!subscription.isNull("cancelAt")) Text("Renewal is canceled. Access continues until the confirmed period end.")}
             else {
                 Text(if (summary?.optInt("firstRenewalBonusDays", 0) == 7) "Pay when you subscribe. Seven extra days are added before your first renewal, once per account. Subsequent renewals follow the selected schedule." else "Pay when you subscribe. Your seven-day renewal extension has already been used; renewals follow the selected schedule.",fontSize=13.sp)
+                if (catalog?.optBoolean("bankTransfer") == true) Row(verticalAlignment=Alignment.CenterVertically) { Switch(bankTransfer, { bankTransfer=it; agreed=false; checkoutId=UUID.randomUUID().toString() }, enabled=!busy); Text("Pay by bank transfer") }
+                if (bankTransfer) Text("NGN ${catalog?.optJSONObject("transferPrices")?.optInt(selected)?.div(100.0)} today. Renew manually after the paid period. Access starts once Bachs confirms payment.")
                 Text("Any applicable taxes and the final amount are shown at checkout before payment.",fontSize=12.sp,color=Muted)
-                Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(agreed,{agreed=it},enabled=!busy);Text("I agree to the terms and authorize automatic recurring card payments at the displayed price until I cancel.",fontSize=13.sp)}
+                Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(agreed,{agreed=it},enabled=!busy);Text(if(bankTransfer) "I agree to the terms and the one-time bank-transfer payment. Renewal is manual." else "I agree to the terms and authorize automatic recurring card payments at the displayed price until I cancel.",fontSize=13.sp)}
                 TextButton(onClick={open("https://syllaboss.org/terms")}) {Text("Read payment terms")}
-                Button(onClick={busy=true;error="";scope.launch {try {val result=StudyApi.endpoint("/api/billing",JSONObject().put("action","checkout").put("id",checkoutId).put("country",country).put("plan",selected).put("acceptedTerms",true).put("recurringConsent",true));open(result.getString("url"))}catch(e:Exception){error=e.message ?: "Checkout could not be opened."}finally{busy=false}}},enabled=!busy&&agreed&&plan?.optBoolean("ready")==true,modifier=Modifier.fillMaxWidth().height(54.dp)) {Text(if(busy) "Opening checkout…" else if(plan?.optBoolean("ready")!=true) "Checkout is being prepared" else "Subscribe to SyllaPlus")}
+                Button(onClick={busy=true;error="";scope.launch {try {val result=StudyApi.endpoint("/api/billing",JSONObject().put("action","checkout").put("id",checkoutId).put("country",country).put("method",if(bankTransfer) "bank_transfer" else "card").put("plan",selected).put("acceptedTerms",true).put("recurringConsent",true));open(result.getString("url"))}catch(e:Exception){error=e.message ?: "Checkout could not be opened."}finally{busy=false}}},enabled=!busy&&agreed&&plan?.optBoolean("ready")==true,modifier=Modifier.fillMaxWidth().height(54.dp)) {Text(if(busy) "Opening checkout…" else if(plan?.optBoolean("ready")!=true) "Checkout is being prepared" else "Subscribe to SyllaPlus")}
             }
             if(subscription!=null) OutlinedButton(onClick={busy=true;scope.launch{try{open(StudyApi.endpoint("/api/billing",JSONObject().put("action","manage")).getString("url"))}catch(e:Exception){error=e.message ?: "Billing management could not be opened."}finally{busy=false}}},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Manage payments")}
             if(hasSubscription && subscription!!.isNull("cancelAt")) TextButton(onClick={cancelConfirm=true},enabled=!busy){Text("Cancel automatic renewal")}

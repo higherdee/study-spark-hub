@@ -37,6 +37,18 @@ beforeEach(async () => {
 });
 
 describe("Bachs verified fulfillment", () => {
+  it("grants a prepaid NGN membership only after a completed transfer and retries without extending twice", async () => {
+    await turso.execute("UPDATE billing_checkouts SET currency='NGN',amount=699900,price_id='bank_transfer_NGN_monthly' WHERE id='checkout'");
+    payment = { ...payment, subscription_id: null, currency: "NGN", amount: "6999.00", completed_at: "2030-01-01T00:00:00Z" };
+    payment["status"] = "processing";
+    await expect(verifyBachsCheckout("session", "sandbox")).rejects.toThrow("not verified");
+    payment["status"] = "succeeded";
+    await verifyBachsCheckout("session", "sandbox");
+    await verifyBachsCheckout("session", "sandbox");
+    expect(await findSubscription("bachs", "sandbox", "pass_checkout")).toMatchObject({ currency: "NGN", amount: 699900, periodEnd: "2030-02-08T00:00:00.000Z", cancelAt: "2030-02-08T00:00:00.000Z" });
+    expect(provider.getSubscription).not.toHaveBeenCalled();
+    expect(provider.extend).not.toHaveBeenCalled();
+  });
   it("grants live SyllaPlus after a verified charge and advances access on renewal", async () => {
     await turso.execute({ sql: "UPDATE billing_checkouts SET environment='live', price_id=? WHERE id='checkout'", args: [catalog.environments.live.bachs.monthly] });
     await verifyBachsCheckout("session", "live");

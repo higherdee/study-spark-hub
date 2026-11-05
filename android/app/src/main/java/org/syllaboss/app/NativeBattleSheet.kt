@@ -56,7 +56,7 @@ import org.json.JSONObject
     LaunchedEffect(selected, busy) {
         if (selected.isBlank() || busy) return@LaunchedEffect
         while (true) {
-            kotlinx.coroutines.delay(5000)
+            kotlinx.coroutines.delay(2000)
             try { detail = StudyApi.call("battle&id=" + selected.asQuery()) }
             catch (e: Exception) { if (e is CancellationException) throw e }
         }
@@ -168,6 +168,8 @@ import org.json.JSONObject
                         if (personalStatus == "invited") {
                             val stake = battle.optInt("stake_amount")
                             Button(onClick = { action(battleAction("battle-join")) }, enabled = !busy) { Text(if (stake > 0) "Join · $stake points" else "Join battle") }
+                        } else if (detail?.optJSONObject("sync") != null && personalStatus == "joined") {
+                            NativeBattleRound(detail!!, user?.id, target) { revision++ }
                         } else if (!waiting && personalStatus == "joined" && self?.optString("role") == "fighter") {
                             questions.optJSONObject(questionIndex)?.let { q ->
                                 val i = questionIndex
@@ -222,6 +224,7 @@ import org.json.JSONObject
                             OutlinedButton(onClick = { finish = true }, enabled = !busy) { Text("Finish and grade") }
                         }
                     }
+                    if (status == "grading" && battle.optString("host_id") == user?.id) OutlinedButton(onClick = { action(battleAction("battle-grade")) }, enabled = !busy) { Text("Grade solutions") }
                     players.forEach { Text("${it.optString("user_name")} · ${it.optString("status")}", fontSize = 13.sp, color = Muted) }
                 }
             }

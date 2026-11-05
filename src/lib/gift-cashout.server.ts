@@ -2,6 +2,12 @@ import { z } from "zod";
 import { getGiftCardOptions } from "./constants";
 import { normalizeCountry, quoteFor } from "./billing/catalog";
 import { requestWithdrawal } from "@/integrations/turso/client.server";
+import { issueMembershipGift, membershipGiftOptions } from "./membership/gifts.server";
+
+export const membershipGiftInput = z.object({ requestId: z.string().uuid(), days: z.union([z.literal(7), z.literal(30)]) });
+const regionalCountry = (country: string | null) => !normalizeCountry(country) || quoteFor(normalizeCountry(country)!, "monthly").tier === "regional";
+export const membershipGiftQuotes = (country: string | null) => membershipGiftOptions(regionalCountry(country));
+export const purchaseMembershipGift = (userId: string, country: string | null, input: z.infer<typeof membershipGiftInput>) => issueMembershipGift(userId, input.requestId, input.days, regionalCountry(country));
 
 const brands = {
   amazon: "Amazon Gift Card",

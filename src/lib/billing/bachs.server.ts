@@ -34,6 +34,20 @@ export function bachsUsdMinor(value: unknown) {
   return amount;
 }
 
+let transferSupport: { environment: BillingEnvironment; until: number; available: boolean } | undefined;
+export async function bachsNgnTransferAvailable(environment: BillingEnvironment) {
+  if (transferSupport?.environment === environment && transferSupport.until > Date.now()) return transferSupport.available;
+  const response = await fetch(`${environment === "live" ? "https://api.bachs.io" : "https://sandbox-api.bachs.io"}/v1/payment-methods`, {
+    headers: { Authorization: `Bearer ${bachsKey(environment)}` }, signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) return false;
+  const body = await response.json();
+  const methods = body.data?.payment_methods ?? body.payment_methods;
+  const available = Array.isArray(methods) && methods.some((method: { id?: string; currencies?: string[] }) => method.id === "BANK_TRANSFER" && method.currencies?.includes("NGN"));
+  transferSupport = { environment, until: Date.now() + 300000, available };
+  return available;
+}
+
 // Subscription edits are documented by the REST API but not exposed in SDK 2.
 // Do not retry writes blindly: callers reconcile the fixed target first.
 export async function extendBachsFirstRenewal(id: string, target: string, environment: BillingEnvironment) {

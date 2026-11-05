@@ -51,6 +51,7 @@ import {
 } from "@/lib/battle.functions";
 import { transcribeVoiceAudioServerFn } from "@/lib/ai/study-assistant.functions";
 import { battleAudio } from "@/lib/battle-audio";
+import { SynchronizedRound } from "./synchronized-round";
 
 interface BattleArenaModalProps {
   isOpen: boolean;
@@ -131,7 +132,7 @@ export function BattleArenaModal({
 
   // Initialize Timer for MCQ Blitz
   useEffect(() => {
-    if (!isOpen || !battle || battle.mode !== "mcq" || hasSubmitted || isCompleted) return;
+    if (!isOpen || !battle || data?.sync || battle.mode !== "mcq" || hasSubmitted || isCompleted) return;
 
     setTimeLeft(battle.time_per_question || 20);
     if (timerRef.current) clearInterval(timerRef.current);
@@ -430,6 +431,7 @@ export function BattleArenaModal({
   };
 
   if (!battle) return null;
+  if (data?.sync && !isCompleted) return <SynchronizedRound open={isOpen} close={onClose} battle={battle} players={participants} sync={data.sync} userId={currentUserId} refresh={refetch} />;
 
   const currentQ = questions[currentQIndex];
   const allFighters = participants.filter((p) => p.role === "fighter");

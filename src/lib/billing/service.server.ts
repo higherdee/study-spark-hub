@@ -1,8 +1,8 @@
 import { createClerkClient, verifyToken } from "@clerk/backend";
-import { bachs } from "./bachs.server";
+import { bachs, bachsNgnTransferAvailable } from "./bachs.server";
 import { CLERK_SECRET_KEY } from "@/integrations/clerk";
 import { getProfile, turso } from "@/integrations/turso/client.server";
-import { hasSubscriptionAccess, normalizeCountry, type BillingEnvironment, type BillingProvider, type BillingSummary, type PlanId } from "./catalog";
+import { hasSubscriptionAccess, normalizeCountry, quoteFor, type BillingEnvironment, type BillingProvider, type BillingSummary, type PlanId } from "./catalog";
 import { billingEnvironment, checkoutQuote, paddle, paddleClientToken, paystack, providerConfigured, checkoutProductId, siteOrigin } from "./providers.server";
 import { bestSubscription, bonusAlreadyClaimed, claimBillingOperation, createCheckout, findCheckout, findCustomer, listSubscriptions, projectMembership, readyCheckout, releaseBillingOperation, rememberCustomer } from "./store.server";
 
@@ -66,7 +66,7 @@ export async function billingSummary(userId: string, country?: string | null): P
   };
 }
 
-export async function startCheckout(userId: string, input: { id: string; plan: PlanId; country: string; acceptedTerms: true; recurringConsent: true }) {
+export async function startCheckout(userId: string, input: { id: string; plan: PlanId; country: string; acceptedTerms: true; recurringConsent: true; method?: "card" | "bank_transfer" | undefined }) {
   const environment = billingEnvironment();
   const profile = await getProfile(userId);
   if (!profile || profile.suspended) throw new BillingError("This account cannot start a subscription.", 403);
@@ -76,7 +76,12 @@ export async function startCheckout(userId: string, input: { id: string; plan: P
   catch (error) { throw new BillingError(error instanceof Error ? error.message : "Choose a valid country and plan.", error instanceof Error && /Weekly|Choose/.test(error.message) ? 400 : 503); }
   if (!providerConfigured(quote.provider, environment)) throw new BillingError("Checkout for your billing country is not ready yet.", 503);
   if ((await listSubscriptions(userId, environment)).some((sub) => hasSubscriptionAccess(sub))) throw new BillingError("You already have SyllaPlus. Use Manage billing to change or cancel your plan.", 409);
-  const priceId = checkoutProductId(quote, environment);
+  const transfer = input.method === "bank_transfer";
+  if (transfer) {
+    if (normalizeCountry(input.country) !== "NG" || !await bachsNgnTransferAvailable(environment)) throw new BillingError("Bank transfer is unavailable for this billing country.");
+    quote = { ...quote, ...quoteFor("NG", input.plan), provider: "bachs" as const };
+  }
+  const priceId = transfer ? `bank_transfer_NGN_${input.plan}` : checkoutProductId(quote, environment);
   if (!priceId) throw new BillingError("Checkout for this plan is being configured.", 503);
   let record = await createCheckout({ id: input.id, userId, environment, ...quote, priceId, providerReference: null, checkoutUrl: null, state: "creating" });
   if (record.checkoutUrl && record.state === "pending") return { id: record.id, url: record.checkoutUrl, environment };
@@ -95,7 +100,8 @@ export async function startCheckout(userId: string, input: { id: string; plan: P
   if (quote.provider === "bachs") {
     const email = await verifiedEmail(userId);
     const session = await bachs(environment).checkoutSessions.create({
-      product_cart: [{ product_id: priceId, quantity: 1 }], billing_currency: "USD", payment_method_types: ["USD_CARD"],
+      ...(transfer ? { pricing: { currency: "NGN", amount: (quote.amount / 100).toFixed(2), price_type: "fixed" as const } } : { product_cart: [{ product_id: priceId, quantity: 1 }] }),
+      billing_currency: transfer ? "NGN" : "USD", payment_method_types: transfer ? ["NGN_BANK_TRANSFER"] : ["USD_CARD"],
       customer: customerId ? { customer_id: customerId } : { email, name: "Syllaboss member" },
       ...(customerId ? {} : { customer_creation: "always" as const }),
       success_url: `${siteOrigin()}/billing/return?checkout=${encodeURIComponent(record.id)}`,
@@ -125,6 +131,7 @@ export async function managementUrl(userId: string) {
   const environment = billingEnvironment();
   const sub = await bestSubscription(userId, environment);
   if (!sub) throw new BillingError("You do not have a subscription to manage.", 404);
+  if (sub.providerId.startsWith("pass_")) throw new BillingError("This bank-transfer membership has no automatic renewal to manage.");
   if (sub.provider === "paddle") {
     const portal = await paddle(environment).customerPortalSessions.create(sub.customerId, [sub.providerId]);
     return portal.urls.general.overview;

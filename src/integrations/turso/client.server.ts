@@ -1024,10 +1024,11 @@ export async function requestWithdrawal(
 
   // Payout windows follow the operations team's Lagos calendar.
   const weekday = new Intl.DateTimeFormat("en-NG", { timeZone: "Africa/Lagos", weekday: "short" }).format(new Date());
-  if (weekday !== "Sat" && weekday !== "Sun") {
+  if (payoutMethod !== "giftcard" && weekday !== "Sat" && weekday !== "Sun") {
     throw new Error("Withdrawals are processed exclusively on weekends (Saturday - Sunday). Your balance remains safe and active.");
   }
 
+  if (!Number.isSafeInteger(points) || points <= 0) throw new Error("Choose a positive whole number of SyllaPoints.");
   if (payoutMethod !== "giftcard" && points < MINIMUM_WITHDRAWAL_POINTS) {
     throw new Error(`Minimum withdrawal is ${MINIMUM_WITHDRAWAL_POINTS.toLocaleString()} SyllaPoints`);
   }

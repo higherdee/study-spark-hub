@@ -1,5 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { battleRoundState, submitBattleRound } from "./battle-rounds.server";
+import { waitUntil } from "@vercel/functions";
+import { claimBillingOperation, releaseBillingOperation } from "./billing/store.server";
 import { turso } from "@/integrations/turso/client.server";
 import { membershipAccess } from "@/lib/membership/policy.server";
 import {
@@ -129,16 +132,16 @@ export const createStudyBattleServerFn = createServerFn({ method: "POST" })
       groupId: data.groupId,
       hostId: data.hostId,
       hostName,
-      hostAvatar: data.hostAvatar,
+      ...(data.hostAvatar !== undefined ? { hostAvatar: data.hostAvatar } : {}),
       title: data.title,
       mode: data.mode,
-      sourceSummary: data.sourceSummary,
-      timePerQuestion: data.timePerQuestion,
+      ...(data.sourceSummary !== undefined ? { sourceSummary: data.sourceSummary } : {}),
+      ...(data.timePerQuestion !== undefined ? { timePerQuestion: data.timePerQuestion } : {}),
       questionCount,
       questionsJson: JSON.stringify(questions),
       stakeAmount: data.stakeAmount || 0,
       fighterIds: data.fighterIds,
-      sponsoredIds: data.sponsoredIds,
+      ...(data.sponsoredIds !== undefined ? { sponsoredIds: data.sponsoredIds } : {}),
     });
 
     // 3. Drop Interactive Battle Lobby Card into the group chat stream
@@ -172,13 +175,26 @@ export const getBattleDetailsServerFn = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{
     battle: StudyBattle | null;
     participants: BattleParticipant[];
+    sync?: Awaited<ReturnType<typeof battleRoundState>>;
   }> => {
     const { requireCurrentUserId } = await import("@/lib/auth.server");
     const actor = await requireCurrentUserId();
-    const battle = await getStudyBattle(data.battleId);
-    const participants = await getBattleParticipants(data.battleId);
+    let battle = await getStudyBattle(data.battleId);
+    let participants = await getBattleParticipants(data.battleId);
     if (!battle) return { battle, participants: [] };
     await getStudyGroupMembersWithBalances(battle.group_id, actor);
+    const sync = await battleRoundState(data.battleId);
+    battle = (await getStudyBattle(data.battleId))!;
+    participants = await getBattleParticipants(data.battleId);
+    if (sync.round?.state === "finished" && battle.mode === "theory" && battle.status === "grading" && participants.some(p => p.user_id === actor && p.role === "fighter")) {
+      const scope = `battle-grading:${battle.id}`;
+      const lock = await claimBillingOperation(scope);
+      if (lock) {
+        waitUntil(gradeTheoryBattleServerFn({ data: { battleId: battle.id, groupId: battle.group_id } })
+          .catch(() => { console.error("Battle grading pending retry", data.battleId); })
+          .finally(() => releaseBillingOperation(scope, lock)));
+      }
+    }
     if (battle.status !== "completed") {
       const visible = participants.map(p => p.user_id === actor ? p : { ...p, answers_json: null });
       try {
@@ -189,15 +205,23 @@ export const getBattleDetailsServerFn = createServerFn({ method: "GET" })
           delete question.modelAnswer;
           delete question.explanation;
         }
-        return { battle: { ...battle, questions_json: JSON.stringify(questions) }, participants: visible };
-      } catch { return { battle: { ...battle, questions_json: "[]" }, participants: visible }; }
+        return { battle: { ...battle, questions_json: JSON.stringify(questions) }, participants: visible, sync };
+      } catch { return { battle: { ...battle, questions_json: "[]" }, participants: visible, sync }; }
     }
-    return { battle, participants };
+    return { battle, participants, sync };
   });
 
 /**
  * Join battle with atomic escrow stake lock
  */
+export const submitBattleRoundServerFn = createServerFn({ method: "POST" })
+  .validator((value: unknown) => z.object({ battleId: z.string().uuid(), index: z.number().int().min(0).max(49), answer: z.unknown() }).parse(value))
+  .handler(async ({ data }) => {
+    const { requireCurrentUserId } = await import("./auth.server");
+    const userId = await requireCurrentUserId();
+    return submitBattleRound(userId, data.battleId, data.index, data.answer);
+  });
+
 export const joinBattleEscrowServerFn = createServerFn({ method: "POST" })
   .validator((d: {
     battleId: string;
@@ -213,15 +237,18 @@ export const joinBattleEscrowServerFn = createServerFn({ method: "POST" })
     const joiningBattle = await getStudyBattle(data.battleId);
     if (!joiningBattle) throw new Error("Battle not found.");
     await getStudyGroupMembersWithBalances(joiningBattle.group_id, data.userId);
+    const clock = await battleRoundState(data.battleId);
+    if (clock.round) throw new Error("This match has started. Join the next battle.");
     const res = await joinBattleEscrowRecord({
       battleId: data.battleId,
       userId: data.userId,
       userName: data.userName,
-      avatarUrl: data.avatarUrl,
+      ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
       role: data.role || "fighter",
     });
 
     if (res.success) {
+      await battleRoundState(data.battleId);
       // Broadcast update to chat channel
       await broadcastChatMessage(data.groupId, {
         type: "battle_presence_update",
@@ -282,6 +309,7 @@ export const submitBattleAnswersServerFn = createServerFn({ method: "POST" })
     if (data.answersJson.length > 100_000) throw new Error("Submission is too large.");
     const battle = await getStudyBattle(data.battleId);
     if (!battle || battle.status === "completed") throw new Error("Battle is not accepting submissions.");
+    if ((await battleRoundState(data.battleId)).round) throw new Error("Submit each answer during its synchronized round.");
     let score = 0;
     if (battle.mode === "mcq") {
       const questions = JSON.parse(battle.questions_json);
@@ -384,7 +412,12 @@ export const gradeTheoryBattleServerFn = createServerFn({ method: "POST" })
     const actor = await requireCurrentUserId();
     const battle = await getStudyBattle(data.battleId);
     if (!battle) return { success: false, winners: [] };
-    if (battle.host_id !== actor) throw new Error("Only the host can grade this battle.");
+    if (battle.host_id !== actor) {
+      await getStudyGroupMembersWithBalances(battle.group_id, actor);
+      const round = await battleRoundState(data.battleId);
+      const fighter = (await getBattleParticipants(data.battleId)).some(p => p.user_id === actor && p.role === "fighter");
+      if (round.round?.state !== "finished" || !fighter) throw new Error("Only the host can grade this battle before all rounds finish.");
+    }
     if (battle.status === "completed" || battle.status === "cancelled") return { success: false, winners: [] };
 
     const participants = await getBattleParticipants(data.battleId);

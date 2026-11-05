@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { waitUntil } from "@vercel/functions";
+import { bachsNgnTransferAvailable } from "@/lib/billing/bachs.server";
+import { BILLING_PRICES } from "@/lib/billing/catalog";
 import { PLAN_IDS, normalizeCountry } from "@/lib/billing/catalog";
 import { billingEnvironment, checkoutProductId, checkoutQuote, providerConfigured } from "@/lib/billing/providers.server";
 import { BillingError, billingIdentity, billingSummary, cancelRenewal, managementUrl, publicCheckoutConfiguration, startCheckout } from "@/lib/billing/service.server";
@@ -23,7 +25,8 @@ export const Route = createFileRoute("/api/billing")({
               return [{ ...quote, ready: process.env["BILLING_ENABLED"] === "true" && Boolean(checkoutProductId(quote)) && providerConfigured(quote.provider), bonusDays: 7 }];
             } catch { return []; }
           }) : [];
-          return json({ ...configuration, country, plans });
+          const bankTransfer = country === "NG" && await bachsNgnTransferAvailable(configuration.environment);
+          return json({ ...configuration, country, plans, bankTransfer, transferPrices: bankTransfer ? BILLING_PRICES.regional : null });
         }
         const userId = await billingIdentity(request);
         const reference = url.searchParams.get("checkout");
@@ -63,7 +66,7 @@ export const Route = createFileRoute("/api/billing")({
           }
         }
         if (input?.action === "checkout") {
-          const parsed = z.object({ action: z.literal("checkout"), id: z.string().uuid(), plan: z.enum(PLAN_IDS), country: z.string().length(2), acceptedTerms: z.literal(true), recurringConsent: z.literal(true) }).strict().safeParse(input);
+          const parsed = z.object({ action: z.literal("checkout"), id: z.string().uuid(), plan: z.enum(PLAN_IDS), country: z.string().length(2), method: z.enum(["card", "bank_transfer"]).optional(), acceptedTerms: z.literal(true), recurringConsent: z.literal(true) }).strict().safeParse(input);
           if (!parsed.success) return json({ error: "Choose your country and plan, and agree to the payment terms before continuing." }, 400);
           return json(await startCheckout(userId, parsed.data));
         }

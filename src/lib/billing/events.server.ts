@@ -44,7 +44,24 @@ export async function verifyBachsCheckout(reference: string, environment: Billin
   const paymentId = session.charge?.payment_id;
   if (!paymentId) throw new Error("Bachs checkout is awaiting payment.");
   const payment = await bachs(environment).payments.get(paymentId);
-  if (payment.status !== "succeeded" || payment.checkout_id !== reference || payment.currency !== record.currency || bachsUsdMinor(payment.amount) !== record.amount || !payment.subscription_id) throw new Error("Bachs initial subscription payment is not verified.");
+  if (payment.status !== "succeeded" || payment.checkout_id !== reference || payment.currency !== record.currency || bachsUsdMinor(payment.amount) !== record.amount) throw new Error("Bachs payment is not verified.");
+  if (record.priceId === `bank_transfer_NGN_${record.plan}` && record.currency === "NGN") {
+    if (payment.subscription_id || !session.customer?.id) throw new Error("Unexpected bank-transfer checkout.");
+    const paidAt = iso(payment.completed_at) || iso(session.completed_at);
+    if (!paidAt) throw new Error("Verified payment completion time is missing.");
+    const customerId = session.customer.id;
+    await rememberCustomer("bachs", environment, record.userId, customerId);
+    const passId = `pass_${record.id}`;
+    const bonus = await reserveFirstRenewalBonus(record.userId, "bachs", environment, passId, firstRenewalDate(paidAt, record.plan, 7));
+    const periodEnd = bonus?.target || firstRenewalDate(paidAt, record.plan, 0);
+    await saveSubscription({ provider: "bachs", environment, providerId: passId, customerId, userId: record.userId, plan: record.plan, tier: record.tier,
+      currency: "NGN", amount: record.amount, status: "active", periodStart: paidAt, periodEnd, graceEnd: null, cancelAt: periodEnd, occurredAt: paidAt });
+    await linkCheckoutSubscription(record.id, passId);
+    if (bonus) await completeFirstRenewalBonus(record.userId, environment, passId);
+    await markCheckoutPaid(record.id);
+    return;
+  }
+  if (!payment.subscription_id) throw new Error("Bachs initial subscription payment is not verified.");
   await synchronizeBachs(payment.subscription_id, environment);
 }
 
@@ -235,6 +252,7 @@ async function processEvent(provider: BillingProvider, environment: BillingEnvir
     if (paymentId) {
       const payment = await bachs(environment).payments.get(String(paymentId));
       if (payment.subscription_id) return synchronizeBachs(payment.subscription_id, environment);
+      if (payment.checkout_id) return verifyBachsCheckout(payment.checkout_id, environment);
     }
     return;
   }

@@ -12,13 +12,14 @@ const names = new Intl.DisplayNames(["en"], { type: "region" });
 const countries = [...new Set(COUNTRY_CODES)].map((code) => ({ code, name: names.of(code) || code })).sort((a, b) => a.name.localeCompare(b.name));
 const planNames: Record<PlanId, string> = { weekly: "Weekly", monthly: "Monthly", yearly: "Yearly" };
 const intervals: Record<PlanId, string> = { weekly: "week", monthly: "month", yearly: "year" };
-interface Catalog { environment: "sandbox" | "live"; country: string | null; plans: { plan: PlanId; amount: number; currency: string; tier: string; ready: boolean; approximateAmount?: number | null; approximateCurrency?: string | null }[] }
+interface Catalog { bankTransfer?: boolean; transferPrices?: Record<PlanId, number>; environment: "sandbox" | "live"; country: string | null; plans: { plan: PlanId; amount: number; currency: string; tier: string; ready: boolean; approximateAmount?: number | null; approximateCurrency?: string | null }[] }
 
 export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess?: () => void }) {
   const { user, getToken } = useAuth();
   const queryClient = useQueryClient();
   const [country, setCountry] = useState("");
   const [selected, setSelected] = useState<PlanId>("monthly");
+  const [method, setMethod] = useState<"card" | "bank_transfer">("card");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -54,10 +55,12 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
       void queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
     }
   }, [open, summary.data, user?.id, queryClient]);
-  useEffect(() => { checkoutId.current = null; setConsent(false); setError(""); }, [country, selected]);
+  useEffect(() => { checkoutId.current = null; setConsent(false); setError(""); }, [country, selected, method]);
+  useEffect(() => { if (!catalog.data?.bankTransfer) setMethod("card"); }, [catalog.data?.bankTransfer]);
 
   const current = summary.data?.subscription;
-  const quote = catalog.data?.plans.find((plan) => plan.plan === selected);
+  const cardQuote = catalog.data?.plans.find((plan) => plan.plan === selected);
+  const quote = method === "bank_transfer" && cardQuote && catalog.data?.transferPrices ? { ...cardQuote, currency: "NGN", amount: catalog.data.transferPrices[selected] } : cardQuote;
   const bonusDays = summary.data?.firstRenewalBonusDays ?? 7;
   const sandbox = catalog.data?.environment === "sandbox";
 
@@ -66,7 +69,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
     setBusy(true); setError("");
     try {
       checkoutId.current ||= crypto.randomUUID();
-      const result = await request<{ id: string; url: string }>("/api/billing", { action: "checkout", id: checkoutId.current, country, plan: selected, acceptedTerms: true, recurringConsent: true });
+      const result = await request<{ id: string; url: string }>("/api/billing", { action: "checkout", id: checkoutId.current, country, method, plan: selected, acceptedTerms: true, recurringConsent: true });
       sessionStorage.setItem("syllaboss-last-checkout", result.id);
       window.location.assign(result.url);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Checkout could not open. Please retry."); }
@@ -106,9 +109,11 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
             return <button key={plan} type="button" aria-pressed={selected === plan} onClick={() => setSelected(plan)} className={`min-h-28 rounded-2xl border p-3 text-left transition-colors ${selected === plan ? "border-forest bg-sage/40" : "border-border bg-background hover:bg-muted"}`}><span className="block text-xs text-muted-foreground">{planNames[plan]}</span><strong className="mt-2 block text-base sm:text-lg">{formatPrice(offer.amount, offer.currency)}</strong><span className="block text-xs text-muted-foreground">per {intervals[plan]}</span></button>;
           })}
         </div>}
-        {!!quote && <p className="text-xs leading-relaxed text-muted-foreground">{formatPrice(quote.amount, quote.currency)} is charged when you subscribe.{bonusDays ? " Seven extra days are added before your first renewal, once per account." : ""} After that, renewal is every {intervals[selected]}. Taxes, if any, are shown before payment. Cancel renewal anytime.</p>}
+        {catalog.data?.bankTransfer && <div className="flex gap-2"><Button variant={method === "card" ? "default" : "outline"} onClick={() => setMethod("card")}>Card · automatic renewal</Button><Button variant={method === "bank_transfer" ? "default" : "outline"} onClick={() => setMethod("bank_transfer")}>Bank transfer</Button></div>}
+        {method === "bank_transfer" && <p className="text-sm">Pay in naira for the selected period. Bank transfers renew manually. Your membership starts after Bachs confirms payment.</p>}
+        {!!quote && <p className="text-xs leading-relaxed text-muted-foreground">{formatPrice(quote.amount, quote.currency)} is charged when you subscribe.{bonusDays ? " Seven extra days are added before your first renewal, once per account." : ""} {method === "card" ? `After that, renewal is every ${intervals[selected]}.` : "Make another payment when your membership expires."} Taxes, if any, are shown before payment. Cancel renewal anytime.</p>}
         {quote?.tier === "regional" && country !== "NG" && <p className="text-xs leading-relaxed text-muted-foreground">{quote.approximateAmount != null && quote.approximateCurrency && quote.approximateCurrency !== quote.currency ? `Approximately ${formatPrice(quote.approximateAmount, quote.approximateCurrency)} in your local currency. ` : ""}Regional pricing is based on the naira plan. Your actual payment currency is {quote.currency}; your bank’s exchange rate may differ. <a className="underline" href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Exchange-rate source</a></p>}
-        <label className="flex items-start gap-3 rounded-xl bg-muted/40 p-3 text-sm leading-relaxed"><Checkbox checked={consent} onCheckedChange={(value) => setConsent(value === true)} className="mt-0.5" /><span>I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer" className="underline">Privacy Policy</a>, the payment today, and recurring charges at the displayed interval.</span></label>
+        <label className="flex items-start gap-3 rounded-xl bg-muted/40 p-3 text-sm leading-relaxed"><Checkbox checked={consent} onCheckedChange={(value) => setConsent(value === true)} className="mt-0.5" /><span>I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer" className="underline">Privacy Policy</a>, the payment today{method === "card" ? ", and recurring charges at the displayed interval." : ". Bank-transfer access expires at the end of the paid period."}</span></label>
         {!user ? <Button asChild className="min-h-12 w-full"><a href="/auth?mode=signin">Sign in to subscribe <ArrowRight className="ml-2 size-4" /></a></Button> : <Button className="min-h-12 w-full" disabled={busy || !consent || !quote?.ready} onClick={() => void checkout()}>{busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}Subscribe{quote ? ` — ${formatPrice(quote.amount, quote.currency)} today` : ""}<ArrowRight className="ml-2 size-4" /></Button>}
         {quote && !quote.ready && <p className="text-sm text-muted-foreground">Checkout for this region is being configured. No payment can be taken yet.</p>}
       </>}
@@ -120,7 +125,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
           setBusy(true); setError(""); setGiftNotice("");
           try {
             giftRequest.current ||= crypto.randomUUID();
-            const result = await request("/api/billing", { action: "redeem-gift", code: giftCode.trim(), requestId: giftRequest.current });
+            const result = await request<{ reward: { value: number } }>("/api/billing", { action: "redeem-gift", code: giftCode.trim(), requestId: giftRequest.current });
             setGiftNotice(`${result.reward.value} days of SyllaPlus added.`);
             setGiftCode(""); giftRequest.current = "";
             await summary.refetch();

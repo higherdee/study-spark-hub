@@ -12,6 +12,7 @@ export interface QuizQuestion {
   modelAnswer: string;
   explanation: string;
   marks?: number;
+  estimatedSeconds?: number;
 }
 
 export interface Flashcard {
@@ -180,7 +181,7 @@ Output ONLY JSON:
  */
 export async function generatePracticeQuestions(materialTitle: string, contextText: string, mode: "objective" | "theory", count = 5, fetcher?: typeof fetch, groqModel?: string): Promise<QuizQuestion[]> {
   if (!Number.isInteger(count) || count < 1 || count > 50) throw new Error("Choose between 1 and 50 questions.");
-  const prompt = `Create exactly ${count} useful university practice questions about ${materialTitle}. Use this source when supplied:\n${contextText.slice(0, 16000)}\nMode: ${mode}. Return ONLY a JSON array. Each item must have question, modelAnswer, explanation${mode === "objective" ? ", four string options, and correctOptionIndex (integer 0..3)" : ""}. Keep every item concise and complete. Do not invent sources, use generic stock questions, or create placeholder answers.`;
+  const prompt = `Create exactly ${count} useful university practice questions about ${materialTitle}. Use this source when supplied:\n${contextText.slice(0, 16000)}\nMode: ${mode}. Return ONLY a JSON array. Each item must have question, modelAnswer, explanation, estimatedSeconds (integer 10..600 estimating a student solving it)${mode === "objective" ? ", four string options, and correctOptionIndex (integer 0..3)" : ""}. Keep every item concise and complete. Do not invent sources, use generic stock questions, or create placeholder answers.`;
   const raw = await askGeminiAI(prompt, { temperature: 0.25, ...(fetcher ? { fetcher } : {}), ...(groqModel ? { groqModel } : {}) });
   const items = parseStudyArray(raw).filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
   const questions: QuizQuestion[] = [];
@@ -189,7 +190,7 @@ export async function generatePracticeQuestions(materialTitle: string, contextTe
     const options = Array.isArray(item["options"]) ? item["options"].filter((option): option is string => typeof option === "string" && !!option.trim()).slice(0, 4) : [];
     const answer = Number(item["correctOptionIndex"]);
     if (mode === "objective" && (options.length !== 4 || !Number.isInteger(answer) || answer < 0 || answer > 3)) continue;
-    questions.push({ id: `q_${questions.length + 1}`, type: mode, question: item["question"], modelAnswer: item["modelAnswer"], explanation: typeof item["explanation"] === "string" ? item["explanation"] : item["modelAnswer"], ...(mode === "objective" ? { options, correctOptionIndex: answer } : {}) });
+    questions.push({ id: `q_${questions.length + 1}`, type: mode, estimatedSeconds: Math.max(10, Math.min(600, Math.round(Number(item["estimatedSeconds"]) || (mode === "theory" ? 180 : 30)))), question: item["question"], modelAnswer: item["modelAnswer"], explanation: typeof item["explanation"] === "string" ? item["explanation"] : item["modelAnswer"], ...(mode === "objective" ? { options, correctOptionIndex: answer } : {}) });
   }
   if (questions.length < count) throw new Error("Boss AI could not produce a complete set of valid questions. Please try again.");
   return questions.slice(0, count);

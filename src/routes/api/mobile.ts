@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { verifyToken } from "@clerk/backend";
 import { waitUntil } from "@vercel/functions";
-import { giftCashoutInput, giftCashoutOptions, requestGiftCashout } from "@/lib/gift-cashout.server";
+import { giftCashoutInput, giftCashoutOptions, requestGiftCashout, membershipGiftInput, membershipGiftQuotes, purchaseMembershipGift } from "@/lib/gift-cashout.server";
 import { z } from "zod";
 import { CLERK_SECRET_KEY } from "@/integrations/clerk";
 import { turso, getMaterials, getProfile, getLeaderboard, upsertProfile } from "@/integrations/turso/client.server";
@@ -81,7 +81,10 @@ export const Route = createFileRoute("/api/mobile")({
         }
         const userId = await identity(request);
         if (resource === "membership") return json(await membershipSnapshot(userId));
-        if (resource === "gift-cashout") return json({ options: giftCashoutOptions(request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry")) });
+        if (resource === "gift-cashout") {
+          const country = request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry");
+          return json({ options: giftCashoutOptions(country), membershipGifts: membershipGiftQuotes(country) });
+        }
         if (resource === "source") { const {loadDocumentContext}=await import("@/lib/document-study.server"); const doc=await loadDocumentContext(userId,(url.searchParams.get("id")||"").slice(0,100)); return json({id:doc.material.id,title:doc.material.title,pages:doc.pages}); }
         if (resource === "battle-members" || resource === "battles") { const target=(url.searchParams.get("target")||"").slice(0,100); const {getStudyGroupMembersWithBalances}=await import("@/integrations/turso/community.server"); const members=await getStudyGroupMembersWithBalances(target,userId); if(resource==="battle-members")return json({members}); return json({battles:(await turso.execute({sql:"SELECT b.id,b.title,b.mode,b.status,b.question_count,b.total_pot,COALESCE('@' || NULLIF(p.username,''), 'Student') AS host_name FROM study_battles b LEFT JOIN profiles p ON p.id=b.host_id WHERE b.group_id=? ORDER BY b.created_at DESC LIMIT 20",args:[target]})).rows}); }
         if (resource === "battle") {const {getBattleDetailsServerFn}=await import("@/lib/battle.functions");return json(await getBattleDetailsServerFn({data:{battleId:(url.searchParams.get("id")||"").slice(0,100)}}));}
@@ -134,6 +137,13 @@ export const Route = createFileRoute("/api/mobile")({
       let userId: string;
       try { userId = await identity(request); } catch { return json({ error: "Sign in to continue." }, 401); }
       const body = await request.json().catch(() => null);
+      if (body?.action === "membership-gift") {
+        const input = membershipGiftInput.safeParse(body);
+        if (!input.success) return json({ error: "Choose a valid SyllaPlus gift." }, 400);
+        try {
+          return json({ gift: await purchaseMembershipGift(userId, request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry"), input.data) });
+        } catch (error) { return json({ error: error instanceof Error ? error.message : "Gift issuance failed." }, 400); }
+      }
       if (body?.action === "gift-cashout") {
         const input = giftCashoutInput.safeParse(body);
         if (!input.success) return json({ error: "Choose a gift card and enter a delivery email." }, 400);
@@ -171,6 +181,7 @@ export const Route = createFileRoute("/api/mobile")({
             const input=z.object({target:z.string().min(1).max(100),title:z.string().trim().min(3).max(200),mode:z.enum(["mcq","theory"]),count:z.number().int().min(1).max(50),fighterIds:z.array(z.string().min(1).max(100)).max(20),stake:z.number().int().min(0).max(10000).default(0),sourceMaterialId:z.string().min(1).max(100).optional()}).parse(body);
             return json(await actions.createStudyBattleServerFn({data:{groupId:input.target,hostId:userId,hostName:name,title:input.title,mode:input.mode,questionCount:input.count,fighterIds:input.fighterIds,stakeAmount:input.stake,...(input.sourceMaterialId?{sourceMaterialId:input.sourceMaterialId}:{})}}));
           }
+          if(body.action==="battle-round") return json(await actions.submitBattleRoundServerFn({ data: { battleId: body.battleId, index: body.index, answer: body.answer } }));
           const input=z.object({battleId:z.string().uuid(),target:z.string().min(1).max(100),answersJson:z.string().max(100000).optional()}).parse(body);
           const {getStudyBattle}=await import("@/integrations/turso/community.server");const battle=await getStudyBattle(input.battleId);if(!battle||battle.group_id!==input.target)throw new Error("Battle not found in this conversation.");
           if(body.action==="battle-join")return json(await actions.joinBattleEscrowServerFn({data:{battleId:input.battleId,groupId:input.target,userId,userName:name}}));

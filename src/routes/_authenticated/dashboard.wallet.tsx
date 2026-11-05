@@ -20,6 +20,7 @@ import { useState, useEffect, useMemo, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/app-shell";
+import { MembershipGifts } from "@/components/wallet/membership-gifts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -314,6 +315,7 @@ function WalletPage() {
 
   return (
     <div className="stagger space-y-6">
+      <MembershipGifts points={points} onIssued={() => { void qc.invalidateQueries({ queryKey: ["profile"] }); void qc.invalidateQueries({ queryKey: ["ledger"] }); }} />
       {/* Location-Locked Single-Currency Balance Banner */}
       <section className="relative overflow-hidden rounded-3xl bg-forest p-6 text-white shadow-[var(--elev-3)] sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
