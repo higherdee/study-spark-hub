@@ -6,13 +6,17 @@ vi.mock("@/integrations/turso/client.server", async () => {
 const state = vi.hoisted(() => ({ battle: { id: "match", status: "lobby", mode: "mcq", time_per_question: 10, questions_json: '[{"options":["a","b"],"correctOptionIndex":1,"estimatedSeconds":10},{"options":["a","b"],"correctOptionIndex":0,"estimatedSeconds":10}]' }, submissions: [] as Array<{ userId: string; score: number; answersJson: string }> }));
 vi.mock("@/integrations/turso/community.server", () => ({
   getStudyBattle: async () => state.battle,
-  getBattleParticipants: async () => ["a", "b"].map(id => ({ user_id: id, role: "fighter", status: state.submissions.some(s => s.userId === id) ? "submitted" : "joined", score: state.submissions.find(s => s.userId === id)?.score || 0 })),
+  getBattleParticipants: async () => ["a", "b"].map(id => ({ user_id: id, role: "fighter", status: state.submissions.some(s => s.userId === id) ? "submitted" : "joined", score: state.submissions.find(s => s.userId === id)?.score || 0, answers_json: state.submissions.find(s => s.userId === id)?.answersJson || null })),
   submitBattleAnswersRecord: async (submission: { userId: string; score: number; answersJson: string }) => { state.submissions.push(submission); },
   concludeBattleRecord: vi.fn(async () => ({ success: true })),
 }));
 import { turso } from "@/integrations/turso/client.server";
-import { battleRoundState, submitBattleRound } from "@/lib/battle-rounds.server";
+import { battleRoundState, submitBattleRound, gradeClosedBattleRounds } from "@/lib/battle-rounds.server";
+vi.mock("@/lib/membership/ai.server", () => ({ withAiAllowance: async (_id: string, run: () => Promise<unknown>) => run(), budgetedAiFetch: vi.fn() }));
+vi.mock("@/lib/academic-ai", () => ({ gradeTheoryAnswer: vi.fn(async () => ({ score: 8, feedback: "Correct method, check units." })) }));
+import { gradeTheoryAnswer } from "@/lib/academic-ai";
 import { currentBattleRound } from "@/lib/battle-clock";
+import { concludeBattleRecord } from "@/integrations/turso/community.server";
 beforeAll(async () => { await turso.execute("CREATE TABLE study_battles(id TEXT,status TEXT)"); await battleRoundState("match"); });
 beforeEach(async () => { state.battle.status = "lobby"; state.battle.mode = "mcq"; state.submissions = []; await turso.executeMultiple("DELETE FROM battle_round_clocks; DELETE FROM battle_round_answers; DELETE FROM battle_round_windows; DELETE FROM battle_round_grades;"); });
 it("keeps all clients on one immutable start time and closes at exact deadlines", async () => {
@@ -66,11 +70,27 @@ it("keeps a theory round in review until marking finishes and exposes each playe
   expect(waiting.round).toMatchObject({ state: "review", index: 0, revealUntil: null });
   expect(waiting.totals.every(t => t.pending === 1)).toBe(true);
   await turso.batch([
-    { sql: "INSERT INTO battle_round_grades VALUES(?,?,?,?,?,?)", args: ["match", "a", 0, 88, "Good derivation", now + 6000] },
-    { sql: "INSERT INTO battle_round_grades VALUES(?,?,?,?,?,?)", args: ["match", "b", 0, 70, "Missing units", now + 6000] },
+    { sql: "INSERT INTO battle_round_grades VALUES(?,?,?,?,?,?)", args: ["match", "a", 0, 8.8, "Good derivation", now + 6000] },
+    { sql: "INSERT INTO battle_round_grades VALUES(?,?,?,?,?,?)", args: ["match", "b", 0, 7, "Missing units", now + 6000] },
   ], "write");
   const marked = await battleRoundState("match", now + 6001);
-  expect(marked.results[0]?.players.map(p => p.score)).toEqual([88, 70]);
+  expect(marked.results[0]?.players.map(p => p.score)).toEqual([8.8, 7]);
   expect(marked.round).toMatchObject({ state: "review", revealUntil: now + 9000 });
   expect((await battleRoundState("match", now + 9000)).round).toMatchObject({ state: "playing", index: 1 });
+  await battleRoundState("match", now + 25000);
+  expect(concludeBattleRecord).toHaveBeenLastCalledWith(expect.objectContaining({ gradedAnswers: expect.arrayContaining([expect.objectContaining({ userId: "a", score: 8.8 }), expect.objectContaining({ userId: "b", score: 7 })]) }));
+});
+it("marks both solutions once and reuses saved assessments on retries", async () => {
+  state.battle.mode = "theory";
+  const now = Date.now();
+  await battleRoundState("match", now - 6000);
+  await submitBattleRound("a", "match", 0, { text: "A complete derivation" });
+  await submitBattleRound("b", "match", 0, { text: "Another derivation" });
+  vi.mocked(gradeTheoryAnswer).mockClear();
+  await gradeClosedBattleRounds("match");
+  await gradeClosedBattleRounds("match");
+  expect(gradeTheoryAnswer).toHaveBeenCalledTimes(2);
+  const result = await battleRoundState("match");
+  expect(result.results[0]?.players.map(p => p.score)).toEqual([8, 8]);
+  expect(result.totals.every(t => t.pending === 0)).toBe(true);
 });
