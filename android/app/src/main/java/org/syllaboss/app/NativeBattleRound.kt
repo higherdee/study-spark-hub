@@ -25,12 +25,18 @@ import org.json.JSONObject
     var remaining by remember { mutableIntStateOf(0) }
     val players = detail.objects("participants")
     val self = players.find { it.optString("user_id") == userId }
+    val spectator = self?.optString("role") != "fighter" || self.optString("status") !in listOf("joined", "submitted")
+    if (spectator) Text("Watching live · answers stay hidden until the round closes", color = MaterialTheme.colorScheme.primary)
+    sync.objects("totals").forEach { total ->
+        val player = players.find { it.optString("user_id") == total.optString("userId") }
+        Text("${player?.optString("user_name") ?: "Player"} · ${total.optDouble("score")} pts${if(total.optInt("pending") > 0) " · marking" else ""}", style = MaterialTheme.typography.titleMedium)
+    }
     val answered = sync.optJSONArray("answeredBy")?.let { array -> (0 until array.length()).map { array.optString(it) } }.orEmpty()
     LaunchedEffect(sync) {
         val fetched = android.os.SystemClock.elapsedRealtime()
         while (true) {
             val now = sync.optLong("serverNow") + android.os.SystemClock.elapsedRealtime() - fetched
-            val end = if (round?.optString("state") == "playing") round.optLong("closesAt") else round?.optLong("startsAt") ?: now
+            val end = when (round?.optString("state")) { "playing" -> round.optLong("closesAt"); "review" -> if(round.isNull("revealUntil")) now else round.optLong("revealUntil"); else -> round?.optLong("startsAt") ?: now }
             remaining = ((end - now + 999) / 1000).coerceAtLeast(0).toInt()
             kotlinx.coroutines.delay(200)
         }
@@ -39,11 +45,28 @@ import org.json.JSONObject
         null -> Text("Waiting for an opponent. Both players share the same question clock.")
         "waiting" -> Text("Starting in $remaining…", style = MaterialTheme.typography.headlineLarge)
         "finished" -> Text("All rounds closed. Scores are being finalized.")
+        "review" -> {
+            Text("Round ${index + 1} results", style = MaterialTheme.typography.headlineSmall)
+            val result = sync.objects("results").find { it.optInt("index") == index }
+            result?.objects("players")?.forEach { score ->
+                val player = players.find { it.optString("user_id") == score.optString("userId") }
+                Text("${player?.optString("user_name") ?: "Player"} · ${if(score.isNull("score")) "Marking…" else "+${score.optDouble("score")} pts"}")
+                NativeAnswer(score.optString("feedback"))
+            }
+            val question = org.json.JSONArray(battle.getString("questions_json")).optJSONObject(index)
+            NativeAnswer(question?.optString("question").orEmpty())
+            if (result != null && !result.isNull("correctOptionIndex")) {
+                val answer = question?.optJSONArray("options")?.optString(result.optInt("correctOptionIndex")).orEmpty()
+                NativeAnswer("Correct answer: $answer")
+            }
+            result?.optString("explanation")?.takeIf { it.isNotBlank() }?.let { NativeAnswer(it) }
+            Text(if (round.isNull("revealUntil")) "Next question starts after both solutions are marked." else "Next round in ${remaining}s…")
+        }
         "playing" -> {
             val question = org.json.JSONArray(battle.getString("questions_json")).optJSONObject(index)
             val canAnswer = !busy && !locked && userId !in answered && remaining > 0 && self?.optString("role") == "fighter" && self.optString("status") == "joined"
             Text("Question ${index + 1} · ${remaining}s", style = MaterialTheme.typography.titleMedium)
-            Text(question?.optString("question").orEmpty(), style = MaterialTheme.typography.titleLarge)
+            NativeAnswer(question?.optString("question").orEmpty())
             fun submit(answer: Any) {
                 busy = true; error = ""
                 scope.launch {
@@ -56,8 +79,8 @@ import org.json.JSONObject
             }
             if (battle.optString("mode") == "mcq") {
                 val options = question?.optJSONArray("options")
-                for (i in 0 until (options?.length() ?: 0)) OutlinedButton(onClick = { submit(i) }, enabled = canAnswer, modifier = Modifier.fillMaxWidth()) { Text(options!!.optString(i)) }
-            } else {
+                for (i in 0 until (options?.length() ?: 0)) OutlinedButton(onClick = { submit(i) }, enabled = canAnswer, modifier = Modifier.fillMaxWidth()) { NativeAnswer(options!!.optString(i), selectable = false) }
+            } else if (!spectator) {
                 OutlinedTextField(text, { text = it.take(6000) }, enabled = canAnswer, label = { Text("Show your working") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
                 SolutionPhotoPicker(photo, canAnswer, { photo = it }, { error = it })
                 Button(enabled = canAnswer && (text.isNotBlank() || photo != null), onClick = {

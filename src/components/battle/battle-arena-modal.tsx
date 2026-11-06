@@ -52,6 +52,7 @@ import {
 import { transcribeVoiceAudioServerFn } from "@/lib/ai/study-assistant.functions";
 import { battleAudio } from "@/lib/battle-audio";
 import { SynchronizedRound } from "./synchronized-round";
+import { AiMessageRenderer } from "@/components/ai-message-renderer";
 
 interface BattleArenaModalProps {
   isOpen: boolean;
@@ -648,9 +649,7 @@ export function BattleArenaModal({
                           <span className="font-mono text-xs text-muted-foreground font-semibold mt-0.5">
                             Q{idx + 1}.
                           </span>
-                          <p className="font-display font-medium text-ink text-sm sm:text-base leading-relaxed">
-                            {q.question}
-                          </p>
+                          <AiMessageRenderer content={q.question} className="font-medium text-sm leading-relaxed" />
                         </div>
 
                         {battle.mode === "mcq" ? (
@@ -667,14 +666,10 @@ export function BattleArenaModal({
                                 <>
                                   <div className="flex items-center justify-between">
                                     <span className="text-muted-foreground font-medium">Certified Answer:</span>
-                                    <span className="font-semibold text-forest">
-                                      {q.options ? `Option ${String.fromCharCode(65 + correctIdx)}: ${optionText}` : optionText}
-                                    </span>
+                                    <AiMessageRenderer content={q.options ? `Option ${String.fromCharCode(65 + correctIdx)}: ${optionText}` : optionText} className="font-semibold text-forest" />
                                   </div>
                                   {q.explanation && (
-                                    <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/40">
-                                      <span className="font-medium text-ink">Pedagogical Derivation: </span>{q.explanation}
-                                    </p>
+                                    <AiMessageRenderer content={q.explanation} className="text-sm pt-1 border-t border-border/40" />
                                   )}
                                 </>
                               );
@@ -683,9 +678,7 @@ export function BattleArenaModal({
                         ) : (
                           <div className="rounded-xl border border-border bg-card p-3.5 text-xs text-muted-foreground space-y-1">
                             <span className="eyebrow block text-brass-ink">Model Derivation & Grading Rubric</span>
-                            <p className="text-ink leading-relaxed">
-                              {q.modelAnswer || q.explanation || "Official theoretical derivation rubric verified by academic ledger."}
-                            </p>
+                            <AiMessageRenderer content={q.modelAnswer || q.explanation || ""} />
                           </div>
                         )}
                       </div>
@@ -738,9 +731,7 @@ export function BattleArenaModal({
                       </Badge>
                     )}
                   </div>
-                  <h3 className="font-display text-xl sm:text-2xl font-normal text-ink leading-relaxed">
-                    {currentQ?.question || "Exam Question Prompt"}
-                  </h3>
+                  <AiMessageRenderer content={currentQ?.question || "Exam Question Prompt"} className="text-xl leading-relaxed" />
                 </div>
 
                 {/* MCQ Choices (Tactile Cards) */}
@@ -772,7 +763,7 @@ export function BattleArenaModal({
                             >
                               {String.fromCharCode(65 + optIdx)}
                             </span>
-                            <span className="leading-snug truncate">{opt}</span>
+                            <AiMessageRenderer content={opt} className="leading-snug text-inherit [&_p]:text-inherit" />
                           </div>
 
                           {isSelected && (

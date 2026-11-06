@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { battleRoundState, submitBattleRound } from "./battle-rounds.server";
+import { battleRoundState, submitBattleRound, gradeClosedBattleRounds } from "./battle-rounds.server";
 import { waitUntil } from "@vercel/functions";
 import { claimBillingOperation, releaseBillingOperation } from "./billing/store.server";
 import { turso } from "@/integrations/turso/client.server";
@@ -186,6 +186,13 @@ export const getBattleDetailsServerFn = createServerFn({ method: "GET" })
     const sync = await battleRoundState(data.battleId);
     battle = (await getStudyBattle(data.battleId))!;
     participants = await getBattleParticipants(data.battleId);
+    if (sync.round?.state === "review" && battle.mode === "theory" && sync.totals.some(t => t.pending > 0)) {
+      const scope = `battle-round-grading:${battle.id}:${sync.round.index}`;
+      const lock = await claimBillingOperation(scope);
+      if (lock) waitUntil(gradeClosedBattleRounds(battle.id).catch(() => {
+        console.error("Battle round grading pending retry", battle!.id);
+      }).finally(() => releaseBillingOperation(scope, lock)));
+    }
     if (sync.round?.state === "finished" && battle.mode === "theory" && battle.status === "grading" && participants.some(p => p.user_id === actor && p.role === "fighter")) {
       const scope = `battle-grading:${battle.id}`;
       const lock = await claimBillingOperation(scope);
@@ -238,7 +245,8 @@ export const joinBattleEscrowServerFn = createServerFn({ method: "POST" })
     if (!joiningBattle) throw new Error("Battle not found.");
     await getStudyGroupMembersWithBalances(joiningBattle.group_id, data.userId);
     const clock = await battleRoundState(data.battleId);
-    if (clock.round) throw new Error("This match has started. Join the next battle.");
+    if (clock.round && data.role !== "spectator") throw new Error("This match has started. You can watch it or join the next battle.");
+    if (clock.round && (await getBattleParticipants(data.battleId)).some(p => p.user_id === data.userId && p.role === "fighter" && ["joined", "submitted"].includes(p.status))) throw new Error("Players cannot switch to spectators during a match.");
     const res = await joinBattleEscrowRecord({
       battleId: data.battleId,
       userId: data.userId,

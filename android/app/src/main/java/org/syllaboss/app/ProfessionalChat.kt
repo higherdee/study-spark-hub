@@ -188,15 +188,9 @@ import org.json.JSONObject
 @Composable private fun BasicComposer(value:String,change:(String)->Unit,send:()->Unit,enabled:Boolean) {
     androidx.compose.foundation.text.BasicTextField(value=value,onValueChange=change,enabled=enabled,modifier=Modifier.fillMaxWidth().heightIn(min=44.dp,max=150.dp),textStyle=MaterialTheme.typography.bodyLarge.copy(color=MaterialTheme.colorScheme.onSurface,lineHeight=25.sp),keyboardOptions=KeyboardOptions(imeAction=ImeAction.Send),keyboardActions=KeyboardActions(onSend={send()}),decorationBox={inner->Box {if(value.isEmpty()) Text("Ask a question…",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=16.sp);inner()}})
 }
-@Composable internal fun NativeAnswer(text:String,modifier:Modifier=Modifier) {
+@Composable internal fun NativeAnswer(text:String,modifier:Modifier=Modifier,selectable:Boolean=true) {
     val context=LocalContext.current
-    val renderer=remember {Markwon.builder(context).usePlugin(TablePlugin.create(context)).usePlugin(MarkwonInlineParserPlugin.create()).usePlugin(JLatexMathPlugin.create(16f*context.resources.displayMetrics.scaledDensity){it.inlinesEnabled(true)}).build()}
     val answerColor = MaterialTheme.colorScheme.onSurface.toArgb()
-    AndroidView(modifier=modifier,factory={TextView(it).apply {textSize=16f;typeface=androidx.core.content.res.ResourcesCompat.getFont(it,R.font.hanken_grotesk);setTextColor(android.graphics.Color.rgb(30,48,41));setLineSpacing(8f,1.15f);setTextIsSelectable(true);setPadding(0,0,0,0)}},update={view->view.setTextColor(answerColor); renderer.setMarkdown(view,normalizeMath(text))})
-}
-private fun normalizeMath(text: String): String {
-    val pair = "${'$'}${'$'}"
-    return text.replace(Regex("""\\\[([\s\S]*?)\\\]""")) { "\n$pair\n${it.groupValues[1]}\n$pair\n" }
-        .replace(Regex("""\\\(([\s\S]*?)\\\)""")) { "$pair${it.groupValues[1]}$pair" }
-        .replace(Regex("""(?<![$])[$](?![$])([^\n$]+)[$](?![$])""")) { "$pair${it.groupValues[1]}$pair" }
+    val renderer=remember(context, answerColor) {Markwon.builder(context).usePlugin(TablePlugin.create(context)).usePlugin(MarkwonInlineParserPlugin.create()).usePlugin(JLatexMathPlugin.create(16f*context.resources.displayMetrics.scaledDensity){it.inlinesEnabled(true);it.theme().textColor(answerColor)}).build()}
+    AndroidView(modifier=modifier,factory={TextView(it).apply {textSize=16f;typeface=androidx.core.content.res.ResourcesCompat.getFont(it,R.font.hanken_grotesk);setTextColor(android.graphics.Color.rgb(30,48,41));setLineSpacing(8f,1.15f);setTextIsSelectable(selectable);setPadding(0,0,0,0)}},update={view->view.setTextColor(answerColor);view.setTextIsSelectable(selectable); renderer.setMarkdown(view,normalizeMath(text))})
 }

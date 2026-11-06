@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { Check, Copy } from "lucide-react";
+import { normalizeMathDelimiters } from "@/lib/math-format";
 
 function CodeBlock({ children }: { children?: React.ReactNode }) {
   const ref = React.useRef<HTMLPreElement>(null);
@@ -17,25 +18,6 @@ function CodeBlock({ children }: { children?: React.ReactNode }) {
 interface AiMessageRendererProps {
   content: string;
   className?: string;
-}
-
-/**
- * Preprocess content to ensure all LaTeX delimiters (\( \), \[ \], \\( \\), \\[ \\])
- * are normalized to standard KaTeX math syntax ($ $, $$ $$).
- */
-function normalizeMathDelimiters(raw: string): string {
-  if (!raw) return "";
-
-  return raw
-    // Convert \[ or \\[ display math to $$ ... $$
-    .replace(/(?:\\\\|\\)\[([\s\S]*?)(?:\\\\|\\)\]/g, (_, math) => `\n$$\n${math.trim()}\n$$\n`)
-    // Convert \( or \\( inline math to $ ... $
-    .replace(/(?:\\\\|\\)\(([\s\S]*?)(?:\\\\|\\)\)/g, (_, math) => `$${math.trim()}$`)
-    // Wrap unwrapped LaTeX environments in $$
-    .replace(
-      /(?<!\$)\s*(\\begin\{(?:matrix|pmatrix|bmatrix|vmatrix|align|aligned|equation|cases)\*?\}[\s\S]*?\\end\{(?:matrix|pmatrix|bmatrix|vmatrix|align|aligned|equation|cases)\*?\})\s*(?!\$)/g,
-      (_, math) => `\n$$\n${math.trim()}\n$$\n`
-    );
 }
 
 export function AiMessageRenderer({ content, className = "" }: AiMessageRendererProps) {

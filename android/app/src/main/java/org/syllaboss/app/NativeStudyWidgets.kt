@@ -72,7 +72,7 @@ internal fun studyPlainText(text: String): String = runCatching {
             NativeAnswer(current.optString("question"))
             val options = current.optJSONArray("options")
             if((mode=="objective"||mode=="mcq") && options != null) {
-                for(n in 0 until options.length()) OutlinedButton(onClick={selection=n},enabled=selection<0,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp)) { Text("${('A'.code+n).toChar()}. ${options.getString(n)}",modifier=Modifier.fillMaxWidth()) }
+                for(n in 0 until options.length()) OutlinedButton(onClick={selection=n},enabled=selection<0,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp)) { NativeAnswer("${('A'.code+n).toChar()}. ${options.getString(n)}",modifier=Modifier.fillMaxWidth(), selectable=false) }
                 if(selection>=0) { Text(if(selection==current.optInt("correctOptionIndex")) "Correct. Well done." else "The correct answer is ${('A'.code+current.optInt("correctOptionIndex")).toChar()}.",color=MaterialTheme.colorScheme.primary); NativeAnswer(current.optString("explanation",current.optString("modelAnswer"))) }
             } else {
                 OutlinedTextField(answer,{answer=it.take(12000)},label={Text("Work through your answer")},modifier=Modifier.fillMaxWidth(),minLines=3,enabled=!busy)
@@ -85,8 +85,8 @@ internal fun studyPlainText(text: String): String = runCatching {
                         val criterion=criteria.getJSONObject(n)
                         OutlinedCard(Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp)) { Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                             Text("${criterion.optString("criterion")} · ${criterion.optDouble("earned")} / ${criterion.optDouble("possible")}",fontSize=14.sp)
-                            if(criterion.optString("evidence").isNotBlank()) Text("“${criterion.optString("evidence")}”",fontSize=13.sp,color=Muted)
-                            Text(criterion.optString("reason"),fontSize=14.sp,lineHeight=22.sp)
+                            if(criterion.optString("evidence").isNotBlank()) NativeAnswer("“${criterion.optString("evidence")}”")
+                            NativeAnswer(criterion.optString("reason"))
                         } }
                     } }
                 }; if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)

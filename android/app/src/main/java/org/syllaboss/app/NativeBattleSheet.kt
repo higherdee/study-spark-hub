@@ -44,6 +44,7 @@ import org.json.JSONObject
     val answers = remember(selected) { mutableStateMapOf<Int, Any>() }
     val photos = remember(selected) { mutableStateMapOf<Int, SolutionPhoto>() }
     var questionIndex by remember(selected) { mutableIntStateOf(0) }
+    var watching by remember(selected) { mutableStateOf(false) }
 
     LaunchedEffect(selected, revision) {
         loaded = false
@@ -124,6 +125,7 @@ import org.json.JSONObject
                         Column(Modifier.fillMaxWidth().padding(14.dp)) {
                             Text(item.optString("title"), fontWeight = FontWeight.SemiBold)
                             Text("${item.optInt("question_count")} questions · ${item.optString("status").replaceFirstChar { it.uppercase() }}", color = Muted, fontSize = 12.sp)
+                            if (item.optString("status") == "active") Text("Watch live or enter the arena →", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
                         }
                     }
                 }
@@ -168,20 +170,23 @@ import org.json.JSONObject
                         if (personalStatus == "invited") {
                             val stake = battle.optInt("stake_amount")
                             Button(onClick = { action(battleAction("battle-join")) }, enabled = !busy) { Text(if (stake > 0) "Join · $stake points" else "Join battle") }
-                        } else if (detail?.optJSONObject("sync") != null && personalStatus == "joined") {
+                            OutlinedButton(onClick = { watching = true }) { Icon(Icons.Outlined.Visibility, null); Text("Watch as spectator") }
+                        }
+                        if (detail?.optJSONObject("sync") != null && (personalStatus != "invited" || watching)) {
+                            if (self?.optString("role") != "fighter") Text("Spectator view", color = MaterialTheme.colorScheme.primary)
                             NativeBattleRound(detail!!, user?.id, target) { revision++ }
                         } else if (!waiting && personalStatus == "joined" && self?.optString("role") == "fighter") {
                             questions.optJSONObject(questionIndex)?.let { q ->
                                 val i = questionIndex
                                 Text("Question ${i + 1} of ${questions.length()}", color = Muted, fontSize = 13.sp)
                                 LinearProgressIndicator(progress = { (i + 1f) / questions.length() }, modifier = Modifier.fillMaxWidth())
-                                Text("${i + 1}. ${q.optString("question")}", fontWeight = FontWeight.SemiBold)
+                                NativeAnswer("${i + 1}. ${q.optString("question")}")
                                 if (theory) { OutlinedTextField(answers[i] as? String ?: "", { answers[i] = it.take(3000) }, placeholder = { Text("Explain your answer") }, modifier = Modifier.fillMaxWidth(), minLines = 2); SolutionPhotoPicker(photos[i], !busy, { if(it == null) photos.remove(i) else photos[i] = it }, { error = it }) }
                                 else {
                                     val options = q.optJSONArray("options") ?: JSONArray()
                                     for (j in 0 until options.length()) {
                                         val label = options.optJSONObject(j)?.optString("text") ?: options.optString(j)
-                                        FilterChip(answers[i] == j, { answers[i] = j }, { Text(label) }, modifier = Modifier.fillMaxWidth())
+                                        FilterChip(answers[i] == j, { answers[i] = j }, { NativeAnswer(label) }, modifier = Modifier.fillMaxWidth())
                                     }
                                 }
                             }

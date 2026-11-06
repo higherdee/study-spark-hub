@@ -116,7 +116,7 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
                                 if (marker != null) TextButton(onClick = { battle = marker.groupValues[1] }) { Icon(Icons.Outlined.Bolt, null); Text("Open study battle") }
                                 else {
                                     val caption = if (media != null) envelope?.optString("text").orEmpty() else raw
-                                    if (caption.isNotBlank()) SelectionContainer { Text(caption, lineHeight = 21.sp) }
+                                    if (caption.isNotBlank()) NativeAnswer(caption)
                                 }
                                 if (media != null) NativeAttachmentMessage(media)
                                 if (own && !group) Text(

@@ -114,7 +114,7 @@ function PeerMediaAttachment({ media }: { media: NonNullable<ReturnType<typeof p
     finally { setBusy(false); }
   }
   return <div className="space-y-2">
-    {media.text && <p className="whitespace-pre-wrap break-words">{media.text}</p>}
+    {media.text && <AiMessageRenderer content={media.text} className="text-inherit [&_p]:text-inherit [&_p]:whitespace-pre-wrap" />}
     {url ? audio ? <audio className="max-w-full" controls src={url} /> : <a className="underline" href={url} download={media.title}>Download {media.title}</a>
       : <button type="button" className="rounded-lg border border-current/25 px-3 py-2 text-left text-xs font-medium" onClick={load} disabled={busy}>{busy ? "Loading…" : audio ? "Load voice note" : "Open " + media.title}</button>}
     {error && <p role="alert" className="text-xs">{error}</p>}
@@ -1197,7 +1197,7 @@ export function CommunityPage() {
                         {media ? <PeerMediaAttachment media={media} /> : isBossAi ? (
                           <AiMessageRenderer content={msg.content} className="text-xs [&_p]:mb-1 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs" />
                         ) : (
-                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          <AiMessageRenderer content={msg.content} className="text-inherit [&_p]:text-inherit [&_p]:mb-1 [&_p]:whitespace-pre-wrap [&_.katex]:text-inherit" />
                         )}
 
                         <div

@@ -41,7 +41,7 @@ jobs:
       - name: Install build platform
         run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
       - name: Build Android release
-        run: gradle -p android assembleRelease assembleDebug --no-daemon -PsyllabossVersionCode="$((100 + GITHUB_RUN_NUMBER))" -PsyllabossVersionName="2.2.$GITHUB_RUN_NUMBER"
+        run: gradle -p android testDebugUnitTest assembleRelease assembleDebug --no-daemon -PsyllabossVersionCode="$((100 + GITHUB_RUN_NUMBER))" -PsyllabossVersionName="2.2.$GITHUB_RUN_NUMBER"
       - name: Verify runtime manifest components
         run: python3 scripts/android-verify-manifest.py android/app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
       - name: Enable emulator acceleration
