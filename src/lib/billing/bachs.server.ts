@@ -35,6 +35,11 @@ export function bachsUsdMinor(value: unknown) {
 }
 
 let transferSupport: { environment: BillingEnvironment; until: number; available: boolean } | undefined;
+export function supportsNgnTransfer(body: { data?: { payment_methods?: unknown }; payment_methods?: unknown }) {
+  const methods = body.data?.payment_methods ?? body.payment_methods;
+  return Array.isArray(methods) && methods.some((method: { id?: string; currencies?: string[] }) =>
+    ["NGN_BANK_TRANSFER", "BANK_TRANSFER"].includes(method.id || "") && method.currencies?.includes("NGN"));
+}
 export async function bachsNgnTransferAvailable(environment: BillingEnvironment) {
   if (transferSupport?.environment === environment && transferSupport.until > Date.now()) return transferSupport.available;
   const response = await fetch(`${environment === "live" ? "https://api.bachs.io" : "https://sandbox-api.bachs.io"}/v1/payment-methods`, {
@@ -42,8 +47,7 @@ export async function bachsNgnTransferAvailable(environment: BillingEnvironment)
   });
   if (!response.ok) return false;
   const body = await response.json();
-  const methods = body.data?.payment_methods ?? body.payment_methods;
-  const available = Array.isArray(methods) && methods.some((method: { id?: string; currencies?: string[] }) => method.id === "BANK_TRANSFER" && method.currencies?.includes("NGN"));
+  const available = supportsNgnTransfer(body);
   transferSupport = { environment, until: Date.now() + 300000, available };
   return available;
 }
