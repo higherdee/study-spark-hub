@@ -79,7 +79,7 @@ export async function battleRoundState(battleId: string, now = Date.now()) {
     opensAt = revealUntil;
     round = { state: "finished", finishedAt: opensAt };
   }
-  if (round.state === "finished" && ["lobby", "active"].includes(battle.status)) {
+  if (round.state === "finished" && ["lobby", "active", "grading"].includes(battle.status)) {
     const questions = JSON.parse(battle.questions_json);
     for (const fighter of fighters.filter(p => p.status === "joined")) {
       const own = answers.filter(a => a["user_id"] === fighter.user_id);
@@ -91,7 +91,7 @@ export async function battleRoundState(battleId: string, now = Date.now()) {
         saved[String(index)] = value;
       }
       // Missing or late responses have no row, and therefore receive zero.
-      try { await submitBattleAnswersRecord({ battleId, userId: fighter.user_id, score: battle.mode === "theory" ? score : Math.round(score / Math.max(1, questions.length)), answersJson: JSON.stringify(saved) }); }
+      try { await submitBattleAnswersRecord({ battleId, userId: fighter.user_id, score: battle.mode === "theory" ? score : Math.round(score / Math.max(1, questions.length) * 100) / 100, answersJson: JSON.stringify(saved) }); }
       catch (error) {
         const updated = (await getBattleParticipants(battleId)).find(p => p.user_id === fighter.user_id);
         if (updated?.status !== "submitted") throw error;
