@@ -91,7 +91,7 @@ export async function battleRoundState(battleId: string, now = Date.now()) {
         saved[String(index)] = value;
       }
       // Missing or late responses have no row, and therefore receive zero.
-      try { await submitBattleAnswersRecord({ battleId, userId: fighter.user_id, score: Math.round(score / Math.max(1, questions.length)), answersJson: JSON.stringify(saved) }); }
+      try { await submitBattleAnswersRecord({ battleId, userId: fighter.user_id, score: battle.mode === "theory" ? score : Math.round(score / Math.max(1, questions.length)), answersJson: JSON.stringify(saved) }); }
       catch (error) {
         const updated = (await getBattleParticipants(battleId)).find(p => p.user_id === fighter.user_id);
         if (updated?.status !== "submitted") throw error;
@@ -100,7 +100,7 @@ export async function battleRoundState(battleId: string, now = Date.now()) {
     {
       const submitted = (await getBattleParticipants(battleId)).filter(p => p.role === "fighter" && p.status === "submitted");
       const highest = Math.max(...submitted.map(p => p.score));
-      await concludeBattleRecord({ battleId, winners: submitted.filter(p => p.score === highest).map(p => ({ userId: p.user_id, score: p.score })) });
+      await concludeBattleRecord({ battleId, winners: submitted.filter(p => p.score === highest).map(p => ({ userId: p.user_id, score: p.score })), ...(battle.mode === "theory" ? { gradedAnswers: submitted.map(p => ({ userId: p.user_id, score: totals.find(t => t.userId === p.user_id)!.score, answersJson: JSON.stringify({ answers: JSON.parse(p.answers_json || "{}"), evaluations: results.map(r => r.players.find(score => score.userId === p.user_id)) }) })) } : {}) });
     }
   }
   return { serverNow: now, round, answeredBy: round.state === "playing" ? answers.filter(a => Number(a["question_index"]) === round.index).map(a => String(a["user_id"])) : [], results, totals };
@@ -129,7 +129,7 @@ export async function gradeClosedBattleRounds(battleId: string) {
         const media = await readStudyMedia(String(row["user_id"]), file.id);
         image = { base64: Buffer.from(media.bytes).toString("base64"), mimeType: file.mime };
       }
-      const grade = await gradeTheoryAnswer(question.question, question.modelAnswer || question.explanation || "", [answer.text, answer.audioTranscript].filter(Boolean).join("\n"), budgetedAiFetch, image, 100);
+      const grade = await gradeTheoryAnswer(question.question, question.modelAnswer || question.explanation || "", [answer.text, answer.audioTranscript].filter(Boolean).join("\n"), budgetedAiFetch, image, 10);
       await turso.execute({ sql: "INSERT OR IGNORE INTO battle_round_grades VALUES(?,?,?,?,?,?)", args: [battleId, String(row["user_id"]), Number(row["question_index"]), grade.score, grade.feedback, Date.now()] });
     }));
   });

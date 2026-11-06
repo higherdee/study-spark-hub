@@ -164,7 +164,7 @@ import org.json.JSONObject
                         Text("Waiting for an opponent · %02d:%02d".format(seconds / 60, seconds % 60), color = Muted)
                     }
                     if (status == "completed") players.filter { it.optString("status") == "submitted" }.sortedByDescending { it.optInt("score") }.forEachIndexed { i, player ->
-                        ListItem(headlineContent = { Text("${i + 1}. ${player.optString("user_name")}") }, trailingContent = { Text("${player.optInt("score")}%") })
+                        ListItem(headlineContent = { Text("${i + 1}. ${player.optString("user_name")}") }, trailingContent = { Text("${player.optDouble("score")}${if(theory) " pts" else "%"}") })
                     }
                     if (status in listOf("lobby", "active")) {
                         if (personalStatus == "invited") {
