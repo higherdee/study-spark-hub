@@ -103,7 +103,8 @@ export async function battleRoundState(battleId: string, now = Date.now()) {
       await concludeBattleRecord({ battleId, winners: submitted.filter(p => p.score === highest).map(p => ({ userId: p.user_id, score: p.score })), ...(battle.mode === "theory" ? { gradedAnswers: submitted.map(p => ({ userId: p.user_id, score: totals.find(t => t.userId === p.user_id)!.score, answersJson: JSON.stringify({ answers: JSON.parse(p.answers_json || "{}"), evaluations: results.map(r => r.players.find(score => score.userId === p.user_id)) }) })) } : {}) });
     }
   }
-  return { serverNow: now, round, answeredBy: round.state === "playing" ? answers.filter(a => Number(a["question_index"]) === round.index).map(a => String(a["user_id"])) : [], results, totals };
+  // Live clients need the current reveal and totals, not fifty rounds of AI feedback on every poll.
+  return { serverNow: now, round, answeredBy: round.state === "playing" ? answers.filter(a => Number(a["question_index"]) === round.index).map(a => String(a["user_id"])) : [], results: results.slice(-1), totals };
 }
 
 type SharedRound = { state: "waiting"; startsAt: number } | { state: "playing"; index: number; opensAt: number; closesAt: number } | { state: "review"; index: number; opensAt: number; closesAt: number; revealUntil: number | null } | { state: "finished"; finishedAt: number };
