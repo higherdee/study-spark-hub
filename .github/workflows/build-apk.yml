@@ -119,8 +119,19 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add public/downloads/syllaboss-native.apk public/downloads/android-release.json
           git commit -m "Publish verified Android 2.2.$GITHUB_RUN_NUMBER update"
-          git pull --rebase=false --ff-only origin main
-          git push origin HEAD:main
+          # Web-only fixes can reach main while the APK is building. Merge
+          # those commits without rewriting published history, then retry a
+          # raced push instead of discarding a verified Android release.
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git merge --no-edit origin/main
+            if git push origin HEAD:main; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+          done
       - name: Prepare aligned release for local signing
         if: ${{ inputs.unsigned_only }}
         run: |
@@ -128,6 +139,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk release/aligned.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" release/apksigner.jar
       - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
         with:
           name: syllaboss-android-release
           path: release/
