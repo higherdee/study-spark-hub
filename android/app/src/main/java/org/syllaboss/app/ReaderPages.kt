@@ -31,22 +31,37 @@ import java.io.File
 
 @Composable internal fun ReaderPages(file: File, count: Int, page: Int, onPage: (Int)->Unit, continuous: Boolean, title: String) {
     if(count<1) return
-    val pager=rememberPagerState(initialPage=page.coerceIn(0,count-1),pageCount={count})
-    val list=rememberLazyListState(initialFirstVisibleItemIndex=page.coerceIn(0,count-1))
     val latestOnPage by rememberUpdatedState(onPage)
-    LaunchedEffect(continuous) {
-        if(continuous) { list.scrollToItem(page.coerceIn(0,count-1)) } else { pager.scrollToPage(page.coerceIn(0,count-1)) }
-        if(continuous) snapshotFlow { list.firstVisibleItemIndex }.distinctUntilChanged().collect { latestOnPage(it) }
-        else snapshotFlow { pager.settledPage }.distinctUntilChanged().collect { latestOnPage(it) }
-    }
-    LaunchedEffect(page,continuous) {
-        if(continuous && list.firstVisibleItemIndex!=page && !list.isScrollInProgress) list.animateScrollToItem(page.coerceIn(0,count-1))
-        if(!continuous && pager.currentPage!=page && !pager.isScrollInProgress) pager.animateScrollToPage(page.coerceIn(0,count-1))
-    }
-    if(continuous) LazyColumn(Modifier.fillMaxSize(),state=list,contentPadding=PaddingValues(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        items((0 until count).toList(),key={it}) { number -> ReaderPage(file,number,title) }
-    } else HorizontalPager(state=pager,modifier=Modifier.fillMaxSize(),pageSpacing=12.dp) { number ->
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp),verticalArrangement=Arrangement.Center) { ReaderPage(file,number,title) }
+    // Keep only the active reader state alive so switching modes starts at
+    // the page the user was reading, rather than a stale initial page.
+    if(continuous) {
+        val list=rememberLazyListState(initialFirstVisibleItemIndex=page.coerceIn(0,count-1))
+        fun visiblePage(): Int {
+            val layout=list.layoutInfo
+            return layout.visibleItemsInfo.maxByOrNull { item ->
+                (minOf(item.offset+item.size,layout.viewportEndOffset)-maxOf(item.offset,layout.viewportStartOffset)).coerceAtLeast(0)
+            }?.index ?: page
+        }
+        LaunchedEffect(list) {
+            snapshotFlow { visiblePage() }.distinctUntilChanged().collect { latestOnPage(it) }
+        }
+        LaunchedEffect(page) {
+            if(visiblePage()!=page && !list.isScrollInProgress) list.animateScrollToItem(page.coerceIn(0,count-1))
+        }
+        LazyColumn(Modifier.fillMaxSize(),state=list,contentPadding=PaddingValues(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            items((0 until count).toList(),key={it}) { number -> ReaderPage(file,number,title) }
+        }
+    } else {
+        val pager=rememberPagerState(initialPage=page.coerceIn(0,count-1),pageCount={count})
+        LaunchedEffect(pager) {
+            snapshotFlow { pager.settledPage }.distinctUntilChanged().collect { latestOnPage(it) }
+        }
+        LaunchedEffect(page) {
+            if(pager.currentPage!=page && !pager.isScrollInProgress) pager.animateScrollToPage(page.coerceIn(0,count-1))
+        }
+        HorizontalPager(state=pager,modifier=Modifier.fillMaxSize(),pageSpacing=12.dp) { number ->
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp),verticalArrangement=Arrangement.Center) { ReaderPage(file,number,title) }
+        }
     }
 }
 
