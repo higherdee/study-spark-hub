@@ -31,6 +31,17 @@ import java.io.File
 
 @Composable internal fun ReaderPages(file: File, count: Int, page: Int, onPage: (Int)->Unit, continuous: Boolean, title: String) {
     if(count<1) return
+    val pageRatios by produceState<List<Float>?>(null,file,count) {
+        value=withContext(Dispatchers.IO) {
+            runCatching {
+                PdfRenderer(ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY)).use { renderer ->
+                    (0 until count).map { number -> renderer.openPage(number).use { it.width.toFloat()/it.height } }
+                }
+            }.getOrElse { List(count) { .7f } }
+        }
+    }
+    val ratios=pageRatios
+    if(ratios==null) { Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) { CircularProgressIndicator() }; return }
     val latestOnPage by rememberUpdatedState(onPage)
     // Keep only the active reader state alive so switching modes starts at
     // the page the user was reading, rather than a stale initial page.
@@ -49,7 +60,7 @@ import java.io.File
             if(visiblePage()!=page && !list.isScrollInProgress) list.animateScrollToItem(page.coerceIn(0,count-1))
         }
         LazyColumn(Modifier.fillMaxSize(),state=list,contentPadding=PaddingValues(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            items((0 until count).toList(),key={it}) { number -> ReaderPage(file,number,title) }
+            items((0 until count).toList(),key={it}) { number -> ReaderPage(file,number,title,ratios[number]) }
         }
     } else {
         val pager=rememberPagerState(initialPage=page.coerceIn(0,count-1),pageCount={count})
@@ -60,12 +71,12 @@ import java.io.File
             if(pager.currentPage!=page && !pager.isScrollInProgress) pager.animateScrollToPage(page.coerceIn(0,count-1))
         }
         HorizontalPager(state=pager,modifier=Modifier.fillMaxSize(),pageSpacing=12.dp) { number ->
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp),verticalArrangement=Arrangement.Center) { ReaderPage(file,number,title) }
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp),verticalArrangement=Arrangement.Center) { ReaderPage(file,number,title,ratios[number]) }
         }
     }
 }
 
-@Composable private fun ReaderPage(file: File, number: Int, title: String) {
+@Composable private fun ReaderPage(file: File, number: Int, title: String, aspect: Float) {
     var image by remember(file,number) { mutableStateOf<Bitmap?>(null) }
     var failed by remember(file,number) { mutableStateOf(false) }
     var retry by remember { mutableIntStateOf(0) }
@@ -86,7 +97,7 @@ import java.io.File
     }
     val bitmap=image
     if(bitmap!=null) Image(bitmap.asImageBitmap(),"$title, page ${number+1}. Pinch to zoom.",Modifier.fillMaxWidth().aspectRatio(bitmap.width.toFloat()/bitmap.height).transformable(state=rememberTransformableState { zoom,pan,_ -> scale=(scale*zoom).coerceIn(1f,4f);dx=if(scale>1f)dx+pan.x else 0f;dy=if(scale>1f)dy+pan.y else 0f },canPan={scale>1f}).graphicsLayer(scaleX=scale,scaleY=scale,translationX=dx,translationY=dy))
-    else Box(Modifier.fillMaxWidth().height(300.dp),contentAlignment=Alignment.Center) {
+    else Box(Modifier.fillMaxWidth().aspectRatio(aspect),contentAlignment=Alignment.Center) {
         if(failed) TextButton(onClick={retry++}){Text("Retry page ${number+1}")} else CircularProgressIndicator()
     }
 }
