@@ -61,12 +61,13 @@ export async function billingSummary(userId: string, country?: string | null): P
   const { userId: _owner, customerId: _customer, ...publicSubscription } = current || {} as NonNullable<typeof current>;
   return {
     environment, country: normalizeCountry(country),
+    membership: await membershipStatus(userId).then(status=>({hasAccess:status.sylla_plus,endsAt:status.current_period_end,daysRemaining:status.current_period_end?Math.max(0,Math.ceil((Date.parse(status.current_period_end)-Date.now())/86400000)):0})),
     subscription: current ? { ...publicSubscription, hasAccess: hasSubscriptionAccess(current) } : null,
     checkoutEnabled: process.env["BILLING_ENABLED"] === "true", providers, firstRenewalBonusDays: await bonusAlreadyClaimed(userId, environment) ? 0 : 7,
   };
 }
 
-export async function startCheckout(userId: string, input: { id: string; plan: PlanId; country: string; acceptedTerms: true; recurringConsent: true; method?: "card" | "bank_transfer" | undefined }) {
+export async function startCheckout(userId: string, input: { id: string; plan: PlanId; country: string; acceptedTerms: true; recurringConsent: true; method?: "card" | "bank_transfer" | undefined; extension?: boolean }) {
   const environment = billingEnvironment();
   const profile = await getProfile(userId);
   if (!profile || profile.suspended) throw new BillingError("This account cannot start a subscription.", 403);
@@ -75,13 +76,14 @@ export async function startCheckout(userId: string, input: { id: string; plan: P
   try { quote = checkoutQuote(input.country, input.plan); }
   catch (error) { throw new BillingError(error instanceof Error ? error.message : "Choose a valid country and plan.", error instanceof Error && /Weekly|Choose/.test(error.message) ? 400 : 503); }
   if (!providerConfigured(quote.provider, environment)) throw new BillingError("Checkout for your billing country is not ready yet.", 503);
-  if ((await listSubscriptions(userId, environment)).some((sub) => hasSubscriptionAccess(sub))) throw new BillingError("You already have SyllaPlus. Use Manage billing to change or cancel your plan.", 409);
+  if (!input.extension && (await listSubscriptions(userId, environment)).some((sub) => hasSubscriptionAccess(sub))) throw new BillingError("You already have SyllaPlus. Use Manage billing to change or cancel your plan.", 409);
+  if(input.extension && quote.provider!=="bachs")throw new BillingError("Prepaid extensions require Bachs checkout.",503);
   const transfer = input.method === "bank_transfer";
   if (transfer) {
     if (normalizeCountry(input.country) !== "NG" || !await bachsNgnTransferAvailable(environment)) throw new BillingError("Bank transfer is unavailable for this billing country.");
     quote = { ...quote, ...quoteFor("NG", input.plan), provider: "bachs" as const };
   }
-  const priceId = transfer ? `bank_transfer_NGN_${input.plan}` : checkoutProductId(quote, environment);
+  const priceId = input.extension ? `prepaid_${quote.currency}_${input.plan}` : transfer ? `bank_transfer_NGN_${input.plan}` : checkoutProductId(quote, environment);
   if (!priceId) throw new BillingError("Checkout for this plan is being configured.", 503);
   let record = await createCheckout({ id: input.id, userId, environment, ...quote, priceId, providerReference: null, checkoutUrl: null, state: "creating" });
   if (record.checkoutUrl && record.state === "pending") return { id: record.id, url: record.checkoutUrl, environment };
@@ -100,7 +102,7 @@ export async function startCheckout(userId: string, input: { id: string; plan: P
   if (quote.provider === "bachs") {
     const email = await verifiedEmail(userId);
     const session = await bachs(environment).checkoutSessions.create({
-      ...(transfer ? { pricing: { currency: "NGN", amount: (quote.amount / 100).toFixed(2), price_type: "fixed" as const } } : { product_cart: [{ product_id: priceId, quantity: 1 }] }),
+      ...((transfer || input.extension) ? { pricing: { currency: quote.currency, amount: (quote.amount / 100).toFixed(2), price_type: "fixed" as const } } : { product_cart: [{ product_id: priceId, quantity: 1 }] }),
       billing_currency: transfer ? "NGN" : "USD", payment_method_types: transfer ? ["NGN_BANK_TRANSFER"] : ["USD_CARD"],
       customer: customerId ? { customer_id: customerId } : { email, name: "Syllaboss member" },
       ...(customerId ? {} : { customer_creation: "always" as const }),
@@ -172,10 +174,11 @@ export async function membershipStatus(userId: string) {
   const legacy = profile?.study_plan?.["subscription"] as Record<string, unknown> | undefined;
   const legacyEnd = typeof legacy?.["current_period_end"] === "string" ? legacy["current_period_end"] : null;
   const hasAccess = !!promo.plusUntil || (sub ? hasSubscriptionAccess(sub) : !!profile?.sylla_plus && (!legacyEnd || Date.parse(legacyEnd) > Date.now()));
+  if (promo.plusUntil && (!sub || !hasSubscriptionAccess(sub))) await turso.execute({sql:"UPDATE profiles SET sylla_plus=1 WHERE id=?",args:[userId]});
   if (!sub && profile?.sylla_plus && !hasAccess) await turso.execute({ sql: "UPDATE profiles SET sylla_plus=0 WHERE id=?", args: [userId] });
   const grace = sub?.status === "past_due";
   return { sylla_plus: hasAccess, suspended: !!profile?.suspended, status: grace ? "grace_period" as const : hasAccess ? "active" as const : "expired" as const,
-    plan: sub?.plan || "monthly" as const, current_period_end: sub?.periodEnd || legacyEnd, grace_period_end: sub?.graceEnd || null,
+    plan: sub?.plan || "monthly" as const, current_period_end: [sub?.periodEnd, legacyEnd, promo.plusUntil].filter((v): v is string => !!v && Number.isFinite(Date.parse(v))).sort((a,b)=>Date.parse(b)-Date.parse(a))[0] || null, grace_period_end: sub?.graceEnd || null,
     daysRemainingInGrace: grace && sub.graceEnd ? Math.max(0, Math.ceil((Date.parse(sub.graceEnd) - Date.now()) / 86400000)) : 0,
     notice: grace ? "Your payment provider reported a renewal issue. Update your payment method to keep SyllaPlus." : null };
 }

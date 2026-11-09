@@ -49,6 +49,8 @@ export const Route = createFileRoute("/api/billing")({
             waitUntil(reconcile());
           }
         }
+        const {alignPrepaidRenewal}=await import("@/lib/billing/prepaid.server");
+        await alignPrepaidRenewal(userId).catch(()=>{});
         return json(await billingSummary(userId, country));
       } catch (error) { return billingFailure(error); }
     },
@@ -60,13 +62,15 @@ export const Route = createFileRoute("/api/billing")({
           const { redeemPromo } = await import("@/lib/membership/promos.server");
           try {
             const reward = await redeemPromo(userId, { code: input.code, requestId: input.requestId }, Date.now(), "checkout");
-            return json({ reward });
+            const {alignPrepaidRenewal}=await import("@/lib/billing/prepaid.server");
+            let renewalPending=false;try{await alignPrepaidRenewal(userId)}catch{renewalPending=true}
+            return json({ reward, renewalPending });
           } catch {
             return json({ error: "This gift code could not be redeemed. Check the code and its expiry." }, 400);
           }
         }
         if (input?.action === "checkout") {
-          const parsed = z.object({ action: z.literal("checkout"), id: z.string().uuid(), plan: z.enum(PLAN_IDS), country: z.string().length(2), method: z.enum(["card", "bank_transfer"]).optional(), acceptedTerms: z.literal(true), recurringConsent: z.literal(true) }).strict().safeParse(input);
+          const parsed = z.object({ action: z.literal("checkout"), id: z.string().uuid(), plan: z.enum(PLAN_IDS), country: z.string().length(2), method: z.enum(["card", "bank_transfer"]).optional(), extension:z.boolean().optional(), acceptedTerms: z.literal(true), recurringConsent: z.literal(true) }).strict().safeParse(input);
           if (!parsed.success) return json({ error: "Choose your country and plan, and agree to the payment terms before continuing." }, 400);
           return json(await startCheckout(userId, parsed.data));
         }

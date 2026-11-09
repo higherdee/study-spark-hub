@@ -1,5 +1,5 @@
 import { SignedIn, SignedOut, ClerkLoaded, ClerkLoading } from "@clerk/clerk-react";
-import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Navigate, useLocation } from "@tanstack/react-router";
 import { PageBreathingLoader } from "@/components/syllaboss-logo";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -8,6 +8,7 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
+  const location=useLocation();
   return (
     <>
       <ClerkLoading>
@@ -18,7 +19,7 @@ function AuthenticatedLayout() {
           <Outlet />
         </SignedIn>
         <SignedOut>
-          <Navigate to="/auth" search={{ mode: "signin" }} />
+          <Navigate to="/auth" search={{ mode: "signin", redirect: location.href }} />
         </SignedOut>
       </ClerkLoaded>
     </>

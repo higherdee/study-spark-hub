@@ -111,4 +111,5 @@ export interface BillingSummary {
   checkoutEnabled: boolean;
   providers: Record<BillingProvider, boolean>;
   firstRenewalBonusDays: number;
+  membership?: { hasAccess: boolean; endsAt: string | null; daysRemaining: number };
 }

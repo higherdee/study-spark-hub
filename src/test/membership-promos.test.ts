@@ -45,3 +45,11 @@ it("redeems a single-use gift code only at checkout without creating a paid subs
   });
   await expect(redeemPromo("someone-else", { code, requestId: crypto.randomUUID() }, now, "checkout")).rejects.toThrow("limit");
 });
+it("adds a gift after the recipient's existing paid expiry",async()=>{
+ const {ensureBillingTables}=await import("@/lib/billing/store.server");await ensureBillingTables();
+ await turso.execute("INSERT INTO billing_subscriptions VALUES('bachs','live','paid-sub','customer','paid-recipient','monthly','regional','USD',520,'active','2030-05-20T12:00:00.000Z','2030-06-20T12:00:00.000Z',NULL,NULL,'2030-05-20T12:00:00.000Z')");
+ const code="SYLLAGIFT-STACK";await savePromo("admin",{...campaign(),code,maxUses:1,value:7});
+ const input={code,requestId:crypto.randomUUID()};
+ expect(await redeemPromo("paid-recipient",input,now,"checkout")).toMatchObject({expires_at:"2030-06-27T12:00:00.000Z"});
+ expect(await redeemPromo("paid-recipient",input,now,"checkout")).toMatchObject({expires_at:"2030-06-27T12:00:00.000Z"});
+});

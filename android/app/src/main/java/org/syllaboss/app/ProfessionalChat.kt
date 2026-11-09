@@ -6,6 +6,7 @@ import android.widget.TextView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,13 +33,15 @@ import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.ext.latex.JLatexMathPlugin
 import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 import org.json.JSONObject
 
-@Composable internal fun ProfessionalChat(userId: String?, chat: ChatState, scope: CoroutineScope, signIn: () -> Unit) {
+@Composable internal fun ProfessionalChat(userId: String?, chat: ChatState, scope: CoroutineScope, signIn: () -> Unit, navigate: (Int) -> Unit) {
     val context=LocalContext.current
     val prefs=remember { context.getSharedPreferences("syllaboss-native",0) }
     val clipboard=LocalClipboardManager.current
     val list=rememberLazyListState()
+    var navigationOpen by remember { mutableStateOf(false) }
     var showHistory by remember { mutableStateOf(false) }
     var histories by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var loadingHistory by remember { mutableStateOf(false) }
@@ -49,6 +52,7 @@ import org.json.JSONObject
     var resumeMode by remember {mutableStateOf<String?>(null)}
     var mediaBusy by remember {mutableStateOf(false)}
     var focusedPage by remember {mutableStateOf("")}
+    var passagePreview by remember { mutableStateOf("") }
     var focusedLine by remember {mutableStateOf("")}
     var showPassage by remember {mutableStateOf(false)}
     val focusManager=LocalFocusManager.current
@@ -94,13 +98,18 @@ import org.json.JSONObject
             } finally {chat.sending=false}
         }
     }
-    val nearBottom by remember { derivedStateOf { list.layoutInfo.visibleItemsInfo.lastOrNull()?.index?.let { it>=chat.messages.size-2 } ?: true } }
-    LaunchedEffect(chat.messages.size,chat.sending) { if(chat.messages.isNotEmpty() && (nearBottom || chat.messages.last().first=="user")) list.animateScrollToItem(chat.messages.lastIndex) }
+    val nearBottom by remember { derivedStateOf { !list.canScrollForward } }
+    var followLatest by remember { mutableStateOf(true) }
+    val dragging by list.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(list, dragging) { snapshotFlow { list.isScrollInProgress to list.canScrollForward }.collect { (scrolling, forward) -> if(dragging) followLatest = !forward else if(!scrolling && !forward) followLatest = true } }
+    LaunchedEffect(chat.messages.size,chat.sending) { if(chat.messages.isNotEmpty() && (followLatest || chat.messages.last().first=="user")) list.scrollToConversationEnd() }
+    LaunchedEffect(showPassage, focusedPage, focusedLine, chat.source) { if(showPassage && focusedPage.isNotBlank() && chat.source != null) { passagePreview = "Reading the selected passage…"; delay(350); try { passagePreview = StudyApi.call("passage&id="+chat.source!!.getString("id").asQuery()+"&page="+focusedPage+if(focusedLine.isNotBlank()) "&line=$focusedLine" else "").optString("text") } catch(e: Exception) { if(e is CancellationException) throw e; passagePreview = e.message ?: "Passage unavailable" } } }
     if(sourceMenu)NativeSourceSheet(onDismiss={sourceMenu=false;resumeMode?.let{studyMode=it;resumeMode=null}},onPicked={chat.source=it;focusedPage="";focusedLine=""},onError={chat.error=it})
     if(showPassage)AlertDialog(onDismissRequest={showPassage=false},title={Text("Focus on a passage")},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
         Text("Use PDF page numbers. Lines follow the document’s extracted reading order.",fontSize=14.sp,color=Muted)
         OutlinedTextField(focusedPage,{focusedPage=it.filter(Char::isDigit).take(4)},label={Text("Page (optional)")},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
         OutlinedTextField(focusedLine,{focusedLine=it.filter(Char::isDigit).take(4)},label={Text("Line (optional)")},singleLine=true,keyboardOptions=KeyboardOptions(keyboardType=androidx.compose.ui.text.input.KeyboardType.Number))
+        if(passagePreview.isNotBlank()) Text(passagePreview,modifier=Modifier.heightIn(max=240.dp).verticalScroll(rememberScrollState()),fontSize=13.sp)
     }},confirmButton={TextButton(onClick={showPassage=false}){Text("Use passage")}},dismissButton={TextButton(onClick={focusedPage="";focusedLine="";showPassage=false}){Text("Whole document")}})
     if(showHistory) ModalBottomSheet(onDismissRequest={showHistory=false},containerColor=MaterialTheme.colorScheme.background) {
         LazyColumn(Modifier.fillMaxWidth().heightIn(max=560.dp).navigationBarsPadding(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -112,7 +121,7 @@ import org.json.JSONObject
     }
     Column(Modifier.fillMaxSize().imePadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-            OfficialMark(36.dp)
+            Box { IconButton(onClick={navigationOpen=true}) { Icon(Icons.Outlined.Menu,"App navigation") }; DropdownMenu(expanded=navigationOpen,onDismissRequest={navigationOpen=false}) { listOf("Today","Library","Boss AI","Peers","Your space").forEachIndexed { index,label -> DropdownMenuItem(text={Text(label)},onClick={navigationOpen=false;navigate(index)}) } } }
             Column(Modifier.weight(1f)) { Text("Boss AI",fontFamily=WebsiteDisplay,fontSize=25.sp);Text(if(chat.threadId==null) "Your study partner" else chat.title,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis) }
             IconButton(onClick={
                 if(userId==null) signIn() else {
@@ -151,15 +160,16 @@ import org.json.JSONObject
                                 Row(Modifier.padding(top=8.dp),verticalAlignment=Alignment.CenterVertically) {
                                     var copied by remember {mutableStateOf(false)}
                                     TextButton(onClick={clipboard.setText(AnnotatedString(studyPlainText(text)));copied=true}) {Icon(if(copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text(if(copied) "Copied" else "Copy",fontSize=12.sp)}
-                                    TextButton(onClick={context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {type="text/plain";putExtra(Intent.EXTRA_TEXT,studyPlainText(text))},"Share answer"))}) {Icon(Icons.Outlined.Share,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text("Share",fontSize=12.sp)}
+                                    TextButton(onClick={scope.launch { try { val shared=StudyApi.call(body=JSONObject().put("action","share-answer").put("threadId",chat.threadId).put("content",text)); context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {type="text/plain";putExtra(Intent.EXTRA_TEXT,shared.getString("url"))},"Share Syllaboss link")) } catch(e: Exception) { if(e is CancellationException) throw e; chat.error=e.message ?: "Could not create a share link." } }}) {Icon(Icons.Outlined.Share,null,Modifier.size(16.dp));Spacer(Modifier.width(7.dp));Text("Share",fontSize=12.sp)}
                                 }
                             }
                         }
                     }
                 }
+                item(key="conversation-end") { Spacer(Modifier.height(2.dp)) }
                 if(chat.sending) item {Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {OfficialMark(28.dp);CircularProgressIndicator(Modifier.size(16.dp),strokeWidth=2.dp);Text("Working through your question…",fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)}}
             }
-            if(!nearBottom) FilledTonalIconButton(onClick={scope.launch {list.animateScrollToItem(chat.messages.lastIndex)}},modifier=Modifier.align(Alignment.BottomEnd).padding(16.dp)) {Icon(Icons.Outlined.ArrowDownward,"Latest message")}
+            if(!nearBottom) FilledTonalIconButton(onClick={followLatest=true;scope.launch {list.scrollToConversationEnd()}},modifier=Modifier.align(Alignment.BottomEnd).padding(16.dp)) {Icon(Icons.Outlined.ArrowDownward,"Latest message")}
         }
         chat.error?.let {Text(it,color=MaterialTheme.colorScheme.error,fontSize=13.sp,modifier=Modifier.padding(horizontal=20.dp,vertical=8.dp))}
         if(userId==null) TextButton(onClick=signIn,modifier=Modifier.fillMaxWidth()) {Text("Sign in to chat with Boss")}
@@ -171,7 +181,7 @@ import org.json.JSONObject
         } }
         Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) { listOf("Flashcards" to "flashcards","MCQ" to "objective","Theory" to "theory").forEach { (label,mode) -> TextButton(onClick={focusManager.clearFocus();studyMode=mode},enabled=!chat.sending){Icon(if(mode=="flashcards")Icons.Outlined.Style else if(mode=="objective")Icons.Outlined.Checklist else Icons.Outlined.EditNote,null,Modifier.size(16.dp));Spacer(Modifier.width(5.dp));Text(label,fontSize=12.sp)} } }
         if(mediaBusy)LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal=20.dp))
-        Column(Modifier.padding(horizontal=16.dp,vertical=8.dp).fillMaxWidth().border(1.dp,MaterialTheme.colorScheme.outline,RoundedCornerShape(24.dp)).background(Color.White,RoundedCornerShape(24.dp)).padding(12.dp)) {
+        Column(Modifier.padding(horizontal=16.dp,vertical=8.dp).fillMaxWidth().border(1.dp,MaterialTheme.colorScheme.outline,RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceContainer,RoundedCornerShape(24.dp)).padding(12.dp)) {
             BasicComposer(chat.input,{chat.input=it.take(6000)},{send(chat.input)},!chat.sending)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
                 Row(verticalAlignment=Alignment.CenterVertically){

@@ -61,7 +61,7 @@ internal fun mediaFile(context:android.content.Context,extension:String):Pair<Fi
             if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error,fontSize=13.sp)
             if(!library){
                 listOf(Triple("Upload a file","PDF or image · up to 3 MB",Icons.Outlined.UploadFile),Triple("Course library","Notes and past questions",Icons.Outlined.MenuBook),Triple("Take a photo","A page, diagram, or written question",Icons.Outlined.PhotoCamera)).forEachIndexed{index,item->
-                    Surface(onClick={if(!busy)when(index){0->picker.launch(arrayOf("application/pdf","image/*"));1->library=true;else->try{cameraUri=mediaFile(context,".jpg").second;camera.launch(cameraUri!!)}catch(_:Exception){error="No camera app is available. Choose a photo from your files."}}},shape=RoundedCornerShape(18.dp),color=androidx.compose.ui.graphics.Color.White,modifier=Modifier.fillMaxWidth()){
+                    Surface(onClick={if(!busy)when(index){0->picker.launch(arrayOf("application/pdf","image/*"));1->library=true;else->try{cameraUri=mediaFile(context,".jpg").second;camera.launch(cameraUri!!)}catch(_:Exception){error="No camera app is available. Choose a photo from your files."}}},shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.surfaceContainer,modifier=Modifier.fillMaxWidth()){
                         Row(Modifier.padding(18.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){Icon(item.third,null,tint=MaterialTheme.colorScheme.primary);Column(Modifier.weight(1f)){Text(item.first,fontWeight=FontWeight.SemiBold);Text(item.second,color=Muted,fontSize=12.sp)};Icon(Icons.Outlined.ChevronRight,null,tint=Muted)}
                     }
                 }

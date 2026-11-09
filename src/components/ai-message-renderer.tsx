@@ -9,7 +9,7 @@ import { normalizeMathDelimiters } from "@/lib/math-format";
 function CodeBlock({ children }: { children?: React.ReactNode }) {
   const ref = React.useRef<HTMLPreElement>(null);
   const [copied, setCopied] = React.useState(false);
-  return <div className="ai-code-block my-4 overflow-hidden rounded-xl border border-border bg-ink text-secondary">
+  return <div className="ai-code-block my-4 overflow-hidden rounded-xl border border-border bg-[#13231b] text-[#e3ede5]">
     <div className="flex items-center justify-between border-b border-white/10 px-4 py-1 text-xs text-white/70"><span>Code</span><button type="button" className="flex min-h-10 items-center gap-2 px-2" aria-label="Copy code" onClick={async () => { try { await navigator.clipboard.writeText(ref.current?.textContent || ""); setCopied(true); } catch { setCopied(false); } }}>{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}{copied ? "Copied" : "Copy"}</button></div>
     <pre ref={ref} className="m-0 overflow-x-auto p-4 text-[13px] leading-6">{children}</pre>
   </div>;
@@ -25,7 +25,7 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
 
   return (
     <div
-      className={`prose dark:prose-invert max-w-none text-ink dark:text-secondary leading-[1.8] text-[15px] md:text-base ${className}`}
+      className={`prose dark:prose-invert max-w-none text-foreground leading-[1.8] text-[15px] md:text-base ${className}`}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
@@ -34,29 +34,29 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
           pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
           // Responsive & Clean GFM Tables
           table: ({ children }) => (
-            <div className="my-3 overflow-x-auto rounded-lg border border-border dark:border-ink shadow-xs">
+            <div className="my-3 overflow-x-auto rounded-lg border border-border  shadow-xs">
               <table className="w-full border-collapse text-left text-xs md:text-sm">{children}</table>
             </div>
           ),
           thead: ({ children }) => (
-            <thead className="bg-secondary/90 dark:bg-ink/80 font-semibold text-ink dark:text-secondary border-b border-border dark:border-ink-soft">
+            <thead className="bg-secondary/90 dark:bg-muted font-semibold text-foreground border-b border-border ">
               {children}
             </thead>
           ),
           th: ({ children }) => (
-            <th className="px-3.5 py-2 font-semibold text-ink dark:text-secondary border-r last:border-r-0 border-border dark:border-ink">
+            <th className="px-3.5 py-2 font-semibold text-foreground border-r last:border-r-0 border-border ">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="border-b border-border/80 dark:border-ink/80 px-3.5 py-2 text-ink-soft dark:text-border border-r last:border-r-0">
+            <td className="border-b border-border/80  px-3.5 py-2 text-muted-foreground border-r last:border-r-0">
               {children}
             </td>
           ),
 
           // Clean Structured Headings
           h1: ({ children }) => (
-            <h1 className="mt-5 mb-2 text-lg md:text-xl font-bold tracking-tight text-ink dark:text-white flex items-center gap-1.5 border-b border-border dark:border-ink pb-1.5">
+            <h1 className="mt-5 mb-2 text-lg md:text-xl font-bold tracking-tight text-ink dark:text-white flex items-center gap-1.5 border-b border-border  pb-1.5">
               {children}
             </h1>
           ),
@@ -73,7 +73,7 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
 
           // Paragraphs & Text
           p: ({ children }) => (
-            <p className="mb-2.5 last:mb-0 leading-relaxed text-ink dark:text-border">
+            <p className="mb-2.5 last:mb-0 leading-relaxed text-foreground">
               {children}
             </p>
           ),
@@ -93,13 +93,13 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
 
           // Blockquotes / Callout notes
           blockquote: ({ children }) => (
-            <blockquote className="my-3 border-l-4 border-brand bg-accent/70 dark:bg-brand-deep/30 px-3.5 py-2 text-xs md:text-sm text-ink-soft dark:text-border rounded-r-md italic">
+            <blockquote className="my-3 border-l-4 border-brand bg-accent/70 dark:bg-brand-deep/30 px-3.5 py-2 text-xs md:text-sm text-muted-foreground rounded-r-md italic">
               {children}
             </blockquote>
           ),
 
           // Divider
-          hr: () => <hr className="my-4 border-border dark:border-ink" />,
+          hr: () => <hr className="my-4 border-border " />,
 
           // Links
           a: ({ href, children }) => (
@@ -119,7 +119,7 @@ export function AiMessageRenderer({ content, className = "" }: AiMessageRenderer
             if (!isBlock) {
               return (
                 <code
-                  className="rounded bg-secondary dark:bg-ink/80 px-1.5 py-0.5 font-mono text-[12px] md:text-[13px] text-forest dark:text-brand border border-border/60 dark:border-ink-soft/60"
+                  className="rounded bg-secondary dark:bg-muted px-1.5 py-0.5 font-mono text-[12px] md:text-[13px] text-forest dark:text-brand border border-border/60 "
                   {...props}
                 >
                   {children}

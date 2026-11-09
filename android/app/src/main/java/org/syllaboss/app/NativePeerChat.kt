@@ -28,6 +28,11 @@ import com.clerk.api.Clerk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import org.json.JSONObject
 
 internal fun JSONObject.objects(key: String): List<JSONObject> {
@@ -43,6 +48,12 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
     val account by Clerk.userFlow.collectAsState()
     var messages by remember(target) { mutableStateOf<List<JSONObject>>(emptyList()) }
     var draft by remember(target) { mutableStateOf("") }
+    var replyTo by remember(target) { mutableStateOf<JSONObject?>(null) }
+    var members by remember(target) { mutableStateOf<List<JSONObject>>(emptyList()) }
+    LaunchedEffect(target, group) { if(group) try { members = StudyApi.call("battle-members&target="+target.asQuery()).objects("members") } catch(e: Exception) { if(e is CancellationException) throw e } }
+    val mention = Regex("(?:^|\\s)@([A-Za-z0-9_]*)$").find(draft)
+    LaunchedEffect(mention != null, target) { if(group && mention != null) try { members = StudyApi.call("battle-members&target="+target.asQuery()).objects("members") } catch(e: Exception) { if(e is CancellationException) throw e } }
+    val suggestions = if(mention == null) emptyList() else (listOf("bossai") + members.mapNotNull { it.optString("username").takeIf { name -> name.isNotBlank() && name != "null" } }).distinct().filter { it.startsWith(mention.groupValues[1], true) }.take(6)
     var attachment by remember(target) { mutableStateOf<JSONObject?>(null) }
     var showPicker by remember { mutableStateOf(false) }
     var battle by remember { mutableStateOf<String?>(null) }
@@ -52,6 +63,7 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
     var error by remember { mutableStateOf("") }
     var refresh by remember { mutableIntStateOf(0) }
     var requestState by remember(target) { mutableStateOf("") }
+    val conversationVisible by rememberUpdatedState(battle == null && material == null && !showPicker)
     val state = rememberLazyListState()
     val resource = if (group) "messages&group=" else "direct-messages&thread="
     LaunchedEffect(target, refresh, lifecycle) {
@@ -60,24 +72,24 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
                 try {
                     val response = StudyApi.call(resource + target.asQuery())
                     val next = response.objects("messages")
+                    val atEnd = !loaded || !state.canScrollForward || messages.isEmpty()
                     if (!group) {
                         requestState = response.optString("requestState")
-                        if (next.any { it.optString("sender_id") != account?.id && !it.optBoolean("is_read") }) {
-                            StudyApi.call(body = JSONObject().put("action", "direct-read").put("conversationId", target))
+                        if (conversationVisible && atEnd && next.any { it.optString("sender_id") != account?.id && !it.optBoolean("is_read") }) {
+                            StudyApi.call(body = JSONObject().put("action", "direct-read").put("conversationId", target)); PeerUpdates.changed()
                         }
                     }
-                    val atEnd = !loaded || !state.canScrollForward || messages.isEmpty()
                     val changed = next.lastOrNull()?.optString("id") != messages.lastOrNull()?.optString("id") || next.size != messages.size
                     if (changed || next.map { it.optString("receipt") } != messages.map { it.optString("receipt") }) {
                         messages = next
-                        if (changed && atEnd && next.isNotEmpty()) state.requestScrollToItem(next.lastIndex)
+                        if (changed && atEnd && next.isNotEmpty()) state.scrollToConversationEnd()
                     }
                     loaded = true
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     if (!loaded) error = e.message ?: "Unable to load this conversation."
                 }
-                delay(8000)
+                delay(2500)
             }
         }
     }
@@ -92,7 +104,8 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
             if (!loaded && error.isBlank()) LinearProgressIndicator(Modifier.fillMaxWidth())
-            LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = state, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (loaded && messages.isEmpty()) item {
                     Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Outlined.Forum, null, tint = MaterialTheme.colorScheme.primary)
@@ -100,13 +113,15 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
                         Text("Ask a question, share notes, or start a battle.", color = Muted, fontSize = 13.sp)
                     }
                 }
+                item(key="empty-top") { Spacer(Modifier.height(1.dp)) }
                 items(messages, key = { it.getString("id") }) { message ->
                     val raw = message.optString("content")
                     val envelope = remember(raw) { runCatching { JSONObject(raw) }.getOrNull() }
                     val media = envelope?.optJSONObject("syllabossAttachment")
                     val marker = remember(raw) { Regex("\\[(?:STUDY_BATTLE|BATTLE_RECEIPT):([a-fA-F0-9-]{36})]").find(raw) }
                     val own = account?.id == message.optString(if (group) "user_id" else "sender_id")
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
+                    var drag by remember(message.optString("id")) { mutableFloatStateOf(0f) }
+                    Row(Modifier.fillMaxWidth().offset { IntOffset(drag.roundToInt(),0) }.pointerInput(message.optString("id")) { detectHorizontalDragGestures(onDragEnd = { if(drag > 60f) replyTo = message; drag = 0f }, onDragCancel = { drag = 0f }) { change, amount -> if(amount > 0 || drag > 0) { change.consume(); drag = (drag + amount).coerceIn(0f,110f) } } }, horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
                         Surface(shape = RoundedCornerShape(18.dp), color = if (own) Sage else MaterialTheme.colorScheme.surfaceContainer) {
                             Column(Modifier.widthIn(max = 300.dp).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 if (!own) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -115,9 +130,11 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
                                 }
                                 if (marker != null) TextButton(onClick = { battle = marker.groupValues[1] }) { Icon(Icons.Outlined.Bolt, null); Text("Open study battle") }
                                 else {
-                                    val caption = if (media != null) envelope?.optString("text").orEmpty() else raw
+                                    envelope?.optJSONObject("syllabossReply")?.let { quote -> Surface(color = Sage, shape = RoundedCornerShape(10.dp)) { Column(Modifier.padding(10.dp)) { Text(quote.optString("sender"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary); Text(quote.optString("preview"), maxLines = 3, fontSize = 12.sp) } } }
+                                    val caption = if (media != null || envelope?.has("syllabossReply") == true) envelope?.optString("text").orEmpty() else raw
                                     if (caption.isNotBlank()) NativeAnswer(caption)
                                 }
+                                TextButton(onClick = { replyTo = message }, contentPadding = PaddingValues(0.dp), modifier = Modifier.height(32.dp)) { Icon(Icons.Outlined.Reply, null, Modifier.size(15.dp)); Text("Reply", fontSize=11.sp) }
                                 if (media != null) NativeAttachmentMessage(media)
                                 if (own && !group) Text(
                                     when (message.optString("receipt")) { "read" -> "Read"; "delivered" -> "Delivered"; else -> "Sent" },
@@ -134,8 +151,13 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
                         }
                     }
                 }
+                item(key="conversation-end") { Spacer(Modifier.height(2.dp)) }
+            }
+            if (state.canScrollForward) FilledTonalIconButton(onClick = { scope.launch { state.scrollToConversationEnd() } }, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)) { Icon(Icons.Outlined.ArrowDownward, "Latest message") }
             }
             if (error.isNotBlank()) Text(error, Modifier.padding(horizontal = 16.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            replyTo?.let { quote -> Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Reply, null, tint = MaterialTheme.colorScheme.primary); Column(Modifier.weight(1f).padding(8.dp)) { Text("Replying to ${quote.optString(if(group) "user_name" else "sender_name")}", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp); Text(quote.optString("content"), maxLines = 2, fontSize = 12.sp) }; IconButton(onClick = { replyTo = null }) { Icon(Icons.Outlined.Close, "Cancel reply") } } }
+            if(suggestions.isNotEmpty()) Surface(tonalElevation = 2.dp) { Column(Modifier.fillMaxWidth().heightIn(max=180.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) { suggestions.forEach { name -> TextButton(onClick = { val at=draft.lastIndexOf('@'); draft=draft.take(at)+"@$name " }, modifier = Modifier.fillMaxWidth()) { Text(if(name == "bossai") "@bossai · Ask Boss AI" else "@$name", modifier = Modifier.fillMaxWidth()) } } } }
             AnimatedVisibility(attachment != null, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Attachment, null, tint = MaterialTheme.colorScheme.primary)
@@ -171,14 +193,15 @@ internal fun String.asQuery() = java.net.URLEncoder.encode(this, "UTF-8")
                         val body = JSONObject().put("action", if (group) "group-message" else "direct-message")
                             .put(if (group) "group" else "conversationId", target).put("content", draft.trim())
                         attachment?.let { body.put(if (it.optBoolean("library")) "materialId" else "attachmentId", it.getString("id")) }
+                        replyTo?.let { body.put("replyToId", it.getString("id")) }
                         busy = true; error = ""
                         scope.launch {
                             try {
                                 val sent = StudyApi.call(body = body).getJSONObject("message")
                                 messages = (messages + sent).distinctBy { it.getString("id") }
-                                state.requestScrollToItem(messages.lastIndex)
+                                state.scrollToConversationEnd()
                                 if (!group && requestState == "new") requestState = "outgoing"
-                                draft = ""; attachment = null; refresh++
+                                draft = ""; attachment = null; replyTo = null; refresh++; PeerUpdates.changed()
                             } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message ?: "Message could not be sent." }
                             finally { busy = false }
                         }

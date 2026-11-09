@@ -47,3 +47,20 @@ if grep -q 'org.syllaboss.app' android-smoke/format-crashes.txt; then cat androi
 adb shell uiautomator dump /sdcard/formatting.xml
 adb pull /sdcard/formatting.xml android-smoke/formatting.xml
 grep -q 'Native formatting check' android-smoke/formatting.xml
+
+# These fixtures are debug-only and render the real screens without customer data.
+for screen in space onboarding quiz; do
+  adb shell am force-stop org.syllaboss.app
+  adb shell am start -W -n org.syllaboss.app/.FormatCheckActivity --es screen "$screen" --ez dark true > "android-smoke/$screen-launch.txt"
+  sleep 4
+  adb exec-out screencap -p > "android-smoke/dark-$screen.png"
+  adb shell uiautomator dump /sdcard/check.xml
+  adb pull /sdcard/check.xml "android-smoke/dark-$screen.xml"
+  adb logcat -b crash -d > android-smoke/quality-crashes.txt
+  if grep -q 'org.syllaboss.app' android-smoke/quality-crashes.txt; then cat android-smoke/quality-crashes.txt; exit 1; fi
+done
+grep -q 'Your space.' android-smoke/dark-space.xml
+grep -q 'Public @username' android-smoke/dark-onboarding.xml
+grep -q 'MCQ math check' android-smoke/dark-quiz.xml
+python3 scripts/android-quiz-smoke.py
+python3 scripts/android-reader-smoke.py

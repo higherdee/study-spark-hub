@@ -1,4 +1,7 @@
 import { reportStudyError } from "@/lib/membership/report-error";
+import { shareAnswerServerFn } from "@/lib/sharing.functions";
+import { Menu } from "lucide-react";
+import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem} from "@/components/ui/dropdown-menu";
 import {DocumentFocusBar} from "@/components/document-focus-bar";
 import { StudyModePanel, type StudyMode } from "@/components/chat/study-mode-panel";
 import { useMembership } from "@/hooks/use-membership";
@@ -437,6 +440,7 @@ function AssistantPage() {
             }
           }
 
+          try { const encoded=JSON.parse(contentText);const set=encoded.nativeStudySet;if(set){if(set.mode==="flashcards")flashcardsData={topic:set.topic,cards:set.items};else quizData={topic:set.topic,mode:set.mode==="mcq"?"objective":set.mode,questions:set.items};contentText="";} } catch { /* Regular answer. */ }
           return {
             id: msg.id,
             role: msg.role,
@@ -458,7 +462,7 @@ function AssistantPage() {
   }, [threadMessages, activeThreadId, isLoadingMessages, isFetchingMessages, thinking]);
 
   useEffect(() => {
-    if (!showScrollBottom) messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+    if (!showScrollBottom) { const el=messagesScrollRef.current;if(el)el.scrollTo({top:el.scrollHeight,behavior:"instant"}); }
   }, [messages, thinking]);
 
   // Voice Note Recording (SpeechRecognition + MediaRecorder fallback)
@@ -1427,13 +1431,7 @@ function AssistantPage() {
         {/* Mobile Header (Top-Right Recent Menu + New Chat) */}
         <div className="md:hidden flex items-center justify-between px-3.5 py-2 border-b border-border/50 bg-card/85 backdrop-blur-md shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
-            <Link
-              to="/dashboard"
-              className="size-7 rounded-lg border border-border/70 hover:bg-secondary text-foreground grid place-items-center shrink-0 active:scale-95 transition-all"
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className="size-3.5" />
-            </Link>
+            <DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-secondary" aria-label="App navigation"><Menu className="size-5"/></button></DropdownMenuTrigger><DropdownMenuContent align="start"><DropdownMenuItem asChild><Link to="/dashboard">Today</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/library">Library</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/community">Peers</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/settings">Your space</Link></DropdownMenuItem></DropdownMenuContent></DropdownMenu>
             <div className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
               <Bot className="size-3.5" />
             </div>
@@ -1650,6 +1648,7 @@ function AssistantPage() {
                     {isAssistant ? (
                       <div className="space-y-2">
                         {m.content && <AiMessageRenderer content={m.content} className="boss-response" />}
+                        {(m.content || m.quizData || m.flashcardsData) && activeThreadId && <button type="button" className="text-xs text-muted-foreground hover:text-primary min-h-10" onClick={async()=>{try{const shared=await shareAnswerServerFn({data:{threadId:activeThreadId,content:m.quizData?JSON.stringify({quizData:m.quizData}):m.flashcardsData?JSON.stringify({flashcardsData:m.flashcardsData}):m.content}});if(navigator.share)await navigator.share({title:"Syllaboss study answer",url:shared.url});else{await navigator.clipboard.writeText(shared.url);toast.success("Share link copied. Recipients sign in to view it.")}}catch(error){toast.error(error instanceof Error?error.message:"Could not create share link.")}}}>Share answer link</button>}
                         {m.flashcardsData && (
                           <InChatFlashcardsWidget
                             data={m.flashcardsData}
@@ -1692,7 +1691,7 @@ function AssistantPage() {
         {showScrollBottom && (
           <button
             type="button"
-            onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
+            onClick={() => {const el=messagesScrollRef.current;if(el)el.scrollTo({top:el.scrollHeight,behavior:"smooth"})}}
             title="Scroll to bottom"
             className="absolute right-4 bottom-24 z-30 size-10 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-transform"
           >

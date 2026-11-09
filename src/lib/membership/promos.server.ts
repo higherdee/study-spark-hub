@@ -43,7 +43,11 @@ export async function redeemPromo(userId: string, raw: unknown, now = Date.now()
   if (gift !== (surface === "checkout")) {
     throw new Error(gift ? "Redeem this SyllaPlus gift code at checkout." : "Enter a SyllaPlus gift code.");
   }
-  await ensurePromoTables(); const tx = await turso.transaction("write");
+  await ensurePromoTables();
+  const { bestSubscription } = await import("@/lib/billing/store.server");
+  const subscription = await bestSubscription(userId, "live");
+  const paidUntil = subscription?.periodEnd && Date.parse(subscription.periodEnd) > now ? Date.parse(subscription.periodEnd) : now;
+  const tx = await turso.transaction("write");
   try {
     const previous = (await tx.execute({ sql: "SELECT effect,value,expires_at FROM membership_promo_claims WHERE user_id=? AND request_id=?", args: [userId, input.requestId] })).rows[0];
     if (previous) { await tx.commit(); return previous; }
@@ -61,7 +65,7 @@ export async function redeemPromo(userId: string, raw: unknown, now = Date.now()
     if (p.effect === "plus_days") {
       const active = (await tx.execute({ sql: "SELECT MAX(expires_at) AS until FROM membership_promo_claims WHERE user_id=? AND effect='plus_days'", args: [userId] })).rows[0]?.["until"];
       const activeUntil = typeof active === "string" ? Date.parse(active) : NaN;
-      const startsAt = Number.isFinite(activeUntil) ? Math.max(now, activeUntil) : now;
+      const startsAt = Number.isFinite(activeUntil) ? Math.max(now, paidUntil, activeUntil) : Math.max(now, paidUntil);
       expiresAt = new Date(startsAt + p.value * 86400000).toISOString();
     } else {
       const d = new Date(now); expiresAt = p.effect === "ai_tokens" ? new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1)).toISOString() : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString();

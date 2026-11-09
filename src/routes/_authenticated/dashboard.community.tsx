@@ -97,6 +97,9 @@ function peerMedia(content: string): { text: string; id: string; title: string; 
     return { id: media.id, text: String(parsed.text || ""), title: String(media.title || "Attachment"), mime: String(media.mime || "") };
   } catch { return null; }
 }
+function peerReply(content: string): {text: string; sender: string; preview: string} | null {
+  try { const value=JSON.parse(content); const reply=value.syllabossReply; return reply && typeof value.text === "string" ? {text:value.text,sender:String(reply.sender||"Student"),preview:String(reply.preview||"")} : null; } catch { return null; }
+}
 
 function PeerMediaAttachment({ media }: { media: NonNullable<ReturnType<typeof peerMedia>> }) {
   const [url, setUrl] = useState("");
@@ -146,10 +149,12 @@ interface ActiveChat {
 }
 
 export function CommunityPage() {
-  const { user } = useAuth();
+  const { user,getToken } = useAuth();
   const { data: profile } = useProfile();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const [showLatestMessage, setShowLatestMessage] = useState(false);
   const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Navigation & View States
@@ -274,7 +279,7 @@ export function CommunityPage() {
       if (!user) return [];
       return await getStudentConversationsServerFn({ data: { userId: user.id } });
     },
-    refetchInterval: 12000,
+    refetchInterval: 4000,
   });
 
   // 2. Fetch Study Groups (Exclude any dummy placeholder groups per requirement)
@@ -337,7 +342,8 @@ export function CommunityPage() {
     enabled: isDirect && Boolean(activeChat?.id),
     refetchInterval: 5000,
     queryFn: async () => {
-      const response = await fetch(`/api/mobile?resource=direct-request&thread=${encodeURIComponent(activeChat!.id)}`);
+      const token=await getToken();
+      const response = await fetch(`/api/mobile?resource=direct-request&thread=${encodeURIComponent(activeChat!.id)}`,{headers:token?{Authorization:`Bearer ${token}`}:{}});
       if (!response.ok) throw new Error("Message request unavailable.");
       return (await response.json()).requestState as string;
     },
@@ -345,7 +351,7 @@ export function CommunityPage() {
   const { data: chatMessages = [], refetch: refetchActiveMessages } = useQuery({
     queryKey: [isDirect ? "direct-messages" : "group-messages", activeChat?.id],
     enabled: Boolean(activeChat?.id),
-    refetchInterval: isDirect ? 5000 : false,
+    refetchInterval: 3000,
     queryFn: async () => {
       if (!activeChat) return [];
       if (activeChat.type === "peer") {
@@ -360,11 +366,11 @@ export function CommunityPage() {
     "sender_id" in message && message.sender_id !== user?.id && !message.is_read
   );
   useEffect(() => {
-    if (!lastUnread || !activeChat?.id || !user?.id || !document.hasFocus()) return;
+    if (!lastUnread || !activeChat?.id || !user?.id || !document.hasFocus() || showLatestMessage) return;
     void markDirectMessagesReadServerFn({
       data: { conversationId: activeChat.id, readerUserId: user.id },
     }).then(() => Promise.all([refetchActiveMessages(), refetchConversations()])).catch(() => {});
-  }, [lastUnread, activeChat?.id, user?.id, refetchActiveMessages, refetchConversations]);
+  }, [lastUnread, activeChat?.id, user?.id, refetchActiveMessages, refetchConversations, showLatestMessage]);
 
   const hasInitializedDesktopChatRef = useRef(false);
 
@@ -420,7 +426,7 @@ export function CommunityPage() {
 
   // Auto-scroll messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if(!showLatestMessage) { const el=messagesScrollRef.current; if(el) el.scrollTo({top:el.scrollHeight,behavior:"smooth"}); }
   }, [chatMessages]);
 
   // Start 1-on-1 Chat with peer
@@ -543,7 +549,7 @@ export function CommunityPage() {
     let content = messageInput.trim();
     if (replyingToMessage) {
       const sender = replyingToMessage.sender_name || replyingToMessage.user_name || "Scholar";
-      const quoteSnippet = replyingToMessage.content.slice(0, 60);
+      const quoteSnippet = (peerReply(replyingToMessage.content)?.text ?? replyingToMessage.content).slice(0, 60);
       content = `[Replying to ${sender}: "${quoteSnippet}"]\n${content}`;
       setReplyingToMessage(null);
     }
@@ -1093,7 +1099,7 @@ export function CommunityPage() {
             </div>
 
             {/* Chat Messages Stream */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]">
+            <div ref={messagesScrollRef} onScroll={event=>{const el=event.currentTarget;setShowLatestMessage(el.scrollHeight-el.scrollTop-el.clientHeight>100)}} className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]">
               {chatMessages.length === 0 ? (
                 <div className="py-16 text-center flex flex-col items-center">
                   <div className="size-12 rounded-full bg-brand/10 text-brand grid place-items-center mb-2">
@@ -1107,6 +1113,8 @@ export function CommunityPage() {
               ) : (
                 chatMessages.map((msg: any) => {
                   const media = peerMedia(msg.content);
+                  const reply = peerReply(msg.content);
+                  const messageText = reply?.text ?? msg.content;
                   const battleMatch = !media && msg.content?.match(/\[(STUDY_BATTLE|BATTLE_RECEIPT):([a-zA-Z0-9-]+)\]/);
                   if (battleMatch) {
                     const battleId = battleMatch[2];
@@ -1194,10 +1202,11 @@ export function CommunityPage() {
                           </div>
                         )}
 
+                        {reply && <blockquote className="mb-2 border-l-2 border-primary/60 pl-3 text-xs"><strong>{reply.sender}</strong><p className="line-clamp-3 opacity-80">{reply.preview}</p></blockquote>}
                         {media ? <PeerMediaAttachment media={media} /> : isBossAi ? (
-                          <AiMessageRenderer content={msg.content} className="text-xs [&_p]:mb-1 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs" />
+                          <AiMessageRenderer content={messageText} className="text-xs [&_p]:mb-1 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs" />
                         ) : (
-                          <AiMessageRenderer content={msg.content} className="text-inherit [&_p]:text-inherit [&_p]:mb-1 [&_p]:whitespace-pre-wrap [&_.katex]:text-inherit" />
+                          <AiMessageRenderer content={messageText} className="text-inherit [&_p]:text-inherit [&_p]:mb-1 [&_p]:whitespace-pre-wrap [&_.katex]:text-inherit" />
                         )}
 
                         <div
@@ -1220,6 +1229,7 @@ export function CommunityPage() {
                 })
               )}
               <div ref={messagesEndRef} />
+              {showLatestMessage && <button type="button" className="sticky bottom-2 ml-auto block rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground shadow-sm" onClick={()=>{const el=messagesScrollRef.current;if(el)el.scrollTo({top:el.scrollHeight,behavior:"smooth"})}}>↓ Latest messages</button>}
             </div>
 
             {isDirect && (directRequest === "incoming" || directRequest === "outgoing") && (

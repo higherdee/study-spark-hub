@@ -8,6 +8,8 @@ on:
       - 'scripts/android-release-metadata.py'
       - 'scripts/android-launch-smoke.sh'
       - 'scripts/android-ui-smoke.py'
+      - 'scripts/android-quiz-smoke.py'
+      - 'scripts/android-reader-smoke.py'
   workflow_dispatch:
     inputs:
       bootstrap_signing:

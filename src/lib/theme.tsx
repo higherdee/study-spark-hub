@@ -4,27 +4,54 @@ type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
-  setTheme: (theme: Theme) => void;
+  setTheme: (theme: Theme | "system") => void;
   toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme] = useState<Theme>("light");
+  const [theme, applyTheme] = useState<Theme>("light");
+  const [preference, setPreference] = useState<Theme | "system">(() => {
+    try {
+      const saved =
+        typeof window !== "undefined" ? localStorage.getItem("syllaboss-appearance") : null;
+      return saved === "dark" || saved === "light" ? saved : "system";
+    } catch {
+      return "system";
+    }
+  });
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove("dark");
     try {
-      localStorage.setItem("syllaboss-theme", "light");
+      const saved = localStorage.getItem("syllaboss-appearance");
+      if (saved === "dark" || saved === "light") setPreference(saved);
     } catch {
-      // storage disabled
+      /* Storage may be unavailable. */
     }
   }, []);
-
-  const setTheme = (_t: Theme) => {};
-  const toggleTheme = () => {};
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => {
+      const current = preference === "system" ? (media.matches ? "dark" : "light") : preference;
+      applyTheme(current);
+      document.documentElement.classList.toggle("dark", current === "dark");
+      document.documentElement.classList.toggle("light", current === "light");
+      document.documentElement.style.colorScheme = current;
+    };
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [preference]);
+  const setTheme = (next: Theme | "system") => {
+    setPreference(next);
+    try {
+      localStorage.setItem("syllaboss-appearance", next);
+    } catch {
+      /* Keep the in-session preference. */
+    }
+  };
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>

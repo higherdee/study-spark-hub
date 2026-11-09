@@ -25,6 +25,7 @@ import java.util.UUID
 @Composable internal fun NativeBillingScreen(back: () -> Unit) {
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var country by rememberSaveable { mutableStateOf("") }
+    var extending by rememberSaveable { mutableStateOf(false) }
     var bankTransfer by rememberSaveable { mutableStateOf(false) }
     var showRegions by remember { mutableStateOf(false) }
     var catalog by remember { mutableStateOf<JSONObject?>(null) };var summary by remember { mutableStateOf<JSONObject?>(null) }
@@ -33,6 +34,8 @@ import java.util.UUID
     var checkoutId by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
     var giftCode by rememberSaveable { mutableStateOf("") }
     var giftRequest by rememberSaveable { mutableStateOf(UUID.randomUUID().toString()) }
+    var pendingCheckout by rememberSaveable { mutableStateOf("") }
+    var verificationAttempts by remember { mutableIntStateOf(0) }
     var giftNotice by rememberSaveable { mutableStateOf("") }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
@@ -54,7 +57,8 @@ import java.util.UUID
             }
             catalog = result
             if (!result.optBoolean("bankTransfer")) bankTransfer = false
-            summary = StudyApi.endpoint("/api/billing" + if (country.length == 2) "?country=$country" else "")
+            summary = StudyApi.endpoint("/api/billing" + if(pendingCheckout.isNotBlank()) "?checkout=$pendingCheckout" else if (country.length == 2) "?country=$country" else "")
+            if(pendingCheckout.isNotBlank() && verificationAttempts<10) { verificationAttempts++;kotlinx.coroutines.delay(3000);refresh++ }
         } catch(e:Exception) {if(e is kotlinx.coroutines.CancellationException) throw e;error=e.message ?: "Billing could not be loaded."}
     }
     fun open(url:String) { val uri=Uri.parse(url);require(uri.scheme=="https"){"Secure checkout is unavailable."};context.startActivity(Intent(Intent.ACTION_VIEW,uri)) }
@@ -70,10 +74,11 @@ import java.util.UUID
         return formatter.format(java.math.BigDecimal.valueOf(amount.toLong(), digits))
     }
     val plans=catalog?.optJSONArray("plans");val plan=plans?.let { (0 until it.length()).map{n->it.getJSONObject(n)}.firstOrNull{p->p.optString("plan")==selected} }
-    val subscription=summary?.optJSONObject("subscription");val hasSubscription=subscription?.optBoolean("hasAccess")==true
+    val subscription=summary?.optJSONObject("subscription");val hasSubscription=summary?.optJSONObject("membership")?.optBoolean("hasAccess")==true || subscription?.optBoolean("hasAccess")==true
     Scaffold(topBar={TopAppBar(title={Text("SyllaPlus")},navigationIcon={IconButton(onClick=back){Icon(Icons.Outlined.ArrowBack,"Back")}})}) {padding->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
-            BrandWordmark();Text("Keep your momentum.",fontFamily=WebsiteDisplay,fontSize=34.sp)
+            BrandWordmark();Text(if(hasSubscription) "Your SyllaPlus." else "Keep your momentum.",fontFamily=WebsiteDisplay,fontSize=34.sp)
+            if(hasSubscription) { val membership=summary?.optJSONObject("membership"); ElevatedCard(Modifier.fillMaxWidth(),colors=CardDefaults.elevatedCardColors(containerColor=Sage)) {Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text("MEMBERSHIP ACTIVE",style=MaterialTheme.typography.labelMedium);Text(if(membership!=null && !membership.isNull("endsAt")) membership.optInt("daysRemaining").toString()+" days remaining" else "Membership active",fontFamily=WebsiteDisplay,fontSize=30.sp);Text("Access until "+(membership?.optString("endsAt")?.take(10) ?: subscription?.optString("periodEnd")?.take(10) ?: "your confirmed expiry"));Text("Add a gift code below to extend your existing access.",fontSize=13.sp)}} }
             Text("More AI study time, library materials alongside Boss AI, more downloads and longer conversation history.",color=MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedTextField(
                 value = giftCode,
@@ -111,7 +116,8 @@ import java.util.UUID
                     }
                 }
             }
-            if(plans!=null) for(i in 0 until plans.length()) {val p=plans.getJSONObject(i);OutlinedCard(onClick={selected=p.getString("plan");agreed=false;checkoutId=UUID.randomUUID().toString()},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),colors=CardDefaults.outlinedCardColors(containerColor=if(selected==p.optString("plan")) Sage else MaterialTheme.colorScheme.surface)) { Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) { Text(p.getString("plan").replaceFirstChar{it.uppercase()},fontSize=20.sp);val charge = money(p.getInt("amount"), p.getString("currency"))
+            if(hasSubscription) OutlinedButton(onClick={extending=!extending;agreed=false;checkoutId=UUID.randomUUID().toString()}){Text(if(extending) "Close extension options" else "Add more time")}
+            if((!hasSubscription || extending) && plans!=null) for(i in 0 until plans.length()) {val p=plans.getJSONObject(i);OutlinedCard(onClick={selected=p.getString("plan");agreed=false;checkoutId=UUID.randomUUID().toString()},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),colors=CardDefaults.outlinedCardColors(containerColor=if(selected==p.optString("plan")) Sage else MaterialTheme.colorScheme.surface)) { Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) { Text(p.getString("plan").replaceFirstChar{it.uppercase()},fontSize=20.sp);val charge = money(p.getInt("amount"), p.getString("currency"))
                 val estimate = if (p.isNull("approximateAmount") || p.isNull("approximateCurrency")) null
                     else money(p.getInt("approximateAmount"), p.getString("approximateCurrency"))
                 if (localFirst && estimate != null) {
@@ -122,19 +128,19 @@ import java.util.UUID
                     if (estimate != null) Text("About $estimate in your local currency", fontSize = 12.sp)
                 }
                 Text(if(selected==p.optString("plan")) "Selected" else "Choose this plan",fontSize=12.sp) } } }
-            if(hasSubscription) {Text("Membership: ${subscription!!.optString("status")}");Text("Current period ends ${subscription.optString("periodEnd")}");if(!subscription.isNull("cancelAt")) Text("Renewal is canceled. Access continues until the confirmed period end.")}
-            else {
-                Text(if (summary?.optInt("firstRenewalBonusDays", 0) == 7) "Pay when you subscribe. Seven extra days are added before your first renewal, once per account. Subsequent renewals follow the selected schedule." else "Pay when you subscribe. Your seven-day renewal extension has already been used; renewals follow the selected schedule.",fontSize=13.sp)
+            if(hasSubscription) {if(subscription!=null && !subscription.isNull("cancelAt")) Text("Renewal is canceled. Access continues until the confirmed period end.")}
+            if(!hasSubscription || extending) {
+                if(!hasSubscription) Text(if (summary?.optInt("firstRenewalBonusDays", 0) == 7) "Pay when you subscribe. Seven extra days are added before your first renewal, once per account. Subsequent renewals follow the selected schedule." else "Pay when you subscribe. Your seven-day renewal extension has already been used; renewals follow the selected schedule.",fontSize=13.sp)
                 if (catalog?.optBoolean("bankTransfer") == true) Row(verticalAlignment=Alignment.CenterVertically) { Switch(bankTransfer, { bankTransfer=it; agreed=false; checkoutId=UUID.randomUUID().toString() }, enabled=!busy); Text("Pay by bank transfer") }
                 if (bankTransfer) Text("NGN ${catalog?.optJSONObject("transferPrices")?.optInt(selected)?.div(100.0)} today. Renew manually after the paid period. Access starts once Bachs confirms payment.")
                 Text("Any applicable taxes and the final amount are shown at checkout before payment.",fontSize=12.sp,color=Muted)
-                Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(agreed,{agreed=it},enabled=!busy);Text(if(bankTransfer) "I agree to the terms and the one-time bank-transfer payment. Renewal is manual." else "I agree to the terms and authorize automatic recurring card payments at the displayed price until I cancel.",fontSize=13.sp)}
+                Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(agreed,{agreed=it},enabled=!busy);Text(if(bankTransfer) "I agree to the terms and the one-time bank-transfer payment. Renewal is manual." else if(hasSubscription) "I agree to this one-time payment to extend my membership. My existing automatic renewal moves to the extended expiry." else "I agree to the terms and authorize automatic recurring card payments at the displayed price until I cancel.",fontSize=13.sp)}
                 TextButton(onClick={open("https://syllaboss.org/terms")}) {Text("Read payment terms")}
-                Button(onClick={busy=true;error="";scope.launch {try {val result=StudyApi.endpoint("/api/billing",JSONObject().put("action","checkout").put("id",checkoutId).put("country",country).put("method",if(bankTransfer) "bank_transfer" else "card").put("plan",selected).put("acceptedTerms",true).put("recurringConsent",true));open(result.getString("url"))}catch(e:Exception){error=e.message ?: "Checkout could not be opened."}finally{busy=false}}},enabled=!busy&&agreed&&plan?.optBoolean("ready")==true,modifier=Modifier.fillMaxWidth().height(54.dp)) {Text(if(busy) "Opening checkout…" else if(plan?.optBoolean("ready")!=true) "Checkout is being prepared" else "Subscribe to SyllaPlus")}
+                Button(onClick={busy=true;error="";scope.launch {try {val result=StudyApi.endpoint("/api/billing",JSONObject().put("action","checkout").put("extension",hasSubscription).put("id",checkoutId).put("country",country).put("method",if(bankTransfer) "bank_transfer" else "card").put("plan",selected).put("acceptedTerms",true).put("recurringConsent",true));pendingCheckout=result.getString("id");verificationAttempts=0;open(result.getString("url"))}catch(e:Exception){error=e.message ?: "Checkout could not be opened."}finally{busy=false}}},enabled=!busy&&agreed&&plan?.optBoolean("ready")==true,modifier=Modifier.fillMaxWidth().height(54.dp)) {Text(if(busy) "Opening checkout…" else if(plan?.optBoolean("ready")!=true) "Checkout is being prepared" else if(hasSubscription) "Pay once · add more time" else "Subscribe to SyllaPlus")}
             }
-            if(subscription!=null) OutlinedButton(onClick={busy=true;scope.launch{try{open(StudyApi.endpoint("/api/billing",JSONObject().put("action","manage")).getString("url"))}catch(e:Exception){error=e.message ?: "Billing management could not be opened."}finally{busy=false}}},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Manage payments")}
-            if(hasSubscription && subscription!!.isNull("cancelAt")) TextButton(onClick={cancelConfirm=true},enabled=!busy){Text("Cancel automatic renewal")}
-            OutlinedButton(onClick={refresh++},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Refresh membership after checkout")}
+            if(subscription!=null && !subscription.optString("providerId").startsWith("pass_")) OutlinedButton(onClick={busy=true;scope.launch{try{open(StudyApi.endpoint("/api/billing",JSONObject().put("action","manage")).getString("url"))}catch(e:Exception){error=e.message ?: "Billing management could not be opened."}finally{busy=false}}},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("Manage payments")}
+            if(hasSubscription && subscription!=null && subscription.isNull("cancelAt")) TextButton(onClick={cancelConfirm=true},enabled=!busy){Text("Cancel automatic renewal")}
+            Text("Membership updates automatically when you return from checkout.",fontSize=12.sp,color=Muted)
             if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
         }
     }

@@ -45,6 +45,14 @@ export async function verifyBachsCheckout(reference: string, environment: Billin
   if (!paymentId) throw new Error("Bachs checkout is awaiting payment.");
   const payment = await bachs(environment).payments.get(paymentId);
   if (payment.status !== "succeeded" || payment.checkout_id !== reference || payment.currency !== record.currency || bachsUsdMinor(payment.amount) !== record.amount) throw new Error("Bachs payment is not verified.");
+  if(record.priceId === `prepaid_${record.currency}_${record.plan}`) {
+    if(payment.subscription_id)throw new Error("Prepaid time must be a one-time payment.");
+    const paidAt=iso(payment.completed_at)||iso(session.completed_at);if(!paidAt)throw new Error("Verified payment completion time is missing.");
+    const {grantPrepaidTime,alignPrepaidRenewal}=await import("./prepaid.server");
+    await grantPrepaidTime(record.userId,record.id,record.plan,environment,paidAt);
+    if(environment==="live")await alignPrepaidRenewal(record.userId);
+    return;
+  }
   if (record.priceId === `bank_transfer_NGN_${record.plan}` && record.currency === "NGN") {
     if (payment.subscription_id || !session.customer?.id) throw new Error("Unexpected bank-transfer checkout.");
     const paidAt = iso(payment.completed_at) || iso(session.completed_at);

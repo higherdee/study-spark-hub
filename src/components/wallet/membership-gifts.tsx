@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
 export function MembershipGifts({ points, onIssued }: { points: number; onIssued: () => void }) {
   const { getToken } = useAuth();
+  const [confirmation, setConfirmation] = useState<{ days: number; points: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [request, setRequest] = useState<{ id: string; days: number } | null>(null);
@@ -29,8 +31,9 @@ export function MembershipGifts({ points, onIssued }: { points: number; onIssued
   return <section className="rounded-3xl border bg-card p-6 space-y-4">
     <h2 className="font-serif text-2xl">Give the gift of SyllaPlus</h2>
     <p className="text-sm text-muted-foreground">Exchange points for a code instantly delivered by DM. Use it yourself or share it. Redeem at checkout for $0 within three months.</p>
-    <div className="flex flex-wrap gap-3">{options.data?.map(option => <Button key={option.days} variant="outline" disabled={busy || points < option.points} onClick={() => void issue(option.days)}>{option.days} days · {option.points.toLocaleString()} points</Button>)}</div>
+    <div className="flex flex-wrap gap-3">{options.data?.map(option => <Button key={option.days} variant="outline" disabled={busy || points < option.points} onClick={() => setConfirmation(option)}>{option.days} days · {option.points.toLocaleString()} points</Button>)}</div>
     {options.isError && <p role="alert">Gift prices could not load. <button onClick={() => void options.refetch()}>Try again</button></p>}
     {message && <p role="status" className="text-sm break-words">{message} <Link to="/dashboard/community" className="underline">Open Peers</Link></p>}
+    <AlertDialog open={!!confirmation} onOpenChange={open=>{if(!open)setConfirmation(null)}}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm SyllaPlus gift</AlertDialogTitle><AlertDialogDescription>Spend {confirmation?.points.toLocaleString()} SyllaPoints for {confirmation?.days} days of SyllaPlus? Your remaining balance will be {(points-(confirmation?.points||0)).toLocaleString()} points. The code will arrive in Peers and expires in three months.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep my points</AlertDialogCancel><AlertDialogAction onClick={()=>{if(confirmation)void issue(confirmation.days);setConfirmation(null)}}>Confirm exchange</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </section>;
 }

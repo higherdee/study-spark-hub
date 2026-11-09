@@ -1,5 +1,5 @@
 import { ClerkFailed, ClerkLoaded, ClerkLoading, SignIn, SignUp } from "@clerk/clerk-react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AlertCircle, BookOpen, Bot, Coins, Loader2, RefreshCw } from "lucide-react";
 import { z } from "zod";
@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { clerkAppearance } from "@/integrations/clerk";
 import { TermsBeforeSignup } from "@/components/account-consent";
 
-const searchSchema = z.object({ mode: z.enum(["signin", "signup"]).catch("signin").default("signin") });
+const searchSchema = z.object({ mode: z.enum(["signin", "signup"]).catch("signin").default("signin"), redirect:z.string().regex(/^\/(?:shared\/[a-f0-9-]{36}|dashboard(?:[/?][^\\\u0000-\u001f]*)?)$/i).optional().catch(undefined) });
 
 export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
@@ -34,16 +34,16 @@ const PERKS = [
 ];
 
 function AuthPage() {
-  const { mode } = Route.useSearch();
-  const navigate = useNavigate();
+  const { mode,redirect } = Route.useSearch();
+  const destination=redirect||"/dashboard";
   const { user } = useAuth();
   const isSignup = mode === "signup";
 
   useEffect(() => {
     if (user) {
-      navigate({ to: "/dashboard" });
+      window.location.replace(destination);
     }
-  }, [user, navigate]);
+  }, [user, destination]);
 
   return (
     <div className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
@@ -85,7 +85,7 @@ function AuthPage() {
           <span className="ml-auto text-[13px] text-muted-foreground">
             {isSignup ? "Already have an account?" : "New to Syllaboss?"}{" "}
             <a
-              href={isSignup ? "/auth?mode=signin" : "/auth?mode=signup"}
+              href={(isSignup ? "/auth?mode=signin" : "/auth?mode=signup")+"&redirect="+encodeURIComponent(destination)}
               className="ml-1 font-semibold text-ink underline decoration-border underline-offset-4 transition-colors hover:decoration-ink"
             >
               {isSignup ? "Sign in" : "Create account"}
@@ -104,9 +104,9 @@ function AuthPage() {
                 <SignUp
                   appearance={clerkAppearance}
                   routing="virtual"
-                  signInUrl="/auth?mode=signin"
-                  forceRedirectUrl="/dashboard"
-                  fallbackRedirectUrl="/dashboard"
+                  signInUrl={"/auth?mode=signin&redirect="+encodeURIComponent(destination)}
+                  forceRedirectUrl={destination}
+                  fallbackRedirectUrl={destination}
                   fallback={<AuthLoadingPanel label="Preparing account creation…" />}
                 />
                 </TermsBeforeSignup>
@@ -114,9 +114,9 @@ function AuthPage() {
                 <SignIn
                   appearance={clerkAppearance}
                   routing="virtual"
-                  signUpUrl="/auth?mode=signup"
-                  forceRedirectUrl="/dashboard"
-                  fallbackRedirectUrl="/dashboard"
+                  signUpUrl={"/auth?mode=signup&redirect="+encodeURIComponent(destination)}
+                  forceRedirectUrl={destination}
+                  fallbackRedirectUrl={destination}
                   fallback={<AuthLoadingPanel label="Preparing sign in…" />}
                 />
               )}

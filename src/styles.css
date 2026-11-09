@@ -101,9 +101,7 @@
   --animate-rise: rise 0.45s var(--ease-out) both;
 }
 
-:root,
-.dark {
-  /* The app is light-only; .dark intentionally mirrors :root. */
+:root {
   --radius: 0.75rem;
 
   --background: #f5f3ec;
@@ -186,6 +184,26 @@
   --topbar-h: 3.5rem;
 }
 
+.dark {
+  color-scheme: dark;
+  --background: #101a16; --foreground: #e3ede5; --ink: #e3ede5; --ink-soft: #b4c4b9;
+  --surface: #101a16; --surface-container-lowest: #15211b; --surface-container-low: #19271f;
+  --surface-container: #213127; --surface-container-high: #2a3c31; --surface-container-highest: #344b3d;
+  --card: #19271f; --card-foreground: #e3ede5; --popover: #213127; --popover-foreground: #e3ede5;
+  --primary: #9adbbe; --primary-foreground: #0c3024; --primary-container: #254b3b; --on-primary-container: #c0e6d2;
+  --brand: #9adbbe; --brand-deep: #75b495; --moss: #b4c4b9;
+  --secondary: #213127; --secondary-foreground: #e3ede5; --secondary-container: #254b3b;
+  --muted: #213127; --muted-foreground: #b1c2b6; --accent: #254b3b; --accent-foreground: #c0e6d2;
+  --border: #3a5043; --input: #50675a; --ring: #9adbbe;
+  --brass: #d9ba7c; --brass-soft: #403a29; --brass-ink: #ead2a1;
+  --sidebar: #15211b; --sidebar-foreground: #e3ede5; --sidebar-primary: #9adbbe; --sidebar-primary-foreground: #0c3024;
+  --sidebar-accent: #254b3b; --sidebar-accent-foreground: #c0e6d2; --sidebar-border: #3a5043; --sidebar-ring: #9adbbe;
+}
+.dark .bg-white { background-color: var(--card); }
+.dark .text-forest { color: var(--primary); }
+.dark .bg-primary.text-white, .dark .bg-brand.text-white { color: var(--primary-foreground); }
+.dark .bg-brass.text-white { color: #251d0e; }
+.dark .boss-response { color: var(--foreground); }
 @layer base {
   * {
     border-color: var(--color-border);
@@ -617,6 +635,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 
 /* Public landing page: the course shelf editorial direction. */
 .home-page {
+  --primary: #173b2d;
+  --primary-foreground: #fff;
+  --ink: #173126;
+  --ink-soft: #58675d;
+  --background: #f5f3ec;
+  --card: #fffefa;
+  --foreground: #173126;
   --home-ink: #173126;
   --home-muted: #58675d;
   --home-paper: #f5f3ec;

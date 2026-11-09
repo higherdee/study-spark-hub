@@ -38,6 +38,7 @@ import org.json.JSONObject
         try{data=StudyApi.call("reviews&material="+java.net.URLEncoder.encode(material.id,"UTF-8"));data?.optJSONArray("reviews")?.let{a->for(i in 0 until a.length()){val r=a.getJSONObject(i);if(r.optBoolean("own")){rating=r.optInt("rating");review=r.optString("review")}}}}catch(e:Exception){if(e is kotlinx.coroutines.CancellationException)throw e;error=e.message ?: "Reviews could not be loaded."}finally{loading=false}
     }
     Row {
+        IconButton(onClick={context.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).apply { type="text/plain"; putExtra(android.content.Intent.EXTRA_TEXT,"https://syllaboss.org/dashboard/preview?id=${material.id}") },"Share material link"))}) { Icon(Icons.Outlined.Share,"Share material link") }
         IconButton(onClick={reviews=true}) {Icon(Icons.Outlined.StarOutline,"Material reviews")}
         IconButton(onClick={saveFile.launch(material.title.replace(Regex("[\\/:*?\"<>|]"),"_")+(if(material.mime.startsWith("image/")) ".${material.mime.substringAfter('/')}" else ".pdf"))},enabled=!downloading) {Icon(Icons.Outlined.Download,"Download material")}
     }
@@ -46,7 +47,8 @@ import org.json.JSONObject
     if(reviews) AlertDialog(onDismissRequest={reviews=false},title={Text("Material reviews")},text={Column(Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         if(loading)LinearProgressIndicator(Modifier.fillMaxWidth())
         data?.let{Text("%.1f / 5 · %d reviews".format(it.optDouble("average"),it.optInt("count")))}
-        Row {for(n in 1..5)IconButton(onClick={rating=n},enabled=!saving){Icon(if(n<=rating)Icons.Outlined.Star else Icons.Outlined.StarOutline,"Rate $n stars",tint=Forest)}}
+        Row {
+        for(n in 1..5)IconButton(onClick={rating=n},enabled=!saving){Icon(if(n<=rating)Icons.Outlined.Star else Icons.Outlined.StarOutline,"Rate $n stars",tint=MaterialTheme.colorScheme.primary)}}
         OutlinedTextField(review,{review=it.take(1500)},label={Text("Share your experience (optional)")},minLines=2,maxLines=5,enabled=!saving,modifier=Modifier.fillMaxWidth())
         Button(onClick={saving=true;error="";scope.launch{try{StudyApi.call(body=JSONObject().put("action","review").put("materialId",material.id).put("rating",rating).put("review",review.trim()));reload++}catch(e:Exception){error=e.message ?: "Your review could not be saved."}finally{saving=false}}},enabled=rating in 1..5&&!saving){Text(if(saving)"Saving…" else "Save my review")}
         if(error.isNotBlank())Text(error,color=MaterialTheme.colorScheme.error)

@@ -4,7 +4,7 @@ import { getDocumentProxy } from "unpdf";
 import { askGeminiAI, askGeminiVisionAI } from "./gemini";
 import { requireLibraryAiAccess, enforceChatRetention } from "./membership/policy.server";
 import { budgetedAiFetch, withAiAllowance } from "./membership/ai.server";
-import { referencedDocumentText, numberedPage, documentReference } from "./ai/document-index";
+import { referencedDocumentText, numberedPage, documentReference, pdfReadingLines } from "./ai/document-index";
 
 let prepared: Promise<unknown> | undefined;
 async function ensureDocumentCache() {
@@ -35,7 +35,7 @@ export function selectDocumentExcerpt(text: string, question: string, limit = 16
   }
   return chunks.sort((a, b) => b.score - a.score || a.offset - b.offset).slice(0, Math.floor(limit / 2200)).sort((a, b) => a.offset - b.offset).map((chunk) => chunk.text).join("\n\n[Another document excerpt]\n\n").slice(0, limit);
 }
-export async function loadDocumentContext(userId: string, materialId: string) {
+export async function loadDocumentContext(userId: string, materialId: string, requestedPage?: number) {
   const libraryMaterial = await getMaterialById(materialId);
   if (libraryMaterial) await requireLibraryAiAccess(userId);
   const material = libraryMaterial ?? await (await import("./study-media.server")).ownedStudyDocument(userId, materialId);
@@ -43,8 +43,9 @@ export async function loadDocumentContext(userId: string, materialId: string) {
     throw new Error("This study material is unavailable.");
   }
   await ensureDocumentCache();
-  const fileKey = `lines-v2:${material.file_path}:${material.file_size}`;
-  const cached = (await turso.execute({ sql: "SELECT text,pages FROM material_text_cache WHERE material_id=? AND file_key=?", args: [materialId, fileKey] })).rows[0];
+  const cacheId = requestedPage ? `${materialId}:page:${requestedPage}` : materialId;
+  const fileKey = `lines-v3:${material.file_path}:${material.file_size}`;
+  const cached = (await turso.execute({ sql: "SELECT text,pages FROM material_text_cache WHERE material_id=? AND file_key=?", args: [cacheId, fileKey] })).rows[0];
   if (cached) return { material, text: String(cached["text"]), pages: Number(cached["pages"]) };
   const file = await getFromR2(material.file_path);
   if (file.bytes.byteLength > 20 * 1024 * 1024) throw new Error("Choose a material smaller than 20 MB for inline study.");
@@ -54,24 +55,24 @@ export async function loadDocumentContext(userId: string, materialId: string) {
   const started = Date.now();
   try {
     if (pdf.numPages > 1000) throw new Error("Choose a section of this document for AI study; it contains over 1,000 pages.");
-    for (let number = 1; number <= pdf.numPages; number++) {
+    if (requestedPage != null && (requestedPage < 1 || requestedPage > pdf.numPages)) throw new Error(`Page ${requestedPage} is outside this document's ${pdf.numPages} pages.`);
+    for (let number = requestedPage || 1; number <= (requestedPage || pdf.numPages); number++) {
       if (Date.now() - started > 20_000) throw new Error("This document is taking too long to read. Try a smaller section.");
       const page = await pdf.getPage(number);
       const content = await page.getTextContent();
-      const pageText = content.items.map((item) => "str" in item ? item.str + (item.hasEOL ? "\n" : " ") : "").join("");
-      const lines = pageText.split("\n").map(line => line.trim()).filter(Boolean);
+      const lines = pdfReadingLines(content.items.filter((item) => "str" in item));
       text += `\n${numberedPage({ page: number, lines })}\n`;
       page.cleanup();
       if (text.length > 4_000_000) throw new Error("This document is too large to index in one session. Upload the relevant chapter; no pages have been silently omitted.");
     }
-    await turso.execute({ sql: "INSERT INTO material_text_cache(material_id,file_key,text,pages) VALUES(?,?,?,?) ON CONFLICT(material_id) DO UPDATE SET file_key=excluded.file_key,text=excluded.text,pages=excluded.pages,created_at=datetime('now')", args: [materialId, fileKey, text, pdf.numPages] });
+    await turso.execute({ sql: "INSERT INTO material_text_cache(material_id,file_key,text,pages) VALUES(?,?,?,?) ON CONFLICT(material_id) DO UPDATE SET file_key=excluded.file_key,text=excluded.text,pages=excluded.pages,created_at=datetime('now')", args: [cacheId, fileKey, text, pdf.numPages] });
     return { material, text, pages: pdf.numPages };
   } finally { await pdf.loadingTask.destroy(); }
 }
 export async function answerDocumentQuestion(userId: string, input: { materialId: string; message: string; threadId?: string | undefined }) {
   await enforceChatRetention(userId);
   return withAiAllowance(userId, async () => {
-    const document = await loadDocumentContext(userId, input.materialId);
+    const document = await loadDocumentContext(userId, input.materialId, documentReference(input.message)?.page);
     const threadId = input.threadId || crypto.randomUUID();
     if (input.threadId) {
       const owned = await turso.execute({ sql: "SELECT id FROM chat_threads WHERE id=? AND user_id=?", args: [threadId, userId] });
@@ -107,7 +108,7 @@ export async function answerDocumentQuestion(userId: string, input: { materialId
 
 /** Study generators receive the actual private file; metadata is never source material. */
 export async function generateFromStoredDocument(userId: string, materialId: string, prompt: string) {
-  const document = await loadDocumentContext(userId,materialId);
+  const document = await loadDocumentContext(userId,materialId,documentReference(prompt)?.page);
   const file = await getFromR2(document.material.file_path);
   const addressed = referencedDocumentText(document.text,prompt);
   const vision=await documentVisionInput(new Uint8Array(file.bytes),document.material.mime_type||"application/pdf",prompt);

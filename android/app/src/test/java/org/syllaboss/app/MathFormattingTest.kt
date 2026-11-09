@@ -4,6 +4,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MathFormattingTest {
+    @Test fun bareOptionsAndJsonControlEscapesRenderAsMath() {
+        val pair="${'$'}${'$'}"
+        assertEquals("A. x = ${pair}\\frac{a+1}{\\sqrt{b}}${pair}", normalizeMath("A. x = \\frac{a+1}{\\sqrt{b}}"))
+        assertTrue(normalizeMath("A. \u000crac{1}{2}").contains("\\frac{1}{2}"))
+        assertEquals("A. ${pair}\\frac{1}{2}${pair}", normalizeMath("A. \\\\frac{1}{2}"))
+    }
     private val pair = "${'$'}${'$'}"
     @Test fun formulasUseMarkwonDelimiters() {
         assertEquals("Use ${pair}\\frac{1}{2}${pair}", normalizeMath("Use \\(\\frac{1}{2}\\)"))

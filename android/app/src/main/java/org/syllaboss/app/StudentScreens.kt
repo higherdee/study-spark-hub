@@ -41,7 +41,7 @@ import org.json.JSONObject
     Scaffold(topBar = { TopAppBar(title = { Text("Share a material") }, navigationIcon = { IconButton(onClick = back, enabled = !busy) { Icon(Icons.Outlined.ArrowBack, "Back") } }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text("Someone needs what you know.", fontSize = 27.sp, fontWeight = FontWeight.SemiBold, lineHeight = 32.sp)
-            Text("Share a clear PDF of your notes or past questions. Every material is checked before it enters the library.", color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 22.sp)
+            Text("Share notes, textbooks, worked solutions, summaries or lab manuals as a clear PDF. Verified contributions earn SyllaPoints.", color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 22.sp)
             if (result != null) {
                 Icon(Icons.Outlined.CheckCircle, null, modifier = Modifier.size(52.dp), tint = MaterialTheme.colorScheme.primary)
                 Text(result!!, lineHeight = 24.sp)
@@ -52,7 +52,7 @@ import org.json.JSONObject
                 DirectoryField("Course", course, courses, !busy) { course = it }
                 OutlinedTextField(code, { code = it.take(30) }, label = { Text("Course code (optional)") }, modifier = Modifier.fillMaxWidth(), enabled = !busy, shape = RoundedCornerShape(16.dp), singleLine = true)
                 DirectoryField("Institution", school, schools, !busy) { school = it }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { listOf("Lecture notes", "Past questions").forEach { label -> FilterChip(selected = type == label, onClick = { type = label }, label = { Text(label) }, enabled = !busy) } }
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) { listOf("Lecture notes", "Past questions", "Textbook / handout", "Assignment / solution", "Summary", "Lab manual", "Other").forEach { label -> FilterChip(selected = type == label, onClick = { type = label }, label = { Text(label) }, enabled = !busy) } }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) }
                 Button(onClick = {
                     busy = true; error = null
@@ -64,7 +64,7 @@ import org.json.JSONObject
                         } catch (e: Exception) { error = e.message ?: "Upload failed. Please retry." }
                         finally { busy = false }
                     }
-                }, enabled = !busy && selected != null && title.isNotBlank() && course.isNotBlank() && school.isNotBlank(), modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(18.dp)) { if (busy) { CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)) }; Text(if (busy) "Uploading and checking…" else "Share material") }
+                }, enabled = !busy && selected != null && title.isNotBlank() && course.isNotBlank() && school.isNotBlank(), modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(18.dp)) { if (busy) { CircularProgressIndicator(Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)) }; Text(if (busy) "Uploading and checking…" else "Share material") }
                 Text("Keep this screen open while your PDF uploads. Only share materials you have permission to distribute.", fontSize = 11.sp, lineHeight = 17.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -147,31 +147,41 @@ import org.json.JSONObject
     }
 }
 
-@Composable internal fun ProfileScreen(profile: JSONObject?, back: () -> Unit, saved: () -> Unit) {
-    val context = LocalContext.current
+@Composable internal fun ProfileScreen(profile: JSONObject?, back: () -> Unit, saved: () -> Unit, onboarding: Boolean = false) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     fun initial(key: String) = profile?.optString(key)?.takeUnless { it == "null" } ?: ""
     var name by rememberSaveable { mutableStateOf(initial("full_name")) }
+    var username by rememberSaveable { mutableStateOf(initial("username")) }
     var course by rememberSaveable { mutableStateOf(initial("course")) }
     var school by rememberSaveable { mutableStateOf(initial("institution")) }
     var level by rememberSaveable { mutableStateOf(initial("level")) }
+    var step by rememberSaveable { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val courses = remember { val a = JSONArray(context.assets.open("courses.json").bufferedReader().use { it.readText() }); (0 until a.length()).map { a.getString(it) } }
     val schools = remember { val a = JSONArray(context.assets.open("institutions.json").bufferedReader().use { it.readText() }); (0 until a.length()).map { a.getJSONObject(it).getString("name") } }
-    Scaffold(topBar = { TopAppBar(title = { Text("Your student profile") }, navigationIcon = { IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, "Back") } }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text(if(onboarding) "Welcome to Syllaboss" else "Your student profile") }, navigationIcon = { IconButton(onClick = { if(onboarding && step > 0) step-- else back() }) { Icon(Icons.Outlined.ArrowBack, "Back") } }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Text("A little about you.", fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
-            Text("Use the same profile across Syllaboss on your phone and on the web.", color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 22.sp)
-            OutlinedTextField(name, { name = it.take(100) }, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth(), enabled = !busy, shape = RoundedCornerShape(16.dp))
-            DirectoryField("Course", course, courses, !busy) { course = it }
-            DirectoryField("Institution", school, schools, !busy) { school = it }
-            OutlinedTextField(level, { level = it.take(30) }, label = { Text("Level, e.g. 200") }, modifier = Modifier.fillMaxWidth(), enabled = !busy, shape = RoundedCornerShape(16.dp), singleLine = true)
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp) }
-            Button(onClick = {
+            BrandWordmark()
+            Text(if(onboarding) "Make this space yours." else "A little about you.", fontFamily = WebsiteDisplay, fontSize = 32.sp)
+            if(onboarding) { Text("${step + 1} of 2 · ${if(step == 0) "Your identity" else "Your studies"}", color = Muted); LinearProgressIndicator(progress = { (step + 1) / 2f }, modifier = Modifier.fillMaxWidth()) }
+            if(!onboarding || step == 0) {
+                OutlinedTextField(username, { username = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' }.take(30) }, label = { Text("Public @username") }, supportingText = { Text("3–30 letters, numbers or underscores. Your name stays private.") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(name, { name = it.take(100) }, label = { Text("Your name (private)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            }
+            if(!onboarding || step == 1) {
+                Text("We'll use these details to help you find relevant course materials.", color = Muted)
+                DirectoryField("Course", course, courses, !busy) { course = it }
+                DirectoryField("Institution", school, schools, !busy) { school = it }
+                OutlinedTextField(level, { level = it.take(30) }, label = { Text("Level, e.g. 200") }, modifier = Modifier.fillMaxWidth(), enabled = !busy, singleLine = true)
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if(onboarding && step == 0) Button(onClick = { step = 1 }, enabled = name.trim().length >= 2 && username.matches(Regex("[A-Za-z0-9_]{3,30}")), modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) { Text("Continue to your studies") }
+            else Button(onClick = {
                 busy = true; error = null
-                scope.launch { try { StudyApi.call(body = JSONObject().put("action", "profile").put("full_name", name.trim()).put("course", course.trim()).put("institution", school.trim()).put("level", level.trim())); saved() } catch (e: Exception) { error = e.message } finally { busy = false } }
-            }, enabled = !busy && name.trim().length >= 2 && course.trim().length >= 2 && school.trim().length >= 2, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(18.dp)) { Text(if (busy) "Saving…" else "Save profile") }
+                scope.launch { try { StudyApi.call(body = JSONObject().put("action", "profile").put("username", username.trim()).put("full_name", name.trim()).put("course", course.trim()).put("institution", school.trim()).put("level", level.trim())); saved() } catch(e: Exception) { if(e is CancellationException) throw e; error = e.message } finally { busy = false } }
+            }, enabled = !busy && username.matches(Regex("[A-Za-z0-9_]{3,30}")) && name.trim().length >= 2 && course.trim().length >= 2 && school.trim().length >= 2, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) { Text(if(busy) "Saving your space…" else if(onboarding) "Enter your study space" else "Save profile") }
         }
     }
 }

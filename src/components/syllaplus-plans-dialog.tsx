@@ -18,6 +18,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
   const { user, getToken } = useAuth();
   const queryClient = useQueryClient();
   const [country, setCountry] = useState("");
+  const [extending,setExtending]=useState(false);
   const [selected, setSelected] = useState<PlanId>("monthly");
   const [method, setMethod] = useState<"card" | "bank_transfer">("card");
   const [consent, setConsent] = useState(false);
@@ -59,6 +60,8 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
   useEffect(() => { if (!catalog.data?.bankTransfer) setMethod("card"); }, [catalog.data?.bankTransfer]);
 
   const current = summary.data?.subscription;
+  const active=summary.data?.membership?.hasAccess || current?.hasAccess;
+  const endsAt=summary.data?.membership?.endsAt || current?.periodEnd;
   const cardQuote = catalog.data?.plans.find((plan) => plan.plan === selected);
   const quote = method === "bank_transfer" && cardQuote && catalog.data?.transferPrices ? { ...cardQuote, currency: "NGN", amount: catalog.data.transferPrices[selected] } : cardQuote;
   const bonusDays = summary.data?.firstRenewalBonusDays ?? 7;
@@ -69,7 +72,7 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
     setBusy(true); setError("");
     try {
       checkoutId.current ||= crypto.randomUUID();
-      const result = await request<{ id: string; url: string }>("/api/billing", { action: "checkout", id: checkoutId.current, country, method, plan: selected, acceptedTerms: true, recurringConsent: true });
+      const result = await request<{ id: string; url: string }>("/api/billing", { action: "checkout", extension:!!active, id: checkoutId.current, country, method, plan: selected, acceptedTerms: true, recurringConsent: true });
       sessionStorage.setItem("syllaboss-last-checkout", result.id);
       window.location.assign(result.url);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Checkout could not open. Please retry."); }
@@ -92,16 +95,18 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
     <DialogContent className="max-h-[92dvh] max-w-xl overflow-y-auto p-5 sm:p-7">
       <DialogHeader className="gap-3 text-left">
         <span className="grid size-11 place-items-center rounded-2xl bg-brass-soft text-brass-ink"><Sparkles className="size-5" aria-hidden /></span>
-        <div><p className="eyebrow text-brass-ink">SyllaPlus</p><DialogTitle className="mt-2 font-display text-3xl font-medium tracking-tight text-ink">More room to study.</DialogTitle></div>
-        <DialogDescription className="leading-relaxed">{bonusDays ? "Subscribe today and get seven extra days before your first renewal." : "Keep your study tools, saved conversations, and 1.3× study rewards together."}</DialogDescription>
+        <div><p className="eyebrow text-brass-ink">SyllaPlus</p><DialogTitle className="mt-2 font-display text-3xl font-medium tracking-tight text-ink">{active?"Your SyllaPlus.":"More room to study."}</DialogTitle></div>
+        <DialogDescription className="leading-relaxed">{active ? "Your study tools and membership, in one place." : bonusDays ? "Subscribe today and get seven extra days before your first renewal." : "Keep your study tools, saved conversations, and 1.3× study rewards together."}</DialogDescription>
       </DialogHeader>
       {sandbox && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Test checkout. No real payment is taken, and test purchases do not change your live membership.</p>}
-      {current?.hasAccess ? <div className="space-y-4">
-        <div className="rounded-2xl border border-border bg-muted/40 p-5"><p className="flex items-center gap-2 font-semibold"><ShieldCheck className="size-5 text-forest" /> {sandbox ? "Test membership" : "SyllaPlus is active"}</p><p className="mt-2 text-sm text-muted-foreground">{planNames[current.plan]} membership{current.periodEnd ? ` · ${current.cancelAt ? "Access until" : "Current period ends"} ${new Date(current.cancelAt || current.periodEnd).toLocaleDateString()}` : ""}</p>{current.status === "past_due" && <p className="mt-3 text-sm text-amber-800">Your provider reported a payment issue. Update your payment method before the grace period ends.</p>}{current.cancelAt && <p className="mt-3 text-sm">Renewal is off. Your paid access continues until the date above.</p>}</div>
-        <Button className="min-h-12 w-full" disabled={busy} onClick={() => void manage()}>Manage billing <ExternalLink className="ml-2 size-4" /></Button>
-        {!current.cancelAt && !cancelConfirm && <Button variant="ghost" className="min-h-11 w-full" disabled={busy} onClick={() => setCancelConfirm(true)}>Cancel renewal</Button>}
+      {active && <div className="space-y-4">
+        <div className="rounded-2xl border border-border bg-muted/40 p-5"><p className="flex items-center gap-2 font-semibold"><ShieldCheck className="size-5 text-forest" /> {sandbox ? "Test membership" : "SyllaPlus is active"}</p><p className="mt-2 text-sm text-muted-foreground">{endsAt ? `${summary.data?.membership?.daysRemaining ?? 0} days remaining` : "Membership active"}{endsAt ? ` · Access until ${new Date(endsAt).toLocaleDateString()}` : ""}</p>{current?.status === "past_due" && <p className="mt-3 text-sm text-amber-800">Your provider reported a payment issue. Update your payment method before the grace period ends.</p>}{current?.cancelAt && <p className="mt-3 text-sm">Renewal is off. Your paid access continues until the date above.</p>}</div>
+        {current && <Button className="min-h-12 w-full" disabled={busy} onClick={() => void manage()}>Manage billing <ExternalLink className="ml-2 size-4" /></Button>}
+        {current && !current.cancelAt && !cancelConfirm && <Button variant="ghost" className="min-h-11 w-full" disabled={busy} onClick={() => setCancelConfirm(true)}>Cancel renewal</Button>}
         {cancelConfirm && <div className="rounded-xl border border-border p-4"><p className="text-sm leading-relaxed">Cancel the next renewal? You keep SyllaPlus until your current paid period ends.</p><div className="mt-4 flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={() => setCancelConfirm(false)}>Keep membership</Button><Button disabled={busy} onClick={() => void cancel()}>Confirm cancellation</Button></div></div>}
-      </div> : <>
+        <Button variant="outline" className="w-full" onClick={()=>{setExtending(!extending);setConsent(false);checkoutId.current=null}}>{extending?"Close extension options":"Add more time"}</Button>
+      </div>}
+      {(!active || extending) && <>
         <ul className="grid gap-3 py-1 text-sm sm:grid-cols-2">{["1.3× study rewards", "Higher Boss AI allowance", "Study materials with Boss AI", "More flashcards and questions", "More downloads", "Saved chat history"].map((benefit) => <li key={benefit} className="flex items-start gap-2"><Check className="mt-0.5 size-4 shrink-0 text-forest" />{benefit}</li>)}</ul>
         <label className="space-y-2 text-sm font-semibold">Billing country<select value={country} onChange={(event) => setCountry(event.target.value)} className="min-h-12 w-full rounded-xl border border-input bg-background px-3 text-base"><option value="">Choose your country</option>{countries.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
         {catalog.isLoading ? <p className="flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin" /> Loading plans…</p> : country && <div className={`grid gap-2 ${catalog.data?.plans.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
@@ -111,10 +116,10 @@ export function SyllaPlusModal({ open, onClose, onSuccess }: { open: boolean; on
         </div>}
         {catalog.data?.bankTransfer && <div className="flex gap-2"><Button variant={method === "card" ? "default" : "outline"} onClick={() => setMethod("card")}>Card · automatic renewal</Button><Button variant={method === "bank_transfer" ? "default" : "outline"} onClick={() => setMethod("bank_transfer")}>Bank transfer</Button></div>}
         {method === "bank_transfer" && <p className="text-sm">Pay in naira for the selected period. Bank transfers renew manually. Your membership starts after Bachs confirms payment.</p>}
-        {!!quote && <p className="text-xs leading-relaxed text-muted-foreground">{formatPrice(quote.amount, quote.currency)} is charged when you subscribe.{bonusDays ? " Seven extra days are added before your first renewal, once per account." : ""} {method === "card" ? `After that, renewal is every ${intervals[selected]}.` : "Make another payment when your membership expires."} Taxes, if any, are shown before payment. Cancel renewal anytime.</p>}
+        {!!quote && <p className="text-xs leading-relaxed text-muted-foreground">{formatPrice(quote.amount, quote.currency)} is charged today.{active ? " Time is added after your current expiry. This checkout does not create a second subscription." : bonusDays ? " Seven extra days are added before your first renewal, once per account." : ""} {active ? "" : method === "card" ? `After that, renewal is every ${intervals[selected]}.` : "Make another payment when your membership expires."} Taxes, if any, are shown before payment. Cancel renewal anytime.</p>}
         {quote?.tier === "regional" && country !== "NG" && <p className="text-xs leading-relaxed text-muted-foreground">{quote.approximateAmount != null && quote.approximateCurrency && quote.approximateCurrency !== quote.currency ? `Approximately ${formatPrice(quote.approximateAmount, quote.approximateCurrency)} in your local currency. ` : ""}Regional pricing is based on the naira plan. Your actual payment currency is {quote.currency}; your bank’s exchange rate may differ. <a className="underline" href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Exchange-rate source</a></p>}
-        <label className="flex items-start gap-3 rounded-xl bg-muted/40 p-3 text-sm leading-relaxed"><Checkbox checked={consent} onCheckedChange={(value) => setConsent(value === true)} className="mt-0.5" /><span>I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer" className="underline">Privacy Policy</a>, the payment today{method === "card" ? ", and recurring charges at the displayed interval." : ". Bank-transfer access expires at the end of the paid period."}</span></label>
-        {!user ? <Button asChild className="min-h-12 w-full"><a href="/auth?mode=signin">Sign in to subscribe <ArrowRight className="ml-2 size-4" /></a></Button> : <Button className="min-h-12 w-full" disabled={busy || !consent || !quote?.ready} onClick={() => void checkout()}>{busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}Subscribe{quote ? ` — ${formatPrice(quote.amount, quote.currency)} today` : ""}<ArrowRight className="ml-2 size-4" /></Button>}
+        <label className="flex items-start gap-3 rounded-xl bg-muted/40 p-3 text-sm leading-relaxed"><Checkbox checked={consent} onCheckedChange={(value) => setConsent(value === true)} className="mt-0.5" /><span>I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer" className="underline">Privacy Policy</a>, the payment today{active ? ". This is a one-time extension; my existing renewal moves to the extended expiry." : method === "card" ? ", and recurring charges at the displayed interval." : ". Bank-transfer access expires at the end of the paid period."}</span></label>
+        {!user ? <Button asChild className="min-h-12 w-full"><a href="/auth?mode=signin">Sign in to subscribe <ArrowRight className="ml-2 size-4" /></a></Button> : <Button className="min-h-12 w-full" disabled={busy || !consent || !quote?.ready} onClick={() => void checkout()}>{busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}{active?"Add time":"Subscribe"}{quote ? ` — ${formatPrice(quote.amount, quote.currency)} today` : ""}<ArrowRight className="ml-2 size-4" /></Button>}
         {quote && !quote.ready && <p className="text-sm text-muted-foreground">Checkout for this region is being configured. No payment can be taken yet.</p>}
       </>}
       <div className="space-y-2 rounded-xl border border-border p-3">

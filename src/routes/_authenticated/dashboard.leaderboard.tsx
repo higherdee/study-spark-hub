@@ -283,9 +283,9 @@ function LeaderboardPage() {
 
                   <dl className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-muted p-3 text-xs tnum">
                     <div>
-                      <dt className="text-muted-foreground">Points</dt>
+                      <dt className="text-muted-foreground">Lifetime points</dt>
                       <dd className="mt-0.5 font-display text-lg text-ink">
-                        {s.points.toLocaleString()}
+                        {(s.lifetime_points ?? s.points).toLocaleString()}
                       </dd>
                     </div>
                     <div>
@@ -329,8 +329,8 @@ function LeaderboardPage() {
                 <th className="py-3 px-3 min-w-[200px]">Student Username & Course</th>
                 <th className="py-3 px-3 min-w-[180px]">Institution</th>
                 <th className="py-3 px-3 text-right font-mono">Study Time</th>
-                <th className="py-3 px-3 text-right font-mono">SyllaPoints</th>
-                <th className="py-3 px-3 text-right font-mono">Cash Yield</th>
+                <th className="py-3 px-3 text-right font-mono">Lifetime points</th>
+                <th className="py-3 px-3 text-right font-mono">Available points</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container">
@@ -366,10 +366,10 @@ function LeaderboardPage() {
                       {Math.round(s.study_minutes / 60)} hrs
                     </td>
                     <td className="py-3.5 px-3 text-right font-mono font-bold text-ink">
-                      {s.points.toLocaleString()} pts
+                      {(s.lifetime_points ?? s.points).toLocaleString()} pts
                     </td>
                     <td className="py-3.5 px-3 text-right font-mono text-brand font-semibold">
-                      {formatNaira(pointsToNaira(s.points))}
+                      {s.points.toLocaleString()} pts
                     </td>
                   </tr>
                 );

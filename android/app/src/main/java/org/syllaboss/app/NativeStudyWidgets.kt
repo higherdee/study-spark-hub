@@ -7,6 +7,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -63,7 +65,7 @@ internal fun studyPlainText(text: String): String = runCatching {
     var index by remember(text) { mutableIntStateOf(0) }; var flipped by remember(text,index) { mutableStateOf(false) }; var selection by remember(text,index) { mutableIntStateOf(-1) }
     var answer by remember(text,index) { mutableStateOf("") }; var result by remember(text,index) { mutableStateOf<JSONObject?>(null) }; var error by remember(text,index) { mutableStateOf("") }; var busy by remember(text,index) { mutableStateOf(false) }
     var solution by remember(text,index){mutableStateOf<SolutionPhoto?>(null)}
-    val scope = rememberCoroutineScope(); val current = items.getJSONObject(index); val mode=set!!.optString("mode"); val colors=listOf(Color(0xFFE2EBD7),Color(0xFFF4E4C9),Color(0xFFDBE8F1),Color(0xFFF0DDE1),Color(0xFFE6DFF1))
+    val scope = rememberCoroutineScope(); val current = items.getJSONObject(index); val mode=set!!.optString("mode"); val colors=listOf(Color(0xFFE2EBD7),Color(0xFFF4E4C9),Color(0xFFDBE8F1),Color(0xFFF0DDE1),Color(0xFFE6DFF1)).map { if(MaterialTheme.colorScheme.surface.luminance() < .3f) lerp(MaterialTheme.colorScheme.surfaceContainer,it,.12f) else it }
     Column(modifier,verticalArrangement=Arrangement.spacedBy(14.dp)) {
         Text(set.optString("topic"),fontFamily=WebsiteDisplay,fontSize=24.sp)
         if(mode=="flashcards") {

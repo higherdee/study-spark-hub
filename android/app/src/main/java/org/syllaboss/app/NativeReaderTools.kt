@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import kotlin.math.roundToInt
 
-@Composable internal fun NativeReaderTools(material: Material, modifier: Modifier = Modifier) {
+@Composable internal fun NativeReaderTools(material: Material, page: Int = 1, modifier: Modifier = Modifier) {
     val scope=rememberCoroutineScope();val density=LocalDensity.current;val context=LocalContext.current
     var open by remember {mutableStateOf(false)};var minimized by remember {mutableStateOf(false)}
     var x by remember {mutableFloatStateOf(12f)};var y by remember {mutableFloatStateOf(12f)};var width by remember {mutableFloatStateOf(320f)};var height by remember {mutableFloatStateOf(440f)}
@@ -56,8 +56,8 @@ import kotlin.math.roundToInt
                         }
                         if(error.isNotBlank()) Text(error,modifier=Modifier.padding(horizontal=12.dp),fontSize=12.sp,color=MaterialTheme.colorScheme.error)
                         Row(Modifier.padding(12.dp),verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                            OutlinedTextField(input,{input=it.take(6000)},placeholder={Text("Ask about this page…",fontSize=14.sp)},modifier=Modifier.weight(1f),maxLines=3,enabled=!busy,shape=RoundedCornerShape(16.dp))
-                            IconButton(onClick={val question=input.trim();input="";busy=true;error="";scope.launch {try {val body=JSONObject().put("action","document-chat").put("materialId",material.id).put("message",question);thread?.let{body.put("threadId",it)};val response=StudyApi.call(body=body);thread=response.getString("threadId");messages=messages+listOf("user" to question,"assistant" to response.getString("answer"))}catch(e:Exception){error=e.message ?: "Please try again.";input=question}finally{busy=false}}},enabled=!busy&&input.isNotBlank()){Icon(Icons.Outlined.ArrowUpward,"Send document question")}
+                            OutlinedTextField(input,{input=it.take(6000)},placeholder={Text("Ask about page $page…",fontSize=14.sp)},modifier=Modifier.weight(1f),maxLines=3,enabled=!busy,shape=RoundedCornerShape(16.dp))
+                            IconButton(onClick={val question=input.trim();input="";busy=true;error="";scope.launch {try {val located=if(Regex("(?i)\\b(?:page|pg\\.?)\\s*\\d+|\\b\\d+(?:st|nd|rd|th)?\\s*page").containsMatchIn(question)) question else "Page $page: $question";val body=JSONObject().put("action","document-chat").put("materialId",material.id).put("message", located);thread?.let{body.put("threadId",it)};val response=StudyApi.call(body=body);thread=response.getString("threadId");messages=messages+listOf("user" to question,"assistant" to response.getString("answer"))}catch(e:Exception){error=e.message ?: "Please try again.";input=question}finally{busy=false}}},enabled=!busy&&input.isNotBlank()){Icon(Icons.Outlined.ArrowUpward,"Send document question")}
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-import { parseStudyArray } from "./ai/study-json";
+import { parseStudyArray, repairJsonTexEscapes } from "./ai/study-json";
 import { askGeminiAI, askGeminiVisionAI } from "./gemini";
 import { theoryMarkingPrompt, parseTheoryMarking, theoryModerationPrompt } from "./ai/theory-marking";
 import type { Profile } from "@/integrations/turso/client";
@@ -76,7 +76,7 @@ Respond with ONLY valid JSON with this exact structure:
 
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(repairJsonTexEscapes(jsonMatch[0]));
       return {
         title: parsed.title || fileName.replace(/\.[^/.]+$/, ""),
         course: parsed.course || profile?.course || "General Course",
@@ -149,7 +149,7 @@ Output ONLY JSON:
     const raw = await askGeminiAI(prompt);
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(repairJsonTexEscapes(jsonMatch[0]));
       const score = Math.max(0, Math.min(100, Number(parsed.score) || 75));
       const verified = score >= 70;
       return {
@@ -181,7 +181,7 @@ Output ONLY JSON:
  */
 export async function generatePracticeQuestions(materialTitle: string, contextText: string, mode: "objective" | "theory", count = 5, fetcher?: typeof fetch, groqModel?: string): Promise<QuizQuestion[]> {
   if (!Number.isInteger(count) || count < 1 || count > 50) throw new Error("Choose between 1 and 50 questions.");
-  const prompt = `Create exactly ${count} useful university practice questions about ${materialTitle}. Use this source when supplied:\n${contextText.slice(0, 16000)}\nMode: ${mode}. Return ONLY a JSON array. Each item must have question, modelAnswer, explanation, estimatedSeconds (integer 10..600 estimating a student solving it)${mode === "objective" ? ", four string options, and correctOptionIndex (integer 0..3)" : ""}. Keep every item concise and complete. Do not invent sources, use generic stock questions, or create placeholder answers.`;
+  const prompt = `Create exactly ${count} useful university practice questions about ${materialTitle}. Use this source when supplied:\n${contextText.slice(0, 16000)}\nMode: ${mode}. Return ONLY a JSON array. Each item must have question, modelAnswer, explanation, estimatedSeconds (integer 10..600 estimating a student solving it)${mode === "objective" ? ", four string options, and correctOptionIndex (integer 0..3)" : ""}. Use dollar math delimiters for EVERY mathematical expression, including ALL answer options. Escape LaTeX backslashes correctly inside JSON strings. Keep every item concise and complete. Do not invent sources, use generic stock questions, or create placeholder answers.`;
   const raw = await askGeminiAI(prompt, { temperature: 0.25, ...(fetcher ? { fetcher } : {}), ...(groqModel ? { groqModel } : {}) });
   const items = parseStudyArray(raw).filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
   const questions: QuizQuestion[] = [];
@@ -241,7 +241,7 @@ Output ONLY a JSON array of objects:
     const raw = await askGeminiAI(prompt, fetcher ? { fetcher } : {});
     const match = raw.match(/\[[\s\S]*\]/);
     if (match) {
-      const list = JSON.parse(match[0]);
+      const list = JSON.parse(repairJsonTexEscapes(match[0]));
       return list.map((fc: any, i: number) => ({
         id: fc.id || `fc_${i + 1}`,
         front: typeof fc.front === "string" ? fc.front.trim() : "",

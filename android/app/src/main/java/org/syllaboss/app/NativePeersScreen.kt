@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -35,6 +36,9 @@ import java.net.URLEncoder
     var peers by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var conversations by remember { mutableStateOf<List<JSONObject>>(emptyList()) }
     var active by remember { mutableStateOf<JSONObject?>(null) }
+    val inboxState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    val peerRevision by PeerUpdates.revision.collectAsState()
 
 
     var error by remember { mutableStateOf("") }
@@ -80,6 +84,16 @@ import java.net.URLEncoder
             else conversations = array(StudyApi.call("direct-conversations"), "conversations")
         } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; error = e.message ?: "This conversation could not be loaded." } finally { loading = false }
     }
+    LaunchedEffect(active?.optString("id"), groups, query, peerRevision, lifecycle) {
+        if (active != null || groups || query.isNotBlank()) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            while(true) {
+                try { conversations = StudyApi.call("direct-conversations").objects("conversations") }
+                catch(e: Exception) { if(e is kotlinx.coroutines.CancellationException) throw e }
+                delay(3000)
+            }
+        }
+    }
     BackHandler(active != null || groups) { if (active != null) { active = null } else groups = false }
     if (groups) { PeersScreen({ groups = false }, onChatOpen); return }
     val peerName = active?.optJSONObject("peer")?.let { it.optString("username").takeIf(String::isNotBlank)?.let { name -> "@$name" } ?: it.optString("full_name", "Student") }
@@ -89,7 +103,8 @@ import java.net.URLEncoder
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
             if (active == null) {
-                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyColumn(Modifier.weight(1f), state = inboxState, contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(enabled = !busy, onClick = {
                             scope.launch {
@@ -107,11 +122,10 @@ import java.net.URLEncoder
                     Text("Search a student's @username to start a chat, or find a course group below.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                     OutlinedTextField(query, { query = it.take(100) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search @username") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, shape = RoundedCornerShape(18.dp))
                     OutlinedButton(onClick = { groups = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Groups, null); Spacer(Modifier.width(8.dp)); Text("Browse study groups") }
-                }
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                } }
                     if (query.isBlank()) {
                         if (!loading && conversations.isEmpty()) item { Text("Your conversations will appear here. Search a username to say hello.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        items(conversations) { c -> val peer = c.optJSONObject("peer") ?: JSONObject(); OutlinedCard(onClick = { active = c }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(18.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("@${peer.optString("username")}", fontWeight = FontWeight.SemiBold); val unread = c.optInt("unread_count"); if (unread > 0) Badge { Text(if (unread > 99) "99+" else unread.toString()) } }; Text(c.optString("last_message_text").takeUnless { it == "null" } ?: "Start a conversation", maxLines = 2, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
+                        items(conversations) { c -> val peer = c.optJSONObject("peer") ?: JSONObject(); OutlinedCard(onClick = { active = c }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(18.dp)) { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("@${peer.optString("username")}", fontWeight = FontWeight.SemiBold); val unread = c.optInt("unread_count"); if (unread > 0) Badge(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer) { Text(if (unread > 99) "99+" else unread.toString()) } }; Text(c.optString("last_message_text").takeUnless { it == "null" } ?: "Start a conversation", maxLines = 2, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
                     } else {
                         if (!loading && peers.isEmpty()) item { Text("No username matches yet. Check the spelling or try another username.") }
                         items(peers) { peer -> OutlinedCard(onClick = {

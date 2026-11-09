@@ -21,6 +21,7 @@ internal fun NativeGiftCashout(points: Int, back: () -> Unit, refreshBalance: ()
     var options by remember { mutableStateOf(emptyList<JSONObject>()) }
     var membershipGifts by remember { mutableStateOf(emptyList<JSONObject>()) }
     var giftRequestId by remember { mutableStateOf(UUID.randomUUID().toString()) }
+    var pendingGift by remember { mutableStateOf<JSONObject?>(null) }
     var giftResult by remember { mutableStateOf("") }
     var amount by remember { mutableIntStateOf(5) }
     var email by remember { mutableStateOf("") }
@@ -44,16 +45,7 @@ internal fun NativeGiftCashout(points: Int, back: () -> Unit, refreshBalance: ()
                 val days = gift.optInt("days")
                 val required = gift.optInt("points")
                 OutlinedButton(enabled = !busy && points >= required, modifier = Modifier.fillMaxWidth(), onClick = {
-                    busy = true; error = ""
-                    scope.launch {
-                        try {
-                            val result = StudyApi.call(body = JSONObject().put("action", "membership-gift").put("requestId", giftRequestId).put("days", days)).getJSONObject("gift")
-                            giftResult = "${result.optString("code")}\nDelivered to your Peers inbox."
-                            giftRequestId = UUID.randomUUID().toString()
-                            refreshBalance()
-                        } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message ?: "Could not issue your gift." }
-                        finally { busy = false }
-                    }
+                    pendingGift = gift
                 }) { Text("${days} days · ${required} points") }
             }
             if (giftResult.isNotBlank()) Text(giftResult)
@@ -93,4 +85,23 @@ internal fun NativeGiftCashout(points: Int, back: () -> Unit, refreshBalance: ()
             }
         }) { Text("Confirm request") } }
     )
+    pendingGift?.let { gift ->
+        AlertDialog(onDismissRequest={pendingGift=null},title={Text("Confirm SyllaPlus gift")},
+            text={Text("Spend "+gift.optInt("points")+" SyllaPoints for "+gift.optInt("days")+" days of SyllaPlus? Your remaining balance will be "+(points-gift.optInt("points"))+" points. The single-use code will arrive in your Peers inbox and expires in three months.")},
+            dismissButton={TextButton(onClick={pendingGift=null}){Text("Keep my points")}},
+            confirmButton={Button(enabled=!busy,onClick={
+                val days=gift.optInt("days");pendingGift=null
+                    busy = true; error = ""
+                    scope.launch {
+                        try {
+                            val result = StudyApi.call(body = JSONObject().put("action", "membership-gift").put("requestId", giftRequestId).put("days", days)).getJSONObject("gift")
+                            giftResult = "${result.optString("code")}\nDelivered to your Peers inbox."
+                            giftRequestId = UUID.randomUUID().toString()
+                            refreshBalance()
+                        } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message ?: "Could not issue your gift." }
+                        finally { busy = false }
+                    }
+            }){Text("Confirm · "+gift.optInt("points")+" points")}})
+    }
+
 }

@@ -40,6 +40,8 @@ internal fun PdfWorkshop(back: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var promotion by remember { mutableIntStateOf(0) }
     var note by remember { mutableStateOf("") }
+    var membership by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) { try { membership = StudyApi.call("membership").optBoolean("paid") } catch(e: Exception) { if(e is CancellationException) throw e; note = "Could not check your membership. Retry when exporting." } }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
         sources = (sources + it).distinct()
         note = ""
@@ -91,7 +93,8 @@ internal fun PdfWorkshop(back: () -> Unit) {
                 }
             }
             item {
-                Text("Free accounts can export up to 15 pages per PDF after a 30-second Syllaboss promotion. SyllaPlus skips both.")
+                if (membership == true) Text("SyllaPlus workspace · unlimited pages, direct export", color = MaterialTheme.colorScheme.primary)
+                else if (membership == false) Text("Up to 15 pages per PDF. Export unlocks after a 30-second Syllaboss promotion.")
                 if (promotion > 0) Text("SyllaPlus · More room for your study materials. Export unlocks in ${promotion}s.")
                 if (note.isNotBlank()) Text(note, color = MaterialTheme.colorScheme.primary)
                 Button(enabled = sources.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth(), onClick = {
@@ -100,6 +103,7 @@ internal fun PdfWorkshop(back: () -> Unit) {
                     scope.launch {
                         try {
                             val paid = StudyApi.call("membership").optBoolean("paid")
+                            membership = paid
                             prepared = combinePdfSources(context, selection, if (paid) null else 15)
                             if (!paid) {
                                 promotion = 30

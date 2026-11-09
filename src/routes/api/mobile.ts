@@ -4,7 +4,7 @@ import { waitUntil } from "@vercel/functions";
 import { giftCashoutInput, giftCashoutOptions, requestGiftCashout, membershipGiftInput, membershipGiftQuotes, purchaseMembershipGift } from "@/lib/gift-cashout.server";
 import { z } from "zod";
 import { CLERK_SECRET_KEY } from "@/integrations/clerk";
-import { turso, getMaterials, getProfile, getLeaderboard, upsertProfile } from "@/integrations/turso/client.server";
+import { turso, getMaterials, getProfile, getLeaderboard, upsertProfile, getUserNotifications, markNotificationRead } from "@/integrations/turso/client.server";
 import { getStudyGroups, getGroupMessages, joinStudyGroup, sendGroupMessage, searchPeers, getStudentConversations, getDirectMessages, getOrCreatePeerConversation, sendDirectMessage } from "@/integrations/turso/community.server";
 import { withAiAllowance, budgetedAiFetch } from "@/lib/membership/ai.server";
 import { chatBudget, compactChatHistory } from "@/lib/ai/chat-cost";
@@ -29,8 +29,19 @@ const peerInput = z.object({
   content: z.string().trim().max(3000).default(""),
   attachmentId: z.string().uuid().optional(),
   materialId: z.string().max(100).optional(),
+  replyToId: z.string().min(1).max(100).optional(),
 });
-async function peerContent(actor: string, target: string, input: z.infer<typeof peerInput>) {
+async function peerContent(actor: string, target: string, input: z.infer<typeof peerInput>): Promise<{content: string; previewText?: string; materialId?: string; materialTitle?: string; materialCourseCode?: string}> {
+  if (input.replyToId) {
+    const {readPeerReply}=await import("@/lib/peer-reply.server");
+    const quote=await readPeerReply(actor,target,input.replyToId);
+    const {replyToId, ...rest} = input;
+    const message = await peerContent(actor,target,rest);
+    let envelope: Record<string, unknown> = { text: message.content };
+    try { const parsed=JSON.parse(message.content); if(parsed.syllabossAttachment) envelope=parsed; } catch { /* Plain message. */ }
+    envelope["syllabossReply"] = quote;
+    return {...message, content:JSON.stringify(envelope), previewText: input.content || "Reply"};
+  }
   if (input.attachmentId && input.materialId) throw new Error("Attach one item at a time.");
   if (input.attachmentId) {
     const { peerAttachment } = await import("@/lib/study-media.server");
@@ -81,11 +92,12 @@ export const Route = createFileRoute("/api/mobile")({
         }
         const userId = await identity(request);
         if (resource === "membership") return json(await membershipSnapshot(userId));
+        if (resource === "passage") { const {getDocumentPassageServerFn}=await import("@/lib/document.functions"); const page=z.coerce.number().int().min(1).max(1000).parse(url.searchParams.get("page")); const line=url.searchParams.get("line"); return json(await getDocumentPassageServerFn({data:{materialId:(url.searchParams.get("id")||"").slice(0,100),page,...(line?{line:z.coerce.number().int().min(1).max(5000).parse(line)}:{})}})); }
         if (resource === "gift-cashout") {
           const country = request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry");
           return json({ options: giftCashoutOptions(country), membershipGifts: membershipGiftQuotes(country) });
         }
-        if (resource === "source") { const {loadDocumentContext}=await import("@/lib/document-study.server"); const doc=await loadDocumentContext(userId,(url.searchParams.get("id")||"").slice(0,100)); return json({id:doc.material.id,title:doc.material.title,pages:doc.pages}); }
+        if (resource === "source") { const {loadDocumentContext}=await import("@/lib/document-study.server"); const doc=await loadDocumentContext(userId,(url.searchParams.get("id")||"").slice(0,100),1); return json({id:doc.material.id,title:doc.material.title,pages:doc.pages}); }
         if (resource === "battle-members" || resource === "battles") { const target=(url.searchParams.get("target")||"").slice(0,100); const {getStudyGroupMembersWithBalances}=await import("@/integrations/turso/community.server"); const members=await getStudyGroupMembersWithBalances(target,userId); if(resource==="battle-members")return json({members}); return json({battles:(await turso.execute({sql:"SELECT b.id,b.title,b.mode,b.status,b.question_count,b.total_pot,COALESCE('@' || NULLIF(p.username,''), 'Student') AS host_name FROM study_battles b LEFT JOIN profiles p ON p.id=b.host_id WHERE b.group_id=? ORDER BY b.created_at DESC LIMIT 20",args:[target]})).rows}); }
         if (resource === "battle") {const {getBattleDetailsServerFn}=await import("@/lib/battle.functions");return json(await getBattleDetailsServerFn({data:{battleId:(url.searchParams.get("id")||"").slice(0,100)}}));}
         if (resource === "settings") { const profile = await getProfile(userId); return json({ profile, preferences: profile?.study_plan?.["preferences"] || {} }); }
@@ -117,18 +129,20 @@ export const Route = createFileRoute("/api/mobile")({
         }
         if (resource === "groups") return json({ groups: await getStudyGroups(userId, (url.searchParams.get("q") || "").slice(0, 100)) });
         if (resource === "messages") return json({ messages: await getGroupMessages((url.searchParams.get("group") || "").slice(0, 100), 60, userId) });
+        if (resource === "notifications") return json({notifications:await getUserNotifications(userId)});
         if (resource === "space") {
           const [profile, ledger, ranks] = await Promise.all([
             getProfile(userId),
             turso.execute({ sql: "SELECT amount, reason, created_at FROM points_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT 20", args: [userId] }),
             getLeaderboard(20),
           ]);
-          return json({ profile: profile ? { full_name: profile.full_name, course: profile.course, institution: profile.institution, level: profile.level, points: profile.points, study_minutes: profile.study_minutes, current_streak: profile.current_streak } : null, ledger: ledger.rows, ranks });
+          return json({ profile: profile ? { full_name: profile.full_name, username: profile.username, onboarding_step: profile.onboarding_step, course: profile.course, institution: profile.institution, level: profile.level, points: profile.points, study_minutes: profile.study_minutes, current_streak: profile.current_streak } : null, ledger: ledger.rows, ranks });
         }
         return json({ error: "Unknown resource" }, 404);
       } catch (error) {
         if (error instanceof Error && error.message === "Unauthorized") return json({ error: "Sign in to continue." }, 401);
         if (error instanceof MembershipLimitError) return json({ error: error.message }, 403);
+        if(resource === "passage" && error instanceof Error && /Page |page |line|outside this|scan|reading order/i.test(error.message)) return json({error:error.message},400);
         console.error("Mobile API request failed", error instanceof Error ? error.message : "Unknown error");
         return json({ error: "Unable to load this right now. Please try again." }, 503);
       }
@@ -137,12 +151,18 @@ export const Route = createFileRoute("/api/mobile")({
       let userId: string;
       try { userId = await identity(request); } catch { return json({ error: "Sign in to continue." }, 401); }
       const body = await request.json().catch(() => null);
+      if(body?.action === "read-notification") { const parsed=z.string().min(1).max(100).safeParse(body.id);if(!parsed.success)return json({error:"Choose a notification."},400);await markNotificationRead(parsed.data,userId);return json({ok:true}); }
       if (body?.action === "membership-gift") {
         const input = membershipGiftInput.safeParse(body);
         if (!input.success) return json({ error: "Choose a valid SyllaPlus gift." }, 400);
         try {
           return json({ gift: await purchaseMembershipGift(userId, request.headers.get("x-vercel-ip-country") || request.headers.get("cf-ipcountry"), input.data) });
         } catch (error) { return json({ error: error instanceof Error ? error.message : "Gift issuance failed." }, 400); }
+      }
+      if (body?.action === "share-answer") {
+        const input=z.object({threadId:z.string().uuid(),content:z.string().min(1).max(100000)}).parse(body);
+        const {createAnswerShare}=await import("@/lib/sharing.server");
+        return json(await createAnswerShare(userId,input));
       }
       if (body?.action === "gift-cashout") {
         const input = giftCashoutInput.safeParse(body);
@@ -217,8 +237,15 @@ export const Route = createFileRoute("/api/mobile")({
         }
       }
       if (body?.action === "profile") {
-        const fields = z.object({ full_name: z.string().trim().min(2).max(100), course: z.string().trim().min(2).max(180), institution: z.string().trim().min(2).max(180), level: z.string().max(30) }).safeParse(body);
+        const fields = z.object({ full_name: z.string().trim().min(2).max(100), username: z.string().trim().regex(/^[a-zA-Z0-9_]{3,30}$/).optional(), course: z.string().trim().min(2).max(180), institution: z.string().trim().min(2).max(180), level: z.string().max(30) }).safeParse(body);
         if (!fields.success) return json({ error: "Add your name, course and institution." }, 400);
+        if(fields.data.username) {
+          const username=fields.data.username.toLowerCase();
+          if(["bossai","syllaboss","syllaboss_gifts","admin","administrator"].includes(username)) return json({error:"Choose a different username; this name is reserved."},400);
+          const taken=await turso.execute({sql:"SELECT id FROM profiles WHERE LOWER(username)=? AND id<>? LIMIT 1",args:[username,userId]});
+          if(taken.rows.length) return json({error:"That username is already in use. Try another."},409);
+          fields.data.username=username;
+        }
         try { await upsertProfile({ ...fields.data, id: userId, onboarding_step: 4 }); return json({ success: true }); }
         catch { return json({ error: "Profile could not be saved. Please retry." }, 503); }
       }
@@ -304,7 +331,10 @@ function readText(parts: unknown): string {
   try {
     const parsed = JSON.parse(String(parts || "[]"));
     if (Array.isArray(parsed)) return parsed.filter(part => part.type === "text").map(part => String(part.text || "")).join("\n");
-    if (parsed && typeof parsed === "object") return typeof parsed.text === "string" ? parsed.text : "";
+    if (parsed && typeof parsed === "object") {
+      if(parsed.quizData || parsed.flashcardsData) return JSON.stringify({quizData:parsed.quizData,flashcardsData:parsed.flashcardsData});
+      return typeof parsed.text === "string" ? parsed.text : "";
+    }
     return typeof parsed === "string" ? parsed : "";
   }
   catch { return ""; }

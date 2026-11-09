@@ -90,9 +90,9 @@ object StudyApi {
     }
 }
 
-data class Material(val id: String, val title: String, val code: String, val course: String, val school: String, val type: String, val pages: Int, val mime: String) {
-    fun json() = JSONObject().put("id", id).put("title", title).put("course_code", code).put("course", course).put("institution", school).put("material_type", type).put("page_count", pages).put("mime_type", mime)
+data class Material(val id: String, val title: String, val code: String, val course: String, val school: String, val type: String, val pages: Int, val mime: String, val size: Long = 0) {
+    fun json() = JSONObject().put("id", id).put("title", title).put("course_code", code).put("course", course).put("institution", school).put("material_type", type).put("page_count", pages).put("mime_type", mime).put("file_size", size)
     companion object {
-        fun from(j: JSONObject) = Material(j.optString("id"), j.optString("title"), j.optString("course_code").replace("null", ""), j.optString("course"), j.optString("institution"), j.optString("material_type"), j.optInt("page_count"), j.optString("mime_type"))
+        fun from(j: JSONObject) = Material(j.optString("id"), j.optString("title"), j.optString("course_code").replace("null", ""), j.optString("course"), j.optString("institution"), j.optString("material_type"), j.optInt("page_count"), j.optString("mime_type"), j.optLong("file_size"))
     }
 }

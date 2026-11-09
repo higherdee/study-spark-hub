@@ -1145,6 +1145,7 @@ export interface LeaderboardEntry {
   course: string;
   level: string;
   points: number;
+  lifetime_points: number;
   study_minutes: number;
   sylla_plus: boolean;
   verified_uploads: number;
@@ -1161,13 +1162,14 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
         p.institution, 
         p.course, 
         p.level, 
-        p.points, 
+        p.points,
+        MAX(p.points, COALESCE((SELECT SUM(l.amount) FROM points_ledger l WHERE l.user_id=p.id AND l.amount>0 AND l.reason NOT LIKE 'Refunded withdrawal:%'),0)) AS lifetime_points,
         p.study_minutes, 
         p.sylla_plus,
         (SELECT COUNT(*) FROM materials m WHERE m.user_id = p.id AND m.status = 'verified') AS verified_uploads
       FROM profiles p
       WHERE p.points > 0 OR p.study_minutes > 0
-      ORDER BY p.points DESC, p.study_minutes DESC
+      ORDER BY lifetime_points DESC, p.study_minutes DESC
       LIMIT ?
     `,
     args: [limit],
@@ -1183,6 +1185,7 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
     course: r['course'] ? String(r['course']) : "General Studies",
     level: r['level'] ? String(r['level']) : "100 Level",
     points: Number(r['points'] || 0),
+    lifetime_points: Number(r['lifetime_points'] || 0),
     study_minutes: Number(r['study_minutes'] || 0),
     sylla_plus: Boolean(r['sylla_plus']),
     verified_uploads: Number(r['verified_uploads'] || 0),

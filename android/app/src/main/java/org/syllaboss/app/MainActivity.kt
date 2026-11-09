@@ -55,8 +55,8 @@ internal val Ink: Color @Composable get() = MaterialTheme.colorScheme.onSurface
 internal val Muted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 internal val Sage: Color @Composable get() = MaterialTheme.colorScheme.secondaryContainer
 internal val Line: Color @Composable get() = MaterialTheme.colorScheme.outline
-private val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Color(0xFFF6F5EF), surface = Color(0xFFF6F5EF), onSurface = Color(0xFF1E3029), onSurfaceVariant = Color(0xFF607067), secondaryContainer = Color(0xFFE5EBDD), onSecondaryContainer = Forest, outline = Color(0xFFE1E5DC), surfaceContainer = Color(0xFFEAECE5), surfaceContainerHigh = Color(0xFFE2E7DD), secondary = Forest, tertiary = Forest)
-private val darkColors = darkColorScheme(
+internal val appColors = lightColorScheme(primary = Forest, onPrimary = Color.White, background = Color(0xFFF6F5EF), surface = Color(0xFFF6F5EF), onSurface = Color(0xFF1E3029), onSurfaceVariant = Color(0xFF607067), secondaryContainer = Color(0xFFE5EBDD), onSecondaryContainer = Forest, outline = Color(0xFFE1E5DC), surfaceContainer = Color(0xFFEAECE5), surfaceContainerHigh = Color(0xFFE2E7DD), secondary = Forest, tertiary = Forest)
+internal val darkColors = darkColorScheme(
     primary = Color(0xFF9ADBBE), onPrimary = Color(0xFF0C3024),
     background = Color(0xFF111B17), surface = Color(0xFF111B17),
     onSurface = Color(0xFFE3EDE5), onSurfaceVariant = Color(0xFFB1C2B6),
@@ -80,15 +80,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val preferences = getSharedPreferences("syllaboss-native", 0)
         setContent {
-            var dark by remember { mutableStateOf(preferences.getBoolean("dark-appearance", false)) }
+            var appearance by remember { mutableStateOf(preferences.getString("appearance", "system")) }
+            val deviceDark = androidx.compose.foundation.isSystemInDarkTheme()
+            val dark = if (appearance == "system") deviceDark else appearance == "dark"
             MaterialTheme(colorScheme = if (dark) darkColors else appColors, typography = websiteTypography()) {
-                Syllaboss(dark) { enabled -> dark = enabled; preferences.edit().putBoolean("dark-appearance", enabled).apply() }
+                Syllaboss(dark, { enabled -> appearance = if(enabled) "dark" else "light"; preferences.edit().putString("appearance", appearance).apply() }, { appearance = "system"; preferences.edit().putString("appearance", "system").apply() })
             }
         }
     }
 }
 
-@Composable private fun Syllaboss(dark: Boolean, setDark: (Boolean) -> Unit) {
+@Composable private fun Syllaboss(dark: Boolean, setDark: (Boolean) -> Unit, useSystem: () -> Unit) {
     AutomaticAppUpdates()
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("syllaboss-native", 0) }
@@ -96,12 +98,13 @@ class MainActivity : ComponentActivity() {
     val user by Clerk.userFlow.collectAsState()
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     var peerUnread by remember(user?.id) { mutableIntStateOf(0) }
-    LaunchedEffect(user?.id, lifecycle) {
+    val peerRevision by PeerUpdates.revision.collectAsState()
+    LaunchedEffect(user?.id, lifecycle, peerRevision) {
         if (user != null) lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
             while (true) {
                 try { peerUnread = StudyApi.call("direct-unread").optInt("total") }
                 catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e }
-                kotlinx.coroutines.delay(15000)
+                kotlinx.coroutines.delay(4000)
             }
         }
     }
@@ -152,6 +155,7 @@ class MainActivity : ComponentActivity() {
     var space by remember { mutableStateOf<JSONObject?>(null) }
     var spaceError by remember { mutableStateOf<String?>(null) }
     var refresh by remember { mutableIntStateOf(0) }
+    ConnectionStatus { refresh++; PeerUpdates.changed() }
     val chat = remember(user?.id) { ChatState() }
     fun toggleSave(m: Material) {
         saved = if (saved.any { it.id == m.id }) saved.filterNot { it.id == m.id } else saved + m
@@ -182,7 +186,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         Scaffold { padding ->
-            if (initialized) AuthView(modifier = Modifier.padding(padding).imePadding(), clerkTheme = com.clerk.api.ui.ClerkTheme(colors = com.clerk.api.ui.ClerkColors(primary=Forest,background=Paper,foreground=Ink,mutedForeground=Muted,input=Color.White,inputForeground=Ink,border=Line,primaryForeground=Color.White)), logo = { BrandWordmark() }, onDismiss = { auth = false })
+            if (initialized) AuthView(modifier = Modifier.padding(padding).imePadding(), clerkTheme = com.clerk.api.ui.ClerkTheme(colors = com.clerk.api.ui.ClerkColors(primary=Forest,background=Paper,foreground=Ink,mutedForeground=Muted,input=MaterialTheme.colorScheme.surfaceContainer,inputForeground=Ink,border=Line,primaryForeground=Color.White)), logo = { BrandWordmark() }, onDismiss = { auth = false })
             else if (authWaitExpired) Column(Modifier.fillMaxSize().padding(padding).padding(28.dp), verticalArrangement = Arrangement.Center) {
                 Display("Your account,\ncoming together.", size = 32)
                 Spacer(Modifier.height(18.dp))
@@ -193,13 +197,18 @@ class MainActivity : ComponentActivity() {
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         }; return
     }
-    if (consentError != null && user != null) {
+    if (consentError != null && user != null && space?.optJSONObject("profile") != null) {
         AlertDialog(onDismissRequest = {}, title = { Text("Save your account agreement") }, text = { Text(consentError!!) }, confirmButton = { TextButton(onClick = { consentRetry++ }) { Text("Retry") } }, dismissButton = { TextButton(onClick = { scope.launch { Clerk.auth.signOut() } }) { Text("Sign out") } })
+    }
+    val studentProfile = space?.optJSONObject("profile")
+    if(user != null && space != null && (studentProfile == null || studentProfile.optInt("onboarding_step") < 4 || studentProfile.optString("course").isBlank() || studentProfile.optString("course") == "null" || studentProfile.optString("institution").isBlank() || studentProfile.optString("institution") == "null" || studentProfile.optString("username").isBlank() || studentProfile.optString("username") == "null")) {
+        ProfileScreen(studentProfile, { scope.launch { Clerk.auth.signOut() } }, { space = null; refresh++; consentRetry++ }, onboarding = true); return
     }
     if (secondary == "upload") { UploadScreen { secondary = "" }; return }
     if (secondary == "peers") { NativePeersScreen({ secondary = "" }, {}); return }
     if (secondary == "profile") { ProfileScreen(space?.optJSONObject("profile"), { secondary = "" }, { secondary = ""; refresh++ }); return }
     if (secondary == "settings") { NativeSettingsScreen { secondary = ""; settingsRevision++ }; return }
+    if (secondary == "notifications") { NativeNotifications { secondary="" }; return }
     if (secondary == "billing") { NativeBillingScreen { secondary = "" }; return }
     if (secondary == "cashout") { NativeGiftCashout(space?.optJSONObject("profile")?.optInt("points") ?: 0, { secondary = "" }, { refresh++ }); return }
     if (secondary == "pdf") { PdfWorkshop { secondary = "" }; return }
@@ -210,10 +219,10 @@ class MainActivity : ComponentActivity() {
     Scaffold(
         containerColor = Paper,
         bottomBar = {
-            if (!(tab == 3 && peerChatActive) && !keyboardVisible) NavigationBar(containerColor = Paper, tonalElevation = 0.dp) {
+            if (tab != 2 && !(tab == 3 && peerChatActive) && !keyboardVisible) NavigationBar(containerColor = Paper, tonalElevation = 0.dp) {
                 listOf(Triple("Today", Icons.Outlined.WbSunny, 0), Triple("Library", Icons.Outlined.MenuBook, 1), Triple("Boss AI", Icons.Outlined.AutoAwesome, 2), Triple("Peers", Icons.Outlined.Groups, 3), Triple("Your space", Icons.Outlined.PersonOutline, 4)).forEach { (name, icon, index) ->
                     NavigationBarItem(selected = tab == index, onClick = { tab = index }, icon = {
-                        BadgedBox(badge = { if (index == 3 && peerUnread > 0) Badge { Text(if (peerUnread > 99) "99+" else peerUnread.toString()) } }) {
+                        BadgedBox(badge = { if (index == 3 && peerUnread > 0) Badge(containerColor = Sage, contentColor = MaterialTheme.colorScheme.onSecondaryContainer) { Text(if (peerUnread > 99) "99+" else peerUnread.toString()) } }) {
                             Icon(icon, name, Modifier.size(23.dp))
                         }
                     }, label = { Text(name, fontSize = 11.sp, fontWeight = FontWeight.Medium) }, colors = NavigationBarItemDefaults.colors(indicatorColor = Sage, selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer, selectedTextColor = MaterialTheme.colorScheme.primary, unselectedIconColor = Muted, unselectedTextColor = Muted))
@@ -226,10 +235,10 @@ class MainActivity : ComponentActivity() {
                 (fadeIn(tween(220, easing=CubicBezierEasing(.23f,1f,.32f,1f))) + slideInHorizontally(tween(240)) { if(targetState > initialState) it/12 else -it/12 }).togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { if(targetState > initialState) -it/12 else it/12 })
             }) { selectedTab -> when (selectedTab) {
                 0 -> TodayScreen(materials, saved, space?.optJSONObject("profile"), loading, error, { refresh++ }, { tab = 1 }, { tab = 2 }, { focus = true }, { secondary = if (user == null) "" else "pdf"; if (user == null) auth = true }, { reader = it }, { toggleSave(it) }, { tab = 4 })
-                1 -> LibraryScreen(materials, saved, loading, error, { refresh++ }, { reader = it }, { toggleSave(it) })
-                2 -> ProfessionalChat(user?.id, chat, scope, { auth = true })
+                1 -> LibraryScreen(materials, saved, loading, error, { refresh++ }, { reader = it }, { toggleSave(it) }, { if (user == null) auth = true else secondary = "upload" })
+                2 -> ProfessionalChat(user?.id, chat, scope, { auth = true }, { tab = it })
                 3 -> if (user == null) Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) { Text("Find your study people.", fontFamily = WebsiteDisplay, fontSize = 30.sp); Spacer(Modifier.height(16.dp)); Button(onClick = { auth = true }) { Text("Sign in to Peers") } } else NativePeersScreen({ tab = 0 }, { peerChatActive = it })
-                4 -> SpaceScreen(user != null, space, spaceError, saved, dark, setDark, { auth = true }, { refresh++ }, { reader = it }, { destination -> if (user == null) auth = true else secondary = destination }, {
+                4 -> SpaceScreen(user != null, space, spaceError, saved, dark, setDark, useSystem, { auth = true }, { refresh++ }, { reader = it }, { destination -> if (user == null) auth = true else secondary = destination }, {
                     scope.launch { Clerk.auth.signOut().onFailure { spaceError = "Could not sign out. Try again." } }
                 })
             } }
@@ -254,18 +263,22 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun WelcomeScreen(onStart: () -> Unit, onExplore: () -> Unit) {
+    var stage by rememberSaveable { mutableIntStateOf(0) }
+    val titles = listOf("Your courses,\nin good company.", "Make the hard\nparts click.", "Your people.\nYour progress.")
+    val descriptions = listOf("Find verified course materials and keep your reading in one place.", "Ask Boss AI about the exact page, practise questions, and work through the steps.", "Talk with classmates, challenge a friend, and earn SyllaPoints as you study.")
     Column(Modifier.fillMaxSize().background(Forest).safeDrawingPadding().padding(28.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.SpaceBetween) {
-        BrandWordmark(onDark=true)
+        Row(Modifier.fillMaxWidth(), verticalAlignment=Alignment.CenterVertically) { Box(Modifier.weight(1f)) { BrandWordmark(onDark=true) }; Text("${stage+1} / 3",color=Lime,fontSize=12.sp) }
         Column(Modifier.padding(vertical = 48.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Box(Modifier.size(150.dp).clip(RoundedCornerShape(40.dp)).background(Lime), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) { OfficialMark(82.dp); Text("Study with direction.", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, modifier = Modifier.padding(top = 10.dp)) }
+                AnimatedContent(targetState=stage,label="Welcome illustration") { page -> if(page==0) OfficialMark(82.dp,onDark=false) else Icon(if(page==1) Icons.Outlined.AutoAwesome else Icons.Outlined.Groups,null,Modifier.size(74.dp),tint=Forest) }
             }
             Eyebrow("A study space for university life", Lime)
-            Display("Your courses,\nin good company.", Color.White, 46)
-            Text("Your course materials, a patient study partner, and a little room to focus. All in your pocket.", fontSize = 16.sp, lineHeight = 25.sp, color = Color(0xFFC2D2C6))
+            AnimatedContent(targetState=stage,label="Welcome story") { page -> Column(verticalArrangement=Arrangement.spacedBy(20.dp)) { Display(titles[page], Color.White, 44); Text(descriptions[page],fontSize=16.sp,lineHeight=25.sp,color=Color(0xFFC2D2C6)) } }
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { repeat(3) { index -> Box(Modifier.width(if(index==stage) 28.dp else 8.dp).height(5.dp).clip(RoundedCornerShape(4.dp)).background(if(index==stage) Lime else Color(0xFF537362))) } }
         }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = onStart, modifier = Modifier.fillMaxWidth().height(58.dp), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(18.dp)) { Text("Start studying", fontWeight = FontWeight.SemiBold); Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.ArrowForward, null) }
+            Button(onClick = { if(stage<2) stage++ else onStart() }, modifier = Modifier.fillMaxWidth().height(58.dp), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(18.dp)) { Text(if(stage<2) "Continue" else "Create your study space", fontWeight = FontWeight.SemiBold); Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.ArrowForward, null) }
+            TextButton(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("Already have an account? Sign in", color=Lime) }
             TextButton(onClick = onExplore, modifier = Modifier.fillMaxWidth()) { Text("Explore the library first", color = Color.White) }
         }
     }
@@ -288,7 +301,6 @@ class MainActivity : ComponentActivity() {
                 Button(onClick = focus, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest), shape = RoundedCornerShape(15.dp), modifier = Modifier.fillMaxWidth().height(50.dp)) { Text("View study time", fontWeight = FontWeight.SemiBold) }
             }
         }
-        item { OutlinedButton(onClick = pdfWorkshop, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.PictureAsPdf, null); Spacer(Modifier.width(8.dp)); Text("PDF workshop") } }
         item {
             Row(Modifier.fillMaxWidth().clickable(onClick = boss).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(52.dp).clip(RoundedCornerShape(17.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary) }
@@ -306,7 +318,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun MaterialRow(m: Material, saved: Boolean, open: () -> Unit, save: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White).clickable(onClick = open).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceContainer).clickable(onClick = open).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(47.dp, 58.dp).clip(RoundedCornerShape(10.dp)).background(Sage), contentAlignment = Alignment.Center) { Icon(if (m.type.contains("question")) Icons.Outlined.Quiz else Icons.Outlined.Description, null, tint = MaterialTheme.colorScheme.primary) }
         Column(Modifier.weight(1f).padding(start = 14.dp)) {
             Text(m.code.ifBlank { m.type.replace('_', ' ') }.uppercase(), fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
@@ -317,7 +329,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun LibraryScreen(materials: List<Material>, saved: List<Material>, loading: Boolean, error: String?, retry: () -> Unit, open: (Material) -> Unit, save: (Material) -> Unit) {
+@Composable private fun LibraryScreen(materials: List<Material>, saved: List<Material>, loading: Boolean, error: String?, retry: () -> Unit, open: (Material) -> Unit, save: (Material) -> Unit, upload: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf("All materials") }
     var searchResults by remember { mutableStateOf(materials) }
@@ -340,6 +352,7 @@ class MainActivity : ComponentActivity() {
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item { Eyebrow("Find your next read"); Spacer(Modifier.height(10.dp)); Display("The library.", size = 38); Spacer(Modifier.height(8.dp)); Text("Good material. Less searching.", color = Muted, fontSize = 14.sp) }
+        item { OutlinedCard(onClick = upload, modifier = Modifier.fillMaxWidth()) { Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.UploadFile, null, tint = MaterialTheme.colorScheme.primary); Column(Modifier.padding(start = 14.dp)) { Text("Share a material", fontWeight = FontWeight.SemiBold); Text("Help other students and earn SyllaPoints", color = Muted, fontSize = 12.sp) } } } }
         item { OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Course, title, or school") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = RoundedCornerShape(18.dp)) }
         item { Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("All materials", "Past questions", "Notes", "Saved").forEach { label -> FilterChip(selected = filter == label, onClick = { filter = label }, label = { Text(label) }, shape = RoundedCornerShape(12.dp)) } } }
         item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Eyebrow("${list.size} materials"); IconButton(onClick = retry) { Icon(Icons.Outlined.Refresh, "Refresh materials", tint = MaterialTheme.colorScheme.primary) } } }
@@ -351,7 +364,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun SpaceScreen(signedIn: Boolean, space: JSONObject?, error: String?, saved: List<Material>, dark: Boolean, setDark: (Boolean) -> Unit, signIn: () -> Unit, retry: () -> Unit, open: (Material) -> Unit, navigate: (String) -> Unit, signOut: () -> Unit) {
+@Composable internal fun SpaceScreen(signedIn: Boolean, space: JSONObject?, error: String?, saved: List<Material>, dark: Boolean, setDark: (Boolean) -> Unit, useSystem: () -> Unit, signIn: () -> Unit, retry: () -> Unit, open: (Material) -> Unit, navigate: (String) -> Unit, signOut: () -> Unit) {
     val context = LocalContext.current
     val profile = space?.optJSONObject("profile")
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -376,8 +389,8 @@ class MainActivity : ComponentActivity() {
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(Triple("Student profile", "Your course and institution", "profile"), Triple("SyllaPlus membership", "Plans, payments and renewal", "billing"), Triple("Gift card cashout", "Redeem points for a gift card", "cashout"), Triple("Settings & promo codes", "Study preferences, rewards and your account", "settings"), Triple("Share a material", "Help the next student", "upload"), Triple("Study together", "Your course, your people", "peers")).forEach { (title, subtitle, destination) ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).clickable { navigate(destination) }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                listOf(Triple("Student profile", "Your course and institution", "profile"), Triple("SyllaPlus membership", "Plans, payments and renewal", "billing"), Triple("Gift card cashout", "Redeem points for a gift card", "cashout"), Triple("PDF workshop", "Combine, arrange and export your study PDFs", "pdf"), Triple("Notifications", "Rewards, updates and announcements", "notifications"), Triple("Settings & promo codes", "Study preferences, rewards and your account", "settings"), Triple("Share a material", "Help the next student", "upload"), Triple("Study together", "Your course, your people", "peers")).forEach { (title, subtitle, destination) ->
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceContainer).clickable { navigate(destination) }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(when (destination) { "upload" -> Icons.Outlined.UploadFile; "profile" -> Icons.Outlined.PersonOutline; else -> Icons.Outlined.Groups }, null, tint = MaterialTheme.colorScheme.primary)
                         Column(Modifier.weight(1f).padding(horizontal = 16.dp)) { Text(title, fontWeight = FontWeight.Medium); Text(subtitle, fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 4.dp)) }
                         Icon(Icons.Outlined.ChevronRight, null, tint = Muted)
@@ -385,6 +398,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        item { TextButton(onClick = useSystem) { Icon(Icons.Outlined.BrightnessAuto, null); Spacer(Modifier.width(8.dp)); Text("Use device appearance") } }
         item { SectionTitle("Saved for later") }
         item { ListItem(headlineContent = { Text("Dark appearance") }, trailingContent = { Switch(checked = dark, onCheckedChange = setDark) }) }
         if (saved.isEmpty()) item { Text("Your saved materials live here. Bookmark a read from the library to get started.", color = Muted, lineHeight = 22.sp, fontSize = 14.sp) }
@@ -396,8 +410,20 @@ class MainActivity : ComponentActivity() {
         }
         val ranks = space?.optJSONArray("ranks")
         if (ranks != null && ranks.length() > 0) {
-            item { SectionTitle("Campus leaders") }
-            items(minOf(5, ranks.length())) { i -> val rank = ranks.getJSONObject(i); Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("%02d".format(i + 1), color = Muted, fontSize = 13.sp); Text(rank.optString("full_name"), Modifier.weight(1f).padding(horizontal = 14.dp), fontSize = 14.sp); Text("${rank.optInt("points")} pts", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium, fontSize = 13.sp) } }
+            item { Column(verticalArrangement=Arrangement.spacedBy(8.dp)) { Icon(Icons.Outlined.EmojiEvents,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.size(34.dp));Text("Campus leaders",fontFamily=WebsiteDisplay,fontSize=32.sp);Text("Built through learning. Ranked by lifetime points, even after cashout.",color=Muted,fontSize=13.sp) } }
+            items(minOf(20, ranks.length())) { i -> val rank=ranks.getJSONObject(i)
+                Surface(shape=RoundedCornerShape(if(i==0) 24.dp else 16.dp),color=if(i==0) Sage else MaterialTheme.colorScheme.surfaceContainer) {
+                    Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Text(if(i==0) "♛" else "%02d".format(i+1),fontFamily=WebsiteDisplay,fontSize=if(i==0) 30.sp else 20.sp,color=MaterialTheme.colorScheme.primary)
+                        Column(Modifier.weight(1f).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                            Text(rank.optString("username").takeIf{it.isNotBlank()}?.let{"@"+it}?:"Student",fontWeight=FontWeight.SemiBold)
+                            Text(rank.optString("institution"),fontSize=11.sp,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                            Text((rank.optInt("study_minutes")/60).toString()+"h "+(rank.optInt("study_minutes")%60)+"m studied · "+rank.optInt("points")+" available pts",fontSize=11.sp,color=Muted)
+                        }
+                        Column(horizontalAlignment=Alignment.End) { Text("%,d".format(rank.optInt("lifetime_points",rank.optInt("points"))),fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary);Text("lifetime pts",fontSize=10.sp,color=Muted) }
+                    }
+                }
+            }
         }
         item { HorizontalDivider(color = Line) }
         item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://syllaboss.org/privacy"))) }) { Text("Privacy") }; TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://syllaboss.org/terms"))) }) { Text("Terms") }; if (signedIn) TextButton(onClick = signOut) { Text("Sign out") } } }
@@ -420,6 +446,7 @@ class MainActivity : ComponentActivity() {
         return
     }
     val context = LocalContext.current
+    var scrollingPages by rememberSaveable { mutableStateOf(context.getSharedPreferences("syllaboss-native", 0).getBoolean("reader-continuous", false)) }
     var file by remember { mutableStateOf<File?>(null) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var pages by remember { mutableIntStateOf(0) }
@@ -437,11 +464,19 @@ class MainActivity : ComponentActivity() {
             promotionSeconds = gate.optInt("seconds")
             while (promotionSeconds > 0) { kotlinx.coroutines.delay(1000); promotionSeconds-- }
             val access = StudyApi.call(body = JSONObject().put("action", "complete-material").put("id", gate.getString("id")))
-            val f = File.createTempFile("reader-", ".pdf", context.cacheDir)
+            val f = File(context.cacheDir, "reader-${account?.id.hashCode()}-${material.id}-${material.size}.pdf")
             try {
-                StudyApi.pdf(access.getString("url"), f)
-                file?.delete()
+                if (!f.exists() || f.length() == 0L || System.currentTimeMillis() - f.lastModified() > 7L * 24 * 60 * 60 * 1000) {
+                    val pending = File(f.path + ".partial")
+                    try { StudyApi.pdf(access.getString("url"), pending); if(!pending.renameTo(f)) throw IllegalStateException("Could not save the reading cache.") }
+                    finally { pending.delete() }
+                }
                 file = f
+                withContext(Dispatchers.IO) {
+                    val cached = context.cacheDir.listFiles()?.filter { it.name.startsWith("reader-") && it.extension == "pdf" }?.sortedBy { it.lastModified() }.orEmpty()
+                    var total = cached.sumOf { it.length() }
+                    for (old in cached) if (old != f && (System.currentTimeMillis() - old.lastModified() > 7L * 24 * 60 * 60 * 1000 || total > 200L * 1024 * 1024)) { val size=old.length();if(old.delete())total-=size }
+                }
             } catch (e: Exception) {
                 f.delete()
                 throw e
@@ -450,10 +485,6 @@ class MainActivity : ComponentActivity() {
             if (e is kotlinx.coroutines.CancellationException) throw e
             error = e.message ?: "Unable to open document."
         }
-    }
-    DisposableEffect(file) {
-        val opened = file
-        onDispose { opened?.delete() }
     }
     LaunchedEffect(file, page) {
         file?.let { f ->
@@ -484,7 +515,7 @@ class MainActivity : ComponentActivity() {
     }
     Scaffold(topBar = { TopAppBar(title = { Text(material.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 16.sp) }, navigationIcon = { IconButton(onClick = back) { Icon(Icons.Outlined.ArrowBack, "Back to library") } }, actions = { NativeMaterialActions(material) }) }, bottomBar = {
         Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { page-- }, enabled = page > 0) { Icon(Icons.Outlined.ChevronLeft, "Previous page") }; Text(if (pages > 0) "${page + 1} / $pages" else "Opening document…", fontSize = 13.sp); IconButton(onClick = { page++ }, enabled = page + 1 < pages) { Icon(Icons.Outlined.ChevronRight, "Next page") }
+            IconButton(onClick = { page-- }, enabled = page > 0) { Icon(Icons.Outlined.ChevronLeft, "Previous page") }; Column(horizontalAlignment=Alignment.CenterHorizontally) { Text(if (pages > 0) "${page + 1} / $pages" else "Opening document…", fontSize = 13.sp); TextButton(onClick={scrollingPages=!scrollingPages;context.getSharedPreferences("syllaboss-native",0).edit().putBoolean("reader-continuous",scrollingPages).apply()}){Icon(if(scrollingPages) Icons.Outlined.SwapVert else Icons.Outlined.Swipe,null,Modifier.size(16.dp));Spacer(Modifier.width(6.dp));Text(if(scrollingPages) "Scroll pages" else "Swipe pages",fontSize=12.sp)} }; IconButton(onClick = { page++ }, enabled = page + 1 < pages) { Icon(Icons.Outlined.ChevronRight, "Next page") }
         }
     }) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -495,11 +526,12 @@ class MainActivity : ComponentActivity() {
                     Text("Your document opens in $promotionSeconds seconds.")
                     Text("Subscribe today and get seven extra days before your first renewal.", fontSize = 13.sp, color = Muted)
                 }
-                error != null -> Column(Modifier.padding(24.dp)) { StateMessage(error!!) { file = null; retry++ } }
-                bitmap != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp)) { Image(bitmap!!.asImageBitmap(), contentDescription = "${material.title}, page ${page + 1}. Pinch to zoom.", modifier = Modifier.fillMaxWidth().aspectRatio(bitmap!!.width.toFloat() / bitmap!!.height).pointerInput(page) { detectTransformGestures { _, pan, scale, _ -> zoom = (zoom * scale).coerceIn(1f, 4f); panX = if (zoom > 1f) panX + pan.x else 0f; panY = if (zoom > 1f) panY + pan.y else 0f } }.graphicsLayer(scaleX = zoom, scaleY = zoom, translationX = panX, translationY = panY)) }
+                error != null -> Column(Modifier.padding(24.dp)) { StateMessage(error!!) { file?.delete(); file = null; retry++ } }
+                bitmap != null && file != null && !material.mime.startsWith("image/") -> ReaderPages(file!!, pages, page, { page=it }, scrollingPages, material.title)
+                bitmap != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp)) { Image(bitmap!!.asImageBitmap(), contentDescription=material.title, modifier=Modifier.fillMaxWidth().aspectRatio(bitmap!!.width.toFloat()/bitmap!!.height).pointerInput(page) { detectTransformGestures { _,pan,scale,_ -> zoom=(zoom*scale).coerceIn(1f,4f);panX=if(zoom>1f)panX+pan.x else 0f;panY=if(zoom>1f)panY+pan.y else 0f } }.graphicsLayer(scaleX=zoom,scaleY=zoom,translationX=panX,translationY=panY)) }
                 else -> CircularProgressIndicator()
             }
-            if (bitmap != null) NativeReaderTools(material)
+            if (bitmap != null) NativeReaderTools(material, page + 1)
         }
     }
 }

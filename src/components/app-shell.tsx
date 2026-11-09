@@ -189,7 +189,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
               to="/dashboard/settings"
               className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-muted"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-forest font-display text-sm font-semibold text-accent">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary font-display text-sm font-semibold text-primary-foreground">
                 {name.charAt(0).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1">
@@ -294,7 +294,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
           className={cn(
             "mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8",
             isFullScreenAppPage
-              ? "flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-4"
+              ? isAssistantPage ? "flex min-h-0 flex-1 flex-col overflow-hidden pb-safe" : "flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-4"
               : "flex-1 py-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:py-8 lg:pb-14",
           )}
         >
@@ -309,7 +309,7 @@ function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps
         aria-label="Primary"
         className={cn(
           "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 pb-safe backdrop-blur-xl lg:hidden",
-          (isKeyboardOpen || isNativeKeyboardOpen) && "hidden",
+          (isAssistantPage || isKeyboardOpen || isNativeKeyboardOpen) && "hidden",
         )}
       >
         <LayoutGroup id="tabs">

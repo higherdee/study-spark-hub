@@ -55,6 +55,7 @@ import { Route as AuthenticatedDashboardPreviewRouteImport } from './routes/_aut
 import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard.settings'
 import { Route as AuthenticatedDashboardUploadRouteImport } from './routes/_authenticated/dashboard.upload'
 import { Route as AuthenticatedDashboardWalletRouteImport } from './routes/_authenticated/dashboard.wallet'
+import { Route as AuthenticatedSharedIdRouteImport } from './routes/_authenticated/shared.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -302,6 +303,11 @@ const AuthenticatedDashboardWalletRoute =
     path: '/wallet',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedSharedIdRoute = AuthenticatedSharedIdRouteImport.update({
+  id: '/shared/$id',
+  path: '/shared/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
+  '/shared/$id': typeof AuthenticatedSharedIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
 }
@@ -392,6 +399,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
+  '/shared/$id': typeof AuthenticatedSharedIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
 }
@@ -441,6 +449,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/_authenticated/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/_authenticated/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
+  '/_authenticated/shared/$id': typeof AuthenticatedSharedIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
 }
@@ -490,6 +499,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/upload'
     | '/dashboard/wallet'
+    | '/shared/$id'
     | '/admin/'
     | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
@@ -535,6 +545,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/upload'
     | '/dashboard/wallet'
+    | '/shared/$id'
     | '/admin'
     | '/dashboard'
   id:
@@ -583,6 +594,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/settings'
     | '/_authenticated/dashboard/upload'
     | '/_authenticated/dashboard/wallet'
+    | '/_authenticated/shared/$id'
     | '/_authenticated/admin/'
     | '/_authenticated/dashboard/'
   fileRoutesById: FileRoutesById
@@ -939,6 +951,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardWalletRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/shared/$id': {
+      id: '/_authenticated/shared/$id'
+      path: '/shared/$id'
+      fullPath: '/shared/$id'
+      preLoaderRoute: typeof AuthenticatedSharedIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -1004,12 +1023,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+  AuthenticatedSharedIdRoute: typeof AuthenticatedSharedIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+  AuthenticatedSharedIdRoute: AuthenticatedSharedIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

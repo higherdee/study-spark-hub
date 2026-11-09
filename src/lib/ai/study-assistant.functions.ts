@@ -3,6 +3,7 @@ import { withAiAllowance, budgetedAiFetch } from "@/lib/membership/ai.server";
 import { membershipAccess, requireLibraryAiAccess } from "@/lib/membership/policy.server";
 import { generationCount } from "@/lib/membership/policy";
 import { chatBudget, compactChatHistory } from "@/lib/ai/chat-cost";
+import { repairJsonTexEscapes } from "./study-json";
 ﻿import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { turso } from "@/integrations/turso/client.server";
@@ -37,7 +38,7 @@ function pickBestGroqModel(taskType?: AcademicTaskType): string[] {
  */
 export function repairAndParseJsonArray<T = any>(rawText: string): T[] {
   if (!rawText) return [];
-  const trimmed = rawText.trim();
+  const trimmed = repairJsonTexEscapes(rawText.trim());
 
   // 1. Direct parse attempt if clean array
   const match = trimmed.match(/\[[\s\S]*\]/);

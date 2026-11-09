@@ -3,6 +3,16 @@ import { normalizeMathDelimiters } from "@/lib/math-format";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AiMessageRenderer } from "@/components/ai-message-renderer";
+import {parseStudyArray} from "@/lib/ai/study-json";
+it("protects formulas in model JSON and formats bare MCQ fractions",()=>{
+  const parsed=parseStudyArray(String.raw`[{"question":"Compute","options":["\frac{1}{2}","\beta","\theta","\sqrt{4}"],"modelAnswer":"\frac{1}{2}"}]`) as Array<{options:string[]}>;
+  expect(parsed[0]?.options[0]).toBe(String.raw`\frac{1}{2}`);
+  expect(parsed[0]?.options[1]).toBe(String.raw`\beta`);
+  const html=renderToStaticMarkup(React.createElement(AiMessageRenderer,{content:String.raw`A. x = \frac{a+1}{\sqrt{b}}`}));
+  expect(html).toContain("mfrac");
+  expect(html).not.toContain("katex-error");
+  expect(normalizeMathDelimiters(String.raw`A. \\frac{1}{2}`)).toContain(String.raw`$\frac{1}{2}$`);
+});
 it("normalizes inline, display and escaped model formulas", () => {
   expect(normalizeMathDelimiters(String.raw`Use \(\frac{1}{2}\) and \[x^2\]`)).toContain(String.raw`$\frac{1}{2}$`);
   expect(normalizeMathDelimiters(String.raw`\\(\\sqrt{x}\\)`)).toBe(String.raw`$\sqrt{x}$`);
