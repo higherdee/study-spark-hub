@@ -23,6 +23,7 @@ for node in root.iter('node'):
 subprocess.run(['adb','shell','sleep','2'],check=True)
 root=dump('reader-scroll')
 assert any(node.get('text')=='Scroll pages' for node in root.iter('node'))
+assert any('Reader page 2' in node.get('text','') for node in root.iter('node')),'Changing reading mode lost the current PDF page'
 for _ in range(2):
     subprocess.run(['adb','shell','input','swipe',str(width//2),str(int(height*.85)),str(width//2),str(int(height*.25)),'600'],check=True)
 subprocess.run(['adb','shell','sleep','2'],check=True)
