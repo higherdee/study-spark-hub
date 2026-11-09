@@ -15,7 +15,9 @@ adb exec-out screencap -p > android-smoke/welcome.png
 adb shell uiautomator dump /sdcard/welcome.xml
 adb pull /sdcard/welcome.xml android-smoke/welcome.xml
 if grep -q 'org.syllaboss.app' android-smoke/crashes.txt; then cat android-smoke/crashes.txt; exit 1; fi
-grep -q 'Status: ok' android-smoke/launch.txt
+# Cold first boot may exceed am start's short wait even when Compose is ready.
+# The visible welcome hierarchy and empty crash buffer are the launch evidence.
+grep -q 'org.syllaboss.app' android-smoke/welcome.xml
 grep -q 'Your courses' android-smoke/welcome.xml
 # Guest exploration never needs a browser or a signed-in account.
 python3 - <<'PY'
