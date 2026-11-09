@@ -36,6 +36,7 @@ reader=snapshot('reader')
 assert any('Sign in to read this material' in n.get('text','') for n in reader.iter('node')), 'Guest material access did not show the account gate'
 adb('shell','input','keyevent','4');time.sleep(2)
 tap('Boss AI');snapshot('boss')
+tap('App navigation')
 tap('Your space');snapshot('space')
 tap('Today')
 today=snapshot('automatic-study')
