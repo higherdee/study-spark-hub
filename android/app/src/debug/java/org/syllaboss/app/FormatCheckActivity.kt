@@ -18,7 +18,7 @@ class FormatCheckActivity: ComponentActivity() {
         super.onCreate(savedInstanceState)
         val check=intent.getStringExtra("screen")
         val dark=intent.getBooleanExtra("dark",false)
-        setContent { MaterialTheme(colorScheme=if(dark)darkColors else appColors,typography=websiteTypography()) {
+        setContent { MaterialTheme(colorScheme=if(dark)darkColors else appColors,typography=websiteTypography()) { Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
             if(check=="space") SpaceScreen(true,JSONObject().put("profile",JSONObject().put("full_name","Sample Student").put("course","Engineering").put("study_minutes",90).put("points",250).put("current_streak",3)),null,emptyList(),dark,{},{},{},{},{},{},{})
             else if(check=="onboarding") ProfileScreen(null,{},{},onboarding=true)
             else if(check=="reader") {
@@ -77,6 +77,6 @@ print(c)  # 5.0
 **Final answer: 5 cm.**
 """.trimIndent(),Modifier.fillMaxWidth())
             }
-        } }
+        } } }
     }
 }
