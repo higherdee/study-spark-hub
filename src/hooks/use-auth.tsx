@@ -1,9 +1,4 @@
-import {
-  ClerkProvider,
-  useUser,
-  useClerk,
-  useAuth as useClerkAuth,
-} from "@clerk/clerk-react";
+import { ClerkProvider, useUser, useClerk, useAuth as useClerkAuth } from "@clerk/clerk-react";
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { CLERK_PUBLISHABLE_KEY } from "@/integrations/clerk";
 import { upsertProfileServerFn } from "@/lib/profile.functions";
@@ -54,8 +49,12 @@ function AuthInternalProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const originalFetch = window.fetch.bind(window);
     const authenticatedFetch: typeof window.fetch = async (input, init) => {
-      const requestUrl = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
+      const requestUrl = new URL(
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+        window.location.href,
+      );
       if (requestUrl.origin !== window.location.origin) return originalFetch(input, init);
+      if (!isSignedIn) return originalFetch(input, init);
 
       const token = await getToken();
       if (!token) return originalFetch(input, init);
@@ -68,7 +67,7 @@ function AuthInternalProvider({ children }: { children: ReactNode }) {
     return () => {
       if (window.fetch === authenticatedFetch) window.fetch = originalFetch;
     };
-  }, [getToken]);
+  }, [getToken, isSignedIn]);
 
   useEffect(() => {
     if (authUser && user) {

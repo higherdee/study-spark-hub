@@ -17,7 +17,7 @@ import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provi
 import { MaintenanceGate } from "@/components/maintenance-gate";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { GA_MEASUREMENT_ID, trackGAPageView } from "@/lib/analytics";
+import { trackGAPageView } from "@/lib/analytics";
 
 function NotFoundComponent() {
   return (
@@ -113,8 +113,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Syllaboss" },
       { name: "description", content: "A clear academic starting point for students." },
       { name: "author", content: "Syllaboss" },
-      { name: "theme-color", media: "(prefers-color-scheme: light)", content: "#f6f5ef" },
-      { name: "theme-color", media: "(prefers-color-scheme: dark)", content: "#101d17" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Syllaboss" },
       { property: "og:site_name", content: "Syllaboss" },
@@ -149,6 +147,8 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="light" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f5ef" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101d17" />
         <HeadContent />
         <script
           dangerouslySetInnerHTML={{
@@ -156,27 +156,9 @@ function RootShell({ children }: { children: ReactNode }) {
               "try{var p=localStorage.getItem('syllaboss-appearance');var d=p==='dark'||(p!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);document.documentElement.classList.toggle('light',!d);document.documentElement.style.colorScheme=d?'dark':'light'}catch(e){}",
           }}
         />
-        {/* Google tag (gtag.js) */}
-        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${GA_MEASUREMENT_ID}', {
-                send_page_view: true
-              });
-            `,
-          }}
-        />
-        {/* Google AdSense Verification & Auto Ads */}
+        {/* Publisher verification; consent and membership control loading in CookiePreferences. */}
         <meta name="google-adsense-account" content="ca-pub-3521407661073190" />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3521407661073190"
-          crossOrigin="anonymous"
-        />
+
         <script
           dangerouslySetInnerHTML={{
             __html: `

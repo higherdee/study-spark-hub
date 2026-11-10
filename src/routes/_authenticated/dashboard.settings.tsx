@@ -264,6 +264,13 @@ function SettingsPage() {
           <PromoCodeEntry />
           <section className="native-settings-section">
             <h2>Your account</h2>
+            <button
+              type="button"
+              className="native-text-button"
+              onClick={() => window.dispatchEvent(new Event("syllaboss:cookie-preferences"))}
+            >
+              Cookie preferences
+            </button>
             <Link to="/dashboard/space" className="native-text-button">
               Your profile and progress
             </Link>

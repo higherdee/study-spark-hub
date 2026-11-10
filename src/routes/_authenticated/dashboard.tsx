@@ -1,5 +1,18 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { BookOpen, FileStack, Home, Trophy, Upload, Wallet, Shield, Bot, Users, Settings, AlertCircle, AlertTriangle } from "lucide-react";
+import {
+  BookOpen,
+  FileStack,
+  Home,
+  Trophy,
+  Upload,
+  Wallet,
+  Shield,
+  Bot,
+  Users,
+  Settings,
+  AlertCircle,
+  AlertTriangle,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -17,14 +30,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { updateStreakServerFn } from "@/lib/community.functions";
 import { syncSubscriptionStatusServerFn } from "@/lib/upload.functions";
-import { autoPromptNotificationConsent, schedulePeriodicStudyReminder } from "@/lib/notifications";
+import { schedulePeriodicStudyReminder } from "@/lib/notifications";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "Dashboard — Syllaboss" },
-      { name: "description", content: "Upload materials, earn points and study with your AI assistant." },
+      {
+        name: "description",
+        content: "Upload materials, earn points and study with your AI assistant.",
+      },
       { property: "og:title", content: "Dashboard — Syllaboss" },
       { property: "og:description", content: "Your Syllaboss student dashboard." },
       { property: "og:type", content: "website" },
@@ -56,7 +72,11 @@ function DashboardLayout() {
   const { geo, isVpnOrProxy, vpnReason } = useGeo();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const search = useRouterState({ select: (s) => s.location.search }) as { upgraded?: string; tour?: string; plan?: string };
+  const search = useRouterState({ select: (s) => s.location.search }) as {
+    upgraded?: string;
+    tour?: string;
+    plan?: string;
+  };
 
   // Onboarding Modal & SyllaPlus Modal States
   const [manualSetupOpen, setManualSetupOpen] = useState(false);
@@ -101,10 +121,9 @@ function DashboardLayout() {
     }
   }, [user?.id, profileComplete, queryClient]);
 
-  // Prompt device notification consent immediately on entry & schedule periodic reminders
+  // Permission is requested from Settings; existing reminders can still run.
   useEffect(() => {
     if (typeof window !== "undefined") {
-      autoPromptNotificationConsent().catch(() => {});
       schedulePeriodicStudyReminder();
     }
   }, []);
@@ -143,7 +162,13 @@ function DashboardLayout() {
           if (subData?.status !== "grace_period") return null;
           const gracePeriodDays = subData?.plan === "weekly" ? 6 : 12;
           const daysRemainingInGrace = subData?.grace_period_end
-            ? Math.max(1, Math.ceil((new Date(subData.grace_period_end).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+            ? Math.max(
+                1,
+                Math.ceil(
+                  (new Date(subData.grace_period_end).getTime() - Date.now()) /
+                    (24 * 60 * 60 * 1000),
+                ),
+              )
             : gracePeriodDays;
 
           return (
@@ -154,10 +179,14 @@ function DashboardLayout() {
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">
-                    Payment Notice: SyllaPlus {subData?.plan === "weekly" ? "Weekly" : "Monthly"} Auto-Renewal Failed
+                    Payment Notice: SyllaPlus {subData?.plan === "weekly" ? "Weekly" : "Monthly"}{" "}
+                    Auto-Renewal Failed
                   </p>
                   <p className="text-muted-foreground text-xs mt-0.5">
-                    You are currently in a {gracePeriodDays}-day grace period ({daysRemainingInGrace} day{daysRemainingInGrace === 1 ? "" : "s"} remaining). Renew your payment method before your 1.3x points multiplier and VIP perks are suspended.
+                    You are currently in a {gracePeriodDays}-day grace period (
+                    {daysRemainingInGrace} day{daysRemainingInGrace === 1 ? "" : "s"} remaining).
+                    Renew your payment method before your 1.3x points multiplier and VIP perks are
+                    suspended.
                   </p>
                 </div>
               </div>
