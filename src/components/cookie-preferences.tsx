@@ -81,9 +81,9 @@ export function CookiePreferences() {
   return (
     <aside
       aria-label="Cookie preferences"
-      className="fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-[70] mx-auto max-w-xl rounded-2xl border border-border bg-card p-5 shadow-xl sm:left-auto sm:right-5 sm:mx-0"
+      className="native-cookie-preferences fixed inset-x-3 bottom-[max(.75rem,env(safe-area-inset-bottom))] z-[70] mx-auto max-w-xl rounded-2xl border border-border bg-card p-5 shadow-xl sm:left-auto sm:right-5 sm:mx-0"
     >
-      <h2 className="font-serif text-xl">Choose what stays on your device.</h2>
+      <h2 className="font-serif text-xl">Your privacy, your choice.</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         Essential storage keeps sign-in and your preferences working. Optional cookies help measure
         usage and show advertising.{" "}
@@ -111,7 +111,6 @@ export function CookiePreferences() {
         <Button variant="outline" onClick={() => save({ analytics, advertising })}>
           Save choices
         </Button>
-        <Button onClick={() => save({ analytics: true, advertising: true })}>Allow optional</Button>
       </div>
     </aside>
   );

@@ -2571,3 +2571,9 @@ select:focus-visible {
   min-width: 0;
   flex: 1;
 }
+.native-cookie-preferences button[role="checkbox"] {
+  min-height: 18px !important;
+  height: 18px !important;
+  width: 18px;
+  border-radius: 5px;
+}

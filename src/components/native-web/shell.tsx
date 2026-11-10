@@ -43,7 +43,7 @@ export function NativeWebShell({
   const reader = path.startsWith("/dashboard/preview");
   const immersive = assistant || peers || reader;
   const section = path.split("/").at(-1) || "";
-  const secondary = secondaryTitles[section];
+  const secondary = path.startsWith("/dashboard/") ? secondaryTitles[section] : undefined;
   const { data: conversations = [] } = useQuery({
     queryKey: ["native-web-unread", user?.id],
     enabled: !!user,
