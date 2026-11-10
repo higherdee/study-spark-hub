@@ -1282,7 +1282,7 @@ function AssistantPage() {
   }
 
   return (
-    <div className="boss-workspace flex min-h-0 h-full max-h-full flex-1 w-full overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card font-sans relative">
+    <div className="native-ai-page boss-workspace flex min-h-0 h-full max-h-full flex-1 w-full overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card font-sans relative">
       {/* Hidden File Inputs */}
       <input
         type="file"
@@ -1302,7 +1302,7 @@ function AssistantPage() {
       {/* ========================================================================= */}
       {/* DESKTOP SIDEBAR: Conversations, Attached Document, & Study Tools */}
       {/* ========================================================================= */}
-      <aside className="hidden md:flex w-72 lg:w-80 flex-col border-r border-border bg-surface-container-low shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden">
+      <aside className="hidden min-[1440px]:flex w-64 flex-col border-r border-border bg-surface-container-low shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden">
         {/* New Chat Button */}
         <div className="p-3 border-b border-border">
           <Button
@@ -1429,14 +1429,14 @@ function AssistantPage() {
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
         {/* Mobile Header (Top-Right Recent Menu + New Chat) */}
-        <div className="md:hidden flex items-center justify-between px-3.5 py-2 border-b border-border/50 bg-card/85 backdrop-blur-md shrink-0 z-20">
+        <div className="native-ai-toolbar flex items-center justify-between px-5 py-4 bg-background shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
-            <DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-secondary" aria-label="App navigation"><Menu className="size-5"/></button></DropdownMenuTrigger><DropdownMenuContent align="start"><DropdownMenuItem asChild><Link to="/dashboard">Today</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/library">Library</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/community">Peers</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/settings">Your space</Link></DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+            <DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-secondary" aria-label="App navigation"><Menu className="size-5"/></button></DropdownMenuTrigger><DropdownMenuContent align="start"><DropdownMenuItem asChild><Link to="/dashboard">Today</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/library">Library</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/community">Peers</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/space">Your space</Link></DropdownMenuItem></DropdownMenuContent></DropdownMenu>
             <div className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
-              <Bot className="size-3.5" />
+              <SyllabossEmblem className="size-8" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-xs font-bold text-foreground truncate">
+              <h2 className="font-display text-xl font-medium text-foreground truncate">
                 {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI"}
               </h2>
             </div>
@@ -1466,55 +1466,6 @@ function AssistantPage() {
             </button>
           </div>
         </div>
-
-        {/* Desktop Chat Header */}
-        <div className="hidden md:flex items-center justify-between px-5 py-3 border-b border-border bg-card shrink-0 relative z-20">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="size-9 rounded-xl bg-forest/10 text-forest grid place-items-center shrink-0 border border-forest/20">
-              <Bot className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="font-display text-sm font-medium text-ink truncate tracking-tight">
-                  {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI Study Copilot"}
-                </h2>
-                {activeDocContext && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/40 border border-brand/30 text-forest text-[11px] font-semibold shrink-0">
-                    <BookOpen className="size-3" />
-                    <span className="max-w-[160px] truncate">{activeDocContext.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveDocContext(null)}
-                      className="text-muted-foreground hover:text-destructive ml-0.5"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Your study partner · Explain, practise, revise
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {activeThreadId && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => deleteChat(activeThreadId)}
-                className="h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive gap-1.5 press rounded-full"
-                title="Delete this conversation"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Delete Chat</span>
-              </Button>
-            )}
-          </div>
-        </div>
-
-
 
         {activeDocContext?.id&&<DocumentFocusBar key={activeDocContext.id} id={activeDocContext.id} title={activeDocContext.title} focus={documentFocus} change={setDocumentFocus} detach={()=>{setActiveDocContext(null);setDocumentFocus("");}}/>}
         {/* Messages Stream */}

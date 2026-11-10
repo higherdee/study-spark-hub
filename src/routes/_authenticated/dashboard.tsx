@@ -137,30 +137,6 @@ function DashboardLayout() {
           ) : null
         }
       >
-        {/* Incomplete Onboarding Announcement Banner */}
-        {needsOnboarding && (
-          <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-brass/40 bg-gradient-to-r from-brass/15 via-brass/10 to-surface-container-low p-4 text-ink shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="size-9 rounded-xl bg-brass/20 text-brass-ink flex items-center justify-center shrink-0 border border-brass/40">
-                <AlertCircle className="size-5 text-brass" />
-              </div>
-              <div className="text-xs">
-                <p className="font-semibold text-ink">Action Required: Complete Your Academic Profile</p>
-                <p className="text-muted-foreground mt-0.5">
-                  Set your university, course, and username to enable study battles, library customization, and weekend withdrawals.
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => setManualSetupOpen(true)}
-              className="h-8.5 rounded-xl bg-forest text-white hover:bg-forest/90 font-semibold text-xs px-4 shrink-0 shadow-xs active:scale-[0.98] cursor-pointer"
-            >
-              Complete Setup
-            </Button>
-          </div>
-        )}
-
         {/* Grace Period Notification Banner (6 days weekly / 12 days monthly) */}
         {(() => {
           const subData = (profile?.study_plan as any)?.subscription;

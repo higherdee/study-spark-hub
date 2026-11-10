@@ -1,6 +1,7 @@
 import { ClerkFailed, ClerkLoaded, ClerkLoading, SignIn, SignUp } from "@clerk/clerk-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { useTheme } from "@/lib/theme";
 import { AlertCircle, BookOpen, Bot, Coins, Loader2, RefreshCw } from "lucide-react";
 import { z } from "zod";
 
@@ -10,16 +11,29 @@ import { useAuth } from "@/hooks/use-auth";
 import { clerkAppearance } from "@/integrations/clerk";
 import { TermsBeforeSignup } from "@/components/account-consent";
 
-const searchSchema = z.object({ mode: z.enum(["signin", "signup"]).catch("signin").default("signin"), redirect:z.string().regex(/^\/(?:shared\/[a-f0-9-]{36}|dashboard(?:[/?][^\\\u0000-\u001f]*)?)$/i).optional().catch(undefined) });
+const searchSchema = z.object({
+  mode: z.enum(["signin", "signup"]).catch("signin").default("signin"),
+  redirect: z
+    .string()
+    .regex(/^\/(?:shared\/[a-f0-9-]{36}|dashboard(?:[/?][^\\\u0000-\u001f]*)?)$/i)
+    .optional()
+    .catch(undefined),
+});
 
 export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
   head: () => ({
     meta: [
       { title: "Sign in or create an account — Syllaboss" },
-      { name: "description", content: "Sign in to Syllaboss or create a free account to save your study profile." },
+      {
+        name: "description",
+        content: "Sign in to Syllaboss or create a free account to save your study profile.",
+      },
       { property: "og:title", content: "Sign in or create an account — Syllaboss" },
-      { property: "og:description", content: "Save your institution, course and level with a free Syllaboss account." },
+      {
+        property: "og:description",
+        content: "Save your institution, course and level with a free Syllaboss account.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -28,16 +42,44 @@ export const Route = createFileRoute("/auth")({
 });
 
 const PERKS = [
-  { icon: BookOpen, title: "Verified notes & past questions", sub: "Searchable by school, course and level." },
-  { icon: Bot, title: "Boss AI that shows its working", sub: "Step-by-step answers, quizzes and explanations." },
-  { icon: Coins, title: "Earn while you learn", sub: "Points for studying and sharing, withdrawable to your bank." },
+  {
+    icon: BookOpen,
+    title: "Verified notes & past questions",
+    sub: "Searchable by school, course and level.",
+  },
+  {
+    icon: Bot,
+    title: "Boss AI that shows its working",
+    sub: "Step-by-step answers, quizzes and explanations.",
+  },
+  {
+    icon: Coins,
+    title: "Earn while you learn",
+    sub: "Points for studying and sharing, withdrawable to your bank.",
+  },
 ];
 
 function AuthPage() {
-  const { mode,redirect } = Route.useSearch();
-  const destination=redirect||"/dashboard";
+  const { mode, redirect } = Route.useSearch();
+  const destination = redirect || "/dashboard";
   const { user } = useAuth();
   const isSignup = mode === "signup";
+  const { theme } = useTheme();
+  const appearance = useMemo(
+    () => ({
+      ...clerkAppearance,
+      variables: {
+        ...clerkAppearance.variables,
+        colorPrimary: theme === "dark" ? "#9bd7bb" : "#153e32",
+        colorText: theme === "dark" ? "#e3eee6" : "#1e3029",
+        colorTextSecondary: theme === "dark" ? "#b0c3b7" : "#607067",
+        colorBackground: theme === "dark" ? "#101d17" : "#f6f5ef",
+        colorInputBackground: theme === "dark" ? "#1c2e24" : "#eaece5",
+        borderRadius: "0.875rem",
+      },
+    }),
+    [theme],
+  );
 
   useEffect(() => {
     if (user) {
@@ -46,54 +88,29 @@ function AuthPage() {
   }, [user, destination]);
 
   return (
-    <div className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      {/* Brand panel */}
-      <aside className="auth-brand-panel relative hidden overflow-hidden bg-forest text-white lg:flex lg:flex-col lg:justify-between">
-        <a href="/" aria-label="Syllaboss home" className="relative inline-flex items-center gap-2.5">
-          <SyllabossEmblem className="size-9 brightness-0 invert" />
-          <span className="font-display text-2xl font-semibold tracking-tight">Syllaboss</span>
+    <div className="native-auth">
+      <header>
+        <a href="/" aria-label="Back to Syllaboss">
+          <SyllabossLogo asDiv />
         </a>
-
-        <div className="auth-brand-story relative">
-          <p className="eyebrow !text-[#d9c18f]">Make this semester yours</p>
-          <h2 className="auth-brand-title">
-            Your courses.<br />Your questions.<br /><em>Your next chapter.</em>
-          </h2>
-          <p className="auth-brand-description">A place to find your materials, work through the hard parts, and keep moving forward.</p>
-          <div className="auth-study-sheet">
-            <div className="auth-sheet-heading"><span>Your study essentials</span><BookOpen className="size-5" aria-hidden="true" /></div>
-            <ul>
-              {PERKS.map(({ icon: Icon, title, sub }) => (
-                <li key={title}>
-                  <Icon className="size-5 shrink-0" aria-hidden="true" />
-                  <span><strong>{title}</strong><span>{sub}</span></span>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <a
+          href={
+            (isSignup ? "/auth?mode=signin" : "/auth?mode=signup") +
+            "&redirect=" +
+            encodeURIComponent(destination)
+          }
+        >
+          {isSignup ? "Sign in" : "Create account"}
+        </a>
+      </header>
+      <main>
+        <div className="native-auth-intro">
+          <p className="native-eyebrow">Your learning, all together</p>
+          <h1>{isSignup ? "Make it yours." : "Welcome back."}</h1>
+          <p>{isSignup ? "A study space built around you." : "Your next chapter starts here."}</p>
         </div>
-
-        <div className="auth-brand-footer"><span>Built around your university life.</span><span>© 2026 Syllaboss</span></div>
-      </aside>
-
-      {/* Form */}
-      <div className="flex min-h-dvh flex-col">
-        <header className="flex flex-wrap items-center justify-between gap-4 px-5 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-5 sm:px-10">
-          <a href="/" aria-label="Syllaboss home" className="lg:hidden">
-            <SyllabossLogo />
-          </a>
-          <span className="ml-auto text-[13px] text-muted-foreground">
-            {isSignup ? "Already have an account?" : "New to Syllaboss?"}{" "}
-            <a
-              href={(isSignup ? "/auth?mode=signin" : "/auth?mode=signup")+"&redirect="+encodeURIComponent(destination)}
-              className="ml-1 font-semibold text-ink underline decoration-border underline-offset-4 transition-colors hover:decoration-ink"
-            >
-              {isSignup ? "Sign in" : "Create account"}
-            </a>
-          </span>
-        </header>
-
-        <main className="flex flex-1 items-start justify-center px-5 pt-8 pb-[calc(3rem+env(safe-area-inset-bottom))] sm:items-center sm:px-10 sm:pt-0">
+        <div className="native-auth-form">
+          {" "}
           <ClerkLoading>
             <AuthLoadingPanel />
           </ClerkLoading>
@@ -101,20 +118,20 @@ function AuthPage() {
             <div key={mode} className="route-enter !h-auto w-full max-w-[26rem]">
               {isSignup ? (
                 <TermsBeforeSignup>
-                <SignUp
-                  appearance={clerkAppearance}
-                  routing="virtual"
-                  signInUrl={"/auth?mode=signin&redirect="+encodeURIComponent(destination)}
-                  forceRedirectUrl={destination}
-                  fallbackRedirectUrl={destination}
-                  fallback={<AuthLoadingPanel label="Preparing account creation…" />}
-                />
+                  <SignUp
+                    appearance={appearance}
+                    routing="virtual"
+                    signInUrl={"/auth?mode=signin&redirect=" + encodeURIComponent(destination)}
+                    forceRedirectUrl={destination}
+                    fallbackRedirectUrl={destination}
+                    fallback={<AuthLoadingPanel label="Preparing account creation…" />}
+                  />
                 </TermsBeforeSignup>
               ) : (
                 <SignIn
-                  appearance={clerkAppearance}
+                  appearance={appearance}
                   routing="virtual"
-                  signUpUrl={"/auth?mode=signup&redirect="+encodeURIComponent(destination)}
+                  signUpUrl={"/auth?mode=signup&redirect=" + encodeURIComponent(destination)}
                   forceRedirectUrl={destination}
                   fallbackRedirectUrl={destination}
                   fallback={<AuthLoadingPanel label="Preparing sign in…" />}
@@ -125,8 +142,13 @@ function AuthPage() {
           <ClerkFailed>
             <AuthFailurePanel />
           </ClerkFailed>
-        </main>
-      </div>
+        </div>
+      </main>
+      <footer>
+        <a href="/terms">Terms</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/">Back to Syllaboss</a>
+      </footer>
     </div>
   );
 }
@@ -160,7 +182,8 @@ function AuthFailurePanel() {
       </span>
       <h1 className="font-display text-xl font-medium text-ink">Sign in didn’t load</h1>
       <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-        Check your connection, then try again. If the problem continues, the sign-in service may be temporarily unavailable.
+        Check your connection, then try again. If the problem continues, the sign-in service may be
+        temporarily unavailable.
       </p>
       <Button className="mt-1 min-h-11 gap-2" onClick={() => window.location.reload()}>
         <RefreshCw className="size-4" aria-hidden="true" />

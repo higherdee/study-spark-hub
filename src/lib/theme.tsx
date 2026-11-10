@@ -38,6 +38,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       document.documentElement.classList.toggle("dark", current === "dark");
       document.documentElement.classList.toggle("light", current === "light");
       document.documentElement.style.colorScheme = current;
+      document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach(meta=>{meta.content=current==="dark"?"#101d17":"#f6f5ef"});
     };
     update();
     media.addEventListener("change", update);

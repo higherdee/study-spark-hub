@@ -2,6 +2,7 @@
 @source "../src";
 @import "tw-animate-css";
 @import "katex/dist/katex.min.css";
+@import "./native-web.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -933,3 +934,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   body:has([data-chat-active="true"]) #app-main-content { padding-bottom: env(safe-area-inset-bottom); }
   [data-settings-screen] input, [data-settings-screen] select { font-size: 16px; }
 }
+
+/* Native application token parity, after legacy theme declarations. */
+:root {--background:#f6f5ef;--foreground:#1e3029;--ink:#1e3029;--ink-soft:#607067;--surface:#f6f5ef;--surface-container-low:#f0f1ea;--surface-container:#eaece5;--surface-container-high:#e2e7dd;--surface-container-lowest:#f6f5ef;--card:#eaece5;--card-foreground:#1e3029;--primary:#153e32;--primary-foreground:#fff;--forest:#153e32;--brand:#153e32;--accent:#e5ebdd;--accent-foreground:#153e32;--secondary:#e5ebdd;--secondary-container:#e5ebdd;--secondary-foreground:#153e32;--muted:#eaece5;--muted-foreground:#607067;--border:#e1e5dc;--input:#a0ada2;--ring:#153e32;--native-sage:#e5ebdd;--native-lime:#e8dbb9;--native-forest:#153e32;--native-tab-height:80px;--native-content-width:1260px}
+.dark {--background:#101d17;--foreground:#e3eee6;--ink:#e3eee6;--ink-soft:#b0c3b7;--surface:#101d17;--surface-container-low:#15261e;--surface-container:#1c2e24;--surface-container-high:#253f31;--surface-container-lowest:#101d17;--card:#1c2e24;--card-foreground:#e3eee6;--primary:#9bd7bb;--primary-foreground:#10382b;--forest:#9bd7bb;--brand:#9bd7bb;--accent:#244a3a;--accent-foreground:#9bd7bb;--secondary:#244a3a;--secondary-container:#244a3a;--secondary-foreground:#d7eee0;--muted:#1c2e24;--muted-foreground:#b0c3b7;--border:#3d594a;--input:#60766a;--ring:#9bd7bb;--native-sage:#244a3a;--native-lime:#e8dbb9;--native-forest:#153e32}

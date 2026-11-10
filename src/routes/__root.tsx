@@ -60,12 +60,15 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
           Something interrupted this view.
         </h1>
         <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-          An unexpected interruption occurred. You can retry immediately, return to your dashboard, or reload the page.
+          An unexpected interruption occurred. You can retry immediately, return to your dashboard,
+          or reload the page.
         </p>
 
         {errorMessage && errorMessage !== "undefined" && (
           <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-left">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-destructive font-bold">Error Details</p>
+            <p className="text-[10px] font-mono uppercase tracking-wider text-destructive font-bold">
+              Error Details
+            </p>
             <p className="mt-1 text-xs font-mono text-muted-foreground break-all">{errorMessage}</p>
           </div>
         )}
@@ -102,11 +105,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
+      },
       { title: "Syllaboss" },
       { name: "description", content: "A clear academic starting point for students." },
       { name: "author", content: "Syllaboss" },
-      { name: "theme-color", content: "#f5f3ec" },
+      { name: "theme-color", media: "(prefers-color-scheme: light)", content: "#f6f5ef" },
+      { name: "theme-color", media: "(prefers-color-scheme: dark)", content: "#101d17" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Syllaboss" },
       { property: "og:site_name", content: "Syllaboss" },
@@ -119,21 +127,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      {
-        rel: "stylesheet",
-        href: "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css",
-        crossOrigin: "anonymous",
-      },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,300..900;1,300..900&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200",
-      },
+
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
@@ -156,7 +150,12 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" className="light" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <script dangerouslySetInnerHTML={{__html:"try{var p=localStorage.getItem('syllaboss-appearance');var d=p==='dark'||(p!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);document.documentElement.classList.toggle('light',!d);document.documentElement.style.colorScheme=d?'dark':'light'}catch(e){}"}} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var p=localStorage.getItem('syllaboss-appearance');var d=p==='dark'||(p!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);document.documentElement.classList.toggle('light',!d);document.documentElement.style.colorScheme=d?'dark':'light'}catch(e){}",
+          }}
+        />
         {/* Google tag (gtag.js) */}
         <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`} />
         <script

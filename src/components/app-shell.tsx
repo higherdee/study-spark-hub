@@ -1,3 +1,4 @@
+import { NativeWebShell } from "@/components/native-web/shell";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import { Bell, Coins, Compass, Flame, LogOut, MoreHorizontal, Pause, Play, Timer } from "lucide-react";
@@ -53,7 +54,12 @@ export function AppShell(props: ShellProps) {
   );
 }
 
-function ShellFrame({ nav, secondary = [], title, footer, children }: ShellProps) {
+function ShellFrame(props: ShellProps) {
+ const path=useRouterState({select:s=>s.location.pathname});
+ return path.startsWith("/dashboard") ? <NativeWebShell>{props.children}</NativeWebShell> : <LegacyShellFrame {...props}/>;
+}
+
+function LegacyShellFrame({ nav, secondary = [], title, footer, children }: ShellProps) {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const path = useRouterState({ select: (s) => s.location.pathname });

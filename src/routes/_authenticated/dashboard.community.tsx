@@ -46,12 +46,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AiMessageRenderer } from "@/components/ai-message-renderer";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
@@ -75,10 +70,7 @@ import {
   markDirectMessagesReadServerFn,
 } from "@/lib/community.functions";
 import { askBossAiServerFn } from "@/lib/ai/study-assistant.functions";
-import {
-  subscribeToChatChannel,
-  broadcastChatMessage,
-} from "@/lib/supabase-realtime";
+import { subscribeToChatChannel, broadcastChatMessage } from "@/lib/supabase-realtime";
 import { sendDeviceNotification } from "@/lib/notifications";
 import { StudentQrModal } from "@/components/student-qr-modal";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
@@ -88,40 +80,97 @@ import { BattleLobbyCard } from "@/components/battle/battle-lobby-card";
 import { BattleArenaModal } from "@/components/battle/battle-arena-modal";
 import { cn } from "@/lib/utils";
 
-function peerMedia(content: string): { text: string; id: string; title: string; mime: string } | null {
+function peerMedia(
+  content: string,
+): { text: string; id: string; title: string; mime: string } | null {
   if (!content?.startsWith("{")) return null;
   try {
     const parsed = JSON.parse(content);
     const media = parsed?.syllabossAttachment;
     if (!media || typeof media.id !== "string" || !/^[a-f0-9-]{36}$/i.test(media.id)) return null;
-    return { id: media.id, text: String(parsed.text || ""), title: String(media.title || "Attachment"), mime: String(media.mime || "") };
-  } catch { return null; }
+    return {
+      id: media.id,
+      text: String(parsed.text || ""),
+      title: String(media.title || "Attachment"),
+      mime: String(media.mime || ""),
+    };
+  } catch {
+    return null;
+  }
 }
-function peerReply(content: string): {text: string; sender: string; preview: string} | null {
-  try { const value=JSON.parse(content); const reply=value.syllabossReply; return reply && typeof value.text === "string" ? {text:value.text,sender:String(reply.sender||"Student"),preview:String(reply.preview||"")} : null; } catch { return null; }
+function peerReply(content: string): { text: string; sender: string; preview: string } | null {
+  try {
+    const value = JSON.parse(content);
+    const reply = value.syllabossReply;
+    return reply && typeof value.text === "string"
+      ? {
+          text: value.text,
+          sender: String(reply.sender || "Student"),
+          preview: String(reply.preview || ""),
+        }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function PeerMediaAttachment({ media }: { media: NonNullable<ReturnType<typeof peerMedia>> }) {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
+  useEffect(
+    () => () => {
+      if (url) URL.revokeObjectURL(url);
+    },
+    [url],
+  );
   const audio = media.mime.startsWith("audio/");
   async function load() {
-    setBusy(true); setError("");
+    setBusy(true);
+    setError("");
     try {
       const response = await fetch("/api/study-media?id=" + encodeURIComponent(media.id));
       if (!response.ok) throw new Error();
       setUrl(URL.createObjectURL(await response.blob()));
-    } catch { setError("Could not open this attachment. Try again."); }
-    finally { setBusy(false); }
+    } catch {
+      setError("Could not open this attachment. Try again.");
+    } finally {
+      setBusy(false);
+    }
   }
-  return <div className="space-y-2">
-    {media.text && <AiMessageRenderer content={media.text} className="text-inherit [&_p]:text-inherit [&_p]:whitespace-pre-wrap" />}
-    {url ? audio ? <audio className="max-w-full" controls src={url} /> : <a className="underline" href={url} download={media.title}>Download {media.title}</a>
-      : <button type="button" className="rounded-lg border border-current/25 px-3 py-2 text-left text-xs font-medium" onClick={load} disabled={busy}>{busy ? "Loading…" : audio ? "Load voice note" : "Open " + media.title}</button>}
-    {error && <p role="alert" className="text-xs">{error}</p>}
-  </div>;
+  return (
+    <div className="space-y-2">
+      {media.text && (
+        <AiMessageRenderer
+          content={media.text}
+          className="text-inherit [&_p]:text-inherit [&_p]:whitespace-pre-wrap"
+        />
+      )}
+      {url ? (
+        audio ? (
+          <audio className="max-w-full" controls src={url} />
+        ) : (
+          <a className="underline" href={url} download={media.title}>
+            Download {media.title}
+          </a>
+        )
+      ) : (
+        <button
+          type="button"
+          className="rounded-lg border border-current/25 px-3 py-2 text-left text-xs font-medium"
+          onClick={load}
+          disabled={busy}
+        >
+          {busy ? "Loading…" : audio ? "Load voice note" : "Open " + media.title}
+        </button>
+      )}
+      {error && (
+        <p role="alert" className="text-xs">
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
 export const Route = createFileRoute("/_authenticated/dashboard/community")({
   head: () => ({
@@ -129,7 +178,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/community")({
       { title: "Peers & Student Study Chats — Syllaboss" },
       {
         name: "description",
-        content: "Chat with peers, create study groups, mention Boss AI, and share academic materials.",
+        content:
+          "Chat with peers, create study groups, mention Boss AI, and share academic materials.",
       },
     ],
   }),
@@ -149,7 +199,7 @@ interface ActiveChat {
 }
 
 export function CommunityPage() {
-  const { user,getToken } = useAuth();
+  const { user, getToken } = useAuth();
   const { data: profile } = useProfile();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -342,8 +392,11 @@ export function CommunityPage() {
     enabled: isDirect && Boolean(activeChat?.id),
     refetchInterval: 5000,
     queryFn: async () => {
-      const token=await getToken();
-      const response = await fetch(`/api/mobile?resource=direct-request&thread=${encodeURIComponent(activeChat!.id)}`,{headers:token?{Authorization:`Bearer ${token}`}:{}});
+      const token = await getToken();
+      const response = await fetch(
+        `/api/mobile?resource=direct-request&thread=${encodeURIComponent(activeChat!.id)}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      );
       if (!response.ok) throw new Error("Message request unavailable.");
       return (await response.json()).requestState as string;
     },
@@ -362,15 +415,27 @@ export function CommunityPage() {
     },
   });
 
-  const lastUnread = isDirect && chatMessages.find(message =>
-    "sender_id" in message && message.sender_id !== user?.id && !message.is_read
-  );
+  const lastUnread =
+    isDirect &&
+    chatMessages.find(
+      (message) => "sender_id" in message && message.sender_id !== user?.id && !message.is_read,
+    );
   useEffect(() => {
-    if (!lastUnread || !activeChat?.id || !user?.id || !document.hasFocus() || showLatestMessage) return;
+    if (!lastUnread || !activeChat?.id || !user?.id || !document.hasFocus() || showLatestMessage)
+      return;
     void markDirectMessagesReadServerFn({
       data: { conversationId: activeChat.id, readerUserId: user.id },
-    }).then(() => Promise.all([refetchActiveMessages(), refetchConversations()])).catch(() => {});
-  }, [lastUnread, activeChat?.id, user?.id, refetchActiveMessages, refetchConversations, showLatestMessage]);
+    })
+      .then(() => Promise.all([refetchActiveMessages(), refetchConversations()]))
+      .catch(() => {});
+  }, [
+    lastUnread,
+    activeChat?.id,
+    user?.id,
+    refetchActiveMessages,
+    refetchConversations,
+    showLatestMessage,
+  ]);
 
   const hasInitializedDesktopChatRef = useRef(false);
 
@@ -426,7 +491,10 @@ export function CommunityPage() {
 
   // Auto-scroll messages
   useEffect(() => {
-    if(!showLatestMessage) { const el=messagesScrollRef.current; if(el) el.scrollTo({top:el.scrollHeight,behavior:"smooth"}); }
+    if (!showLatestMessage) {
+      const el = messagesScrollRef.current;
+      if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
   }, [chatMessages]);
 
   // Start 1-on-1 Chat with peer
@@ -516,6 +584,14 @@ export function CommunityPage() {
     }
   }
 
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("syllaboss-peer-chat", { detail: { active: Boolean(activeChat) } }),
+    );
+    return () =>
+      window.dispatchEvent(new CustomEvent("syllaboss-peer-chat", { detail: { active: false } }));
+  }, [activeChat?.id]);
+
   // Send or Edit Message in Active Chat
   async function handleSendMessage(e?: React.FormEvent) {
     e?.preventDefault();
@@ -549,7 +625,9 @@ export function CommunityPage() {
     let content = messageInput.trim();
     if (replyingToMessage) {
       const sender = replyingToMessage.sender_name || replyingToMessage.user_name || "Scholar";
-      const quoteSnippet = (peerReply(replyingToMessage.content)?.text ?? replyingToMessage.content).slice(0, 60);
+      const quoteSnippet = (
+        peerReply(replyingToMessage.content)?.text ?? replyingToMessage.content
+      ).slice(0, 60);
       content = `[Replying to ${sender}: "${quoteSnippet}"]\n${content}`;
       setReplyingToMessage(null);
     }
@@ -584,7 +662,9 @@ export function CommunityPage() {
           data: {
             groupId: activeChat.id,
             userId: user.id,
-            userName: profile?.username ? `@${profile.username}` : user.user_metadata?.full_name || "Scholar",
+            userName: profile?.username
+              ? `@${profile.username}`
+              : user.user_metadata?.full_name || "Scholar",
             userInstitution: profile?.institution || undefined,
             content,
             materialId: matId,
@@ -612,7 +692,10 @@ export function CommunityPage() {
           },
         })
           .then(async (aiRes) => {
-            const cleanAiResponse = aiRes.response.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "");
+            const cleanAiResponse = aiRes.response.replace(
+              /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu,
+              "",
+            );
             const aiFormattedText = `**Boss AI**:\n${cleanAiResponse}`;
 
             if (activeChat.type === "peer") {
@@ -704,10 +787,9 @@ export function CommunityPage() {
       const peers = await searchPeersServerFn({
         data: { query: scannedUsername, currentUserId: user.id },
       });
-      const peer =
-        peers.find(
-          (p: any) => p.username?.toLowerCase() === scannedUsername.toLowerCase()
-        );
+      const peer = peers.find(
+        (p: any) => p.username?.toLowerCase() === scannedUsername.toLowerCase(),
+      );
 
       if (!peer) {
         toast.error(`Student @${scannedUsername} could not be found.`);
@@ -803,7 +885,7 @@ export function CommunityPage() {
   return (
     <div
       data-chat-active={Boolean(activeChat)}
-      className="flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans relative"
+      className="native-peers-page flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans relative"
     >
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: Conversations List (Telegram Style) */}
@@ -811,214 +893,220 @@ export function CommunityPage() {
       <div
         className={cn(
           "w-full md:w-[22rem] lg:w-[25rem] flex flex-col border-r border-border/70 bg-secondary/15 shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden",
-          activeChat ? "hidden md:flex" : "flex"
+          activeChat ? "hidden md:flex" : "flex",
         )}
       >
-        {/* Top Header */}
-        <div className="p-3.5 border-b border-border/70 flex items-center justify-between gap-2 bg-card shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Avatar className="size-9 ring-2 ring-brand/20">
-              <AvatarImage src={profile?.avatar_url || ""} />
-              <AvatarFallback className="bg-brand text-xs font-bold text-white">
-                {profile?.full_name?.charAt(0) || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <h2 className="text-xs font-bold text-foreground truncate">Peers & Groups</h2>
-              <p className="text-[11px] font-medium text-brand dark:text-brand truncate">
-                @{profile?.username || "student"}
-              </p>
+        <div className="native-peers-index-scroll">
+          {/* Top Header */}
+          <div className="p-3.5 border-b border-border/70 flex items-center justify-between gap-2 bg-card shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Avatar className="size-9 ring-2 ring-brand/20">
+                <AvatarImage src={profile?.avatar_url || ""} />
+                <AvatarFallback className="bg-brand text-xs font-bold text-white">
+                  {profile?.full_name?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <h2 className="text-xs font-bold text-foreground truncate">Your people.</h2>
+                <p className="text-[11px] font-medium text-brand dark:text-brand truncate">
+                  @{profile?.username || "student"}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Icons */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsQrModalOpen(true)}
+                title="Show my SyllaID QR"
+                className="size-8 rounded-full text-muted-foreground hover:text-brand hover:bg-brand/10"
+              >
+                <QrCode className="size-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsScannerOpen(true)}
+                title="Scan peer QR code"
+                className="size-8 rounded-full text-muted-foreground hover:text-brand hover:bg-brand/10"
+              >
+                <ScanLine className="size-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsNewDirectChatOpen(true)}
+                title="Start new direct peer chat"
+                className="size-8 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <MessageSquare className="size-4" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsCreateGroupOpen(true)}
+                title="Create new group"
+                className="size-8 rounded-full text-muted-foreground hover:text-foreground"
+              >
+                <Users className="size-4" />
+              </Button>
             </div>
           </div>
 
-          {/* Action Icons */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsQrModalOpen(true)}
-              title="Show my SyllaID QR"
-              className="size-8 rounded-full text-muted-foreground hover:text-brand hover:bg-brand/10"
-            >
-              <QrCode className="size-4" />
-            </Button>
+          {/* Search Bar (Searches peers and groups) */}
+          <div className="p-2.5 border-b border-border/70 bg-card/60 shrink-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search peers and groups..."
+                className="pl-8 text-xs h-8.5 rounded-full bg-secondary/50 border-border/60"
+              />
+            </div>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsScannerOpen(true)}
-              title="Scan peer QR code"
-              className="size-8 rounded-full text-muted-foreground hover:text-brand hover:bg-brand/10"
-            >
-              <ScanLine className="size-4" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsNewDirectChatOpen(true)}
-              title="Start new direct peer chat"
-              className="size-8 rounded-full text-muted-foreground hover:text-foreground"
-            >
-              <MessageSquare className="size-4" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsCreateGroupOpen(true)}
-              title="Create new group"
-              className="size-8 rounded-full text-muted-foreground hover:text-foreground"
-            >
-              <Users className="size-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Search Bar (Searches peers and groups) */}
-        <div className="p-2.5 border-b border-border/70 bg-card/60 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search peers and groups..."
-              className="pl-8 text-xs h-8.5 rounded-full bg-secondary/50 border-border/60"
-            />
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="flex items-center gap-1 mt-2">
-            {(["all", "direct", "groups"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setChatTab(tab)}
-                className={cn(
-                  "px-3 py-1 rounded-full text-[11px] font-bold capitalize transition-all",
-                  chatTab === tab
-                    ? "bg-primary text-primary-foreground shadow-2xs"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                {tab === "direct" ? "Peers" : tab}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Conversations List with Long-press Menu */}
-        <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-border/40 [scrollbar-width:thin]">
-          {/* Direct Peer Conversations */}
-          {(chatTab === "all" || chatTab === "direct") &&
-            filteredPeers.map((c: any) => {
-              const isSelected = activeChat?.id === c.id;
-              const isPinned = pinnedChatIds.includes(c.id);
-
-              return (
-                <div
-                  key={c.id}
-                  onClick={() => {
-                    setActiveChat({
-                      type: "peer",
-                      id: c.id,
-                      title: c.peer.full_name,
-                      subtitle: `@${c.peer.username}`,
-                      avatarUrl: c.peer.avatar_url,
-                      peerId: c.peer.id,
-                    });
-                    if (c.unread_count > 0 && user?.id) {
-                      markDirectMessagesReadServerFn({
-                        data: {
-                          conversationId: c.id,
-                          readerUserId: user.id,
-                        },
-                      })
-                        .then(() => refetchConversations())
-                        .catch(() => {});
-                    }
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setChatForContextMenu({ ...c, type: "peer" });
-                  }}
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1 mt-2">
+              {(["all", "direct", "groups"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setChatTab(tab)}
                   className={cn(
-                    "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors relative hover:bg-secondary/40",
-                    isSelected && "bg-secondary/70 font-semibold"
+                    "px-3 py-1 rounded-full text-[11px] font-bold capitalize transition-all",
+                    chatTab === tab
+                      ? "bg-primary text-primary-foreground shadow-2xs"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   )}
                 >
-                  <Avatar className="size-10 shrink-0">
-                    <AvatarImage src={c.peer.avatar_url || ""} />
-                    <AvatarFallback className="bg-brand text-white font-bold text-xs">
-                      {c.peer.full_name?.charAt(0) || "P"}
-                    </AvatarFallback>
-                  </Avatar>
+                  {tab === "direct" ? "Peers" : tab}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="font-bold text-xs text-foreground truncate">
-                        {c.peer.full_name}
-                      </span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
-                        {c.unread_count > 0 && (
-                          <span className="size-4.5 min-w-4.5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold grid place-items-center shadow-xs">
-                            {c.unread_count > 9 ? "9+" : c.unread_count}
-                          </span>
-                        )}
+          {/* Conversations List with Long-press Menu */}
+          <div className="native-conversation-list divide-y divide-border/40">
+            {/* Direct Peer Conversations */}
+            {(chatTab === "all" || chatTab === "direct") &&
+              filteredPeers.map((c: any) => {
+                const isSelected = activeChat?.id === c.id;
+                const isPinned = pinnedChatIds.includes(c.id);
+
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      setActiveChat({
+                        type: "peer",
+                        id: c.id,
+                        title: c.peer.full_name,
+                        subtitle: `@${c.peer.username}`,
+                        avatarUrl: c.peer.avatar_url,
+                        peerId: c.peer.id,
+                      });
+                      if (c.unread_count > 0 && user?.id) {
+                        markDirectMessagesReadServerFn({
+                          data: {
+                            conversationId: c.id,
+                            readerUserId: user.id,
+                          },
+                        })
+                          .then(() => refetchConversations())
+                          .catch(() => {});
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setChatForContextMenu({ ...c, type: "peer" });
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors relative hover:bg-secondary/40",
+                      isSelected && "bg-secondary/70 font-semibold",
+                    )}
+                  >
+                    <Avatar className="size-10 shrink-0">
+                      <AvatarImage src={c.peer.avatar_url || ""} />
+                      <AvatarFallback className="bg-brand text-white font-bold text-xs">
+                        {c.peer.full_name?.charAt(0) || "P"}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className="font-bold text-xs text-foreground truncate">
+                          {c.peer.full_name}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
+                          {c.unread_count > 0 && (
+                            <span className="size-4.5 min-w-4.5 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold grid place-items-center shadow-xs">
+                              {c.unread_count > 9 ? "9+" : c.unread_count}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                        {peerMedia(c.last_message_text || "")?.text ||
+                          (peerMedia(c.last_message_text || "")
+                            ? "Attachment"
+                            : c.last_message_text) ||
+                          `@${c.peer.username}`}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                      {(peerMedia(c.last_message_text || "")?.text || (peerMedia(c.last_message_text || "") ? "Attachment" : c.last_message_text)) || `@${c.peer.username}`}
-                    </p>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-          {/* Study Groups */}
-          {(chatTab === "all" || chatTab === "groups") &&
-            filteredGroups.map((g: any) => {
-              const isSelected = activeChat?.id === g.id;
-              const isPinned = pinnedChatIds.includes(g.id);
+            {/* Study Groups */}
+            {(chatTab === "all" || chatTab === "groups") &&
+              filteredGroups.map((g: any) => {
+                const isSelected = activeChat?.id === g.id;
+                const isPinned = pinnedChatIds.includes(g.id);
 
-              return (
-                <div
-                  key={g.id}
-                  onClick={() => {
-                    setActiveChat({
-                      type: "group",
-                      id: g.id,
-                      title: g.name,
-                      subtitle: `${g.member_count} members`,
-                      memberCount: g.member_count,
-                    });
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setChatForContextMenu({ ...g, type: "group" });
-                  }}
-                  className={cn(
-                    "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors relative hover:bg-secondary/40",
-                    isSelected && "bg-secondary/70 font-semibold"
-                  )}
-                >
-                  <div className="size-10 rounded-full bg-brand/10 text-brand grid place-items-center font-bold text-xs shrink-0">
-                    <Users className="size-5" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-xs text-foreground truncate">{g.name}</span>
-                      {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
+                return (
+                  <div
+                    key={g.id}
+                    onClick={() => {
+                      setActiveChat({
+                        type: "group",
+                        id: g.id,
+                        title: g.name,
+                        subtitle: `${g.member_count} members`,
+                        memberCount: g.member_count,
+                      });
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setChatForContextMenu({ ...g, type: "group" });
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 p-3 cursor-pointer select-none transition-colors relative hover:bg-secondary/40",
+                      isSelected && "bg-secondary/70 font-semibold",
+                    )}
+                  >
+                    <div className="size-10 rounded-full bg-brand/10 text-brand grid place-items-center font-bold text-xs shrink-0">
+                      <Users className="size-5" />
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                      {g.member_count} members {g.course_code ? `· ${g.course_code}` : ""}
-                    </p>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-bold text-xs text-foreground truncate">{g.name}</span>
+                        {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                        {g.member_count} members {g.course_code ? `· ${g.course_code}` : ""}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+          </div>
         </div>
       </div>
 
@@ -1028,7 +1116,7 @@ export function CommunityPage() {
       <div
         className={cn(
           "flex-1 flex flex-col min-h-0 h-full max-h-full bg-background overflow-hidden relative",
-          !activeChat ? "hidden md:flex" : "flex"
+          !activeChat ? "hidden md:flex" : "flex",
         )}
       >
         {activeChat ? (
@@ -1067,7 +1155,9 @@ export function CommunityPage() {
                 <Button
                   size="sm"
                   onClick={() => setIsHostBattleOpen(true)}
-                  aria-label={activeChat.type === "group" ? "Start a study battle" : "Challenge to 1v1 battle"}
+                  aria-label={
+                    activeChat.type === "group" ? "Start a study battle" : "Challenge to 1v1 battle"
+                  }
                   className="h-8 gap-1.5 rounded-full bg-forest px-3 text-xs font-semibold text-white hover:bg-ink lift press shadow-xs"
                 >
                   <Swords className="size-3.5 text-brass-soft" />
@@ -1099,7 +1189,14 @@ export function CommunityPage() {
             </div>
 
             {/* Chat Messages Stream */}
-            <div ref={messagesScrollRef} onScroll={event=>{const el=event.currentTarget;setShowLatestMessage(el.scrollHeight-el.scrollTop-el.clientHeight>100)}} className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]">
+            <div
+              ref={messagesScrollRef}
+              onScroll={(event) => {
+                const el = event.currentTarget;
+                setShowLatestMessage(el.scrollHeight - el.scrollTop - el.clientHeight > 100);
+              }}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll-smooth p-3.5 space-y-3 bg-secondary/10 [scrollbar-width:thin]"
+            >
               {chatMessages.length === 0 ? (
                 <div className="py-16 text-center flex flex-col items-center">
                   <div className="size-12 rounded-full bg-brand/10 text-brand grid place-items-center mb-2">
@@ -1107,7 +1204,8 @@ export function CommunityPage() {
                   </div>
                   <h4 className="text-xs font-semibold text-foreground">Start of conversation</h4>
                   <p className="text-[11px] text-muted-foreground max-w-xs mt-1">
-                    Send a message, attach documents, or tag <strong>@BossAI</strong> to get answers!
+                    Send a message, attach documents, or tag <strong>@BossAI</strong> to get
+                    answers!
                   </p>
                 </div>
               ) : (
@@ -1115,7 +1213,9 @@ export function CommunityPage() {
                   const media = peerMedia(msg.content);
                   const reply = peerReply(msg.content);
                   const messageText = reply?.text ?? msg.content;
-                  const battleMatch = !media && msg.content?.match(/\[(STUDY_BATTLE|BATTLE_RECEIPT):([a-zA-Z0-9-]+)\]/);
+                  const battleMatch =
+                    !media &&
+                    msg.content?.match(/\[(STUDY_BATTLE|BATTLE_RECEIPT):([a-zA-Z0-9-]+)\]/);
                   if (battleMatch) {
                     const battleId = battleMatch[2];
                     return (
@@ -1140,8 +1240,7 @@ export function CommunityPage() {
 
                   const isMe = msg.sender_id === user?.id || msg.user_id === user?.id;
                   const senderDisplay = msg.sender_name || msg.user_name || "Scholar";
-                  const isBossAi =
-                    senderDisplay.includes("Boss AI") || msg.user_id === "system";
+                  const isBossAi = senderDisplay.includes("Boss AI") || msg.user_id === "system";
 
                   return (
                     <div
@@ -1154,7 +1253,7 @@ export function CommunityPage() {
                       }}
                       className={cn(
                         "flex flex-col max-w-[85%] sm:max-w-[72%] transition-all",
-                        isMe ? "ml-auto items-end" : "mr-auto items-start"
+                        isMe ? "ml-auto items-end" : "mr-auto items-start",
                       )}
                     >
                       {/* Sender Tag */}
@@ -1162,11 +1261,18 @@ export function CommunityPage() {
                         <span
                           className={cn(
                             "text-[10px] font-bold mb-0.5 px-1",
-                            isBossAi ? "text-brass" : "text-brand dark:text-brand"
+                            isBossAi ? "text-brass" : "text-brand dark:text-brand",
                           )}
                         >
                           {senderDisplay}
-                          {msg.sender_verified && <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-primary" title="Verified Syllaboss administrator">Verified admin</span>}
+                          {msg.sender_verified && (
+                            <span
+                              className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-primary"
+                              title="Verified Syllaboss administrator"
+                            >
+                              Verified admin
+                            </span>
+                          )}
                         </span>
                       )}
 
@@ -1178,8 +1284,8 @@ export function CommunityPage() {
                           isMe
                             ? "bg-primary text-primary-foreground rounded-br-xs"
                             : isBossAi
-                            ? "bg-brass/10 border border-brass/30 text-foreground rounded-bl-xs"
-                            : "bg-card border border-border/80 text-foreground rounded-bl-xs"
+                              ? "bg-brass/10 border border-brass/30 text-foreground rounded-bl-xs"
+                              : "bg-card border border-border/80 text-foreground rounded-bl-xs",
                         )}
                       >
                         {msg.material_id && (
@@ -1202,17 +1308,30 @@ export function CommunityPage() {
                           </div>
                         )}
 
-                        {reply && <blockquote className="mb-2 border-l-2 border-primary/60 pl-3 text-xs"><strong>{reply.sender}</strong><p className="line-clamp-3 opacity-80">{reply.preview}</p></blockquote>}
-                        {media ? <PeerMediaAttachment media={media} /> : isBossAi ? (
-                          <AiMessageRenderer content={messageText} className="text-xs [&_p]:mb-1 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs" />
+                        {reply && (
+                          <blockquote className="mb-2 border-l-2 border-primary/60 pl-3 text-xs">
+                            <strong>{reply.sender}</strong>
+                            <p className="line-clamp-3 opacity-80">{reply.preview}</p>
+                          </blockquote>
+                        )}
+                        {media ? (
+                          <PeerMediaAttachment media={media} />
+                        ) : isBossAi ? (
+                          <AiMessageRenderer
+                            content={messageText}
+                            className="text-xs [&_p]:mb-1 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs"
+                          />
                         ) : (
-                          <AiMessageRenderer content={messageText} className="text-inherit [&_p]:text-inherit [&_p]:mb-1 [&_p]:whitespace-pre-wrap [&_.katex]:text-inherit" />
+                          <AiMessageRenderer
+                            content={messageText}
+                            className="text-inherit [&_p]:text-inherit [&_p]:mb-1 [&_p]:whitespace-pre-wrap [&_.katex]:text-inherit"
+                          />
                         )}
 
                         <div
                           className={cn(
                             "flex items-center justify-end gap-1 text-[9px] pt-0.5 opacity-70",
-                            isMe ? "text-primary-foreground" : "text-muted-foreground"
+                            isMe ? "text-primary-foreground" : "text-muted-foreground",
                           )}
                         >
                           <span>
@@ -1221,7 +1340,18 @@ export function CommunityPage() {
                               minute: "2-digit",
                             })}
                           </span>
-                          {isMe && (isDirect ? <span>{msg.is_read ? "Read" : msg.receipt === "delivered" ? "Delivered" : "Sent"}</span> : <CheckCheck className="size-3" />)}
+                          {isMe &&
+                            (isDirect ? (
+                              <span>
+                                {msg.is_read
+                                  ? "Read"
+                                  : msg.receipt === "delivered"
+                                    ? "Delivered"
+                                    : "Sent"}
+                              </span>
+                            ) : (
+                              <CheckCheck className="size-3" />
+                            ))}
                         </div>
                       </div>
                     </div>
@@ -1229,18 +1359,46 @@ export function CommunityPage() {
                 })
               )}
               <div ref={messagesEndRef} />
-              {showLatestMessage && <button type="button" className="sticky bottom-2 ml-auto block rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground shadow-sm" onClick={()=>{const el=messagesScrollRef.current;if(el)el.scrollTo({top:el.scrollHeight,behavior:"smooth"})}}>↓ Latest messages</button>}
+              {showLatestMessage && (
+                <button
+                  type="button"
+                  className="sticky bottom-2 ml-auto block rounded-full bg-primary px-4 py-2 text-sm text-primary-foreground shadow-sm"
+                  onClick={() => {
+                    const el = messagesScrollRef.current;
+                    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+                  }}
+                >
+                  ↓ Latest messages
+                </button>
+              )}
             </div>
 
             {isDirect && (directRequest === "incoming" || directRequest === "outgoing") && (
               <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2 text-sm">
-                <span>{directRequest === "incoming" ? "Accept this message request to reply." : "Waiting for the recipient to accept your message."}</span>
-                {directRequest === "incoming" && <Button size="sm" onClick={async () => {
-                  const response = await fetch("/api/mobile", { method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "direct-accept", conversationId: activeChat?.id }) });
-                  if (response.ok) await refreshDirectRequest();
-                  else toast.error("Could not accept this request. Try again.");
-                }}>Accept</Button>}
+                <span>
+                  {directRequest === "incoming"
+                    ? "Accept this message request to reply."
+                    : "Waiting for the recipient to accept your message."}
+                </span>
+                {directRequest === "incoming" && (
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      const response = await fetch("/api/mobile", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          action: "direct-accept",
+                          conversationId: activeChat?.id,
+                        }),
+                      });
+                      if (response.ok) await refreshDirectRequest();
+                      else toast.error("Could not accept this request. Try again.");
+                    }}
+                  >
+                    Accept
+                  </Button>
+                )}
               </div>
             )}
             {/* Telegram Feature: Replying Quote Banner */}
@@ -1317,7 +1475,9 @@ export function CommunityPage() {
                         <Bot className="size-3" />
                       </div>
                       <span className="font-bold text-primary">@BossAI</span>
-                      <span className="text-[10px] text-muted-foreground">· Summon AI Study Assistant</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        · Summon AI Study Assistant
+                      </span>
                     </button>
                   </div>
                 );
@@ -1326,7 +1486,9 @@ export function CommunityPage() {
               <div className="rounded-2xl border border-border/80 bg-secondary/30 p-2 shadow-xs flex flex-col gap-1 focus-within:border-primary/50 focus-within:bg-card">
                 <textarea
                   ref={composerTextareaRef}
-                  disabled={isDirect && (directRequest === "incoming" || directRequest === "outgoing")}
+                  disabled={
+                    isDirect && (directRequest === "incoming" || directRequest === "outgoing")
+                  }
                   value={messageInput}
                   onChange={(e) => {
                     setMessageInput(e.target.value);
@@ -1365,7 +1527,11 @@ export function CommunityPage() {
                     <button
                       type="button"
                       onClick={() => setIsHostBattleOpen(true)}
-                      title={activeChat.type === "group" ? "Start a study battle" : `Challenge ${activeChat.title} to 1v1 battle`}
+                      title={
+                        activeChat.type === "group"
+                          ? "Start a study battle"
+                          : `Challenge ${activeChat.title} to 1v1 battle`
+                      }
                       aria-label="Start a study battle"
                       className="press size-7.5 rounded-full grid place-items-center text-brass hover:bg-brass-soft transition-colors"
                     >
@@ -1382,7 +1548,7 @@ export function CommunityPage() {
                         "size-7.5 rounded-full grid place-items-center transition-all",
                         messageInput.trim() || selectedMaterial
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "text-muted-foreground opacity-40 cursor-not-allowed"
+                          : "text-muted-foreground opacity-40 cursor-not-allowed",
                       )}
                     >
                       <Send className="size-3.5" />
@@ -1394,22 +1560,25 @@ export function CommunityPage() {
 
             {/* Custom Tactile Keyboard (In-flow directly beneath composer on mobile) */}
             <AnimatePresence>
-              {showCustomKeyboard && isMobile && directRequest !== "incoming" && directRequest !== "outgoing" && (
-                <MobileCustomKeyboard
-                  value={messageInput}
-                  onChange={(val) => {
-                    setMessageInput(val);
-                    if (composerTextareaRef.current) {
-                      composerTextareaRef.current.style.height = "auto";
-                      composerTextareaRef.current.style.height = `${Math.min(composerTextareaRef.current.scrollHeight, 84)}px`;
-                    }
-                  }}
-                  onSend={() => handleSendMessage()}
-                  isOpen={showCustomKeyboard}
-                  onClose={() => setShowCustomKeyboard(false)}
-                  inputRef={composerTextareaRef}
-                />
-              )}
+              {showCustomKeyboard &&
+                isMobile &&
+                directRequest !== "incoming" &&
+                directRequest !== "outgoing" && (
+                  <MobileCustomKeyboard
+                    value={messageInput}
+                    onChange={(val) => {
+                      setMessageInput(val);
+                      if (composerTextareaRef.current) {
+                        composerTextareaRef.current.style.height = "auto";
+                        composerTextareaRef.current.style.height = `${Math.min(composerTextareaRef.current.scrollHeight, 84)}px`;
+                      }
+                    }}
+                    onSend={() => handleSendMessage()}
+                    isOpen={showCustomKeyboard}
+                    onClose={() => setShowCustomKeyboard(false)}
+                    inputRef={composerTextareaRef}
+                  />
+                )}
             </AnimatePresence>
           </>
         ) : (
@@ -1419,7 +1588,8 @@ export function CommunityPage() {
             </div>
             <h3 className="text-base font-bold text-foreground">Select a peer or study group</h3>
             <p className="mt-1 text-xs text-muted-foreground max-w-sm leading-relaxed">
-              Connect with coursemates, join study groups, share documents, or tag <strong>@BossAI</strong> for instant answers.
+              Connect with coursemates, join study groups, share documents, or tag{" "}
+              <strong>@BossAI</strong> for instant answers.
             </p>
           </div>
         )}
@@ -1484,10 +1654,7 @@ export function CommunityPage() {
       {/* ========================================================================= */}
       {/* MODAL: Long-Press Conversation Options (Pin, Archive, Mute, Block) */}
       {/* ========================================================================= */}
-      <Dialog
-        open={Boolean(chatForContextMenu)}
-        onOpenChange={() => setChatForContextMenu(null)}
-      >
+      <Dialog open={Boolean(chatForContextMenu)} onOpenChange={() => setChatForContextMenu(null)}>
         <DialogContent className="max-w-xs rounded-3xl p-4 border-border bg-card">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold">
@@ -1502,7 +1669,7 @@ export function CommunityPage() {
               onClick={() => {
                 const id = chatForContextMenu.id;
                 setPinnedChatIds((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
                 );
                 setChatForContextMenu(null);
                 toast.success(pinnedChatIds.includes(id) ? "Chat unpinned" : "Chat pinned to top");
@@ -1519,7 +1686,7 @@ export function CommunityPage() {
               onClick={() => {
                 const id = chatForContextMenu.id;
                 setMutedChatIds((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
                 );
                 setChatForContextMenu(null);
                 toast.success(mutedChatIds.includes(id) ? "Chat unmuted" : "Chat muted");
@@ -1527,7 +1694,9 @@ export function CommunityPage() {
               className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
             >
               <VolumeX className="size-4 text-muted-foreground" />
-              {mutedChatIds.includes(chatForContextMenu?.id) ? "Unmute Notifications" : "Mute Notifications"}
+              {mutedChatIds.includes(chatForContextMenu?.id)
+                ? "Unmute Notifications"
+                : "Mute Notifications"}
             </button>
 
             {/* Block User (for direct peer chats) */}
@@ -1699,7 +1868,9 @@ export function CommunityPage() {
             </div>
 
             <div>
-              <label className="font-semibold text-muted-foreground block mb-1">Course Code (Optional)</label>
+              <label className="font-semibold text-muted-foreground block mb-1">
+                Course Code (Optional)
+              </label>
               <Input
                 value={newGroupCourse}
                 onChange={(e) => setNewGroupCourse(e.target.value)}

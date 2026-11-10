@@ -314,10 +314,10 @@ function WalletPage() {
     .reduce((a, w) => a + w.amount_naira, 0);
 
   return (
-    <div className="stagger space-y-6">
+    <div className="native-cashout-page space-y-6">
       <MembershipGifts points={points} onIssued={() => { void qc.invalidateQueries({ queryKey: ["profile"] }); void qc.invalidateQueries({ queryKey: ["ledger"] }); }} />
       {/* Location-Locked Single-Currency Balance Banner */}
-      <section className="relative overflow-hidden rounded-3xl bg-forest p-6 text-white shadow-[var(--elev-3)] sm:p-8">
+      <section className="relative overflow-hidden rounded-3xl bg-[#153e32] p-6 text-white shadow-[var(--elev-3)] sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">

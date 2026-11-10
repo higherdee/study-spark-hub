@@ -51,8 +51,10 @@ import { Route as AuthenticatedDashboardCommunityRouteImport } from './routes/_a
 import { Route as AuthenticatedDashboardLeaderboardRouteImport } from './routes/_authenticated/dashboard.leaderboard'
 import { Route as AuthenticatedDashboardLibraryRouteImport } from './routes/_authenticated/dashboard.library'
 import { Route as AuthenticatedDashboardMaterialsRouteImport } from './routes/_authenticated/dashboard.materials'
+import { Route as AuthenticatedDashboardPdfRouteImport } from './routes/_authenticated/dashboard.pdf'
 import { Route as AuthenticatedDashboardPreviewRouteImport } from './routes/_authenticated/dashboard.preview'
 import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard.settings'
+import { Route as AuthenticatedDashboardSpaceRouteImport } from './routes/_authenticated/dashboard.space'
 import { Route as AuthenticatedDashboardUploadRouteImport } from './routes/_authenticated/dashboard.upload'
 import { Route as AuthenticatedDashboardWalletRouteImport } from './routes/_authenticated/dashboard.wallet'
 import { Route as AuthenticatedSharedIdRouteImport } from './routes/_authenticated/shared.$id'
@@ -279,6 +281,12 @@ const AuthenticatedDashboardMaterialsRoute =
     path: '/materials',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedDashboardPdfRoute =
+  AuthenticatedDashboardPdfRouteImport.update({
+    id: '/pdf',
+    path: '/pdf',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const AuthenticatedDashboardPreviewRoute =
   AuthenticatedDashboardPreviewRouteImport.update({
     id: '/preview',
@@ -289,6 +297,12 @@ const AuthenticatedDashboardSettingsRoute =
   AuthenticatedDashboardSettingsRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardSpaceRoute =
+  AuthenticatedDashboardSpaceRouteImport.update({
+    id: '/space',
+    path: '/space',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
 const AuthenticatedDashboardUploadRoute =
@@ -349,8 +363,10 @@ export interface FileRoutesByFullPath {
   '/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/dashboard/pdf': typeof AuthenticatedDashboardPdfRoute
   '/dashboard/preview': typeof AuthenticatedDashboardPreviewRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
+  '/dashboard/space': typeof AuthenticatedDashboardSpaceRoute
   '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/shared/$id': typeof AuthenticatedSharedIdRoute
@@ -395,8 +411,10 @@ export interface FileRoutesByTo {
   '/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/dashboard/pdf': typeof AuthenticatedDashboardPdfRoute
   '/dashboard/preview': typeof AuthenticatedDashboardPreviewRoute
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
+  '/dashboard/space': typeof AuthenticatedDashboardSpaceRoute
   '/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/shared/$id': typeof AuthenticatedSharedIdRoute
@@ -445,8 +463,10 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/leaderboard': typeof AuthenticatedDashboardLeaderboardRoute
   '/_authenticated/dashboard/library': typeof AuthenticatedDashboardLibraryRoute
   '/_authenticated/dashboard/materials': typeof AuthenticatedDashboardMaterialsRoute
+  '/_authenticated/dashboard/pdf': typeof AuthenticatedDashboardPdfRoute
   '/_authenticated/dashboard/preview': typeof AuthenticatedDashboardPreviewRoute
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
+  '/_authenticated/dashboard/space': typeof AuthenticatedDashboardSpaceRoute
   '/_authenticated/dashboard/upload': typeof AuthenticatedDashboardUploadRoute
   '/_authenticated/dashboard/wallet': typeof AuthenticatedDashboardWalletRoute
   '/_authenticated/shared/$id': typeof AuthenticatedSharedIdRoute
@@ -495,8 +515,10 @@ export interface FileRouteTypes {
     | '/dashboard/leaderboard'
     | '/dashboard/library'
     | '/dashboard/materials'
+    | '/dashboard/pdf'
     | '/dashboard/preview'
     | '/dashboard/settings'
+    | '/dashboard/space'
     | '/dashboard/upload'
     | '/dashboard/wallet'
     | '/shared/$id'
@@ -541,8 +563,10 @@ export interface FileRouteTypes {
     | '/dashboard/leaderboard'
     | '/dashboard/library'
     | '/dashboard/materials'
+    | '/dashboard/pdf'
     | '/dashboard/preview'
     | '/dashboard/settings'
+    | '/dashboard/space'
     | '/dashboard/upload'
     | '/dashboard/wallet'
     | '/shared/$id'
@@ -590,8 +614,10 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/leaderboard'
     | '/_authenticated/dashboard/library'
     | '/_authenticated/dashboard/materials'
+    | '/_authenticated/dashboard/pdf'
     | '/_authenticated/dashboard/preview'
     | '/_authenticated/dashboard/settings'
+    | '/_authenticated/dashboard/space'
     | '/_authenticated/dashboard/upload'
     | '/_authenticated/dashboard/wallet'
     | '/_authenticated/shared/$id'
@@ -923,6 +949,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardMaterialsRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
+    '/_authenticated/dashboard/pdf': {
+      id: '/_authenticated/dashboard/pdf'
+      path: '/pdf'
+      fullPath: '/dashboard/pdf'
+      preLoaderRoute: typeof AuthenticatedDashboardPdfRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
     '/_authenticated/dashboard/preview': {
       id: '/_authenticated/dashboard/preview'
       path: '/preview'
@@ -935,6 +968,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/dashboard/settings'
       preLoaderRoute: typeof AuthenticatedDashboardSettingsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/space': {
+      id: '/_authenticated/dashboard/space'
+      path: '/space'
+      fullPath: '/dashboard/space'
+      preLoaderRoute: typeof AuthenticatedDashboardSpaceRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
     '/_authenticated/dashboard/upload': {
@@ -992,8 +1032,10 @@ interface AuthenticatedDashboardRouteChildren {
   AuthenticatedDashboardLeaderboardRoute: typeof AuthenticatedDashboardLeaderboardRoute
   AuthenticatedDashboardLibraryRoute: typeof AuthenticatedDashboardLibraryRoute
   AuthenticatedDashboardMaterialsRoute: typeof AuthenticatedDashboardMaterialsRoute
+  AuthenticatedDashboardPdfRoute: typeof AuthenticatedDashboardPdfRoute
   AuthenticatedDashboardPreviewRoute: typeof AuthenticatedDashboardPreviewRoute
   AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
+  AuthenticatedDashboardSpaceRoute: typeof AuthenticatedDashboardSpaceRoute
   AuthenticatedDashboardUploadRoute: typeof AuthenticatedDashboardUploadRoute
   AuthenticatedDashboardWalletRoute: typeof AuthenticatedDashboardWalletRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
@@ -1007,8 +1049,10 @@ const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
       AuthenticatedDashboardLeaderboardRoute,
     AuthenticatedDashboardLibraryRoute: AuthenticatedDashboardLibraryRoute,
     AuthenticatedDashboardMaterialsRoute: AuthenticatedDashboardMaterialsRoute,
+    AuthenticatedDashboardPdfRoute: AuthenticatedDashboardPdfRoute,
     AuthenticatedDashboardPreviewRoute: AuthenticatedDashboardPreviewRoute,
     AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
+    AuthenticatedDashboardSpaceRoute: AuthenticatedDashboardSpaceRoute,
     AuthenticatedDashboardUploadRoute: AuthenticatedDashboardUploadRoute,
     AuthenticatedDashboardWalletRoute: AuthenticatedDashboardWalletRoute,
     AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
@@ -1066,3 +1110,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

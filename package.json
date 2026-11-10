@@ -8,8 +8,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "node scripts/check-client-secrets.mjs --env-only && vite build && node scripts/check-client-secrets.mjs",
-    "build:dev": "node scripts/check-client-secrets.mjs --env-only && vite build --mode development && node scripts/check-client-secrets.mjs",
+    "build": "node scripts/copy-pdf-assets.mjs && node scripts/check-client-secrets.mjs --env-only && vite build && node scripts/check-client-secrets.mjs",
+    "build:dev": "node scripts/copy-pdf-assets.mjs && node scripts/check-client-secrets.mjs --env-only && vite build --mode development && node scripts/check-client-secrets.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -17,7 +17,9 @@
     "test:membership": "vitest run --config vitest.policy.config.ts",
     "test:watch": "vitest",
     "farm": "node scripts/farm-materials.mjs",
-    "farm:infinite": "node scripts/farm-materials.mjs --infinite"
+    "farm:infinite": "node scripts/farm-materials.mjs --infinite",
+    "predev": "node scripts/copy-pdf-assets.mjs",
+    "test:web-native": "vitest run --config vitest.native.config.ts"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -87,6 +89,7 @@
     "motion": "^13.4.6",
     "nanoid": "^6.0.1",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",

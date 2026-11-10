@@ -69,3 +69,6 @@ models.txt
 android/.gradle/
 android/.kotlin/
 android/**/build/
+
+# Generated from the installed PDF renderer during builds.
+/public/pdf-assets/
