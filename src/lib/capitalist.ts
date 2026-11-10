@@ -80,11 +80,11 @@ export async function executeCapitalistCardPayout(
     console.warn("Capitalist connection exception:", err);
   }
 
-  // Graceful batch queuing fallback: Payout recorded for weekend settlement batch
+  // Graceful batch queuing fallback: Payout recorded for settlement review
   return {
     success: true,
     transactionId: payload.client_order_id,
     status: "processing",
-    message: "Capitalist Card payout queued for weekend automated batch release.",
+    message: "Capitalist Card payout queued for settlement review.",
   };
 }

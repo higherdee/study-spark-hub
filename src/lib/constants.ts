@@ -152,11 +152,6 @@ export const MINIMUM_WITHDRAWAL_POINTS = 5700;
 export const MINIMUM_WITHDRAWAL_NAIRA = pointsToNaira(MINIMUM_WITHDRAWAL_POINTS); // ₦4,731
 export const MINIMUM_WITHDRAWAL_USD = pointsToUsd(MINIMUM_WITHDRAWAL_POINTS); // $22.80
 
-// Weekend-only withdrawals enforcement (Saturdays and Sundays only)
-export function isWeekendWithdrawalWindow(): boolean {
-  const day = new Date().getDay(); // 0 = Sunday, 6 = Saturday
-  return day === 0 || day === 6;
-}
 
 // Reward Milestones (Standard)
 export const POINTS_REGISTRATION_BONUS = 200;
@@ -181,7 +176,10 @@ export const STUDY_INACTIVITY_LIMIT_MS = 60 * 60 * 1000; // 1 hour inactivity th
 export const POINTS_REFERRAL_REGISTRATION = 40;
 export const POINTS_REFERRAL_UPGRADE = 200;
 
-export const LEVELS: string[] = [];
+export const LEVELS: string[] = [
+  "100 Level", "200 Level", "300 Level", "400 Level", "500 Level", "600 Level",
+  "ND 1", "ND 2", "HND 1", "HND 2", "Postgraduate",
+];
 export const MATERIAL_TYPES = [
   "Lecture notes",
   "Past questions",

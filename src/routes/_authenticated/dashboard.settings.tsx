@@ -206,42 +206,6 @@ function SettingsPage() {
               Enable device notifications
             </button>
           </section>
-          <details className="native-settings-section">
-            <summary>Saved payout details</summary>
-            <p className="text-sm leading-6 text-muted-foreground mt-3">
-              Gift card delivery uses the email you provide at cashout.
-            </p>
-            <div className="native-profile-form mt-5">
-              {(
-                [
-                  { key: "name", label: "Bank name" },
-                  { key: "accountNumber", label: "Account number" },
-                  { key: "accountName", label: "Account holder" },
-                ] as const
-              ).map(({ key, label }) => (
-                <label key={key}>
-                  {label}
-                  <input
-                    value={preferences.bank?.[key] || ""}
-                    onChange={(e) =>
-                      change({
-                        bank: {
-                          name: preferences.bank?.name || "",
-                          accountNumber: preferences.bank?.accountNumber || "",
-                          accountName: preferences.bank?.accountName || "",
-                          [key]:
-                            key === "accountNumber"
-                              ? e.target.value.replace(/\D/g, "").slice(0, 10)
-                              : e.target.value,
-                        },
-                      })
-                    }
-                    maxLength={key === "accountNumber" ? 10 : 100}
-                  />
-                </label>
-              ))}
-            </div>
-          </details>
           {error && (
             <p className="native-form-error" role="alert">
               {error}

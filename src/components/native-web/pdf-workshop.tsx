@@ -9,10 +9,16 @@ export function PdfWorkshop() {
   const [note, setNote] = useState("");
   const [promotion, setPromotion] = useState(0);
   const [waitingForPromotion, setWaitingForPromotion] = useState(false);
+  const [ready, setReady] = useState(false);
   const pending = useRef<Uint8Array | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const membership = useMembership();
   const alive = useRef(true);
+  useEffect(() => {
+    setReady(false);
+    pending.current = null;
+    setNote("");
+  }, [files]);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -28,9 +34,7 @@ export function PdfWorkshop() {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
-    setNote("Your PDF has been downloaded.");
-    setBusy(false);
-    pending.current = null;
+    setNote("PDF download started. You can download it again if needed.");
   }
   useEffect(() => {
     if (!waitingForPromotion || promotion === 0) return;
@@ -43,13 +47,16 @@ export function PdfWorkshop() {
   useEffect(() => {
     if (waitingForPromotion && promotion === 0 && pending.current) {
       setWaitingForPromotion(false);
-      save(pending.current);
+      setReady(true);
+      setBusy(false);
     }
   }, [waitingForPromotion, promotion]);
   async function build() {
     setBusy(true);
     setError("");
     setNote("");
+    setReady(false);
+    pending.current = null;
     try {
       const result = await membership.refetch();
       if (!result.data) throw Error("We couldn’t verify your membership. Please try again.");
@@ -57,8 +64,11 @@ export function PdfWorkshop() {
       const { combineStudyDocuments } = await import("@/lib/pdf-workshop");
       const bytes = await combineStudyDocuments(files, paid ? null : 15);
       if (!alive.current) return;
-      if (paid) save(bytes);
-      else {
+      pending.current = bytes;
+      if (paid) {
+        setReady(true);
+        setBusy(false);
+      } else {
         pending.current = bytes;
         setPromotion(30);
         setWaitingForPromotion(true);
@@ -82,8 +92,11 @@ export function PdfWorkshop() {
         multiple
         accept="application/pdf,image/*"
         onChange={(e) => {
-          setFiles((current) => [...current, ...Array.from(e.target.files || [])]);
+          const selected = Array.from(e.currentTarget.files || []);
+          setFiles((current) => [...current, ...selected]);
           e.target.value = "";
+          setReady(false);
+          pending.current = null;
           setError("");
           setNote("");
         }}
@@ -172,10 +185,16 @@ export function PdfWorkshop() {
       <button
         className="native-primary-button w-full justify-center"
         disabled={!files.length || busy || membership.isPending}
-        onClick={() => void build()}
+        onClick={() => (ready && pending.current ? save(pending.current) : void build())}
       >
         {busy && <Loader2 className="size-5 animate-spin" />}
-        {busy ? "Preparing your PDF…" : "Build and save PDF"}
+        {busy
+          ? waitingForPromotion
+            ? `Export unlocks in ${promotion}s`
+            : "Preparing your PDF…"
+          : ready
+            ? "Download PDF"
+            : "Build PDF"}
       </button>
       <p className="native-pdf-privacy">Your files are converted on your device.</p>
     </section>

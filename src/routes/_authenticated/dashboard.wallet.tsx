@@ -12,7 +12,6 @@ import {
   Upload,
   Zap,
   Gift,
-  Calendar,
   ShieldCheck,
   Check,
 } from "lucide-react";
@@ -35,7 +34,6 @@ import {
   MINIMUM_WITHDRAWAL_NAIRA,
   pointsToNaira,
   pointsToUsd,
-  isWeekendWithdrawalWindow,
   getGiftCardOptions,
   type GiftCardDenomination,
 } from "@/lib/constants";
@@ -158,7 +156,7 @@ function WalletPage() {
   const [busy, setBusy] = useState(false);
   const [activityTab, setActivityTab] = useState<"all" | "withdrawals" | "earnings">("all");
 
-  const isWeekend = isWeekendWithdrawalWindow();
+
 
   // Filtered banks for bank search
   const filteredBanks = NIGERIAN_BANKS.filter((b) =>
@@ -286,11 +284,7 @@ function WalletPage() {
         data: { brand: selectedBrandId, amount: activeDenom.amountUsd, email: giftCardEmail.trim() },
       });
 
-      toast.success(
-        isWeekend
-          ? "Cash out requested! Processing your weekend payout."
-          : "Cash out queued! Payouts are dispatched during the weekend window (Saturday & Sunday)."
-      );
+      toast.success("Cashout requested. Your gift card request is awaiting review.");
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
       qc.invalidateQueries({ queryKey: ["withdrawals"] });
@@ -386,40 +380,6 @@ function WalletPage() {
         </div>
       </section>
 
-      {/* Weekend Payout Protocol Banner */}
-      <div
-        className={cn(
-          "flex items-center justify-between gap-3 p-4 rounded-2xl border text-xs leading-relaxed",
-          isWeekend
-            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
-            : "border-brass/30 bg-brass/10 text-brass-ink dark:text-brass"
-        )}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "grid size-9 shrink-0 place-items-center rounded-xl",
-              isWeekend ? "bg-emerald-500/20 text-emerald-600" : "bg-brass/20 text-brass"
-            )}
-          >
-            <Calendar className="size-4" />
-          </div>
-          <div>
-            <p className="font-bold">
-              {isWeekend ? "Weekend Payout Window Active" : "Weekend Cash-Out Schedule"}
-            </p>
-            <p className="text-[11px] opacity-80">
-              {isWeekend
-                ? "Withdrawals requested today are reviewed and disbursed in real-time."
-                : "All student redemptions are processed every Saturday & Sunday. Requests made during weekdays are safely queued."}
-            </p>
-          </div>
-        </div>
-        <span className="font-mono font-bold text-[11px] shrink-0 uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/40 dark:bg-black/20">
-          {isWeekend ? "Active Now" : "Queued"}
-        </span>
-      </div>
-
       {/* Metrics */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="surface flex items-center gap-4 p-5">
@@ -444,7 +404,7 @@ function WalletPage() {
             <p className="mt-0.5 font-display text-2xl text-ink tnum">
               {(withdrawals.data ?? []).filter((w) => w.status === "pending").length} requests
             </p>
-            <p className="text-[11px] text-muted-foreground">Processed on weekends</p>
+            <p className="text-[11px] text-muted-foreground">Awaiting admin review</p>
           </div>
         </div>
       </div>
@@ -707,7 +667,7 @@ function WalletPage() {
                   className="h-11 rounded-xl"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  The digital voucher code and redemption instructions will be delivered to this email address on the weekend payout batch.
+                  Your gift card code and redemption instructions will be sent to your email or Peers DM after admin review.
                 </p>
               </div>
             </div>
@@ -871,4 +831,3 @@ function WalletPage() {
     </div>
   );
 }
-
