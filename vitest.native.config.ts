@@ -5,7 +5,11 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "node",
-    include: ["src/test/native-web-pdf.test.ts", "src/test/pdf-workshop-flow.test.tsx"],
+    include: [
+      "src/test/native-web-pdf.test.ts",
+      "src/test/pdf-workshop-flow.test.tsx",
+      "src/test/app-cashout-flow.test.tsx",
+    ],
     testTimeout: 60000,
     pool: "threads",
     maxWorkers: 1,

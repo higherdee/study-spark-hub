@@ -1,8 +1,14 @@
+import { BossWelcome, BossComposer } from "@/components/native-web/boss-studio";
 import { reportStudyError } from "@/lib/membership/report-error";
 import { shareAnswerServerFn } from "@/lib/sharing.functions";
 import { Menu } from "lucide-react";
-import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem} from "@/components/ui/dropdown-menu";
-import {DocumentFocusBar} from "@/components/document-focus-bar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { DocumentFocusBar } from "@/components/document-focus-bar";
 import { StudyModePanel, type StudyMode } from "@/components/chat/study-mode-panel";
 import { useMembership } from "@/hooks/use-membership";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -47,12 +53,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AiMessageRenderer } from "@/components/ai-message-renderer";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
@@ -85,7 +86,11 @@ import {
   type Flashcard,
 } from "@/lib/academic-ai";
 import { getMaterialsForChatServerFn } from "@/lib/community.functions";
-import { convertTextAndMathToSpeech, initSpeechRuleEngine, getBestNaturalVoice } from "@/lib/math-to-speech";
+import {
+  convertTextAndMathToSpeech,
+  initSpeechRuleEngine,
+  getBestNaturalVoice,
+} from "@/lib/math-to-speech";
 import { sendDeviceNotification } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
 import { SyllabossEmblem } from "@/components/syllaboss-logo";
@@ -103,7 +108,8 @@ export const Route = createFileRoute("/_authenticated/dashboard/assistant")({
       { title: "Boss AI Study Suite — Syllaboss" },
       {
         name: "description",
-        content: "Chat with documents, take practice quizzes, mark theory answers, and generate flashcards with Boss AI.",
+        content:
+          "Chat with documents, take practice quizzes, mark theory answers, and generate flashcards with Boss AI.",
       },
     ],
   }),
@@ -250,10 +256,14 @@ function AssistantPage() {
   const [mcqCount, setMcqCount] = useState<number>(5);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[] | null>(null);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
-  const [selectedObjectiveAnswers, setSelectedObjectiveAnswers] = useState<Record<number, number>>({});
+  const [selectedObjectiveAnswers, setSelectedObjectiveAnswers] = useState<Record<number, number>>(
+    {},
+  );
   const [quizScores, setQuizScores] = useState<Record<number, number>>({});
   const [isMcqSubmittedAtEnd, setIsMcqSubmittedAtEnd] = useState(false);
-  const [unansweredWarningQuestions, setUnansweredWarningQuestions] = useState<number[] | null>(null);
+  const [unansweredWarningQuestions, setUnansweredWarningQuestions] = useState<number[] | null>(
+    null,
+  );
 
   // Theory Configuration & Execution State (Up to 50 questions with marks per sketch 4)
   const [theoryMode, setTheoryMode] = useState<"as_you_go" | "at_the_end">("as_you_go");
@@ -271,7 +281,7 @@ function AssistantPage() {
   const [cardFlipped, setCardFlipped] = useState(false);
 
   // Active Attached Document Context
-  const [documentFocus,setDocumentFocus]=useState("");
+  const [documentFocus, setDocumentFocus] = useState("");
   const [activeDocContext, setActiveDocContext] = useState<{
     id?: string;
     title: string;
@@ -312,9 +322,7 @@ function AssistantPage() {
   const [threadSearch, setThreadSearch] = useState("");
   const filteredThreads = useMemo(() => {
     if (!threadSearch.trim()) return threads;
-    return threads.filter((t: any) =>
-      t.title.toLowerCase().includes(threadSearch.toLowerCase())
-    );
+    return threads.filter((t: any) => t.title.toLowerCase().includes(threadSearch.toLowerCase()));
   }, [threads, threadSearch]);
 
   // Query Campus Library Materials
@@ -383,9 +391,7 @@ function AssistantPage() {
 
     // 3. Check localStorage
     const savedThreadId =
-      typeof window !== "undefined"
-        ? localStorage.getItem("syllaboss_active_chat_thread")
-        : null;
+      typeof window !== "undefined" ? localStorage.getItem("syllaboss_active_chat_thread") : null;
     if (savedThreadId && threads.some((t: any) => t.id === savedThreadId)) {
       handleSelectThread(savedThreadId);
       return;
@@ -440,7 +446,23 @@ function AssistantPage() {
             }
           }
 
-          try { const encoded=JSON.parse(contentText);const set=encoded.nativeStudySet;if(set){if(set.mode==="flashcards")flashcardsData={topic:set.topic,cards:set.items};else quizData={topic:set.topic,mode:set.mode==="mcq"?"objective":set.mode,questions:set.items};contentText="";} } catch { /* Regular answer. */ }
+          try {
+            const encoded = JSON.parse(contentText);
+            const set = encoded.nativeStudySet;
+            if (set) {
+              if (set.mode === "flashcards")
+                flashcardsData = { topic: set.topic, cards: set.items };
+              else
+                quizData = {
+                  topic: set.topic,
+                  mode: set.mode === "mcq" ? "objective" : set.mode,
+                  questions: set.items,
+                };
+              contentText = "";
+            }
+          } catch {
+            /* Regular answer. */
+          }
           return {
             id: msg.id,
             role: msg.role,
@@ -462,7 +484,10 @@ function AssistantPage() {
   }, [threadMessages, activeThreadId, isLoadingMessages, isFetchingMessages, thinking]);
 
   useEffect(() => {
-    if (!showScrollBottom) { const el=messagesScrollRef.current;if(el)el.scrollTo({top:el.scrollHeight,behavior:"instant"}); }
+    if (!showScrollBottom) {
+      const el = messagesScrollRef.current;
+      if (el) el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
+    }
   }, [messages, thinking]);
 
   // Voice Note Recording (SpeechRecognition + MediaRecorder fallback)
@@ -473,8 +498,8 @@ function AssistantPage() {
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : MediaRecorder.isTypeSupported("audio/mp4")
-        ? "audio/mp4"
-        : "audio/webm";
+          ? "audio/mp4"
+          : "audio/webm";
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
 
@@ -492,7 +517,8 @@ function AssistantPage() {
       }, 1000);
 
       // Start SpeechRecognition in parallel if available
-      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const SpeechRec =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRec) {
         try {
           const rec = new SpeechRec();
@@ -593,7 +619,7 @@ function AssistantPage() {
 
           // Update user message balloon with transcribed question text
           setMessages((prev) =>
-            prev.map((m) => (m.id === voiceUserMsgId ? { ...m, content: finalQuestion } : m))
+            prev.map((m) => (m.id === voiceUserMsgId ? { ...m, content: finalQuestion } : m)),
           );
 
           try {
@@ -778,7 +804,11 @@ function AssistantPage() {
       uploadForm.append("materialType", cat.material_type);
       uploadForm.append("description", cat.description ?? "");
       const uploadResponse = await fetch("/api/upload", { method: "POST", body: uploadForm });
-      const uploadResult = await uploadResponse.json() as { error?: string; material?: { id: string }; auditResult?: { status?: string } };
+      const uploadResult = (await uploadResponse.json()) as {
+        error?: string;
+        material?: { id: string };
+        auditResult?: { status?: string };
+      };
       if (!uploadResponse.ok || !uploadResult.material?.id) {
         throw new Error(uploadResult.error || "The document could not be uploaded.");
       }
@@ -797,7 +827,7 @@ function AssistantPage() {
         uploadResult.auditResult?.status === "verified"
           ? `Attached "${cat.title}". It passed the material check.`
           : `Attached "${cat.title}". It is waiting for review.`,
-        { id: "doc-proc" }
+        { id: "doc-proc" },
       );
 
       const aiWelcomeMsg: ChatMessage = {
@@ -830,7 +860,12 @@ function AssistantPage() {
   const [isAssignmentMode, setIsAssignmentMode] = useState(false);
 
   // Prefill typing bar with customizable prompt template when clicking study action buttons
-  function prepareStudyPrompt(mode: "mcq" | "theory" | "flashcards" | "summary" | "assignment") { setShowDropUpMenu(false); setShowMenuDrawer(false); setShowModesMenu(false); setStudyMode(mode); }
+  function prepareStudyPrompt(mode: "mcq" | "theory" | "flashcards" | "summary" | "assignment") {
+    setShowDropUpMenu(false);
+    setShowMenuDrawer(false);
+    setShowModesMenu(false);
+    setStudyMode(mode);
+  }
 
   // Study Intent Detector (Automatically route "give me 20 questions", "give me 30 flashcards", etc.)
   function detectStudyIntent(text: string) {
@@ -838,7 +873,10 @@ function AssistantPage() {
 
     // Check if Assignment Mode or prefixed with [Assignment Help]
     if (isAssignmentMode || lower.startsWith("[assignment help]")) {
-      return { type: "assignment" as const, prompt: text.replace(/^\[assignment help\]\s*/i, "").trim() };
+      return {
+        type: "assignment" as const,
+        prompt: text.replace(/^\[assignment help\]\s*/i, "").trim(),
+      };
     }
 
     // Match numbers: 50, 40, 30, 25, 20, 15, 10, 5, or any digits
@@ -853,7 +891,10 @@ function AssistantPage() {
     if (colonIdx !== -1 && colonIdx < text.length - 1) {
       const candidate = text.slice(colonIdx + 1).trim();
       if (candidate.length > 1) {
-        topic = candidate.replace(/^\[.*?\]\s*/, "").replace(/[\.\?!]+$/, "").trim();
+        topic = candidate
+          .replace(/^\[.*?\]\s*/, "")
+          .replace(/[\.\?!]+$/, "")
+          .trim();
       }
     }
 
@@ -867,9 +908,14 @@ function AssistantPage() {
 
     // 3. Fallback topic match using "on", "about", "for", "regarding", "in"
     if (!topic) {
-      const topicMatch = text.match(/(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._\-\(\)]{2,60})/i);
+      const topicMatch = text.match(
+        /(?:on|about|for|regarding|in)\s+([a-zA-Z0-9\s,._\-\(\)]{2,60})/i,
+      );
       if (topicMatch && topicMatch[1]) {
-        const candidate = topicMatch[1].trim().replace(/\s+(please|now|thanks).*$/i, "").replace(/[\.\?!]+$/, "");
+        const candidate = topicMatch[1]
+          .trim()
+          .replace(/\s+(please|now|thanks).*$/i, "")
+          .replace(/[\.\?!]+$/, "");
         if (candidate.length > 1) topic = candidate;
       }
     }
@@ -878,7 +924,7 @@ function AssistantPage() {
     if (
       topic &&
       /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
-        topic.trim()
+        topic.trim(),
       )
     ) {
       topic = undefined;
@@ -900,7 +946,11 @@ function AssistantPage() {
     }
 
     // MCQ / Quiz / Practice Questions
-    if (/\b(mcqs?|quiz|practice\s*questions?|exam\s*questions?|test\s*questions?|questions?)\b/i.test(lower)) {
+    if (
+      /\b(mcqs?|quiz|practice\s*questions?|exam\s*questions?|test\s*questions?|questions?)\b/i.test(
+        lower,
+      )
+    ) {
       if (
         count !== undefined ||
         /\b(give|generate|make|create|prepare|test|quiz|drill|ask|practice)\b/i.test(lower) ||
@@ -921,7 +971,8 @@ function AssistantPage() {
         data: {
           userId: user!.id,
           threadId: targetThreadId,
-          query: activeDocContext?.id && documentFocus ? `${documentFocus}\n${queryText}` : queryText,
+          query:
+            activeDocContext?.id && documentFocus ? `${documentFocus}\n${queryText}` : queryText,
           taskType: "general",
           docContext: activeDocContext ?? undefined,
         },
@@ -943,7 +994,10 @@ function AssistantPage() {
 
       // Deliver device notification for completed AI answer
       sendDeviceNotification("Boss AI Response Ready", {
-        body: result.response.slice(0, 110).replace(/[#*`\n]/g, " ").trim(),
+        body: result.response
+          .slice(0, 110)
+          .replace(/[#*`\n]/g, " ")
+          .trim(),
       }).catch(() => {});
     } catch (err: any) {
       console.error("Boss AI query execution error:", err);
@@ -1005,7 +1059,7 @@ function AssistantPage() {
     countOverride?: number,
     modeOverride?: "as_you_go" | "at_the_end",
     topicOverride?: string,
-    userPrompt?: string
+    userPrompt?: string,
   ) {
     setIsMcqConfigOpen(false);
     setShowDropUpMenu(false);
@@ -1027,7 +1081,7 @@ function AssistantPage() {
       const isDemonstrative =
         !topicOverride ||
         /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
-          topicOverride.trim()
+          topicOverride.trim(),
         );
 
       const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
@@ -1079,7 +1133,9 @@ function AssistantPage() {
         qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
       ]);
       refetchThreads();
-      toast.success(`${res.quizData.questions.length} Practice Questions Ready!`, { id: "mcq-gen" });
+      toast.success(`${res.quizData.questions.length} Practice Questions Ready!`, {
+        id: "mcq-gen",
+      });
     } catch (err: any) {
       console.error("MCQ generation error:", err);
       reportStudyError(err, "Failed to generate quiz questions. Please retry.", { id: "mcq-gen" });
@@ -1093,7 +1149,7 @@ function AssistantPage() {
     countOverride?: number,
     modeOverride?: "as_you_go" | "at_the_end",
     topicOverride?: string,
-    userPrompt?: string
+    userPrompt?: string,
   ) {
     setIsTheoryConfigOpen(false);
     setShowDropUpMenu(false);
@@ -1103,7 +1159,9 @@ function AssistantPage() {
 
     const countToUse = Math.min(countOverride || theoryCount, hasPlusAccess ? 50 : 5);
     const modeToUse = modeOverride || theoryMode;
-    toast.loading(`Preparing ${countToUse} theory questions with exam marking...`, { id: "theory-gen" });
+    toast.loading(`Preparing ${countToUse} theory questions with exam marking...`, {
+      id: "theory-gen",
+    });
 
     try {
       let targetThreadId = activeThreadId;
@@ -1115,7 +1173,7 @@ function AssistantPage() {
       const isDemonstrative =
         !topicOverride ||
         /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
-          topicOverride.trim()
+          topicOverride.trim(),
         );
 
       const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
@@ -1167,10 +1225,14 @@ function AssistantPage() {
         qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
       ]);
       refetchThreads();
-      toast.success(`${res.quizData.questions.length} Theory Questions prepared!`, { id: "theory-gen" });
+      toast.success(`${res.quizData.questions.length} Theory Questions prepared!`, {
+        id: "theory-gen",
+      });
     } catch (err: any) {
       console.error("Theory generation error:", err);
-      reportStudyError(err, "Failed to generate theory questions. Please retry.", { id: "theory-gen" });
+      reportStudyError(err, "Failed to generate theory questions. Please retry.", {
+        id: "theory-gen",
+      });
     } finally {
       setThinking(false);
     }
@@ -1181,7 +1243,7 @@ function AssistantPage() {
     countOverride?: number,
     typeOverride?: "qa" | "fill_blank",
     topicOverride?: string,
-    userPrompt?: string
+    userPrompt?: string,
   ) {
     setIsFlashcardConfigOpen(false);
     setShowDropUpMenu(false);
@@ -1203,7 +1265,7 @@ function AssistantPage() {
       const isDemonstrative =
         !topicOverride ||
         /^(this|that|it|these|those|the above|what we discussed|our discussion|the topic|topic|untitled|here)$/i.test(
-          topicOverride.trim()
+          topicOverride.trim(),
         );
 
       const activeThreadObj = threads.find((t: any) => t.id === targetThreadId);
@@ -1253,7 +1315,9 @@ function AssistantPage() {
         qc.invalidateQueries({ queryKey: ["chat-threads", user?.id] }),
       ]);
       refetchThreads();
-      toast.success(`${res.flashcardsData.cards.length} Flashcards ready to study!`, { id: "fc-gen" });
+      toast.success(`${res.flashcardsData.cards.length} Flashcards ready to study!`, {
+        id: "fc-gen",
+      });
     } catch (err: any) {
       console.error("Flashcards generation error:", err);
       reportStudyError(err, "Could not generate flashcards. Please retry.", { id: "fc-gen" });
@@ -1278,7 +1342,9 @@ function AssistantPage() {
 
   function triggerSummarize() {
     setShowDropUpMenu(false);
-    handleSend("Please summarize the active course material into high-yield exam revision bullet points, formulas, and definitions.");
+    handleSend(
+      "Please summarize the active course material into high-yield exam revision bullet points, formulas, and definitions.",
+    );
   }
 
   return (
@@ -1302,143 +1368,45 @@ function AssistantPage() {
       {/* ========================================================================= */}
       {/* DESKTOP SIDEBAR: Conversations, Attached Document, & Study Tools */}
       {/* ========================================================================= */}
-      <aside className="hidden min-[1440px]:flex w-64 flex-col border-r border-border bg-surface-container-low shrink-0 transition-all min-h-0 h-full max-h-full overflow-hidden">
-        {/* New Chat Button */}
-        <div className="p-3 border-b border-border">
-          <Button
-            onClick={createNewChat}
-            className="w-full justify-start gap-2 rounded-full bg-forest text-white hover:bg-forest/90 font-semibold text-xs h-9 shadow-xs press"
-          >
-            <MessageSquarePlus className="size-4 text-[#8fd9b6]" /> Start New Conversation
-          </Button>
-        </div>
-
-        {/* Active Study Document Section */}
-        <div className="p-3 border-b border-border space-y-2 bg-card/60">
-          <div className="flex items-center justify-between">
-            <span className="eyebrow">
-              Study Document
-            </span>
-            {activeDocContext && (
-              <button
-                type="button"
-                onClick={() => setActiveDocContext(null)}
-                className="text-[10px] font-semibold text-destructive hover:underline"
-              >
-                Detach
-              </button>
-            )}
-          </div>
-
-          {activeDocContext ? (
-            <div className="rounded-xl border border-brand/30 bg-accent/40 p-2.5 text-xs space-y-0.5">
-              <p className="font-semibold text-forest truncate">{activeDocContext.title}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{activeDocContext.course}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsLibraryModalOpen(true)}
-                className="rounded-full text-[11px] font-semibold h-8 border-border bg-card hover:bg-surface-container text-ink press"
-              >
-                <BookOpen className="size-3.5 mr-1 text-forest" /> Library
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="rounded-full text-[11px] font-semibold h-8 border-border bg-card hover:bg-surface-container text-ink press"
-              >
-                <Upload className="size-3.5 mr-1 text-forest" /> Upload
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Recent Chats list */}
-        <div className="p-3 flex-1 min-h-0 flex flex-col space-y-2 overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="eyebrow">
-              Recent Conversations ({threads.length})
-            </span>
-          </div>
-
-          {threads.length > 4 && (
-            <div className="relative">
-              <input
-                type="text"
-                value={threadSearch}
-                onChange={(e) => setThreadSearch(e.target.value)}
-                placeholder="Search chats..."
-                className="w-full h-8 rounded-xl border border-border bg-card px-2.5 pl-7 text-xs text-ink placeholder:text-muted-foreground focus:outline-hidden focus:border-forest"
-              />
-              <Search className="size-3 text-muted-foreground absolute left-2 top-2.5" />
-            </div>
-          )}
-
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1 [scrollbar-width:thin]">
-            {filteredThreads.length === 0 ? (
-              <p className="py-4 text-xs text-muted-foreground text-center">
-                {threadSearch ? "No matching conversations." : "No chats yet."}
-              </p>
-            ) : (
-              filteredThreads.map((t: any) => (
-                <div
-                  key={t.id}
-                  className={cn(
-                    "group flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs transition-all cursor-pointer border press",
-                    activeThreadId === t.id
-                      ? "bg-forest/10 border-forest/30 font-semibold text-forest shadow-xs"
-                      : "border-transparent text-muted-foreground hover:bg-card hover:text-ink"
-                  )}
-                  onClick={() => {
-                    if (activeThreadId !== t.id) {
-                      handleSelectThread(t.id);
-                      setQuizQuestions(null);
-                      setFlashcards(null);
-                    }
-                  }}
-                >
-                  <div className="min-w-0 flex-1 truncate text-left">
-                    <p className="truncate text-xs leading-tight">{t.title}</p>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label="Delete chat"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteChat(t.id);
-                    }}
-                    className="p-1 opacity-0 group-hover:opacity-100 hover:text-destructive text-muted-foreground transition-opacity"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </aside>
-
-      {/* ========================================================================= */}
       {/* MAIN CHAT & INTERACTIVE WORKSPACE */}
       {/* ========================================================================= */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
         {/* Mobile Header (Top-Right Recent Menu + New Chat) */}
         <div className="native-ai-toolbar flex items-center justify-between px-5 py-4 bg-background shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
-            <DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-secondary" aria-label="App navigation"><Menu className="size-5"/></button></DropdownMenuTrigger><DropdownMenuContent align="start"><DropdownMenuItem asChild><Link to="/dashboard">Today</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/library">Library</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/community">Peers</Link></DropdownMenuItem><DropdownMenuItem asChild><Link to="/dashboard/space">Your space</Link></DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="grid size-11 shrink-0 place-items-center rounded-xl hover:bg-secondary"
+                  aria-label="App navigation"
+                >
+                  <Menu className="size-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard">Today</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/library">Library</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/community">Peers</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/space">Your space</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <div className="size-7 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
               <SyllabossEmblem className="size-8" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-display text-xl font-medium text-foreground truncate">
-                {threads.find((t: any) => t.id === activeThreadId)?.title || "Boss AI"}
-              </h2>
+              <h2 className="font-display text-xl font-medium text-foreground truncate">Boss AI</h2>
+              <p className="app-boss-subtitle">
+                {threads.find((t: any) => t.id === activeThreadId)?.title || "Your study partner"}
+              </p>
             </div>
           </div>
 
@@ -1467,7 +1435,19 @@ function AssistantPage() {
           </div>
         </div>
 
-        {activeDocContext?.id&&<DocumentFocusBar key={activeDocContext.id} id={activeDocContext.id} title={activeDocContext.title} focus={documentFocus} change={setDocumentFocus} detach={()=>{setActiveDocContext(null);setDocumentFocus("");}}/>}
+        {activeDocContext?.id && (
+          <DocumentFocusBar
+            key={activeDocContext.id}
+            id={activeDocContext.id}
+            title={activeDocContext.title}
+            focus={documentFocus}
+            change={setDocumentFocus}
+            detach={() => {
+              setActiveDocContext(null);
+              setDocumentFocus("");
+            }}
+          />
+        )}
         {/* Messages Stream */}
         <div
           ref={messagesScrollRef}
@@ -1482,53 +1462,7 @@ function AssistantPage() {
               </div>
             </div>
           ) : messages.length === 0 ? (
-            <div className="grid h-full place-items-center p-4 text-center">
-              <div className="max-w-md space-y-3">
-                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-forest/10 text-forest border border-forest/20 shadow-xs">
-                  <SyllabossEmblem className="size-9" />
-                </div>
-                <h3 className="font-display text-xl sm:text-2xl font-medium tracking-tight text-ink">
-                  What are we studying today?
-                </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Bring a question, a difficult concept, or your course notes. We’ll work through it together, one clear step at a time.
-                </p>
-
-                <div className="grid gap-2 pt-3 sm:grid-cols-2 text-left">
-                  <button
-                    type="button"
-                    onClick={() => handleSend("Explain the core exam concepts in my course step-by-step")}
-                    className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all lift press"
-                  >
-                    Explain core concepts step-by-step
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => prepareStudyPrompt("mcq")}
-                    className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all flex items-center justify-between lift press"
-                  >
-                    <span>Practice questions</span>
-                    <CheckCircle2 className="size-3.5 text-forest" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => prepareStudyPrompt("flashcards")}
-                    className="rounded-2xl border border-border bg-card p-3 text-xs font-medium text-ink hover:bg-surface-container-low transition-all flex items-center justify-between lift press"
-                  >
-                    <span>Build flashcards</span>
-                    <Layers className="size-3.5 text-brand" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsLibraryModalOpen(true)}
-                    className="rounded-2xl border border-dashed border-forest/40 bg-accent/30 p-3 text-xs font-semibold text-forest hover:bg-accent/60 transition-all flex items-center justify-between lift press"
-                  >
-                    <span>Choose from Campus Library</span>
-                    <BookOpen className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
+            <BossWelcome send={handleSend} />
           ) : (
             messages.map((m) => {
               const isAssistant = m.role === "assistant";
@@ -1537,19 +1471,42 @@ function AssistantPage() {
                   key={m.id}
                   className={cn(
                     "boss-message flex flex-col space-y-2",
-                    m.role === "user" ? "items-end" : "items-start"
+                    m.role === "user" ? "items-end" : "items-start",
                   )}
                 >
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
-                    <span className="font-semibold text-ink-soft">{m.role === "user" ? "You" : "Boss AI"}</span>
+                    <span className="font-semibold text-ink-soft">
+                      {m.role === "user" ? "You" : "Boss AI"}
+                    </span>
                     {isAssistant && (
-                      <button type="button" aria-label="Copy response" title="Copy response" className="boss-message-action" onClick={() => navigator.clipboard.writeText(m.content).then(() => toast.success("Response copied")).catch(() => toast.error("Could not copy. You can select the response text instead."))}><Copy className="size-3.5" /></button>
+                      <button
+                        type="button"
+                        aria-label="Copy response"
+                        title="Copy response"
+                        className="boss-message-action"
+                        onClick={() =>
+                          navigator.clipboard
+                            .writeText(m.content)
+                            .then(() => toast.success("Response copied"))
+                            .catch(() =>
+                              toast.error(
+                                "Could not copy. You can select the response text instead.",
+                              ),
+                            )
+                        }
+                      >
+                        <Copy className="size-3.5" />
+                      </button>
                     )}
                     {isAssistant && (
                       <button
                         type="button"
                         onClick={() => speakAiResponse(m.content, m.id)}
-                        title={speakingMessageId === m.id ? "Stop voice note" : "Play voice note response"}
+                        title={
+                          speakingMessageId === m.id
+                            ? "Stop voice note"
+                            : "Play voice note response"
+                        }
                         className="ml-1 text-forest hover:text-forest/80 transition-colors"
                       >
                         {speakingMessageId === m.id ? (
@@ -1567,7 +1524,7 @@ function AssistantPage() {
                       "boss-message-content rounded-2xl px-4 py-3 text-[15px] leading-relaxed",
                       m.role === "user"
                         ? "max-w-[88%] bg-forest text-white font-medium rounded-br-xs"
-                        : "w-full max-w-full bg-transparent text-ink border-0 shadow-none"
+                        : "w-full max-w-full bg-transparent text-ink border-0 shadow-none",
                     )}
                   >
                     {/* Attached material badge */}
@@ -1598,12 +1555,54 @@ function AssistantPage() {
 
                     {isAssistant ? (
                       <div className="space-y-2">
-                        {m.content && <AiMessageRenderer content={m.content} className="boss-response" />}
-                        {(m.content || m.quizData || m.flashcardsData) && activeThreadId && <button type="button" className="text-xs text-muted-foreground hover:text-primary min-h-10" onClick={async()=>{try{const shared=await shareAnswerServerFn({data:{threadId:activeThreadId,content:m.quizData?JSON.stringify({quizData:m.quizData}):m.flashcardsData?JSON.stringify({flashcardsData:m.flashcardsData}):m.content}});if(navigator.share)await navigator.share({title:"Syllaboss study answer",url:shared.url});else{await navigator.clipboard.writeText(shared.url);toast.success("Share link copied. Recipients sign in to view it.")}}catch(error){toast.error(error instanceof Error?error.message:"Could not create share link.")}}}>Share answer link</button>}
+                        {m.content && (
+                          <AiMessageRenderer content={m.content} className="boss-response" />
+                        )}
+                        {(m.content || m.quizData || m.flashcardsData) && activeThreadId && (
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground hover:text-primary min-h-10"
+                            onClick={async () => {
+                              try {
+                                const shared = await shareAnswerServerFn({
+                                  data: {
+                                    threadId: activeThreadId,
+                                    content: m.quizData
+                                      ? JSON.stringify({ quizData: m.quizData })
+                                      : m.flashcardsData
+                                        ? JSON.stringify({ flashcardsData: m.flashcardsData })
+                                        : m.content,
+                                  },
+                                });
+                                if (navigator.share)
+                                  await navigator.share({
+                                    title: "Syllaboss study answer",
+                                    url: shared.url,
+                                  });
+                                else {
+                                  await navigator.clipboard.writeText(shared.url);
+                                  toast.success(
+                                    "Share link copied. Recipients sign in to view it.",
+                                  );
+                                }
+                              } catch (error) {
+                                toast.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not create share link.",
+                                );
+                              }
+                            }}
+                          >
+                            Share answer link
+                          </button>
+                        )}
                         {m.flashcardsData && (
                           <InChatFlashcardsWidget
                             data={m.flashcardsData}
-                            onSelectCount={(c) => startFlashcards(c, undefined, m.flashcardsData?.topic)}
+                            onSelectCount={(c) =>
+                              startFlashcards(c, undefined, m.flashcardsData?.topic)
+                            }
                           />
                         )}
                         {m.quizData && m.quizData.mode === "objective" && (
@@ -1629,9 +1628,17 @@ function AssistantPage() {
           )}
 
           {thinking && (
-            <div role="status" className="boss-thinking flex items-center gap-3 text-sm text-muted-foreground p-2">
+            <div
+              role="status"
+              className="boss-thinking flex items-center gap-3 text-sm text-muted-foreground p-2"
+            >
               <SyllabossEmblem className="size-7" />
-              <span>Working through your question<span className="boss-thinking-dots" aria-hidden="true">…</span></span>
+              <span>
+                Working through your question
+                <span className="boss-thinking-dots" aria-hidden="true">
+                  …
+                </span>
+              </span>
             </div>
           )}
 
@@ -1642,7 +1649,10 @@ function AssistantPage() {
         {showScrollBottom && (
           <button
             type="button"
-            onClick={() => {const el=messagesScrollRef.current;if(el)el.scrollTo({top:el.scrollHeight,behavior:"smooth"})}}
+            onClick={() => {
+              const el = messagesScrollRef.current;
+              if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+            }}
             title="Scroll to bottom"
             className="absolute right-4 bottom-24 z-30 size-10 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-transform"
           >
@@ -1680,11 +1690,13 @@ function AssistantPage() {
         )}
 
         {/* Attached Document Context Banner */}
-        {activeDocContext && (
+        {activeDocContext && !activeDocContext.id && (
           <div className="mx-3 my-1 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <BookOpen className="size-3.5 text-primary shrink-0" />
-              <span className="text-xs font-semibold text-primary truncate">{activeDocContext.title}</span>
+              <span className="text-xs font-semibold text-primary truncate">
+                {activeDocContext.title}
+              </span>
             </div>
             <button
               type="button"
@@ -1697,338 +1709,68 @@ function AssistantPage() {
         )}
 
         {/* ========================================================================= */}
-        {/* MODERN GEMINI / CHATGPT AUTOGROWING TYPING BAR */}
-        {/* ========================================================================= */}
-        <div
-          className="shrink-0 border-t border-border/60 bg-card p-2 sm:p-3 relative z-30 mb-0"
-        >
-          {/* Mention Autocomplete Suggestion Pill */}
-          <AnimatePresence>
-            {showAssistantMention && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 5 }}
-                className="mb-1.5"
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInput((prev) => prev.replace(/@\w*$/, "@BossAI "));
-                    textareaRef.current?.focus();
-                  }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/40 text-primary text-xs font-semibold shadow-xs transition-all cursor-pointer active:scale-95"
-                >
-                  <Bot className="size-4" />
-                  <span>@BossAI</span>
-                  <span className="text-[10px] text-muted-foreground font-normal">
-                    Summon Boss AI study assistant
-                  </span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Popups for + (Documents) and Boss AI (Modes) */}
-          <AnimatePresence>
-            {/* Pop-up 1: + Documents Menu (Library & Device Upload) */}
-            {showDocMenu && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                className="absolute bottom-full left-3 mb-2 w-56 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl z-50 space-y-1 font-sans"
-              >
-                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Study Documents
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDocMenu(false);
-                    setIsLibraryModalOpen(true);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
-                >
-                  <BookOpen className="size-4 text-primary shrink-0" />
-                  <div>
-                    <p className="leading-tight">Choose from Library</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">Campus notes &amp; textbooks</p>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDocMenu(false);
-                    fileInputRef.current?.click();
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
-                >
-                  <Upload className="size-4 text-primary shrink-0" />
-                  <div>
-                    <p className="leading-tight">Upload from Device</p>
-                    <p className="text-[10px] text-muted-foreground font-normal">PDF, DOCX, or images</p>
-                  </div>
-                </button>
-              </motion.div>
-            )}
-
-            {/* Pop-up 2: Boss AI Study Modes Menu (Per Prototypes) */}
-            {showModesMenu && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                className="absolute bottom-full left-10 sm:left-14 mb-2 w-72 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl z-50 space-y-1 font-sans"
-              >
-                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Boss AI Study Modes
-                </div>
-
-                {/* MCQ */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModesMenu(false);
-                    prepareStudyPrompt("mcq");
-                  }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary transition-all"
-                >
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="size-4 text-primary shrink-0" />
-                    <span>MCQ Practice Quiz</span>
-                  </div>
-                  <ChevronRight className="size-3.5 text-muted-foreground" />
-                </button>
-
-                {/* Theory with direct Grade as you go & Grade at the end options */}
-                <div className="p-2 rounded-xl bg-secondary/30 border border-border/50 space-y-1.5">
-                  <div
-                    onClick={() => {
-                      setShowModesMenu(false);
-                      prepareStudyPrompt("theory");
-                    }}
-                    className="flex items-center justify-between cursor-pointer text-xs font-semibold text-foreground hover:text-brand transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="size-4 text-brand shrink-0" />
-                      <span>Theory Test</span>
-                    </div>
-                    <ChevronRight className="size-3.5 text-muted-foreground" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowModesMenu(false);
-                        setTheoryMode("as_you_go");
-                        startTheoryQuiz(theoryCount || 5, "as_you_go");
-                      }}
-                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-brand/30 bg-brand/10 text-brand dark:text-brand hover:bg-brand/20 active:scale-95 transition-all text-center"
-                    >
-                      Grade as you go
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowModesMenu(false);
-                        setTheoryMode("at_the_end");
-                        startTheoryQuiz(theoryCount || 5, "at_the_end");
-                      }}
-                      className="px-2 py-1 rounded-lg text-[10px] font-bold border border-brand/30 bg-brand/10 text-brand dark:text-brand hover:bg-brand/20 active:scale-95 transition-all text-center"
-                    >
-                      Grade at the end
-                    </button>
-                  </div>
-                </div>
-
-                {/* 3D Flashcards */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModesMenu(false);
-                    prepareStudyPrompt("flashcards");
-                  }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-brand/10 hover:text-brand transition-all"
-                >
-                  <div className="flex items-center gap-2">
-                    <Layers className="size-4 text-brand shrink-0" />
-                    <span>3D Flashcards</span>
-                  </div>
-                  <ChevronRight className="size-3.5 text-muted-foreground" />
-                </button>
-
-                {/* Assignment Helper */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModesMenu(false);
-                    prepareStudyPrompt("assignment");
-                  }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-brass/10 hover:text-brass-ink transition-all"
-                >
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="size-4 text-brass shrink-0" />
-                    <span>Assignment Helper</span>
-                  </div>
-                  <ChevronRight className="size-3.5 text-muted-foreground" />
-                </button>
-
-                {/* Summarize Material */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModesMenu(false);
-                    prepareStudyPrompt("summary");
-                  }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs font-semibold text-foreground hover:bg-rose-500/10 hover:text-rose-600 transition-all"
-                >
-                  <Sparkles className="size-4 text-rose-500 shrink-0" />
-                  <span>Summarize Material</span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Assignment Mode indicator banner */}
-          {isAssignmentMode && (
-            <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-brass/10 border border-brass/30 text-brass-ink dark:text-brass text-xs font-semibold animate-in fade-in slide-in-from-bottom-1">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="size-3.5" />
-                <span>Assignment Mode: Academic breakdown with derivations &amp; steps</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAssignmentMode(false)}
-                className="text-muted-foreground hover:text-foreground text-[11px] underline"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-
-          {studyMode && <StudyModePanel mode={studyMode} maxCount={hasPlusAccess ? 50 : 5} hasContext={!!activeDocContext || messages.some((message) => message.role === "user" && !/^(hi|hello|hey|test|thanks)[!.?\s]*$/i.test(message.content.trim()))} busy={thinking} close={() => setStudyMode(null)} generate={(topic, count, fromConversation) => {
-            const selectedTopic = topic || (fromConversation ? activeDocContext?.title || [...messages].reverse().find((message) => message.role === "user")?.content.slice(0, 200) || "" : "");
-            if (!selectedTopic.trim()) { toast.error("Add a topic first so Boss AI knows what to generate."); return; }
-            const selectedMode = studyMode; setStudyMode(null);
-            if (selectedMode === "mcq") void startMcqQuiz(count, undefined, selectedTopic, selectedTopic);
-            else if (selectedMode === "theory") void startTheoryQuiz(count, undefined, selectedTopic, selectedTopic);
-            else if (selectedMode === "flashcards") void startFlashcards(count, undefined, selectedTopic, selectedTopic);
-            else void handleSend(selectedMode === "summary" ? "Summarize this topic: " + selectedTopic : "Help me work through this problem: " + selectedTopic);
-          }}/>}
-          {/* Autogrowing Typing Capsule */}
-          <div className="boss-composer rounded-2xl sm:rounded-3xl border border-border bg-card p-3 shadow-xs focus-within:border-forest/50">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                e.target.style.height = "auto";
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
-              }}
-              onKeyDown={(e) => {
-                if (!isMobile && e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              inputMode="text"
-              aria-label="Message Boss AI"
-              placeholder={
-                isAssignmentMode
-                  ? "Type your assignment problem or question here for a step-by-step academic solution..."
-                  : activeDocContext
-                  ? `Ask Boss AI about ${activeDocContext.title}...`
-                  : "Ask a question, or add your course notes…"
+        <div className="app-study-setup">
+          {studyMode && (
+            <StudyModePanel
+              mode={studyMode}
+              maxCount={hasPlusAccess ? 50 : 5}
+              hasContext={
+                !!activeDocContext ||
+                messages.some(
+                  (message) =>
+                    message.role === "user" &&
+                    !/^(hi|hello|hey|test|thanks)[!.?\s]*$/i.test(message.content.trim()),
+                )
               }
-              rows={1}
-              className="w-full resize-none bg-transparent text-base text-ink placeholder:text-muted-foreground focus:outline-hidden min-h-[44px] max-h-[160px] overflow-y-auto px-1 py-2 leading-relaxed"
+              busy={thinking}
+              close={() => setStudyMode(null)}
+              generate={(topic, count, fromConversation) => {
+                const selectedTopic =
+                  topic ||
+                  (fromConversation
+                    ? activeDocContext?.title ||
+                      [...messages]
+                        .reverse()
+                        .find((message) => message.role === "user")
+                        ?.content.slice(0, 200) ||
+                      ""
+                    : "");
+                if (!selectedTopic.trim()) {
+                  toast.error("Add a topic first so Boss AI knows what to generate.");
+                  return;
+                }
+                const selectedMode = studyMode;
+                setStudyMode(null);
+                if (selectedMode === "mcq")
+                  void startMcqQuiz(count, undefined, selectedTopic, selectedTopic);
+                else if (selectedMode === "theory")
+                  void startTheoryQuiz(count, undefined, selectedTopic, selectedTopic);
+                else if (selectedMode === "flashcards")
+                  void startFlashcards(count, undefined, selectedTopic, selectedTopic);
+                else
+                  void handleSend(
+                    selectedMode === "summary"
+                      ? "Summarize this topic: " + selectedTopic
+                      : "Help me work through this problem: " + selectedTopic,
+                  );
+              }}
             />
-
-            {/* Embedded Action Bar per Prototype Sketch */}
-            <div className="flex items-center justify-between pt-1 border-t border-border/50 mt-1">
-              <div className="flex items-center gap-1.5">
-                {/* 1. + Button: Documents Menu Popup */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDocMenu((prev) => !prev);
-                    setShowModesMenu(false);
-                  }}
-                  title="Attach or upload document"
-                  className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all press",
-                    showDocMenu
-                      ? "bg-forest text-white rotate-45 shadow-xs"
-                      : "text-muted-foreground hover:text-ink hover:bg-surface-container"
-                  )}
-                >
-                  <Plus className="size-4" />
-                </button>
-
-                {/* 2. Boss AI ^ Button: Study Modes Popup */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModesMenu((prev) => !prev);
-                    setShowDocMenu(false);
-                  }}
-                  title="Boss AI Study Modes"
-                  className={cn(
-                    "h-8 px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-all border press",
-                    showModesMenu
-                      ? "bg-forest text-white border-forest shadow-xs"
-                      : "text-ink bg-card hover:bg-surface-container border-border"
-                  )}
-                >
-                  <Bot className="size-3.5 text-forest shrink-0" />
-                  <span>Boss AI</span>
-                  <ChevronUp
-                    className={cn(
-                      "size-3.5 transition-transform",
-                      showModesMenu && "rotate-180"
-                    )}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1">
-                {/* Voice Note Button */}
-                <button
-                  type="button"
-                  onClick={toggleVoiceNoteInput}
-                  title={isRecording ? "Stop voice note" : "Record voice note"}
-                  className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all press",
-                    isRecording
-                      ? "bg-destructive text-white animate-pulse"
-                      : "text-muted-foreground hover:text-ink hover:bg-surface-container"
-                  )}
-                >
-                  <Mic className="size-4" />
-                </button>
-
-                {/* Send Button */}
-                <button
-                  type="button"
-                  disabled={thinking || !input.trim()}
-                  onClick={() => handleSend()}
-                  title="Send prompt"
-                  className={cn(
-                    "size-8 rounded-full grid place-items-center transition-all",
-                    input.trim() && !thinking
-                      ? "bg-forest text-white hover:bg-forest/90 shadow-xs press"
-                      : "text-muted-foreground opacity-30 cursor-not-allowed"
-                  )}
-                >
-                  <Send className="size-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-
-
+        <BossComposer
+          value={input}
+          change={setInput}
+          send={() => void handleSend()}
+          busy={thinking}
+          recording={isRecording}
+          record={toggleVoiceNoteInput}
+          library={() => setIsLibraryModalOpen(true)}
+          upload={() => fileInputRef.current?.click()}
+          mode={prepareStudyPrompt}
+          inputRef={textareaRef}
+          mobile={isMobile}
+          sourceTitle={activeDocContext?.title}
+        />
       </div>
 
       {/* ========================================================================= */}
@@ -2099,7 +1841,7 @@ function AssistantPage() {
                         "group flex items-center justify-between gap-1 rounded-xl px-2.5 py-2 text-xs transition-colors",
                         activeThreadId === t.id
                           ? "bg-secondary font-semibold text-foreground"
-                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                       )}
                     >
                       <button
@@ -2166,7 +1908,7 @@ function AssistantPage() {
                   "px-2.5 py-1 rounded-lg font-semibold shrink-0 transition-all",
                   libraryFilter === ft
                     ? "bg-primary text-primary-foreground shadow-xs"
-                    : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+                    : "bg-secondary/60 text-muted-foreground hover:text-foreground",
                 )}
               >
                 {ft === "all" ? "All Materials" : ft.replace("_", " ")}
@@ -2206,7 +1948,8 @@ function AssistantPage() {
                       {mat.title}
                     </p>
                     <p className="text-[11px] text-muted-foreground truncate">
-                      {mat.course_code ? `${mat.course_code} · ` : ""}{mat.course} · {mat.institution}
+                      {mat.course_code ? `${mat.course_code} · ` : ""}
+                      {mat.course} · {mat.institution}
                     </p>
                     <span className="inline-block mt-1 text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground">
                       {mat.material_type?.replace("_", " ") || "Note"}
@@ -2249,7 +1992,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     mcqMode === "as_you_go"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Mark as you go
@@ -2261,7 +2004,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     mcqMode === "at_the_end"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Mark at the end
@@ -2283,7 +2026,7 @@ function AssistantPage() {
                       "size-8 rounded-lg font-bold border text-xs transition-all",
                       mcqCount === num
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-foreground hover:bg-secondary"
+                        : "border-border text-foreground hover:bg-secondary",
                     )}
                   >
                     {num}
@@ -2327,7 +2070,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     theoryMode === "as_you_go"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Mark as you go
@@ -2339,7 +2082,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     theoryMode === "at_the_end"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Mark at the end
@@ -2361,7 +2104,7 @@ function AssistantPage() {
                       "size-8 rounded-lg font-bold border text-xs transition-all",
                       theoryCount === num
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-foreground hover:bg-secondary"
+                        : "border-border text-foreground hover:bg-secondary",
                     )}
                   >
                     {num}
@@ -2405,7 +2148,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     flashcardType === "qa"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Q &amp; A Cards
@@ -2417,7 +2160,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     flashcardType === "fill_blank"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Fill-in-the-blank
@@ -2439,7 +2182,7 @@ function AssistantPage() {
                       "size-8 rounded-lg font-bold border text-xs transition-all",
                       flashcardCount === num
                         ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-foreground hover:bg-secondary"
+                        : "border-border text-foreground hover:bg-secondary",
                     )}
                   >
                     {num}
@@ -2483,7 +2226,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     assignmentMode === "detailed"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Detailed Breakdown
@@ -2495,7 +2238,7 @@ function AssistantPage() {
                     "p-2 rounded-xl border text-center font-bold transition-all",
                     assignmentMode === "short"
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-foreground hover:bg-secondary"
+                      : "border-border text-foreground hover:bg-secondary",
                   )}
                 >
                   Short &amp; Concise Pointers

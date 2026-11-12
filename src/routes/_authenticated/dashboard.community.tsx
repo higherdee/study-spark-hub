@@ -74,7 +74,7 @@ import { subscribeToChatChannel, broadcastChatMessage } from "@/lib/supabase-rea
 import { sendDeviceNotification } from "@/lib/notifications";
 import { StudentQrModal } from "@/components/student-qr-modal";
 import { QrScannerModal } from "@/components/qr-scanner-modal";
-import { MobileCustomKeyboard } from "@/components/chat/mobile-custom-keyboard";
+
 import { HostBattleModal } from "@/components/battle/host-battle-modal";
 import { BattleLobbyCard } from "@/components/battle/battle-lobby-card";
 import { BattleArenaModal } from "@/components/battle/battle-arena-modal";
@@ -209,12 +209,9 @@ export function CommunityPage() {
 
   // Navigation & View States
   const [activeChat, setActiveChat] = useState<ActiveChat | null>(null);
-  const [chatTab, setChatTab] = useState<"all" | "direct" | "groups">("all");
+  const [chatTab, setChatTab] = useState<"all" | "direct" | "groups">("direct");
   const [searchQuery, setSearchQuery] = useState("");
   const [messageInput, setMessageInput] = useState("");
-
-  // Custom Tactile Keyboard State (Edge-to-edge, suppresses native keyboard)
-  const [showCustomKeyboard, setShowCustomKeyboard] = useState(false);
 
   // Telegram Features: Reply & Edit States
   const [replyingToMessage, setReplyingToMessage] = useState<any | null>(null);
@@ -322,7 +319,12 @@ export function CommunityPage() {
   }, [blockedPeerIds]);
 
   // 1. Fetch 1-on-1 Direct Conversations
-  const { data: directConversations = [], refetch: refetchConversations } = useQuery({
+  const {
+    data: directConversations = [],
+    refetch: refetchConversations,
+    isPending: inboxLoading,
+    isError: inboxError,
+  } = useQuery({
     queryKey: ["direct-conversations", user?.id],
     enabled: Boolean(user?.id),
     queryFn: async () => {
@@ -333,7 +335,12 @@ export function CommunityPage() {
   });
 
   // 2. Fetch Study Groups (Exclude any dummy placeholder groups per requirement)
-  const { data: rawStudyGroups = [], refetch: refetchGroups } = useQuery({
+  const {
+    data: rawStudyGroups = [],
+    refetch: refetchGroups,
+    isPending: groupsLoading,
+    isError: groupsError,
+  } = useQuery({
     queryKey: ["study-groups", user?.id],
     enabled: Boolean(user?.id),
     queryFn: async () => {
@@ -452,7 +459,7 @@ export function CommunityPage() {
           setActiveChat({
             type: "peer",
             id: first.id,
-            title: first.peer.full_name,
+            title: `@${first.peer.username || "student"}`,
             subtitle: `@${first.peer.username}`,
             avatarUrl: first.peer.avatar_url,
             peerId: first.peer.id,
@@ -508,7 +515,7 @@ export function CommunityPage() {
       setActiveChat({
         type: "peer",
         id: res.id,
-        title: peer.full_name || `@${peer.username}`,
+        title: `@${peer.username || "student"}`,
         subtitle: `@${peer.username}`,
         avatarUrl: peer.avatar_url,
         peerId: peer.id,
@@ -562,7 +569,6 @@ export function CommunityPage() {
     setEditingMessage(msg);
     setMessageInput(msg.content);
     setSelectedMessageForMenu(null);
-    setShowCustomKeyboard(true);
     if (composerTextareaRef.current) {
       composerTextareaRef.current.focus();
     }
@@ -662,9 +668,7 @@ export function CommunityPage() {
           data: {
             groupId: activeChat.id,
             userId: user.id,
-            userName: profile?.username
-              ? `@${profile.username}`
-              : user.user_metadata?.full_name || "Scholar",
+            userName: profile?.username ? `@${profile.username}` : "Student",
             userInstitution: profile?.institution || undefined,
             content,
             materialId: matId,
@@ -805,7 +809,7 @@ export function CommunityPage() {
       setActiveChat({
         type: "peer",
         id: conv.id,
-        title: peer.full_name,
+        title: `@${peer.username || "student"}`,
         subtitle: `@${peer.username}`,
         avatarUrl: peer.avatar_url,
         peerId: peer.id,
@@ -821,9 +825,7 @@ export function CommunityPage() {
     return directConversations
       .filter((c: any) => {
         if (blockedPeerIds.includes(c.peer.id)) return false;
-        const matchesSearch =
-          c.peer.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.peer.username.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = c.peer.username.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesSearch;
       })
       .sort((a: any, b: any) => {
@@ -873,7 +875,6 @@ export function CommunityPage() {
           navigator.vibrate(12);
         }
         setReplyingToMessage(msg);
-        setShowCustomKeyboard(true);
         if (composerTextareaRef.current) {
           composerTextareaRef.current.focus();
         }
@@ -885,7 +886,7 @@ export function CommunityPage() {
   return (
     <div
       data-chat-active={Boolean(activeChat)}
-      className="native-peers-page flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans relative"
+      className="native-peers-page app-peer-workspace flex min-h-0 h-full max-h-full flex-1 w-full max-w-[1440px] mx-auto overflow-hidden rounded-none sm:rounded-3xl border-y sm:border border-border/80 bg-card shadow-lg font-sans relative"
     >
       {/* ========================================================================= */}
       {/* LEFT SIDEBAR: Conversations List (Telegram Style) */}
@@ -897,101 +898,117 @@ export function CommunityPage() {
         )}
       >
         <div className="native-peers-index-scroll">
-          {/* Top Header */}
-          <div className="p-3.5 border-b border-border/70 flex items-center justify-between gap-2 bg-card shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Avatar className="size-9 ring-2 ring-brand/20">
-                <AvatarImage src={profile?.avatar_url || ""} />
-                <AvatarFallback className="bg-brand text-xs font-bold text-white">
-                  {profile?.full_name?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <h2 className="text-xs font-bold text-foreground truncate">Your people.</h2>
-                <p className="text-[11px] font-medium text-brand dark:text-brand truncate">
-                  @{profile?.username || "student"}
-                </p>
-              </div>
+          <header className="app-peer-toolbar">
+            <h1>Your people</h1>
+            <button
+              type="button"
+              className="native-icon-button"
+              aria-label="New conversation"
+              onClick={() => setIsNewDirectChatOpen(true)}
+            >
+              <MessageSquare />
+            </button>
+            <button
+              type="button"
+              className="native-icon-button"
+              aria-label="Create study group"
+              onClick={() => setIsCreateGroupOpen(true)}
+            >
+              <Users />
+            </button>
+          </header>
+          <section className="app-peer-intro">
+            <div className="app-peer-qr">
+              <button type="button" onClick={() => setIsQrModalOpen(true)}>
+                <QrCode />
+                My QR code
+              </button>
+              <button type="button" onClick={() => setIsScannerOpen(true)}>
+                <ScanLine />
+                Scan a peer
+              </button>
             </div>
-
-            {/* Action Icons */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsQrModalOpen(true)}
-                title="Show my SyllaID QR"
-                className="size-8 rounded-full text-muted-foreground hover:text-brand hover:bg-brand/10"
-              >
-                <QrCode className="size-4" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsScannerOpen(true)}
-                title="Scan peer QR code"
-                className="size-8 rounded-full text-muted-foreground hover:text-brand hover:bg-brand/10"
-              >
-                <ScanLine className="size-4" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsNewDirectChatOpen(true)}
-                title="Start new direct peer chat"
-                className="size-8 rounded-full text-muted-foreground hover:text-foreground"
-              >
-                <MessageSquare className="size-4" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsCreateGroupOpen(true)}
-                title="Create new group"
-                className="size-8 rounded-full text-muted-foreground hover:text-foreground"
-              >
-                <Users className="size-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Search Bar (Searches peers and groups) */}
-          <div className="p-2.5 border-b border-border/70 bg-card/60 shrink-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-              <Input
+            <h2>A good question starts a conversation.</h2>
+            <p>Search a student’s @username to start a chat, or find a course group below.</p>
+            <label className="native-search">
+              <Search />
+              <input
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search peers and groups..."
-                className="pl-8 text-xs h-8.5 rounded-full bg-secondary/50 border-border/60"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPeerSearchQuery(e.target.value);
+                }}
+                placeholder="Search @username or group"
+                aria-label="Search peers and groups"
               />
+            </label>
+            <div className="app-peer-sections">
+              <button
+                type="button"
+                aria-pressed={chatTab !== "groups"}
+                onClick={() => setChatTab("direct")}
+              >
+                <MessageSquare />
+                Messages
+              </button>
+              <button
+                type="button"
+                aria-pressed={chatTab === "groups"}
+                onClick={() => setChatTab("groups")}
+              >
+                <Users />
+                Study groups
+              </button>
             </div>
-
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1 mt-2">
-              {(["all", "direct", "groups"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setChatTab(tab)}
-                  className={cn(
-                    "px-3 py-1 rounded-full text-[11px] font-bold capitalize transition-all",
-                    chatTab === tab
-                      ? "bg-primary text-primary-foreground shadow-2xs"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                  )}
-                >
-                  {tab === "direct" ? "Peers" : tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
+          </section>
+          {searchQuery.trim() && chatTab !== "groups" && (
+            <section className="app-peer-search-results" aria-label="Find a peer">
+              {isSearchingPeers ? (
+                <p role="status">Searching usernames…</p>
+              ) : (
+                searchedPeers.map((peer: any) => (
+                  <button type="button" key={peer.id} onClick={() => startDirectChatWithPeer(peer)}>
+                    <span>
+                      <strong>@{peer.username || "student"}</strong>
+                      <small>{peer.course || "Syllaboss student"}</small>
+                    </span>
+                    <MessageSquare />
+                  </button>
+                ))
+              )}
+            </section>
+          )}
           {/* Conversations List with Long-press Menu */}
-          <div className="native-conversation-list divide-y divide-border/40">
+          <div className="native-conversation-list app-peer-cards">
+            {(chatTab === "groups" ? groupsLoading : inboxLoading) && (
+              <p className="app-peer-empty" role="status">
+                Loading your {chatTab === "groups" ? "study groups" : "conversations"}…
+              </p>
+            )}
+            {(chatTab === "groups" ? groupsError : inboxError) && (
+              <div role="alert" className="app-peer-empty">
+                <p>Your {chatTab === "groups" ? "groups" : "messages"} could not load.</p>
+                <button
+                  type="button"
+                  className="native-text-button"
+                  onClick={() =>
+                    void (chatTab === "groups" ? refetchGroups() : refetchConversations())
+                  }
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+            {!(chatTab === "groups" ? groupsLoading || groupsError : inboxLoading || inboxError) &&
+              !searchQuery.trim() &&
+              ((chatTab === "groups" && !filteredGroups.length) ||
+                (chatTab !== "groups" && !filteredPeers.length)) && (
+                <p className="app-peer-empty">
+                  {chatTab === "groups"
+                    ? "Create a study group to bring your coursemates together."
+                    : "Your conversations will appear here. Search a username to say hello."}
+                </p>
+              )}
             {/* Direct Peer Conversations */}
             {(chatTab === "all" || chatTab === "direct") &&
               filteredPeers.map((c: any) => {
@@ -1005,7 +1022,7 @@ export function CommunityPage() {
                       setActiveChat({
                         type: "peer",
                         id: c.id,
-                        title: c.peer.full_name,
+                        title: `@${c.peer.username || "student"}`,
                         subtitle: `@${c.peer.username}`,
                         avatarUrl: c.peer.avatar_url,
                         peerId: c.peer.id,
@@ -1040,7 +1057,7 @@ export function CommunityPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1.5">
                         <span className="font-bold text-xs text-foreground truncate">
-                          {c.peer.full_name}
+                          @{c.peer.username || "student"}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           {isPinned && <Pin className="size-3 text-primary shrink-0 rotate-45" />}
@@ -1224,7 +1241,7 @@ export function CommunityPage() {
                           battleId={battleId}
                           groupId={activeChat.id}
                           currentUserId={user?.id || ""}
-                          currentUserName={profile?.full_name || "Scholar"}
+                          currentUserName={profile?.username ? `@${profile.username}` : "Student"}
                           currentUserAvatar={profile?.avatar_url ?? null}
                           onOpenArena={(bId, role) => {
                             setActiveBattleIdForArena(bId);
@@ -1483,7 +1500,7 @@ export function CommunityPage() {
                 );
               })()}
 
-              <div className="rounded-2xl border border-border/80 bg-secondary/30 p-2 shadow-xs flex flex-col gap-1 focus-within:border-primary/50 focus-within:bg-card">
+              <div className="app-peer-compose-input">
                 <textarea
                   ref={composerTextareaRef}
                   disabled={
@@ -1501,14 +1518,10 @@ export function CommunityPage() {
                       handleSendMessage();
                     }
                   }}
-                  onFocus={() => {
-                    if (isMobile) setShowCustomKeyboard(true);
-                  }}
-                  onClick={() => {
-                    if (isMobile) setShowCustomKeyboard(true);
-                  }}
-                  inputMode={isMobile ? "none" : "text"}
-                  placeholder={`Message ${activeChat.title} (tag @BossAI to ask AI)...`}
+                  onFocus={() => {}}
+                  onClick={() => {}}
+                  inputMode="text"
+                  placeholder={`Message ${activeChat.title}…`}
                   rows={1}
                   className="w-full resize-none bg-transparent text-xs sm:text-sm text-foreground focus:outline-hidden min-h-[26px] max-h-[84px] overflow-y-auto px-1 py-0.5 leading-relaxed"
                 />
@@ -1557,36 +1570,13 @@ export function CommunityPage() {
                 </div>
               </div>
             </div>
-
-            {/* Custom Tactile Keyboard (In-flow directly beneath composer on mobile) */}
-            <AnimatePresence>
-              {showCustomKeyboard &&
-                isMobile &&
-                directRequest !== "incoming" &&
-                directRequest !== "outgoing" && (
-                  <MobileCustomKeyboard
-                    value={messageInput}
-                    onChange={(val) => {
-                      setMessageInput(val);
-                      if (composerTextareaRef.current) {
-                        composerTextareaRef.current.style.height = "auto";
-                        composerTextareaRef.current.style.height = `${Math.min(composerTextareaRef.current.scrollHeight, 84)}px`;
-                      }
-                    }}
-                    onSend={() => handleSendMessage()}
-                    isOpen={showCustomKeyboard}
-                    onClose={() => setShowCustomKeyboard(false)}
-                    inputRef={composerTextareaRef}
-                  />
-                )}
-            </AnimatePresence>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="app-peer-desktop-empty">
             <div className="size-16 rounded-full bg-brand/10 text-brand grid place-items-center mb-3">
               <MessageSquare className="size-8" />
             </div>
-            <h3 className="text-base font-bold text-foreground">Select a peer or study group</h3>
+            <h3 className="text-base font-bold text-foreground">Good conversations belong here.</h3>
             <p className="mt-1 text-xs text-muted-foreground max-w-sm leading-relaxed">
               Connect with coursemates, join study groups, share documents, or tag{" "}
               <strong>@BossAI</strong> for instant answers.
@@ -1621,7 +1611,6 @@ export function CommunityPage() {
               onClick={() => {
                 setReplyingToMessage(selectedMessageForMenu);
                 setSelectedMessageForMenu(null);
-                setShowCustomKeyboard(true);
               }}
               className="w-full flex items-center gap-2.5 p-2 rounded-xl text-left hover:bg-secondary font-semibold"
             >
@@ -1758,7 +1747,7 @@ export function CommunityPage() {
                     className="flex items-center justify-between p-2 rounded-xl hover:bg-secondary"
                   >
                     <div className="min-w-0">
-                      <p className="font-bold text-xs truncate">{peer.full_name}</p>
+                      <p className="font-bold text-xs truncate">@{peer.username || "student"}</p>
                       <p className="text-[10px] text-muted-foreground">@{peer.username}</p>
                     </div>
                     <Button
@@ -1810,7 +1799,7 @@ export function CommunityPage() {
               <Input
                 value={peerSearchQuery}
                 onChange={(e) => setPeerSearchQuery(e.target.value)}
-                placeholder="Search by username or name..."
+                placeholder="Search @username..."
                 className="pl-8 text-xs h-8.5 rounded-full"
                 autoFocus
               />
@@ -1832,7 +1821,7 @@ export function CommunityPage() {
                     className="w-full flex items-center justify-between p-2 rounded-xl text-left hover:bg-secondary"
                   >
                     <div className="min-w-0">
-                      <p className="font-bold text-xs truncate">{peer.full_name}</p>
+                      <p className="font-bold text-xs truncate">@{peer.username || "student"}</p>
                       <p className="text-[10px] text-muted-foreground">@{peer.username}</p>
                     </div>
                     <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg">
@@ -1943,7 +1932,7 @@ export function CommunityPage() {
           isDirectPeer={activeChat.type !== "group"}
           currentUser={{
             id: user?.id || "",
-            fullName: profile?.full_name || "Scholar",
+            fullName: "Student",
             avatarUrl: profile?.avatar_url,
             points: profile?.points || 0,
           }}
@@ -1962,7 +1951,7 @@ export function CommunityPage() {
           battleId={activeBattleIdForArena}
           groupId={activeChat.id}
           currentUserId={user?.id || ""}
-          currentUserName={profile?.full_name || "Scholar"}
+          currentUserName={profile?.username ? `@${profile.username}` : "Student"}
           userRole={battleArenaRole}
           onRunItBack={() => {
             setActiveBattleIdForArena(null);
